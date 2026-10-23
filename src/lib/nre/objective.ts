@@ -7,8 +7,10 @@
  */
 
 import { hasRealRowDate, rowHasDailyDate } from "./columns";
+import { sumAllRowSpendInPeriod } from "./cpr-spend-basis";
 import {
   metaCsvExportResultValue,
+  metaFormLeadsFromMetaExportRow,
   websiteLeadsFromMetaExportRow,
   type ResultCountingMode,
 } from "./meta-csv-export-counting";
@@ -33,6 +35,11 @@ import {
   isReachCampaignName,
   isWebsiteLeadsCampaignName,
 } from "./campaign-name-heuristics";
+import {
+  normalizeMetaSyntheticResultType,
+  syntheticResultTypeFromMetaResultIndicator,
+  type MetaCustomConversionResultTypeLookup,
+} from "./meta-result-indicator";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -104,25 +111,66 @@ export function detectObjectiveFromColumns(headers: (string | null | undefined)[
  * that column exists for another campaign — this sums each lead-family
  * column for one campaign's rows only.
  */
-export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels | null {
+/** When Result type is filled on a majority of rows, trust that text over orphan lead columns. */
+function objectiveFromCsvResultTypeMajority(rows: MetricRow[]): ResultLabels | null {
+  let blankCount = 0;
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const rt = (row.result_type || "").trim();
+    if (!rt) {
+      blankCount++;
+      continue;
+    }
+    counts.set(rt, (counts.get(rt) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+
+  let primary = "";
+  let maxCount = 0;
+  for (const [rt, count] of counts) {
+    if (count > maxCount) {
+      maxCount = count;
+      primary = rt;
+    }
+  }
+  if (!primary || maxCount <= blankCount) return null;
+
+  const primaryLower = primary.toLowerCase().trim();
+  if (shouldIgnoreDominantResultType(rows, primaryLower)) return null;
+  if (primaryLower === "landing_page_view") {
+    const hasRealLeadsColumnData = rows.some(
+      (r) => parseCellNum(r.website_leads) > 0 || parseCellNum(r.leads) > 0 || parseCellNum(r.meta_leads) > 0,
+    );
+    if (hasRealLeadsColumnData) return null;
+  }
+
+  const mapped = getMetaResultLabels(primary);
+  if (mapped.resultLabel === "RESULTS") {
+    const fromMap = resolveObjectiveFromResultType(primary);
+    if (!fromMap) return null;
+    return { resultLabel: fromMap.resultLabel, costLabel: fromMap.costLabel };
+  }
+  return { resultLabel: mapped.resultLabel, costLabel: mapped.costLabel };
+}
+
+export function detectObjectiveFromCampaignRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   if (rows.length === 0) return null;
 
-  const named = namedCampaignObjectiveFromRows(rows);
+  const named = namedCampaignObjectiveFromRows(rows, customConversionResultTypes);
   if (named) return named;
+
+  const fromResultType = objectiveFromCsvResultTypeMajority(rows);
+  if (fromResultType) return fromResultType;
 
   let websiteLeadsTotal = 0;
   let metaLeadsTotal = 0;
   let messagingTotal = 0;
   for (const row of rows) {
-    websiteLeadsTotal += parseCellNum(row.website_leads);
-    metaLeadsTotal += parseCellNum(row.leads) + parseCellNum(row.meta_leads);
-    const rt = (row.result_type || "").toLowerCase();
-    if (/leads?\s*\(\s*form|lead_grouped|onsite_conversion\.lead|meta leads?/.test(rt)) {
-      metaLeadsTotal += parseCellNum(row.results);
-    }
-    if (/website\s*submission|website leads?|web leads?|offsite_conversion.*lead|fb_pixel_lead/.test(rt)) {
-      websiteLeadsTotal += parseCellNum(row.results);
-    }
+    websiteLeadsTotal += websiteLeadsFromMetaExportRow(row);
+    metaLeadsTotal += metaFormLeadsFromMetaExportRow(row);
     messagingTotal += sumRawColumnByKeywords(row._raw, [
       "messaging conversations started",
       "whatsapp conversations started",
@@ -197,6 +245,9 @@ function detectObjectiveFromCampaignNameAndHeaders(rows: MetricRow[]): ResultLab
   if (isQuoteRequestCampaignName(rows)) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
+  if (isPurchaseCampaignName(rows)) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
   if (isReachCampaignName(rows)) {
     return { resultLabel: "REACH", costLabel: "COST PER 1K REACH" };
   }
@@ -216,7 +267,10 @@ function activeHeadersForCampaign(rows: MetricRow[]): string[] {
  * Uses this campaign's own numeric activity first, then name+header hints — never
  * the whole file's column list (which mislabels mixed-objective exports).
  */
-export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | null {
+export function columnObjectiveForCampaign(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   const purchaseNamed = purchaseObjectiveIfNamedCampaign(rows);
   if (purchaseNamed) return purchaseNamed;
 
@@ -229,14 +283,22 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
   const linkClicksNamed = linkClicksObjectiveIfNamedCampaign(rows);
   if (linkClicksNamed) return linkClicksNamed;
 
-  if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
+  if (
+    rows.some((r) =>
+      isWebsiteLeadsResultTypeText(resultTypeTextForObjectiveDetection(r, customConversionResultTypes)),
+    )
+  ) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
-  if (rows.some((r) => isQuoteRequestResultTypeText(r.result_type))) {
+  if (
+    rows.some((r) =>
+      isQuoteRequestResultTypeText(resultTypeTextForObjectiveDetection(r, customConversionResultTypes)),
+    )
+  ) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
 
-  const fromRows = detectObjectiveFromCampaignRows(rows);
+  const fromRows = detectObjectiveFromCampaignRows(rows, customConversionResultTypes);
   if (fromRows) return fromRows;
 
   const activeHeaders = activeHeadersForCampaign(rows);
@@ -244,7 +306,7 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
     const fromActive = detectObjectiveFromColumns(activeHeaders);
     if (fromActive) {
       if (TRAFFIC_ONLY_OBJECTIVE_LABELS.has(fromActive.resultLabel) && isLeadFamilyCampaignName(rows)) {
-        const leadFromName = leadObjectiveFromCampaignNameOnly(rows);
+        const leadFromName = leadObjectiveFromCampaignNameOnly(rows, customConversionResultTypes);
         if (leadFromName) return leadFromName;
       } else {
         return fromActive;
@@ -271,7 +333,7 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
   ]);
   if (!leadFamilyLabels.has(fromHeaders.resultLabel)) {
     if (TRAFFIC_ONLY_OBJECTIVE_LABELS.has(fromHeaders.resultLabel) && isLeadFamilyCampaignName(rows)) {
-      return leadObjectiveFromCampaignNameOnly(rows);
+      return leadObjectiveFromCampaignNameOnly(rows, customConversionResultTypes);
     }
     return fromHeaders;
   }
@@ -905,23 +967,87 @@ function sumCampaignMessagingTotal(rows: MetricRow[]): number {
 
 const TRAFFIC_ONLY_OBJECTIVE_LABELS = new Set(["LANDING PAGE VIEWS", "LINK CLICKS", "REACH"]);
 
+/** Same Result indicator + catalog resolution as campaign-csv-result-type (Ad Reporting parity). */
+export function resultTypeTextForObjectiveDetection(
+  row: MetricRow,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string {
+  const raw = row._raw ?? {};
+  const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+  const stored = (row.result_type ?? "").trim();
+
+  if (indicator) {
+    const fromIndicator = syntheticResultTypeFromMetaResultIndicator(indicator, customConversionResultTypes);
+    if (fromIndicator) {
+      const fromIndNorm = normalizeMetaSyntheticResultType(fromIndicator);
+      if (
+        !stored ||
+        stored.toLowerCase() === "website submission" ||
+        /^actions:/i.test(stored)
+      ) {
+        return fromIndNorm;
+      }
+    }
+  }
+  if (stored) return normalizeMetaSyntheticResultType(stored);
+  if (indicator) {
+    const syn = syntheticResultTypeFromMetaResultIndicator(indicator, customConversionResultTypes);
+    if (syn) return normalizeMetaSyntheticResultType(syn);
+  }
+  return "";
+}
+
 /** Lead objective from campaign/ad-set naming alone — used when LPV/link-click columns exist in the export but the row has no lead yet. */
-function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | null {
+function leadObjectiveFromCampaignNameOnly(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   if (isMetaFormLeadsCampaignName(rows)) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
   }
   // Export result_type (e.g. Quote Request Submitted) beats "website leads" in campaign naming.
-  if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows)) {
+  if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows, customConversionResultTypes)) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
+  const scheduleFromResultType = scheduleObjectiveFromResultTypeRows(rows, customConversionResultTypes);
+  if (scheduleFromResultType) return scheduleFromResultType;
   if (isWebsiteLeadsCampaignName(rows)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
   return null;
 }
 
-function hasQuoteRequestResultTypeRows(rows: MetricRow[]): boolean {
-  return rows.some((r) => resolveObjectiveFromResultType(r.result_type)?.key === "quote_requests");
+function hasQuoteRequestResultTypeRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): boolean {
+  return rows.some(
+    (r) => resolveObjectiveFromResultType(resultTypeTextForObjectiveDetection(r, customConversionResultTypes))?.key === "quote_requests",
+  );
+}
+
+/** Result type column beats "website leads" in campaign naming (same rule as quote requests). */
+function scheduleObjectiveFromResultTypeRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
+  let websiteScheduleRows = 0;
+  let appointmentRows = 0;
+  for (const row of rows) {
+    const rt = resultTypeTextForObjectiveDetection(row, customConversionResultTypes);
+    if (!rt) continue;
+    const info = resolveObjectiveFromResultType(rt);
+    if (!info) continue;
+    if (info.key === "website_schedule") websiteScheduleRows++;
+    else if (info.key === "appointment_leads") appointmentRows++;
+  }
+  if (websiteScheduleRows > 0) {
+    return { resultLabel: "WEBSITE SCHEDULE", costLabel: "COST PER BOOKING" };
+  }
+  if (appointmentRows > 0) {
+    return { resultLabel: "APPOINTMENT LEADS", costLabel: "COST PER BOOKING" };
+  }
+  return null;
 }
 
 function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {
@@ -932,10 +1058,16 @@ function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {
   });
 }
 
-/** Named purchase campaign + Purchases column in export → PURCHASES even when only mid-funnel data exists. */
+/** Named purchase/sales campaign → PURCHASES even when Result type is blank (zero-sale weeks). */
 function purchaseObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
-  if (!isPurchaseCampaignName(rows) || !hasPurchasesColumnHeader(rows)) return null;
-  return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  if (!isPurchaseCampaignName(rows)) return null;
+  if (hasPurchasesColumnHeader(rows)) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
+  if (rows.some((r) => parseCellNum(r.spend) > 0 || parseCellNum(r.impressions) > 0)) {
+    return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
+  }
+  return null;
 }
 
 function hasReachDelivery(rows: MetricRow[]): boolean {
@@ -1101,17 +1233,24 @@ function shouldOverrideDefinitiveProof(rows: MetricRow[], info: ObjectiveInfo): 
 }
 
 /** Explicit campaign/ad-set naming beats generic result_type bleed (e.g. "Lead" → WEBSITE LEADS on a LeadGen_InstantForm campaign). */
-function namedCampaignObjectiveFromRows(rows: MetricRow[]): ResultLabels | null {
+function namedCampaignObjectiveFromRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   return (
     reachObjectiveIfNamedCampaign(rows) ??
+    purchaseObjectiveIfNamedCampaign(rows) ??
     metaFormLeadsObjectiveIfNamedCampaign(rows) ??
     linkClicksObjectiveIfNamedCampaign(rows) ??
-    leadObjectiveFromCampaignNameOnly(rows)
+    leadObjectiveFromCampaignNameOnly(rows, customConversionResultTypes)
   );
 }
 
-function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
-  const named = namedCampaignObjectiveFromRows(rows);
+function resolveCampaignObjectiveDetailed(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ObjectiveConfidence {
+  const named = namedCampaignObjectiveFromRows(rows, customConversionResultTypes);
   if (named) {
     return {
       ...named,
@@ -1279,7 +1418,7 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
     };
   }
 
-  const columnFallback = columnObjectiveForCampaign(rows);
+  const columnFallback = columnObjectiveForCampaign(rows, customConversionResultTypes);
   if (columnFallback) {
     return {
       ...columnFallback,
@@ -1298,29 +1437,41 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
   };
 }
 
-export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
-  const { resultLabel, costLabel } = resolveCampaignObjectiveDetailed(rows);
+export function resolveCampaignObjective(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels {
+  const { resultLabel, costLabel } = resolveCampaignObjectiveDetailed(rows, customConversionResultTypes);
   return { resultLabel, costLabel };
 }
 
 /** Objective Confirmation memory cache (Part 6) — same detection as resolveCampaignObjective, plus a confidence tag the wizard uses for per-campaign badges ("Detected — change if wrong" vs red "Confirmation required"). Never used for report generation itself (buildCampaignObjectiveMap/resolveCampaignObjective above are unaffected) — display-only. */
-export function resolveCampaignObjectiveWithConfidence(rows: MetricRow[]): ObjectiveConfidence {
-  return resolveCampaignObjectiveDetailed(rows);
+export function resolveCampaignObjectiveWithConfidence(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ObjectiveConfidence {
+  return resolveCampaignObjectiveDetailed(rows, customConversionResultTypes);
 }
 
-export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
+export function buildCampaignObjectiveMap(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): Map<string, ResultLabels> {
   const map = new Map<string, ResultLabels>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    map.set(name, resolveCampaignObjective(campRows));
+    map.set(name, resolveCampaignObjective(campRows, customConversionResultTypes));
   });
   return map;
 }
 
 /** Objective Confirmation memory cache (Part 6) — buildCampaignObjectiveMap's confidence-carrying counterpart, for the wizard's own /metrics route (the only consumer that needs the "high"/"low" badge; every other buildCampaignObjectiveMap call site is unaffected). */
-export function buildCampaignObjectiveMapWithConfidence(rows: MetricRow[]): Map<string, ObjectiveConfidence> {
+export function buildCampaignObjectiveMapWithConfidence(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): Map<string, ObjectiveConfidence> {
   const map = new Map<string, ObjectiveConfidence>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    map.set(name, resolveCampaignObjectiveWithConfidence(campRows));
+    map.set(name, resolveCampaignObjectiveWithConfidence(campRows, customConversionResultTypes));
   });
   return map;
 }
@@ -1382,66 +1533,23 @@ export function websiteLeadsCountFromExportRow(row: Pick<MetricRow, "results" | 
   return websiteLeadsFromMetaExportRow(row);
 }
 
-export function resultValueForObjective(row: MetricRow, label: string, mode: ResultCountingMode = "standard"): number {
-  if (mode === "meta-csv-export") {
-    return metaCsvExportResultValue(row, label);
+export function resultValueForObjective(row: MetricRow, label: string, _mode: ResultCountingMode = "standard"): number {
+  void _mode;
+  const rtLabel = getResultLabels(row.result_type).resultLabel;
+  if (rtLabel !== "RESULTS" && rtLabel !== label) return 0;
+
+  if (label === "INITIATE CHECKOUT") {
+    const ic = rowInitiateCheckout(row);
+    if (ic > 0) return ic;
+    return rtLabel === "INITIATE CHECKOUT" ? parseCellNum(row.results) : 0;
+  }
+  if (label === "ADD TO CART") {
+    const atc = rowAddToCart(row);
+    if (atc > 0) return atc;
+    return rtLabel === "ADD TO CART" ? parseCellNum(row.results) : 0;
   }
 
-  const ownLabel = resolveCampaignObjective([row]).resultLabel;
-
-  if (ownLabel === label) {
-    if (label === "LINK CLICKS") {
-      return parseCellNum(row.link_clicks) || parseCellNum(row.results);
-    }
-    if (label === "LANDING PAGE VIEWS") {
-      return parseCellNum(row.landing_page_views) || parseCellNum(row.results);
-    }
-    if (label === "WEBSITE LEADS") {
-      return websiteLeadsCountFromExportRow(row);
-    }
-    if (label === "META FORM LEADS") {
-      return parseCellNum(row.results) || parseCellNum(row.meta_leads) || parseCellNum(row.leads);
-    }
-    if (label === "REACH") {
-      return parseCellNum(row.reach) || parseCellNum(row.results);
-    }
-    return parseCellNum(row.results);
-  }
-  // Campaign names like "* website leads *" plus a Website leads column in
-  // the export can make per-row detection resolve to WEBSITE LEADS even when
-  // Result type is "Quote Request Submitted". The Combined Total table still
-  // groups the campaign under QUOTE REQUESTS (from result_type at map
-  // build time) — honor the row's explicit Result type when it matches the
-  // bucket being summed.
-  const rowResultLabel = getResultLabels(row.result_type).resultLabel;
-  if (rowResultLabel === label) {
-    if (label === "REACH") return parseCellNum(row.reach) || parseCellNum(row.results);
-    if (label === "WEBSITE LEADS") return websiteLeadsCountFromExportRow(row);
-    return parseCellNum(row.results);
-  }
-  // Campaign pinned to WEBSITE LEADS but Meta Result type is applications submitted.
-  if (
-    label === "WEBSITE LEADS" &&
-    (rowResultLabel === "WEBSITE SUBMIT APPLICATIONS" || rowResultLabel === "APPLICATIONS")
-  ) {
-    return websiteLeadsCountFromExportRow(row);
-  }
-  if (label === "PURCHASES") return parseCellNum(row.purchases);
-  if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
-  if (label === "ADD TO CART") return rowAddToCart(row);
-  if (label === "LINK CLICKS") return parseCellNum(row.link_clicks);
-  if (label === "LANDING PAGE VIEWS") {
-    const lpv = parseCellNum(row.landing_page_views);
-    if (lpv > 0) return lpv;
-    if (getResultLabels(row.result_type).resultLabel === "LANDING PAGE VIEWS") {
-      return parseCellNum(row.results);
-    }
-  }
-  // No dedicated field tracks any other objective (Leads, Reach, ...) on a
-  // mismatched row — it contributes nothing to a bucket it has no real
-  // metric for, rather than reusing `results`, which measures something
-  // else entirely for this specific row.
-  return 0;
+  return metaCsvExportResultValue(row, label);
 }
 
 /**
@@ -1472,9 +1580,13 @@ function isDailyOffDayInLeadCampaign(row: MetricRow, campRows: MetricRow[], ownL
   if (ownLabel === "LANDING PAGE VIEWS") {
     const lpv = parseCellNum(row.landing_page_views);
     if (lpv > 0) return true;
+    // Campaigns-table off days sometimes resolve as LPV with only link clicks populated.
     return parseCellNum(row.link_clicks) > 0;
   }
   if (ownLabel === "RESULTS") return !rt;
+  // Zero-result days in a converting ad set often resolve as WEBSITE LEADS from
+  // the campaign name even when the pinned objective is applications (Ascend
+  // Mastermind: $73 spend / 4 apps showed $10 CPR = costed days only).
   if (
     ownLabel === "WEBSITE LEADS" ||
     ownLabel === "META FORM LEADS" ||
@@ -1500,6 +1612,10 @@ export function shouldAttributeSpendForObjective(
   if (attributedValue > 0) return true;
   const ownLabel = resolveCampaignObjective([row]).resultLabel;
   if (ownLabel === label) {
+    // Campaign name can pin a row to WEBSITE LEADS while the row only has LPV
+    // delivery (secondary ad set). Do not roll that spend into the lead bucket.
+    // Use rowHasDailyDate (not hasRealRowDate) so Campaigns-table Reporting
+    // starts/ends rows still count off-day spend toward CPL.
     if (
       (label === "WEBSITE LEADS" || label === "META FORM LEADS") &&
       !rowHasDailyDate(row) &&
@@ -1560,13 +1676,6 @@ export function groupResultsByCampaignObjective(
     campRows.forEach((row) => {
       const value = resultValueForObjective(row, label, resultCountingMode);
       groups[label].count += value;
-      if (shouldAttributeSpendForObjective(row, label, value, objective.resultLabel, campRows)) {
-        groups[label].totalSpend += parseCellNum(row.spend);
-        if (!campaignReachAdded) {
-          groups[label].totalReach += aggregateReach(campRows, reachOpts);
-          campaignReachAdded = true;
-        }
-      }
       campaignValueSum += value;
       if (debugLabel) {
         console.log(
@@ -1577,6 +1686,14 @@ export function groupResultsByCampaignObjective(
         );
       }
     });
+    const campaignPeriodSpend = sumAllRowSpendInPeriod(campRows);
+    if (campaignPeriodSpend > 0 || campaignValueSum > 0) {
+      groups[label].totalSpend += campaignPeriodSpend;
+      if (!campaignReachAdded && campRows.length > 0) {
+        groups[label].totalReach += aggregateReach(campRows, reachOpts);
+        campaignReachAdded = true;
+      }
+    }
     if (debugLabel) {
       console.log(`[${debugLabel}] campaign="${name}" TOTAL for objective=${label}: ${campaignValueSum} (bucket running total: ${groups[label].count})`);
     }
@@ -1646,19 +1763,14 @@ export function getGroupedResultDisplayForObjective(
   // campaign slide's shown count always matches what the Combined Total
   // table shows for that same campaign.
   let count = 0;
-  let totalSpend = 0;
+  const periodSpend = sumAllRowSpendInPeriod(campRows);
   let totalReach = 0;
-  let campaignReachAdded = false;
+  if (campRows.length > 0) {
+    totalReach = aggregateReach(campRows, reachOpts);
+  }
   campRows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
-    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, campRows)) {
-      totalSpend += parseCellNum(row.spend);
-      if (!campaignReachAdded) {
-        totalReach = aggregateReach(campRows, reachOpts);
-        campaignReachAdded = true;
-      }
-    }
   });
 
   // Same uncounted-Reach special case as buildResultGroups: a real Reach
@@ -1667,11 +1779,11 @@ export function getGroupedResultDisplayForObjective(
   const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
   let cprValue: string;
   if (isUncountedReach) {
-    const reachCpr = totalReach > 0 ? (totalSpend * 1000) / totalReach : 0;
+    const reachCpr = totalReach > 0 ? (periodSpend * 1000) / totalReach : 0;
     cprValue = reachCpr > 0 ? fmtCurrency2dp(reachCpr, currencySymbol) : "—";
   } else if (count > 0) {
-    cprValue = fmtCurrency2dp(totalSpend / count, currencySymbol);
-  } else if (totalSpend > 0) {
+    cprValue = fmtCurrency2dp(periodSpend / count, currencySymbol);
+  } else if (periodSpend > 0) {
     // Real spend, zero results — the cost is genuinely undefined, not "$0.00".
     cprValue = "N/A";
   } else {

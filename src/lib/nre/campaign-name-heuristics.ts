@@ -21,7 +21,13 @@ export function isMessagingCampaignHaystack(haystack: string): boolean {
 
 /** Meta instant-form lead campaigns — InstantForms, LeadGen, Leads (form), etc. */
 export function isMetaFormLeadsCampaignHaystack(haystack: string): boolean {
-  return /instant.?form|instantforms|meta.?form|lead.?form|leadgen|leads?\s*\(\s*form/.test(haystack);
+  return (
+    /instant.?form|instantforms|meta.?form|lead.?form|leadgen|leads?\s*\(\s*form/.test(haystack) ||
+    // "Form Leads Campaign" / "Leads Form" naming — must beat generic \bleads\b website heuristic.
+    /\bform[\s_\-]?leads?\b|\bleads?[\s_\-]?form\b/.test(haystack) ||
+    // "Meta Leads Campaign" — on-platform instant/form leads, not website leads.
+    /\bmeta[\s_\-]?leads?\b/.test(haystack)
+  );
 }
 
 /** Traffic / link-click campaigns — excludes reach, website-leads, and instant-form naming. */
@@ -41,7 +47,11 @@ export function isWebsiteLeadsCampaignHaystack(haystack: string): boolean {
   if (isMetaFormLeadsCampaignHaystack(haystack)) return false;
   if (isLinkClicksCampaignHaystack(haystack)) return false;
   if (/whatsapp/.test(haystack)) return false;
-  return /website.?lead|web.?lead|_leads\b|\bleads\b|_website\b|website_|\bwebsite\b/.test(haystack);
+  // Meta/on-platform lead campaigns — not website/offsite leads.
+  if (/\bmeta[\s_\-]?leads?\b/.test(haystack)) return false;
+  // Do not treat bare "Leads" in names like "New Leads campaign" as website leads —
+  // trust Result type / Website leads column instead (Ski Summit instant-form case).
+  return /website.?lead|web.?lead|_leads\b|_website\b|website_|\bwebsite\b/.test(haystack);
 }
 
 export function isQuoteRequestCampaignHaystack(haystack: string): boolean {
@@ -56,6 +66,11 @@ export function isReachCampaignHaystack(haystack: string): boolean {
   return /(?:^|[\s_\-])reach(?:[\s_\-]|$)/.test(haystack);
 }
 
+/** Pipe-delimited Meta campaign names often use a dedicated "| Sales |" objective segment. */
+function hasSalesObjectiveNameSegment(haystack: string): boolean {
+  return haystack.split("|").some((seg) => seg.trim().toLowerCase() === "sales");
+}
+
 /** Purchase/sales campaigns — excludes funnels explicitly named for ATC/IC only. */
 export function isPurchaseCampaignHaystack(haystack: string): boolean {
   if (/\batc\b|add.?to.?cart/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
@@ -64,7 +79,11 @@ export function isPurchaseCampaignHaystack(haystack: string): boolean {
   if (/\bic\b|initiate.?checkout/.test(haystack) && !/purchase|purchases|conversion/.test(haystack)) {
     return false;
   }
-  return /purchase|purchases|conversion/.test(haystack);
+  if (hasSalesObjectiveNameSegment(haystack)) return true;
+  if (/purchase|purchases/.test(haystack)) return true;
+  // "Leads Conversion" ad set names are lead-gen, not purchase campaigns.
+  if (/leads?\s*conversion|conversion\s*leads?/.test(haystack)) return false;
+  return /\bconversion\b/.test(haystack);
 }
 
 export function isMessagingCampaignName(rows: MetricRow[]): boolean {

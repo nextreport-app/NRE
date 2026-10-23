@@ -46,21 +46,21 @@ describe("aggregateRows", () => {
     expect(aggregateRows(rows)).toHaveLength(3);
   });
 
-  it("averages CTR/frequency/CPC across rows, ignoring zero values", () => {
+  it("blends CTR/CPC across rows (total all-clicks ÷ impressions, spend ÷ all-clicks)", () => {
     const rows: NreRow[] = [
-      dailyRow({ day: "01-07-2026", ctr: "2", frequency: "1.5", cpc: "4" }),
-      dailyRow({ day: "02-07-2026", ctr: "0", frequency: "0", cpc: "0" }), // excluded from averages
-      dailyRow({ day: "03-07-2026", ctr: "4", frequency: "2.5", cpc: "6" }),
+      dailyRow({ day: "01-07-2026", ctr: "2", spend: "80", impressions: "1000", frequency: "1.5", cpc: "4" }),
+      dailyRow({ day: "02-07-2026", ctr: "0", frequency: "0", cpc: "0" }),
+      dailyRow({ day: "03-07-2026", ctr: "4", spend: "240", impressions: "1000", frequency: "2.5", cpc: "6" }),
     ];
     const [g] = aggregateRows(rows);
-    expect(g.ctr).toBeCloseTo(3); // avg(2,4)
+    expect(g.ctr).toBeCloseTo(3); // (20+40) / 2000 * 100
     expect(g.frequency).toBeCloseTo(2); // avg(1.5,2.5)
-    expect(g.cpc).toBeCloseTo(5); // avg(4,6)
+    expect(g.cpc).toBeCloseTo(320 / 60, 4);
   });
 
-  it("falls back to spend/link_clicks for CPC when no daily CPC values exist", () => {
+  it("derives CPC (all) from CTR (all) and spend when daily CPC cells are zero", () => {
     const rows: NreRow[] = [
-      dailyRow({ day: "01-07-2026", cpc: "0", spend: "100", link_clicks: "20" }),
+      dailyRow({ day: "01-07-2026", cpc: "0", spend: "100", impressions: "500", ctr: "4" }),
     ];
     expect(aggregateRows(rows)[0].cpc).toBeCloseTo(5);
   });
@@ -133,11 +133,19 @@ describe("aggregateRows", () => {
       websiteLeads?: string;
       purchases?: string;
       spend?: string;
+      campaignName?: string;
     }): NreRow {
-      const { day, linkClicks = "0", websiteLeads, purchases, spend = "150" } = overrides;
+      const {
+        day,
+        linkClicks = "0",
+        websiteLeads,
+        purchases,
+        spend = "150",
+        campaignName = "Brand Website Leads Q3",
+      } = overrides;
       const raw: Record<string, string> = {
         Day: day,
-        "Campaign name": "New Leads Campaign",
+        "Campaign name": campaignName,
         "Ad set name": "Ad Set 1",
         "Result type": "",
         "Link clicks": linkClicks,
@@ -154,7 +162,7 @@ describe("aggregateRows", () => {
 
       return {
         _raw: raw,
-        campaign_name: "New Leads Campaign",
+        campaign_name: campaignName,
         ad_set_name: "Ad Set 1",
         result_type: "",
         spend,
@@ -179,7 +187,9 @@ describe("aggregateRows", () => {
     });
 
     it("detects PURCHASES for a brand new campaign with zero results — a Purchases column exists", () => {
-      const rows: NreRow[] = [csvRow({ day: "18-07-2026", purchases: "0", linkClicks: "0" })];
+      const rows: NreRow[] = [
+        csvRow({ day: "18-07-2026", purchases: "0", linkClicks: "0", campaignName: "Store Purchases Q3" }),
+      ];
       const [g] = aggregateRows(rows);
       expect(getResultLabels(g.result_type).resultLabel).toBe("PURCHASES");
       expect(g.results).toBe(0);
@@ -224,7 +234,7 @@ describe("aggregateRows", () => {
       const [g] = aggregateRows(rows);
       expect(getResultLabels(g.result_type).resultLabel).toBe("LINK CLICKS");
       expect(g.results).toBe(300);
-      expect(g.objectiveConfident).toBe(false); // Step 3 (data values) is not a confident signal
+      expect(g.objectiveConfident).toBe(true); // Link clicks column presence (priority 3)
     });
   });
 });

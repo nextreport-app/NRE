@@ -6,6 +6,7 @@ import { SITE_THEME_BOOT_SCRIPT } from "@/components/site-theme-provider";
 import { SiteChromeFooter } from "@/components/site-chrome-footer";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { rootMetadataWithVerification } from "@/lib/seo";
+import { getVisitorCountryCode } from "@/lib/visitor-geo";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -19,12 +20,13 @@ const inter = Inter({
 
 export const metadata = rootMetadataWithVerification();
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const gaMeasurementId = process.env.GA_MEASUREMENT_ID?.trim();
+  const initialVisitorCountryCode = await getVisitorCountryCode();
 
   return (
     <html lang="en" className={`${geistMono.variable} ${inter.variable} h-full antialiased`} suppressHydrationWarning>
@@ -33,7 +35,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-navy text-ink-secondary">
         {gaMeasurementId ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
-        <Providers>
+        <Providers initialVisitorCountryCode={initialVisitorCountryCode}>
           {children}
           <SiteChromeFooter />
         </Providers>

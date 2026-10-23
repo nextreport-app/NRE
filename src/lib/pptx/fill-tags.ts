@@ -32,6 +32,7 @@ import {
   replaceTagRun,
   replaceTagRunWithSuffixes,
   setShapeExtCx,
+  setShapeNoAutofit,
   setShapeNormAutofit,
   setShapeOffsetY,
   setShapeWrap,
@@ -536,9 +537,9 @@ export function buildCampaignOrAdSetSlideXml(
   // Fixed 14pt for both — no longer shrinks below 14pt for longer text (the
   // previous graduated reduction, -1pt past 250 characters, -2pt past 300,
   // could land Campaign Summary at 13pt/12pt within its own 300-char cap).
-  // Overflow protection comes from the char-cap truncation above and the
-  // CAMPAIGN_SUMMARY/KEY_INSIGHTS text boxes' own normAutofit (shrink-to-fit)
-  // setting below, not from pre-shrinking the requested size here.
+  // Overflow protection comes from the char-cap truncation above and fixed
+  // 15pt noAutofit on the CAMPAIGN_SUMMARY/KEY_INSIGHTS boxes below (normAutofit
+  // caused unreadable shrink when users edited copy in PowerPoint/Slides).
   const summarySizePt = 15;
   const insightsSizePt = 15;
 
@@ -552,8 +553,10 @@ export function buildCampaignOrAdSetSlideXml(
     // template's existing shapes. DATE_RANGE/CAMPAIGN_SUMMARY/KEY_INSIGHTS
     // live in a separate, untouched region of the same template (the
     // AI-copy column) and still go through the normal tag-fill.
-    let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
-    templateXml = setShapeNormAutofit(templateXml, "{{KEY_INSIGHTS}}");
+    let templateXml = setShapeNoAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
+    templateXml = setShapeNoAutofit(templateXml, "{{KEY_INSIGHTS}}");
+    templateXml = setShapeWrap(templateXml, "{{CAMPAIGN_SUMMARY}}", "square");
+    templateXml = setShapeWrap(templateXml, "{{KEY_INSIGHTS}}", "square");
     xml = fillTags(
       templateXml,
       {
@@ -638,8 +641,10 @@ export function buildCampaignOrAdSetSlideXml(
       xml = replaceTagRun(xml, tag, metric.value).xml;
     });
   } else {
-    let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
-    templateXml = setShapeNormAutofit(templateXml, "{{KEY_INSIGHTS}}");
+    let templateXml = setShapeNoAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
+    templateXml = setShapeNoAutofit(templateXml, "{{KEY_INSIGHTS}}");
+    templateXml = setShapeWrap(templateXml, "{{CAMPAIGN_SUMMARY}}", "square");
+    templateXml = setShapeWrap(templateXml, "{{KEY_INSIGHTS}}", "square");
     xml = fillTags(
       templateXml,
       {
@@ -711,8 +716,10 @@ export function buildPausedSlideXml(
         : "No delivery was recorded for the selected week. Other slides may still show previous-month or last-30-days context.",
     KEY_INSIGHTS_MAX_CHARS,
   );
-  let templateXml = setShapeNormAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
-  templateXml = setShapeNormAutofit(templateXml, "{{KEY_INSIGHTS}}");
+  let templateXml = setShapeNoAutofit(template.xml, "{{CAMPAIGN_SUMMARY}}");
+  templateXml = setShapeNoAutofit(templateXml, "{{KEY_INSIGHTS}}");
+  templateXml = setShapeWrap(templateXml, "{{CAMPAIGN_SUMMARY}}", "square");
+  templateXml = setShapeWrap(templateXml, "{{KEY_INSIGHTS}}", "square");
   let xml = fillTags(
     templateXml,
     {

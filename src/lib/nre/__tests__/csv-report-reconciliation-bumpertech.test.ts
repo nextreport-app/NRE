@@ -43,15 +43,15 @@ describe("CSV reconciliation — BumperTech chart + weekly scopes", () => {
     expect(verification.status).toBe("ok");
 
     const chartQuotes = verification.checks.find(
-      (c) => c.scope === "Last 30 days (chart)" && c.metric === "QUOTE REQUESTS",
+      (c) => c.scope.startsWith("Last 30 days") && c.metric === "QUOTE REQUESTS",
     );
     expect(chartQuotes?.status).toBe("ok");
     expect(parseCellNum(chartQuotes?.reportDisplay ?? "0")).toBe(189);
     expect(parseCellNum(chartQuotes?.csvDisplay ?? "0")).toBe(189);
 
     const scopes = new Set(verification.checks.map((c) => c.scope));
-    expect(scopes.has("Month-to-date")).toBe(true);
-    expect(scopes.has("Weekly (last 7 days)")).toBe(true);
-    expect(scopes.has("Last 30 days (chart)")).toBe(true);
+    expect([...scopes].some((s) => s.startsWith("Month-to-date"))).toBe(true);
+    expect([...scopes].some((s) => s.startsWith("Report week"))).toBe(true);
+    expect([...scopes].some((s) => s.startsWith("Last 30 days"))).toBe(true);
   });
 });

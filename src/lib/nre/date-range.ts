@@ -8,6 +8,7 @@
 
 import { parseDate, getCalendarDateInTimezone, type ParsedDate } from "./dates";
 import { getRowDate, type NreRow } from "./columns";
+import { parseCellNum } from "./format";
 
 export function toIsoDate(d: ParsedDate): string {
   return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
@@ -70,6 +71,14 @@ export function capRangeEndToData(
  * Used for chart/MTD labels so headings never show calendar days with no data
  * (e.g. a campaign that started Sep 16 must not read "Aug 25 - Sep 23").
  */
+function rowHasChartDateSignal(row: NreRow): boolean {
+  const spend = parseCellNum(row.spend);
+  const results = parseCellNum(row.results);
+  const impressions = parseCellNum(row.impressions);
+  const reach = parseCellNum(row.reach);
+  return spend > 0 || results > 0 || impressions > 0 || reach > 0;
+}
+
 export function computeActualDataRangeInWindow(
   rows: NreRow[],
   range: DateRangeIso,
@@ -78,9 +87,12 @@ export function computeActualDataRangeInWindow(
   const endTs = Date.parse(range.endIso + "T00:00:00Z");
   if (Number.isNaN(startTs) || Number.isNaN(endTs)) return null;
 
+  const dated = rows.filter(rowHasChartDateSignal);
+  const source = dated.length > 0 ? dated : rows;
+
   let minTs: number | null = null;
   let maxTs: number | null = null;
-  rows.forEach((row) => {
+  source.forEach((row) => {
     const d = parseDate(getRowDate(row));
     if (!d) return;
     const ts = Date.UTC(d.year, d.month - 1, d.day);
@@ -271,6 +283,33 @@ export function computeMtdRangeIso(_rows: NreRow[], now: Date = new Date(), time
   const calendarYesterday = getCalendarYesterday(now, timezone);
   const monthStart: ParsedDate = { year: calendarYesterday.year, month: calendarYesterday.month, day: 1 };
   return { startIso: toIsoDate(monthStart), endIso: toIsoDate(calendarYesterday) };
+}
+
+/** MTD through the last day with data (capped at calendar yesterday). */
+export function computeEffectiveMtdRangeIso(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): DateRangeIso {
+  const mtd = computeMtdRangeIso(rows, now, timezone);
+  return {
+    startIso: mtd.startIso,
+    endIso: capRangeEndToData(mtd.endIso, rows, now, timezone),
+  };
+}
+
+/**
+ * Rolling 7 days ending on effective yesterday (latest CSV day, capped at calendar yesterday).
+ * When a stale export ends Oct 17 but today is Oct 19, this is Oct 11–17 — not calendar Oct 12–18.
+ */
+export function computeEffectiveLast7RangeIso(
+  rows: NreRow[],
+  now: Date = new Date(),
+  timezone = "UTC",
+): DateRangeIso | null {
+  const effective = computeEffectiveYesterday(rows, now, timezone);
+  if (!effective) return null;
+  return { startIso: toIsoDate(addDays(effective, -6)), endIso: toIsoDate(effective) };
 }
 
 export interface CsvDateBounds {

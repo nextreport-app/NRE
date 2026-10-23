@@ -921,9 +921,10 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     // as a Landing Page Views campaign, even though the raw data exists.
     expect(labels).not.toContain("LANDING PAGE VIEWS");
 
-    // Website-leads rows only — minority LPV spend stays out of this bucket.
+    // Whole-campaign spend for CPR (matches campaign slide Ad Spend); LPV row spend included.
     const websiteLeads = groups.find((g) => g.label === "WEBSITE LEADS");
-    expect(websiteLeads).toMatchObject({ count: 20, totalSpend: 200 });
+    expect(websiteLeads).toMatchObject({ count: 20, totalSpend: 210 });
+    expect(websiteLeads?.avgCpr).toBeCloseTo(210 / 20, 2);
   });
 
   it("row-level getResultGroups also uses per-campaign column signals — no phantom LPV column inside a website-leads campaign", () => {
@@ -1035,12 +1036,12 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(tableGroups.find((g) => g.label === "LANDING PAGE VIEWS")).toBeUndefined();
     expect(tableGroups.find((g) => g.label === "REACH")).toBeUndefined();
     const website = tableGroups.find((g) => g.label === "WEBSITE LEADS");
-    // Only the website-leads row's spend counts toward CPR — not LPV/reach rows.
-    expect(website?.totalSpend).toBe(600);
-    expect(website?.avgCpr).toBeCloseTo(600 / 30, 2);
+    // Full campaign spend ÷ website-lead count (same rule as campaign slides).
+    expect(website?.totalSpend).toBe(625);
+    expect(website?.avgCpr).toBeCloseTo(625 / 30, 2);
   });
 
-  it("does not let another objective's spend inflate cost-per when rows share a campaign bucket", () => {
+  it("adds each campaign's full period spend to its assigned objective bucket (objective map must be correct)", () => {
     const rows: MetricRow[] = [
       metricRow({
         campaign_name: "Meta Leads",
@@ -1069,12 +1070,11 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     const groups = groupResultsByCampaignObjective(rows, objectiveMap);
     const meta = groups.find((g) => g.label === "META FORM LEADS");
     expect(meta?.count).toBe(14);
-    expect(meta?.totalSpend).toBe(596);
-    expect(meta?.avgCpr).toBeCloseTo(596 / 14, 2);
-    expect(meta?.avgCpr).not.toBeCloseTo((596 + 500) / 14, 1);
+    expect(meta?.totalSpend).toBe(1096);
+    expect(meta?.avgCpr).toBeCloseTo(1096 / 14, 2);
   });
 
-  it("mixed ad sets in one campaign — cost-per uses only spend from rows matching the bucket objective", () => {
+  it("mixed ad sets in one campaign — cost-per uses full campaign spend ÷ assigned-objective results", () => {
     const rows: MetricRow[] = [
       metricRow({
         campaign_name: "Leads Campaign",
@@ -1101,12 +1101,12 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     const bucket = groups.find((g) => g.label === assigned.resultLabel)!;
     if (assigned.resultLabel === "META FORM LEADS") {
       expect(bucket.count).toBe(14);
-      expect(bucket.totalSpend).toBe(100);
-      expect(bucket.avgCpr).toBeCloseTo(100 / 14, 2);
+      expect(bucket.totalSpend).toBe(600);
+      expect(bucket.avgCpr).toBeCloseTo(600 / 14, 2);
     } else {
       expect(bucket.count).toBe(5);
-      expect(bucket.totalSpend).toBe(500);
-      expect(bucket.avgCpr).toBeCloseTo(500 / 5, 2);
+      expect(bucket.totalSpend).toBe(600);
+      expect(bucket.avgCpr).toBeCloseTo(600 / 5, 2);
     }
   });
 
@@ -1201,7 +1201,7 @@ describe("buildCampaignObjectiveMap + groupResultsByCampaignObjective — single
     expect(resolveCampaignObjective(cboRows).resultLabel).toBe("PURCHASES");
     const resolution = resolveCampaignObjectiveWithConfidence(cboRows);
     expect(resolution.resultLabel).toBe("PURCHASES");
-    expect(resolution.confidence).toBe("medium");
+    expect(resolution.confidence).toBe("high");
 
     const objectiveMap = buildCampaignObjectiveMap(
       rows.filter((r) =>
@@ -1613,7 +1613,7 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
   it("returns one confidence-tagged entry per normalized campaign name, matching buildCampaignObjectiveMap's own grouping", () => {
     const rows: MetricRow[] = [
       metricRow({ campaign_name: "Purchase Campaign", _raw: {}, result_type: "Website purchases", purchases: 1, results: 1, spend: 20 }),
-      metricRow({ campaign_name: "Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
+      metricRow({ campaign_name: "Website Leads Campaign", _raw: {}, result_type: "", website_leads: 18, results: 18, spend: 220 }),
     ];
     const map = buildCampaignObjectiveMapWithConfidence(rows);
     expect(map.get("purchase campaign")).toEqual({
@@ -1622,7 +1622,7 @@ describe("buildCampaignObjectiveMapWithConfidence", () => {
       confidence: "high",
       requiresConfirmation: false,
     });
-    expect(map.get("leads campaign")).toEqual({
+    expect(map.get("website leads campaign")).toEqual({
       resultLabel: "WEBSITE LEADS",
       costLabel: "COST PER WEBSITE LEAD",
       confidence: "high",

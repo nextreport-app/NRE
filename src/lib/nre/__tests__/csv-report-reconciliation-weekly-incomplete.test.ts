@@ -46,7 +46,7 @@ describe("CSV verification — incomplete weekly CSV must not show green", () =>
       true,
     );
     const weeklySpend = verification.checks.find(
-      (c) => c.scope === "Weekly (last 7 days)" && c.metric === "Amount spent",
+      (c) => c.scope.startsWith("Report week") && c.metric === "Amount spent",
     );
     expect(weeklySpend?.status).toBe("mismatch");
   });
@@ -81,7 +81,7 @@ describe("CSV verification — incomplete weekly CSV must not show green", () =>
 
     expect(verification.status).toBe("mismatch");
     const weeklySpend = verification.checks.find(
-      (c) => c.scope === "Weekly (last 7 days)" && c.metric === "Amount spent",
+      (c) => c.scope.startsWith("Report week") && c.metric === "Amount spent",
     );
     expect(weeklySpend?.status).toBe("mismatch");
   });

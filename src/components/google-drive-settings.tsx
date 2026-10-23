@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
-  access_denied: "Google sign-in was cancelled — Drive was not connected.",
+  access_denied:
+    "Google blocked Drive connect (access_denied). If Google showed «has not completed the verification process», add this Google account as a Test user in Google Cloud → OAuth consent screen (see docs/google-oauth-test-users.md). Otherwise you may have cancelled the prompt.",
   invalid_state: "That connection attempt expired or was invalid. Please try again.",
   missing_code: "Google didn't return an authorization code. Please try again.",
   no_refresh_token: "Google didn't grant long-lived access. Please try connecting again.",

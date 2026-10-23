@@ -41,13 +41,15 @@ describe("CSV reconciliation — GZ Australia weekly export", () => {
 
     expect(verification.status).toBe("ok");
 
-    const mtdSpend = verification.checks.find((c) => c.scope === "Month-to-date" && c.metric === "Amount spent");
+    const mtdSpend = verification.checks.find(
+      (c) => c.scope.startsWith("Month-to-date") && c.metric === "Amount spent",
+    );
     expect(parseCellNum(mtdSpend?.csvDisplay ?? "")).toBeCloseTo(43.1, 0);
     expect(parseCellNum(mtdSpend?.reportDisplay ?? "")).toBeCloseTo(43.1, 0);
-    expect(verification.checks.some((c) => c.scope === "Last 30 days (chart)")).toBe(true);
+    expect(verification.checks.some((c) => c.scope.startsWith("Last 30 days"))).toBe(true);
 
     const periodSpend = verification.checks.find(
-      (c) => c.scope === "Weekly (last 7 days)" && c.metric === "Amount spent",
+      (c) => c.scope.startsWith("Report week") && c.metric === "Amount spent",
     );
     expect(parseCellNum(periodSpend?.csvDisplay ?? "")).toBeCloseTo(68.67, 0);
     expect(parseCellNum(periodSpend?.reportDisplay ?? "")).toBeCloseTo(68.67, 0);

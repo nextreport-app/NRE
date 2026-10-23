@@ -2,15 +2,75 @@
 
 import { useEffect } from "react";
 import { useWizardContext } from "../wizard-context";
+import {
+  csvResultTypeMatchesDetection,
+  expectedResultLabelsFromCsvSummary,
+  type CampaignCsvResultTypeSummary,
+} from "@/lib/nre/campaign-csv-result-type";
+import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
+import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { wizardStepLabel } from "@/lib/wizard-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
+
+/** One-line CSV Result type ↔ objective status (Campaigns step). */
+function csvObjectiveStatusLine(
+  copy: WizardCopy,
+  csvSummary: CampaignCsvResultTypeSummary,
+  detectedLabel: string,
+  csvAlign: boolean | null,
+  useResultIndicatorHeading: boolean,
+): string {
+  const heading =
+    csvSummary.distinct.length > 1
+      ? useResultIndicatorHeading
+        ? copy.csvResultIndicatorsHeading
+        : copy.csvResultTypesHeading
+      : useResultIndicatorHeading
+        ? copy.csvResultIndicatorHeading
+        : copy.csvResultTypeHeading;
+
+  if (csvSummary.distinct.length === 1) {
+    if (csvAlign === true && detectedLabel) {
+      if (useResultIndicatorHeading && csvSummary.primary) {
+        return `${heading}: ${csvSummary.primary} → ${detectedLabel} ✓ ${copy.csvResultTypeMatch}`;
+      }
+      return `${heading} → ${detectedLabel} ✓ ${copy.csvResultTypeMatch}`;
+    }
+    if (csvAlign === false) {
+      const mismatch =
+        csvSummary.expectedResultLabel && detectedLabel
+          ? copy.csvResultTypeMismatch(csvSummary.expectedResultLabel, detectedLabel)
+          : copy.csvResultTypeMismatch("—", detectedLabel || "—");
+      return `${heading} ✗ ${mismatch}`;
+    }
+    const entry = csvSummary.entries[0];
+    if (entry?.expectedResultLabel) {
+      return `${heading}: ${entry.resultType} → ${entry.expectedResultLabel}`;
+    }
+    return `${heading}: ${csvSummary.primary ?? "—"}`;
+  }
+
+  const maps = csvSummary.entries
+    .map((e) => (e.expectedResultLabel ? `${e.resultType} → ${e.expectedResultLabel}` : e.resultType))
+    .join(", ");
+  if (csvAlign === true) {
+    return `${heading}: ${maps} ✓ ${copy.csvResultTypeMatch}`;
+  }
+  if (csvAlign === false) {
+    return `${heading}: ${maps} ✗ ${copy.csvResultTypeMismatchMulti(
+      expectedResultLabelsFromCsvSummary(csvSummary).join(", ") || "—",
+      detectedLabel || "—",
+    )}`;
+  }
+  return `${heading}: ${maps}`;
+}
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
@@ -35,6 +95,8 @@ export function WizardCampaignsStep() {
     LOW_SPEND_CAMPAIGN_THRESHOLD,
     OBJECTIVE_DROPDOWN_OPTIONS,
     adSetGroups,
+    metaCsvExportProfile,
+    campaignCsvResultTypes,
     campaignObjectiveConfidence,
     campaignObjectives,
     campaignRequiresConfirmation,
@@ -71,6 +133,9 @@ export function WizardCampaignsStep() {
     touchedObjectiveCampaigns,
   } = w;
 
+  const useResultIndicatorHeading =
+    metaCsvExportProfile?.kind === "campaigns_table" && metaCsvExportProfile.hasResultIndicatorColumn;
+
   const objectivesLoading = selectedCampaigns.size > 0 && (metricsStatus === "loading" || !objectivesReady);
 
   const blockingCount = campaigns.filter((name) => {
@@ -96,6 +161,13 @@ export function WizardCampaignsStep() {
             setStep(1);
           }}
         />
+      ) : null}
+
+      {metaCsvExportProfile?.kind === "campaigns_table" ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[14px] leading-snug text-amber-200">
+          <p>{META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT.headline}</p>
+          <p className="mt-1 text-[13px] text-amber-200/90">{META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT.recommended}</p>
+        </div>
       ) : null}
 
       <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-3">
@@ -341,7 +413,16 @@ export function WizardCampaignsStep() {
                       ? [current, ...OBJECTIVE_DROPDOWN_OPTIONS]
                       : OBJECTIVE_DROPDOWN_OPTIONS;
                   const tier = campaignObjectiveConfidence.get(normalized);
-                  const badge = objectiveConfidenceBadge(tier);
+                  const csvSummary = campaignCsvResultTypes.get(normalized);
+                  const detectedLabel = current?.resultLabel ?? "";
+                  const csvAlign =
+                    csvSummary && detectedLabel
+                      ? csvResultTypeMatchesDetection(csvSummary, detectedLabel)
+                      : null;
+                  const badge =
+                    csvSummary?.primary && csvAlign === true
+                      ? null
+                      : objectiveConfidenceBadge(tier);
                   const isBlocking =
                     campaignRequiresConfirmation.get(normalized) === true &&
                     !touchedObjectiveCampaigns.has(normalized);
@@ -365,6 +446,30 @@ export function WizardCampaignsStep() {
                           ))}
                         </select>
                       </div>
+                      {csvSummary?.primary ? (
+                        <div
+                          className={`mt-2 rounded-md border px-3 py-1.5 text-[13px] leading-snug ${
+                            csvAlign === false
+                              ? "border-[#fc8181]/50 bg-red-950/15 text-[#fecaca]"
+                              : csvAlign === true
+                                ? "border-emerald-500/35 bg-emerald-950/15 text-emerald-100"
+                                : "border-dash-border bg-dash-bg text-dash-ink-secondary"
+                          }`}
+                        >
+                          <p className="font-normal text-dash-ink">
+                            {csvObjectiveStatusLine(
+                              copy,
+                              csvSummary,
+                              detectedLabel,
+                              csvAlign,
+                              useResultIndicatorHeading,
+                            )}
+                          </p>
+                          {csvSummary.distinct.length > 1 ? (
+                            <p className="mt-1 text-[12px] text-dash-ink-secondary">{copy.csvResultTypeMultipleHint}</p>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {badge && badge.pill ? (
                         <div className="mt-2 flex justify-end">
                           <span

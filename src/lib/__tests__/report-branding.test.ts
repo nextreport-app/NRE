@@ -4,6 +4,8 @@ import {
   emailFooterPrimary,
   emailGeneratedByLine,
   reportBrandingFromShareJson,
+  preparedByCoverLine,
+  reportCreditName,
   resolveShareBrandingDisplay,
   sharePageTitleSuffix,
 } from "../report-branding";
@@ -37,8 +39,11 @@ describe("report branding", () => {
       buildReportBrandingSettings({ reportBrandingMode: "agency", agencyName: "Bright Path" }),
     );
     expect(display.showNextReportLogo).toBe(false);
-    expect(display.headerTitle).toBe("Bright Path");
+    expect(display.headerTitle).toBe("Prepared by Bright Path");
     expect(display.footerPrimary).toBe("Report prepared by Bright Path");
+    expect(preparedByCoverLine(buildReportBrandingSettings({ reportBrandingMode: "agency", agencyName: "Bright Path" }))).toBe(
+      "Prepared by Bright Path",
+    );
   });
 
   it("falls back to hidden when agency mode has no name", () => {
@@ -65,5 +70,13 @@ describe("report branding", () => {
     expect(sharePageTitleSuffix({ mode: "nextreport", agencyName: null })).toBe("NextReport");
     expect(sharePageTitleSuffix({ mode: "agency", agencyName: "Bright Path" })).toBe("Bright Path");
     expect(sharePageTitleSuffix({ mode: "hidden", agencyName: null })).toBe("Report");
+  });
+
+  it("aligns cover credit with branding mode", () => {
+    expect(reportCreditName({ reportBrandingMode: "nextreport" })).toBe("NextReport");
+    expect(reportCreditName({ reportBrandingMode: "agency", agencyName: "Bright Path" })).toBe(
+      "Bright Path",
+    );
+    expect(reportCreditName({ reportBrandingMode: "hidden", agencyName: "Bright Path" })).toBeNull();
   });
 });

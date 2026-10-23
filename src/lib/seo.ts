@@ -351,7 +351,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 clients (Meta, Google, TikTok, and GA4 for each brand); Professional is unlimited. Platform connections are shared across clients — the limit is on brands, not platforms.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional is unlimited. Google Ads, TikTok Ads, and GA4 are on the product roadmap, not part of the Meta-first launch.",
   },
   {
     question: "Can I white-label reports for my clients?",

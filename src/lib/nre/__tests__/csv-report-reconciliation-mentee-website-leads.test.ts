@@ -42,7 +42,7 @@ describe("CSV verification — Mentee website leads", () => {
     });
 
     const chartCheck = verification.checks.find(
-      (c) => c.scope === "Last 30 days (chart)" && c.metric === "WEBSITE LEADS",
+      (c) => c.scope.startsWith("Last 30 days") && c.metric === "WEBSITE LEADS",
     );
     expect(chartCheck?.csvDisplay).toBe("23");
     expect(chartCheck?.status).toBe("ok");
@@ -81,7 +81,7 @@ describe("CSV verification — Mentee website leads", () => {
 
     expect(verification.status).toBe("mismatch");
     const chartCheck = verification.checks.find(
-      (c) => c.scope === "Last 30 days (chart)" && c.metric === "WEBSITE LEADS",
+      (c) => c.scope.startsWith("Last 30 days") && c.metric === "WEBSITE LEADS",
     );
     expect(chartCheck?.status).toBe("mismatch");
     expect(chartCheck?.reportDisplay).toBe("24");

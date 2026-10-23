@@ -53,6 +53,7 @@ import {
   getMonthAbbrName,
   parseDate,
 } from "./dates";
+import { sumAllRowSpendInPeriod } from "./cpr-spend-basis";
 import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth } from "./health";
 import {
@@ -492,23 +493,8 @@ function average(values: number[]): number {
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
-/**
- * A single row's own CTR/CPC columns are Meta-computed percentages/currency
- * amounts, not raw click counts — MetricRow never carries a raw "clicks"
- * field. To recalculate a combined CTR/CPC across many rows from real
- * totals (rather than summing/averaging percentages, which isn't
- * meaningful), each row's own click count is backed out from whichever of
- * its CTR or CPC columns is actually populated: CTR × impressions (Meta's
- * own CTR formula, so this recovers the exact click count) preferred, spend
- * ÷ CPC as a fallback when a row has CPC but no CTR.
- */
-export function impliedClicks(row: MetricRow, spend: number, impressions: number): number {
-  const ctr = parseCellNum(row.ctr);
-  if (impressions > 0 && ctr > 0) return (ctr / 100) * impressions;
-  const cpc = parseCellNum(row.cpc);
-  if (cpc > 0 && spend > 0) return spend / cpc;
-  return 0;
-}
+export { impliedClicks } from "./ctr-cpc";
+import { combinedCtrCpcFromRows, impliedClicks } from "./ctr-cpc";
 
 function rowFrequency(row: MetricRow): number {
   const explicit = parseCellNum(row.frequency);
@@ -701,16 +687,10 @@ function computeTableRow(
   // own campaigns); the "Ad Spend" column above is the one place the FULL
   // combined total still belongs — the overall budget view, not any single
   // objective's cost math.
-  // Debug logging (reported bug: MTD row showing inflated Purchases counts)
-  // — logs every campaign's assigned objective, the per-row value actually
-  // summed, and the running total, straight from groupResultsByCampaignObjective
-  // itself (see objective.ts's own doc comment on that function/
-  // resultValueForObjective for the root cause and fix). Labeled "MTD" vs
-  // "Previous Month" so both rows' console output is easy to tell apart.
   const allGroupsRaw = groupResultsByCampaignObjective(
     rows,
     objectiveMap,
-    isMtdRow ? "MTD" : "Previous Month",
+    undefined,
     resultCountingMode,
     tableReachOpts,
   );
@@ -1041,8 +1021,8 @@ function buildLast30DaysChartSlide(params: {
     const rows = chartGroups[name] || [];
     const rawRowsForObjective = chartRawGroups[name] || [];
     const spend = rows.reduce((s, r) => s + parseCellNum(r.spend), 0);
-    const ctrs = rows.map((r) => parseCellNum(r.ctr)).filter((v) => v > 0);
-    const avgCtr = average(ctrs);
+    const chartRaw = rawRowsForObjective.length > 0 ? rawRowsForObjective : rows;
+    const { ctr: avgCtr } = combinedCtrCpcFromRows(chartRaw);
     const chartObjective = chartObjectiveMap.get(normalizeCampaignName(name)) ?? {
       resultLabel: "RESULTS",
       costLabel: "COST PER RESULT",
@@ -1161,7 +1141,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     adNameColumn: adNameColumnInput,
     creativeOnly = false,
     platform: platformInput,
-    alignResultsWithCsvExport = false,
+    alignResultsWithCsvExport = true,
     metaCampaignPeriodReach,
   } = input;
   const platform = platformInput ?? "META";
@@ -1186,8 +1166,15 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         : computeMtdRangeIso(filteredMtdDailyRows, now, timezone);
   const resolvedWeeklyRange =
     weeklyRange ?? (!isCalendarSpanReport ? computeWeeklyRangeOptions(filteredMtdDailyRows, now, timezone).last7 : undefined);
+  // When the CSV ends before calendar yesterday, capRangeToData shifts the labeled
+  // week back (e.g. Oct 11–17). Aggregation must use that same window — not the
+  // uncapped calendar last7 (Oct 12–18), or deck totals drop the first day.
+  const effectiveWeeklyRange =
+    resolvedWeeklyRange && !isCalendarSpanReport
+      ? capRangeToData(resolvedWeeklyRange, filteredMtdDailyRows, now, timezone)
+      : resolvedWeeklyRange;
   const split = splitMtdDaily(filteredMtdDailyRows, now, {
-    ...(weeklyRange ? { weeklyRange } : resolvedWeeklyRange ? { weeklyRange: resolvedWeeklyRange } : {}),
+    ...(effectiveWeeklyRange ? { weeklyRange: effectiveWeeklyRange } : {}),
     timezone,
   });
 
@@ -1378,8 +1365,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     : undefined;
   if (isCalendarSpanReport && displayCalendarRange) {
     globalWeekDateRange = getDateRangeShortLabel(displayCalendarRange.startIso, displayCalendarRange.endIso);
-  } else if (resolvedWeeklyRange) {
-    displayWeeklyRange = capRangeToData(resolvedWeeklyRange, filteredMtdDailyRows, now, timezone);
+  } else if (effectiveWeeklyRange) {
+    displayWeeklyRange = effectiveWeeklyRange;
     globalWeekDateRange = getDateRangeShortLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso);
   } else {
     let globalWeekStart = "";
@@ -1816,21 +1803,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     let totalSpend = 0;
     let totalImpr = 0;
     let totalConversions = 0;
-    const ctrs: number[] = [];
-    const cpcs: number[] = [];
     campRows.forEach((row) => {
       totalSpend += parseCellNum(row.spend);
       totalImpr += parseCellNum(row.impressions);
       totalConversions += parseCellNum(row.results);
-      const ctr = parseCellNum(row.ctr);
-      const cpc = parseCellNum(row.cpc);
-      if (ctr > 0) ctrs.push(ctr);
-      if (cpc > 0) cpcs.push(cpc);
     });
     const campRaw = campaignRawGroups[campaignName] ?? [];
     const totalReach = aggregateReach(campRaw, weeklyReachOpts);
-    const avgCtr = average(ctrs);
-    const avgCpc = average(cpcs);
+    const { ctr: blendedCtr, cpc: blendedCpc } = combinedCtrCpcFromRows(campRaw.length > 0 ? campRaw : campRows);
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
     const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const campaignRaw = campaignRawGroups[campaignName] ?? [];
@@ -1863,9 +1843,9 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       reach: fmtNumber(totalReach),
       impressions: fmtNumber(totalImpr),
       results: resultValue,
-      ctr: avgCtr > 0 ? fmtPercent(avgCtr) : "—",
+      ctr: blendedCtr > 0 ? fmtPercent(blendedCtr) : "—",
       cpr: cprValue,
-      cpc: avgCpc > 0 ? fmtCurrency2dp(avgCpc, currencySymbol) : "—",
+      cpc: blendedCpc > 0 ? fmtCurrency2dp(blendedCpc, currencySymbol) : "—",
     };
 
     // The campaign template's 8 fixed card slots — automatically assigned by
@@ -1981,6 +1961,14 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
     const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const adSetRaw = adSetRawGroups[adSetKey(campaignName, adSetName)] ?? [];
+    const blendSource = adSetRaw.length > 0 ? adSetRaw : [row];
+    let adSetSpend = 0;
+    let adSetImpr = 0;
+    blendSource.forEach((r) => {
+      adSetSpend += parseCellNum(r.spend);
+      adSetImpr += parseCellNum(r.impressions);
+    });
+    const adSetReach = aggregateReach(blendSource, weeklyReachOpts);
     const { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.singleRowResultDisplay(
       row,
       adSetRaw,
@@ -1989,23 +1977,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       campaignObjectiveMap,
       currencySymbol,
     );
-    const rowFreq = rowFrequency(row);
+    const rowFreq = adSetReach > 0 && adSetImpr > 0 ? adSetImpr / adSetReach : rowFrequency(row);
     const statusIndicator = hasDeliveryStatusData ? deliveryStatusIndicator(row.delivery_status) : null;
 
-    const rowSpend = parseCellNum(row.spend);
-    const rowReach = parseCellNum(row.reach);
-    const rowImpr = parseCellNum(row.impressions);
-    const rowCtr = parseCellNum(row.ctr);
-    const rowCpc = parseCellNum(row.cpc);
+    const { ctr: blendedCtr, cpc: blendedCpc } = combinedCtrCpcFromRows(blendSource);
 
     const metrics: SlideMetrics = {
-      spend: fmtCurrency(rowSpend, currencySymbol),
-      reach: fmtNumber(rowReach),
-      impressions: fmtNumber(rowImpr),
+      spend: fmtCurrency(adSetSpend, currencySymbol),
+      reach: fmtNumber(adSetReach),
+      impressions: fmtNumber(adSetImpr),
       results: resultValue,
-      ctr: rowCtr > 0 ? fmtPercent(rowCtr) : "—",
+      ctr: blendedCtr > 0 ? fmtPercent(blendedCtr) : "—",
       cpr: cprValue,
-      cpc: rowCpc > 0 ? fmtCurrency2dp(rowCpc, currencySymbol) : "—",
+      cpc: blendedCpc > 0 ? fmtCurrency2dp(blendedCpc, currencySymbol) : "—",
     };
 
     const { dynamicMetrics, additionalMetricsSlide } = computeMetaSlideMetrics(
@@ -2053,13 +2037,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         cpr: metrics.cpr,
         ctr: metrics.ctr,
         cpc: metrics.cpc,
-        cpm: fmtCpm(rowSpend, rowImpr, currencySymbol),
+        cpm: fmtCpm(adSetSpend, adSetImpr, currencySymbol),
         resultLabel,
         costLabel,
         freq: rowFreq,
         resultsNum: parseCellNum(resultValue),
         hasResults: parseCellNum(resultValue) > 0,
-        spendNum: rowSpend,
+        spendNum: adSetSpend,
         isInactive: statusIndicator !== null,
       },
     });
@@ -2324,31 +2308,19 @@ function comparisonObjectiveTotals(
   reachOpts?: ReachAggregationOptions,
 ): { count: number; cpr: number } {
   let count = 0;
-  let totalSpend = 0;
-  let totalReach = 0;
-  let campaignReachAdded = false;
   rows.forEach((row) => {
     const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
     count += value;
-    if (shouldAttributeSpendForObjective(row, objective.resultLabel, value, objective.resultLabel, rows)) {
-      totalSpend += parseCellNum(row.spend);
-      if (!campaignReachAdded) {
-        totalReach = aggregateReach(rows, reachOpts);
-        campaignReachAdded = true;
-      }
-    }
   });
-  // Same uncounted-Reach special case as buildResultGroups/
-  // getGroupedResultDisplayForObjective: a real Reach objective rarely
-  // populates a `results` count, so its cost is derived from spend/reach
-  // (×1000) instead of spend/count.
+  const periodSpend = sumAllRowSpendInPeriod(rows);
+  const totalReach = rows.length > 0 ? aggregateReach(rows, reachOpts) : 0;
   const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
   const cpr = isUncountedReach
     ? totalReach > 0
-      ? (totalSpend * 1000) / totalReach
+      ? (periodSpend * 1000) / totalReach
       : 0
     : count > 0
-      ? totalSpend / count
+      ? periodSpend / count
       : 0;
   return { count, cpr };
 }

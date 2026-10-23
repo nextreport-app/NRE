@@ -5,7 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { messageForAuthSignInError } from "@/lib/auth-sign-in-errors";
-import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { isGoogleSignInEnabled } from "@/lib/google-sign-in-enabled";
 import { AuthFieldLabel, AuthPageShell, authInputClassName } from "@/components/auth/auth-page-shell";
 import { PasswordInput } from "@/components/auth/password-input";
 import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
@@ -15,12 +16,14 @@ function LoginForm() {
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/clients";
   const authErrorCode = params.get("error");
+  const authErrorCodeDetail = params.get("code");
   const passwordResetOk = params.get("reset") === "1";
   const prefilledEmail = params.get("email")?.trim() ?? "";
 
   const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
-  const urlError = messageForAuthSignInError(authErrorCode);
+  const urlError =
+    messageForAuthSignInError(authErrorCodeDetail) ?? messageForAuthSignInError(authErrorCode);
   const [formError, setFormError] = useState<string | null>(null);
   const error = formError ?? urlError;
   const [loading, setLoading] = useState(false);
@@ -38,8 +41,24 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
+      const hintRes = await fetch("/api/auth/account-login-hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const hintJson = (await hintRes.json().catch(() => ({}))) as { hint?: string };
+
+      if (hintJson.hint === "oauth_only") {
+        setFormError(
+          "This account was created with Google and has no password yet. Use Forgot password to set one — same account and data, no Google approval needed.",
+        );
+        return;
+      }
+
       setFormError(
-        "Invalid email or password. If you signed up with Google, use Continue with Google — or reset your password below.",
+        isGoogleSignInEnabled()
+          ? "Invalid email or password. If you signed up with Google, use Continue with Google — or reset your password below."
+          : "Invalid email or password. Use forgot password below, or contact support if you need help.",
       );
       return;
     }
@@ -119,22 +138,21 @@ function LoginForm() {
         <div className="h-px flex-1 bg-navy-border" />
       </div>
 
-      <button
-        type="button"
-        disabled={googleLoading || loading}
-        onClick={() => {
+      <GoogleSignInButton
+        callbackUrl={callbackUrl}
+        disabled={loading}
+        loading={googleLoading}
+        onStart={() => {
           setFormError(null);
           setGoogleLoading(true);
-          void signIn("google", { callbackUrl }, GOOGLE_LOGIN_AUTHORIZATION_PARAMS);
         }}
-        className="w-full rounded-md border border-navy-border bg-navy px-3 py-2.5 text-sm font-medium text-ink hover:bg-navy-border disabled:opacity-60"
-      >
-        {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
-      </button>
+      />
 
-      <p className="mt-4 text-center text-xs leading-relaxed text-ink-muted">
-        Use Google if you signed up that way — no separate password needed.
-      </p>
+      {isGoogleSignInEnabled() ? (
+        <p className="mt-4 text-center text-xs leading-relaxed text-ink-muted">
+          Use Google if you signed up that way — no separate password needed.
+        </p>
+      ) : null}
     </AuthPageShell>
   );
 }

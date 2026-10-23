@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MetaWalkthroughVideoCompact } from "@/components/meta-walkthrough-video";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 /** First visit with no clients — short path, no checklist or progress UI. */
@@ -24,6 +25,13 @@ export function ClientsGettingStarted() {
         >
           {d.emptyAddClientCta}
         </Link>
+        <div className="mt-8 max-w-xl">
+          <p className="text-[13px] font-semibold text-dash-ink">Video walkthrough</p>
+          <p className="mt-1 text-[13px] text-dash-ink-secondary">Meta CSV export through generate and share.</p>
+          <div className="mt-3 [&_.text-ink-muted]:text-dash-ink-secondary [&_a.text-accent-orange]:text-dash-accent">
+            <MetaWalkthroughVideoCompact id="clients-getting-started-video" />
+          </div>
+        </div>
       </div>
 
       <ol className="divide-y divide-dash-border px-4 py-2 sm:px-6">

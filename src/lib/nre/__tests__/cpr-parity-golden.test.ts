@@ -3,8 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CPR_PARITY_GOLDEN_CASES } from "../cpr-parity-golden";
 import {
-  assertCampaignSlideCprParity,
-  assertChartCampaignCprParity,
+  assertFullReportCprParity,
   assertMtdResultColumnCprParity,
 } from "../cpr-parity";
 import { parseCsvText } from "../parse-csv";
@@ -23,16 +22,11 @@ describe("CPR parity golden gate — spend ÷ results on every surface", () => {
         campaignObjectives: golden.campaignObjectives,
       });
 
-      for (const slide of report.campaignSlides) {
-        if (golden.campaignFilter && slide.campaignName !== golden.campaignFilter) continue;
-        assertCampaignSlideCprParity(slide);
-      }
+      assertFullReportCprParity(report);
 
       if (golden.mtdResultLabel) {
         assertMtdResultColumnCprParity(report.mtdRow, golden.mtdResultLabel);
       }
-
-      assertChartCampaignCprParity(report, golden.campaignFilter);
 
       if (golden.build.reportType === "WEEKLY" && golden.build.weeklyRange) {
         const verification = reconcileStandardReportWithCsv({

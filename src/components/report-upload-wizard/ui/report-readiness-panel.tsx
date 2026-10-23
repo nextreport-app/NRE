@@ -121,12 +121,19 @@ export function buildGenerateStepReadinessItems(input: {
       status: "warning",
       detail: "Preview differs from your CSV — contact support if the deck looks wrong",
     });
-  } else if (v?.status === "skipped" && v.skipReason) {
+  } else if (v?.status === "skipped") {
     items.push({
       id: "csv",
-      label: "CSV verification",
+      label: "CSV cross-check not run",
       status: "optional",
-      detail: v.skipReason,
+      detail: v.skipReason?.trim() || "Totals were not compared to your CSV — not a verified pass",
+    });
+  } else if (input.generateStepPreviewReady && v === null) {
+    items.push({
+      id: "csv",
+      label: "CSV cross-check",
+      status: "pending",
+      detail: "Waiting for comparison…",
     });
   }
 

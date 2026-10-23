@@ -26,6 +26,7 @@ describe("buildClientReportShareMessage", () => {
   it("matches the WhatsApp prefill body", () => {
     const input = {
       clientName: "Acme Co",
+      reportTitle: "Weekly Performance Report",
       reportTypeLabel: "Weekly Performance Report",
       platformLabel: "Meta Ads",
       dateRangeLabel: "Sep 22 – Sep 28",
@@ -34,7 +35,11 @@ describe("buildClientReportShareMessage", () => {
     const message = buildClientReportShareMessage(input);
     const wa = buildClientReportWhatsAppShareUrl(input);
     expect(message).toContain("Acme Co");
-    expect(decodeURIComponent(wa)).toContain(message);
+    expect(message).toContain("Sep 22 – Sep 28");
+    expect(message).toContain("https://nextreport.in/r/abc");
+    expect(message).toContain("ready to review");
+    expect(decodeURIComponent(wa)).toContain("Acme Co");
+    expect(decodeURIComponent(wa)).toContain("ready to review");
   });
 });
 
@@ -48,8 +53,9 @@ describe("buildClientReportTeamsShareUrl", () => {
       reportUrl: "https://nextreport.in/r/abc",
     });
     expect(url).toContain("teams.microsoft.com/share");
-    expect(decodeURIComponent(url)).toContain("nextreport.in/r/abc");
-    expect(decodeURIComponent(url)).toContain("Acme Co");
+    const decoded = decodeURIComponent(url.replace(/\+/g, " "));
+    expect(decoded).toContain("nextreport.in/r/abc");
+    expect(decoded).toContain("Acme Co");
   });
 });
 

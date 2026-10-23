@@ -29,9 +29,23 @@ type PricingCurrencyContextValue = {
 
 const PricingCurrencyContext = createContext<PricingCurrencyContextValue | null>(null);
 
-export function PricingCurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrencyState] = useState<PricingCurrency>(() => resolveInitialPricingCurrency());
-  const [ready, setReady] = useState(() => !!readPricingCurrencyPreference() || !!readCachedCountry());
+export function PricingCurrencyProvider({
+  children,
+  initialVisitorCountryCode = null,
+}: {
+  children: ReactNode;
+  /** Vercel `x-vercel-ip-country` — first paint INR in India, USD elsewhere. */
+  initialVisitorCountryCode?: string | null;
+}) {
+  const [currency, setCurrencyState] = useState<PricingCurrency>(() =>
+    resolveInitialPricingCurrency(globalThis.localStorage, initialVisitorCountryCode),
+  );
+  const [ready, setReady] = useState(
+    () =>
+      !!readPricingCurrencyPreference() ||
+      !!readCachedCountry() ||
+      !!initialVisitorCountryCode,
+  );
 
   useEffect(() => {
     if (readPricingCurrencyPreference()) {

@@ -8,21 +8,25 @@ import authConfig from "@/lib/auth.config";
 import { notifyAdminNewSignup } from "@/lib/admin-signup-notification";
 import { sendWelcomeTrialEmail } from "@/lib/billing-user-emails";
 import { GOOGLE_LOGIN_AUTHORIZATION_PARAMS } from "@/lib/auth-google-sign-in";
+import { isGoogleSignInEnabled } from "@/lib/google-sign-in-enabled";
 import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
 import { findUserByEmail } from "@/lib/find-user-by-email";
+import { OAuthOnlyAccountSignin } from "@/lib/auth-oauth-only-signin";
+
+const googleProvider = Google({
+  clientId: process.env.AUTH_GOOGLE_ID,
+  clientSecret: process.env.AUTH_GOOGLE_SECRET,
+  // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
+  allowDangerousEmailAccountLinking: true,
+  authorization: { params: { ...GOOGLE_LOGIN_AUTHORIZATION_PARAMS } },
+});
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
-      allowDangerousEmailAccountLinking: true,
-      authorization: { params: { ...GOOGLE_LOGIN_AUTHORIZATION_PARAMS } },
-    }),
+    ...(isGoogleSignInEnabled() ? [googleProvider] : []),
     Credentials({
       name: "Credentials",
       credentials: {
@@ -45,13 +49,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             image: true,
             passwordHash: true,
           });
-          if (!user?.passwordHash) return null;
+          if (!user) return null;
+          if (!user.passwordHash) {
+            throw new OAuthOnlyAccountSignin();
+          }
 
           const valid = await bcrypt.compare(password, user.passwordHash);
           if (!valid) return null;
 
           return { id: user.id, email: user.email, name: user.name, image: user.image };
         } catch (err) {
+          if (err instanceof OAuthOnlyAccountSignin) throw err;
           console.error("[auth:credentials] authorize failed:", err);
           return null;
         }

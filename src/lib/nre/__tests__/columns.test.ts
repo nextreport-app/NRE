@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildColumnMap, getRowDate, readRowsWithAutoMap, type NreRow } from "../columns";
+import {
+  buildColumnMap,
+  csvHasDailyGranularity,
+  getRowDate,
+  hasReportingStartsEndsDailyRow,
+  rowHasDailyDate,
+  readRowsWithAutoMap,
+  type NreRow,
+} from "../columns";
 
 describe("getRowDate", () => {
   it("prefers an exact 'Day' header over decoy date-ish columns (regression)", () => {
@@ -38,6 +46,17 @@ describe("getRowDate", () => {
     const row: NreRow = { _raw: { "Reporting starts": "01-07-26" }, date_start: "01-07-26" };
     expect(getRowDate(row)).toBe("01-07-26");
   });
+
+  it("treats equal Reporting starts/ends as daily campaign-export rows", () => {
+    const row: NreRow = {
+      _raw: { "Reporting starts": "2026-10-04", "Reporting ends": "2026-10-04" },
+      date_start: "2026-10-04",
+      date_end: "2026-10-04",
+    };
+    expect(hasReportingStartsEndsDailyRow(row)).toBe(true);
+    expect(csvHasDailyGranularity([row])).toBe(true);
+    expect(rowHasDailyDate(row)).toBe(true);
+  });
 });
 
 describe("buildColumnMap — spend detection (regression)", () => {
@@ -64,6 +83,16 @@ describe("buildColumnMap — spend detection (regression)", () => {
   it("keeps 'Cost per Result' etc. correctly mapped to cpr, unaffected by the spend keyword change", () => {
     expect(buildColumnMap(["Cost per Result"]).cpr).toBe("Cost per Result");
     expect(buildColumnMap(["Cost per Click"]).cpc).toBe("Cost per Click");
+  });
+
+  it("prefers CPC (all) over CPC (cost per link click) for the primary cpc field", () => {
+    const headers = ["CTR (all)", "CPC (cost per link click)", "CPC (all)", "Link clicks"];
+    expect(buildColumnMap(headers).cpc).toBe("CPC (all)");
+  });
+
+  it("maps link_clicks to Link clicks, never Clicks (all)", () => {
+    const headers = ["Link clicks", "Clicks (all)", "CTR (all)"];
+    expect(buildColumnMap(headers).link_clicks).toBe("Link clicks");
   });
 });
 

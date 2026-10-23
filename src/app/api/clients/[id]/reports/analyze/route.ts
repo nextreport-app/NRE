@@ -25,6 +25,7 @@ import {
 import { detectPlatform } from "@/lib/nre/google-columns";
 import { parseUploadedFileHeadersAndRows } from "@/lib/nre/parse-file";
 import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
+import { tryFetchMetaCustomConversionResultTypesForUser } from "@/lib/nre/meta-custom-conversion-catalog";
 import { hashUploadBuffer, saveWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
@@ -70,7 +71,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const platform = platformOverride ?? detectedPlatform;
 
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-    const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
+    const metaAdAccountIdEarly = formData
+      ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema)
+      : undefined;
+    const metaCustomConversionResultTypes =
+      platform === "META"
+        ? await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountIdEarly)
+        : undefined;
+    const validation = validateMtdDailyCsv(
+      mtdParsed.colMap,
+      mtdParsed.rows,
+      undefined,
+      mtdParsed.headers,
+      platform,
+      metaCustomConversionResultTypes,
+    );
     if (!validation.valid) {
       return NextResponse.json(
         {
@@ -143,7 +158,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const metaCampaignPeriodReach = formData
       ? parseJsonFormField(formData, "metaCampaignPeriodReach", metaCampaignPeriodReachMapsSchema)
       : undefined;
-    const metaAdAccountId = formData ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema) : undefined;
+    const metaAdAccountId = metaAdAccountIdEarly;
 
     const uploadSessionId = await saveWizardUploadSession({
       userId: session.user.id,
@@ -155,6 +170,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       fileHash: hashUploadBuffer(mtdDailyBuffer),
       metaCampaignPeriodReach,
       metaAdAccountId,
+      metaCustomConversionResultTypes,
     });
 
     return NextResponse.json({
@@ -181,6 +197,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       hasAdLevelCsv,
       dateSelection,
       csvDateGuidance,
+      metaCsvExportProfile: validation.metaCsvExportProfile ?? null,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:analyze");

@@ -11,7 +11,10 @@ export function CsvDateGuidanceBanner({
   onContinue: () => void;
   onRedownload: () => void;
 }) {
-  const warning = guidance.warnings[0];
+  const warnings = guidance.warnings;
+  if (warnings.length === 0) return null;
+
+  const warning = warnings[0];
   if (!warning) return null;
 
   const isExportGap = warning.kind === "missing_month_start" || warning.kind === "first_of_month";

@@ -16,6 +16,8 @@
  *    for the full priority chain this implements.
  */
 
+import { combinedCtrCpcFromRows } from "./ctr-cpc";
+import { metaFormLeadsFromMetaExportRow } from "./meta-csv-export-counting";
 import { parseCellNum } from "./format";
 import { parseDate } from "./dates";
 import {
@@ -37,10 +39,7 @@ function sumWebsiteLeadsFromRows(rows: NreRow[]): number {
 }
 
 function sumMetaFormLeadsFromRows(rows: MetricRow[]): number {
-  return rows.reduce(
-    (sum, row) => sum + (parseCellNum(row.results) || parseCellNum(row.leads) || parseCellNum(row.meta_leads)),
-    0,
-  );
+  return rows.reduce((sum, row) => sum + metaFormLeadsFromMetaExportRow(row), 0);
 }
 
 export interface AggRow {
@@ -112,8 +111,6 @@ interface GroupAcc {
   /** Dedicated "Initiate checkout"/"Adds to cart" column values (Part 6 bug fix) — same "exotic signal, no dedicated NreRow field" treatment as the 3 above, via sumRawColumnByKeywords. */
   initiate_checkout: number;
   add_to_cart: number;
-  ctrs: number[];
-  cpcs: number[];
   freqs: number[];
   earliest_date: string;
   latest_date: string;
@@ -162,8 +159,6 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         thruplays: 0,
         initiate_checkout: 0,
         add_to_cart: 0,
-        ctrs: [],
-        cpcs: [],
         freqs: [],
         earliest_date: "",
         latest_date: "",
@@ -194,12 +189,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     g.initiate_checkout += sumRawColumnByKeywords(row._raw, ["initiate checkout"]);
     g.add_to_cart += sumRawColumnByKeywords(row._raw, ["adds to cart", "add to cart"]);
 
-    const ctr = parseCellNum(row.ctr);
     const freq = parseCellNum(row.frequency);
-    const cpcRaw = parseCellNum(row.cpc);
-    if (ctr > 0) g.ctrs.push(ctr);
     if (freq > 0) g.freqs.push(freq);
-    if (cpcRaw > 0) g.cpcs.push(cpcRaw);
 
     const rowDate = getRowDate(row);
     if (rowDate) {
@@ -210,11 +201,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
 
   return Object.values(groups).map((g): AggRow => {
     const reach = aggregateReach(g.sourceRows);
-    const ctr = average(g.ctrs);
     const frq = average(g.freqs);
-    // CPC: average the platform-calculated daily CPC values (more reliable
-    // than spend/link_clicks, which is 0 when the link_clicks column is empty).
-    const cpc = g.cpcs.length > 0 ? average(g.cpcs) : g.link_clicks > 0 ? g.spend / g.link_clicks : 0;
+    const { ctr, cpc } = combinedCtrCpcFromRows(g.sourceRows);
 
     // Unified objective priority chain — see objective.ts's resolveObjective
     // doc comment for the full Priority 1-4 rationale (Priority 1: dedicated
@@ -292,6 +280,12 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
         case "VIDEO VIEWS":
           actualResults = resolution.source === "priority1" ? g.thruplays : g.results;
           break;
+        case "LANDING PAGE VIEWS":
+          actualResults = g.landing_page_views;
+          break;
+        case "LINK CLICKS":
+          actualResults = g.link_clicks;
+          break;
         default:
           actualResults = g.results;
       }
@@ -304,8 +298,8 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
       objectiveConfident = false;
       switch (resolution.resultLabel) {
         case "META FORM LEADS":
-          actualResults = g.meta_leads;
-          actualCpr = g.spend / g.meta_leads;
+          actualResults = sumMetaFormLeadsFromRows(g.sourceRows);
+          actualCpr = actualResults > 0 ? g.spend / actualResults : 0;
           break;
         case "LANDING PAGE VIEWS":
           actualResults = g.landing_page_views;

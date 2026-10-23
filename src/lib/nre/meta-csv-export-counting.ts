@@ -1,24 +1,62 @@
 /**
- * Independent result counting — mirrors summing Meta Ads Manager export columns
- * (primarily Results + Result type), used for CSV verification and optional
- * align-with-export report mode.
+ * Canonical Meta manual-export counting — same rules Ads Manager uses for period
+ * totals and what agencies sum in Excel: **Results** on rows where **Result type**
+ * matches the objective. Blank Result type + blank Results = **0 leads** for that
+ * day, even if optional columns (Meta leads, Leads, Website leads) show numbers.
+ *
+ * All report math (slides, MTD, chart, CPL) must go through these helpers — never
+ * sum Leads/Meta leads columns when Result type and Results are empty.
  */
 
 import type { MetricRow } from "./types";
 import { parseCellNum } from "./format";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
 
-/** Ads Manager period totals: Results for the row's Result type; ignore orphan Website leads. */
-export function websiteLeadsFromMetaExportRow(
-  row: Pick<MetricRow, "results" | "website_leads" | "result_type">,
+/** Ads Manager period totals: Results for the row's Result type; ignore orphan Meta leads. */
+export function metaFormLeadsFromMetaExportRow(
+  row: Pick<MetricRow, "results" | "leads" | "meta_leads" | "result_type">,
 ): number {
   const results = parseCellNum(row.results);
   if (results > 0) return results;
-  const wl = parseCellNum(row.website_leads);
-  if (wl <= 0) return 0;
   const rt = (row.result_type || "").trim();
   if (!rt) return 0;
-  if (getMetaResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
+  if (getMetaResultLabels(rt).resultLabel !== "META FORM LEADS") return 0;
+  return parseCellNum(row.meta_leads) || parseCellNum(row.leads) || 0;
+}
+
+function websiteSubmissionColumnValue(
+  row: Pick<MetricRow, "website_leads" | "_raw">,
+): number {
+  const mapped = parseCellNum(row.website_leads);
+  if (mapped > 0) return mapped;
+  const raw = row._raw ?? {};
+  return parseCellNum(raw["website submission"] ?? raw["Website submission"]);
+}
+
+function campaignsTableLeadSignal(row: Pick<MetricRow, "result_type" | "_raw">): boolean {
+  const rt = (row.result_type || "").trim();
+  if (rt && getMetaResultLabels(rt).resultLabel === "WEBSITE LEADS") return true;
+  const raw = row._raw ?? {};
+  const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+  if (!indicator) return false;
+  const core = indicator.replace(/^actions:/i, "");
+  return /offsite_conversion\.(custom\.|fb_pixel_lead|fb_pixel_submit)/i.test(core);
+}
+
+/** Ads Manager period totals: Results for the row's Result type; ignore orphan Website leads. */
+export function websiteLeadsFromMetaExportRow(
+  row: Pick<MetricRow, "results" | "website_leads" | "result_type" | "_raw">,
+): number {
+  const results = parseCellNum(row.results);
+  if (results > 0) return results;
+  const wl = websiteSubmissionColumnValue(row);
+  if (wl <= 0) return 0;
+  const rt = (row.result_type || "").trim();
+  if (rt) {
+    if (getMetaResultLabels(rt).resultLabel === "WEBSITE LEADS") return wl;
+    return 0;
+  }
+  if (campaignsTableLeadSignal(row)) return wl;
   return 0;
 }
 
@@ -28,6 +66,8 @@ export function metaCsvExportResultValue(row: MetricRow, campaignObjectiveLabel:
   const rtLabel = getMetaResultLabels(row.result_type).resultLabel;
 
   if (rtLabel === campaignObjectiveLabel) {
+    if (campaignObjectiveLabel === "WEBSITE LEADS") return websiteLeadsFromMetaExportRow(row);
+    if (campaignObjectiveLabel === "META FORM LEADS") return metaFormLeadsFromMetaExportRow(row);
     return results;
   }
 
@@ -44,19 +84,17 @@ export function metaCsvExportResultValue(row: MetricRow, campaignObjectiveLabel:
   }
 
   if (campaignObjectiveLabel === "WEBSITE LEADS") {
-    if (
-      rtLabel === "WEBSITE LEADS" ||
-      rtLabel === "WEBSITE SUBMIT APPLICATIONS" ||
-      rtLabel === "APPLICATIONS"
-    ) {
-      return websiteLeadsFromMetaExportRow(row);
-    }
-    return 0;
+    return websiteLeadsFromMetaExportRow(row);
   }
 
   if (campaignObjectiveLabel === "META FORM LEADS") {
-    if (rtLabel === "META FORM LEADS") return results;
-    return 0;
+    return metaFormLeadsFromMetaExportRow(row);
+  }
+
+  if (campaignObjectiveLabel === "PURCHASES") {
+    const purchases = parseCellNum(row.purchases);
+    if (purchases > 0) return purchases;
+    return rtLabel === "PURCHASES" ? results : 0;
   }
 
   if (campaignObjectiveLabel === "REACH") {

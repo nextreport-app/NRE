@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
+import { buildCampaignCsvResultTypeMap } from "@/lib/nre/campaign-csv-result-type";
+import { tryFetchMetaCustomConversionResultTypesForUser } from "@/lib/nre/meta-custom-conversion-catalog";
+import { reapplyMetaCampaignsTableResultTypes } from "@/lib/nre/meta-csv-export-profile";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective, cachedObjectiveAgreesWithDetection } from "@/lib/nre/objective-cache";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
@@ -43,9 +46,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!resolved.ok) {
       return NextResponse.json(resolved.body, { status: resolved.status });
     }
-    const { parsed: mtdParsed } = resolved.data;
+    const { parsed: mtdParsed, metaAdAccountId, metaCustomConversionResultTypes: sessionCustomMap } = resolved.data;
     const platform = mtdParsed.platform;
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+
+    let metaCustomConversionResultTypes = sessionCustomMap;
+    if (platform === "META" && metaAdAccountId) {
+      const fromApi = await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountId);
+      if (fromApi) {
+        metaCustomConversionResultTypes = { ...sessionCustomMap, ...fromApi };
+      }
+    }
+    if (platform === "META") {
+      reapplyMetaCampaignsTableResultTypes(
+        mtdParsed.colMap,
+        mtdParsed.rows,
+        mtdParsed.headers,
+        metaCustomConversionResultTypes,
+      );
+    }
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
     const googleObjectiveKey = platform === "GOOGLE" ? googleObjectiveKeyFromHeaders(mtdParsed.headers) : undefined;
@@ -55,7 +74,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const campaignObjectiveEntries: [
       string,
       { resultLabel: string; costLabel: string; confidence: "cached" | "high" | "medium" | "low" | "verify"; requiresConfirmation: boolean },
-    ][] = Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
+    ][] = Array.from(
+      buildCampaignObjectiveMapWithConfidence(rowsForObjective, metaCustomConversionResultTypes),
+    ).map(([name, detected]) => {
       if (platform === "GOOGLE") {
         return [name, { ...googleLabels, confidence: "high" as const, requiresConfirmation: false }];
       }
@@ -74,6 +95,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ];
     });
     const campaignObjectives = Object.fromEntries(campaignObjectiveEntries);
+
+    const campaignCsvResultTypes =
+      platform === "META"
+        ? Object.fromEntries(buildCampaignCsvResultTypeMap(rowsForObjective, metaCustomConversionResultTypes))
+        : {};
 
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};
     const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
@@ -94,6 +120,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       perCampaignSelection,
       perCampaignAvailable,
       campaignObjectives,
+      campaignCsvResultTypes,
     });
   } catch (err) {
     return apiErrorResponse(err, "reports:metrics");

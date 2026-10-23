@@ -150,13 +150,10 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     perUnitOf: "link_clicks",
   });
 
-  it("reads the CPC value directly off its own 'CPC (all)' column when present and non-zero, without recomputing", () => {
-    // Deliberately no "clicks (all)"/"link clicks"/"clicks" column at all —
-    // the old always-recompute-from-clicks behavior would have produced
-    // NaN ("—") here; reading the real column directly must win instead.
+  it("blends CPC (all) from spend ÷ all-clicks (via CPC column on each row), not a straight average of daily CPC cells", () => {
     const rows = [row({ "Amount spent": "100", "CPC (all)": "2.00" }), row({ "Amount spent": "100", "CPC (all)": "4.00" })];
     const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
-    expect(result.cpc_all).toBe(3); // average of the two non-zero raw values
+    expect(result.cpc_all).toBeCloseTo(200 / 75, 4);
   });
 
   it("tries 'avg. cpc' when 'cpc (all)' isn't present", () => {
@@ -166,7 +163,7 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
   });
 
   it("tries 'cpc (cost per link click)' and 'average cpc' too, in the documented priority order", () => {
-    const rowsLinkClick = [row({ "Amount spent": "100", "CPC (Cost per Link Click)": "0.75" })];
+    const rowsLinkClick = [row({ "Amount spent": "75", "Link clicks": "100", "CPC (Cost per Link Click)": "0.75" })];
     expect(aggregateDynamicMetrics(rowsLinkClick, [cpcLinkClick()], "meta").cpc_link_click).toBe(0.75);
 
     const rowsAverage = [row({ "Amount spent": "100", "Average CPC": "0.60" })];
@@ -182,7 +179,7 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
         "Link clicks": "4",
       }),
     ];
-    expect(aggregateDynamicMetrics(rowsWithBoth, [cpcLinkClick()], "meta").cpc_link_click).toBe(0.85);
+    expect(aggregateDynamicMetrics(rowsWithBoth, [cpcLinkClick()], "meta").cpc_link_click).toBe(25);
 
     const rowsFallback = [row({ "Amount spent": "100", "CPC (all)": "2.00", "Link clicks": "4" })];
     expect(aggregateDynamicMetrics(rowsFallback, [cpcLinkClick()], "meta").cpc_link_click).toBe(25);
