@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ensureFreshMetaAccessToken, fetchMetaCustomConversions, type MetaCustomConversion } from "@/lib/meta-api";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
+import { normalizeMetaSyntheticResultType } from "./meta-result-indicator";
 import { resolveObjectiveFromResultType } from "./result-type-map";
 
 /** Maps Meta custom conversion id → Ads Reporting-style Result type text. */
@@ -17,11 +18,13 @@ export function syntheticResultTypeFromCustomConversionName(name: string): strin
   const meta = getMetaResultLabels(n);
   if (meta.resultLabel === "QUOTE REQUESTS") return "Quote Request Submitted";
   if (meta.resultLabel === "WEBSITE LEADS") return "website submission";
-  if (meta.resultLabel !== "RESULTS") return n;
+  if (meta.resultLabel === "WEBSITE SCHEDULE") return "Website appointments scheduled";
+  if (meta.resultLabel !== "RESULTS") return normalizeMetaSyntheticResultType(n);
 
   if (/quote[\s_]*request/i.test(n)) return "Quote Request Submitted";
+  if (/schedule_website|website.*appointment.*scheduled/i.test(n)) return "Website appointments scheduled";
   if (/website submission|website lead|web lead/i.test(n)) return "website submission";
-  return n;
+  return normalizeMetaSyntheticResultType(n);
 }
 
 export function buildMetaCustomConversionResultTypeMap(

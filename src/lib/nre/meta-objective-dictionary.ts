@@ -265,6 +265,8 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "website appointment scheduled",
       "website schedule",
       "website schedules",
+      "conversions:schedule_website",
+      "schedule_website",
     ],
   },
   {

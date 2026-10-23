@@ -18,4 +18,10 @@ describe("meta-custom-conversion-catalog", () => {
     expect(map["871123778777517"]).toBe("Quote Request Submitted");
     expect(map["446052571654985"]).toMatch(/website submission/i);
   });
+
+  it("maps CONVERSIONS:SCHEDULE_WEBSITE custom conversion names like Ad Reporting", () => {
+    expect(syntheticResultTypeFromCustomConversionName("CONVERSIONS:SCHEDULE_WEBSITE")).toBe(
+      "Website appointments scheduled",
+    );
+  });
 });

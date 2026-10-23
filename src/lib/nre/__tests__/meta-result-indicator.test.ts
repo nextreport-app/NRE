@@ -16,4 +16,11 @@ describe("meta-result-indicator", () => {
     expect(syntheticResultTypeFromMetaResultIndicator(indicator)).toBe("website submission");
     expect(displayResultIndicatorLabel(indicator)).toBe("website submission (custom conversion)");
   });
+
+  it("maps Graph API CONVERSIONS:SCHEDULE_WEBSITE to Website appointments scheduled", () => {
+    const catalog = { "999001": "CONVERSIONS:SCHEDULE_WEBSITE" };
+    const indicator = "actions:offsite_conversion.custom.999001";
+    expect(syntheticResultTypeFromMetaResultIndicator(indicator, catalog)).toBe("Website appointments scheduled");
+    expect(displayResultIndicatorLabel(indicator, catalog)).toBe("Website appointments scheduled");
+  });
 });

@@ -3,6 +3,7 @@ import { normalizeCampaignName } from "./objective";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
 import {
   displayResultIndicatorLabel,
+  normalizeMetaSyntheticResultType,
   syntheticResultTypeFromMetaResultIndicator,
   type MetaCustomConversionResultTypeLookup,
 } from "./meta-result-indicator";
@@ -90,7 +91,7 @@ export function expectedResultLabelFromCsvResultType(
   resultType: string,
   customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
 ): string | null {
-  const trimmed = resultType.trim();
+  const trimmed = normalizeMetaSyntheticResultType(resultType.trim());
   if (!trimmed) return null;
   const fromIndicator = resultIndicatorObjectiveHint(trimmed, customConversionResultTypes);
   if (fromIndicator) return fromIndicator;

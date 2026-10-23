@@ -18,6 +18,20 @@ export const KNOWN_META_CUSTOM_CONVERSION_RESULT_TYPE: Readonly<Record<string, s
 
 export type MetaCustomConversionResultTypeLookup = Readonly<Record<string, string>>;
 
+/**
+ * Normalize Meta API / custom-conversion names to the same Result type strings
+ * Ads Reporting exports use (so campaigns-table and Ad Reporting share one path).
+ */
+export function normalizeMetaSyntheticResultType(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+  const lower = t.toLowerCase();
+  if (lower.includes("schedule_website") || /^conversions:schedule/i.test(lower)) {
+    return "Website appointments scheduled";
+  }
+  return t;
+}
+
 function lookupCustomConversionResultType(
   id: string,
   fromApi?: MetaCustomConversionResultTypeLookup,
@@ -39,7 +53,7 @@ export function syntheticResultTypeFromMetaResultIndicator(
   const custom = CUSTOM_ID.exec(trimmed);
   if (custom) {
     const known = lookupCustomConversionResultType(custom[1], customConversionResultTypes);
-    if (known) return known;
+    if (known) return normalizeMetaSyntheticResultType(known);
     return "website submission";
   }
 
@@ -47,7 +61,7 @@ export function syntheticResultTypeFromMetaResultIndicator(
     const idMatch = /offsite_conversion\.custom\.(\d+)/i.exec(core);
     if (idMatch) {
       const known = lookupCustomConversionResultType(idMatch[1], customConversionResultTypes);
-      if (known) return known;
+      if (known) return normalizeMetaSyntheticResultType(known);
     }
     return "website submission";
   }
@@ -69,8 +83,10 @@ export function displayResultIndicatorLabel(
     const idMatch = /offsite_conversion\.custom\.(\d+)/i.exec(trimmed.replace(/^actions:/i, ""));
     const id = idMatch?.[1];
     const known = id ? lookupCustomConversionResultType(id, customConversionResultTypes) : undefined;
-    if (known) return known;
+    if (known) return normalizeMetaSyntheticResultType(known);
     return "website submission (custom conversion)";
   }
+  const normalized = normalizeMetaSyntheticResultType(trimmed.replace(/^actions:/i, ""));
+  if (normalized !== trimmed.replace(/^actions:/i, "")) return normalized;
   return trimmed.replace(/^actions:/i, "");
 }
