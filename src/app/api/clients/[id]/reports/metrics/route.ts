@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { resolveWizardMtdFromFormData } from "@/lib/nre/resolve-wizard-upload";
 import { filterRowsByCampaigns } from "@/lib/nre/campaigns";
 import { buildCampaignCsvResultTypeMap } from "@/lib/nre/campaign-csv-result-type";
+import { tryFetchMetaCustomConversionResultTypesForUser } from "@/lib/nre/meta-custom-conversion-catalog";
+import { reapplyMetaCampaignsTableResultTypes } from "@/lib/nre/meta-csv-export-profile";
 import { buildCampaignObjectiveMapWithConfidence } from "@/lib/nre/objective";
 import { parseObjectiveCache, lookupCachedObjective, cachedObjectiveAgreesWithDetection } from "@/lib/nre/objective-cache";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
@@ -44,9 +46,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!resolved.ok) {
       return NextResponse.json(resolved.body, { status: resolved.status });
     }
-    const { parsed: mtdParsed } = resolved.data;
+    const { parsed: mtdParsed, metaAdAccountId, metaCustomConversionResultTypes: sessionCustomMap } = resolved.data;
     const platform = mtdParsed.platform;
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
+
+    let metaCustomConversionResultTypes = sessionCustomMap;
+    if (platform === "META" && metaAdAccountId) {
+      const fromApi = await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountId);
+      if (fromApi) {
+        metaCustomConversionResultTypes = { ...sessionCustomMap, ...fromApi };
+        reapplyMetaCampaignsTableResultTypes(
+          mtdParsed.colMap,
+          mtdParsed.rows,
+          mtdParsed.headers,
+          metaCustomConversionResultTypes,
+        );
+      }
+    }
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
     const googleObjectiveKey = platform === "GOOGLE" ? googleObjectiveKeyFromHeaders(mtdParsed.headers) : undefined;
@@ -78,7 +94,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const campaignCsvResultTypes =
       platform === "META"
-        ? Object.fromEntries(buildCampaignCsvResultTypeMap(rowsForObjective))
+        ? Object.fromEntries(buildCampaignCsvResultTypeMap(rowsForObjective, metaCustomConversionResultTypes))
         : {};
 
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};

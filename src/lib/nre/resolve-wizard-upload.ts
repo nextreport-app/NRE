@@ -27,6 +27,7 @@ export interface ResolvedWizardMtd {
   fileHash?: string;
   metaCampaignPeriodReach?: import("./meta-api-sync/fetch-campaign-period-reach").MetaCampaignPeriodReachMaps;
   metaAdAccountId?: string;
+  metaCustomConversionResultTypes?: Record<string, string>;
 }
 
 type ResolveFailure = {
@@ -76,6 +77,7 @@ export async function resolveWizardMtdFromFormData(
         fileHash: session.fileHash,
         metaCampaignPeriodReach: session.metaCampaignPeriodReach,
         metaAdAccountId: session.metaAdAccountId,
+        metaCustomConversionResultTypes: session.metaCustomConversionResultTypes,
       },
     };
   }

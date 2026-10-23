@@ -16,17 +16,29 @@ export const KNOWN_META_CUSTOM_CONVERSION_RESULT_TYPE: Readonly<Record<string, s
   "871123778777517": "Quote Request Submitted",
 };
 
+export type MetaCustomConversionResultTypeLookup = Readonly<Record<string, string>>;
+
+function lookupCustomConversionResultType(
+  id: string,
+  fromApi?: MetaCustomConversionResultTypeLookup,
+): string | undefined {
+  return fromApi?.[id] ?? KNOWN_META_CUSTOM_CONVERSION_RESULT_TYPE[id];
+}
+
 /**
  * Synthetic Result type text for counting/objective detection (matches Ads Reporting labels).
  */
-export function syntheticResultTypeFromMetaResultIndicator(indicator: string): string | null {
+export function syntheticResultTypeFromMetaResultIndicator(
+  indicator: string,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string | null {
   const trimmed = indicator.trim();
   if (!trimmed) return null;
   const core = trimmed.replace(/^actions:/i, "");
 
   const custom = CUSTOM_ID.exec(trimmed);
   if (custom) {
-    const known = KNOWN_META_CUSTOM_CONVERSION_RESULT_TYPE[custom[1]];
+    const known = lookupCustomConversionResultType(custom[1], customConversionResultTypes);
     if (known) return known;
     return "website submission";
   }
@@ -34,7 +46,7 @@ export function syntheticResultTypeFromMetaResultIndicator(indicator: string): s
   if (/offsite_conversion\.custom\./i.test(core)) {
     const idMatch = /offsite_conversion\.custom\.(\d+)/i.exec(core);
     if (idMatch) {
-      const known = KNOWN_META_CUSTOM_CONVERSION_RESULT_TYPE[idMatch[1]];
+      const known = lookupCustomConversionResultType(idMatch[1], customConversionResultTypes);
       if (known) return known;
     }
     return "website submission";
@@ -48,12 +60,15 @@ export function syntheticResultTypeFromMetaResultIndicator(indicator: string): s
 }
 
 /** Wizard-friendly label for Result indicator rows (not the raw action id). */
-export function displayResultIndicatorLabel(indicatorOrSynthetic: string): string {
+export function displayResultIndicatorLabel(
+  indicatorOrSynthetic: string,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string {
   const trimmed = indicatorOrSynthetic.trim();
   if (/^actions:offsite_conversion\.custom\./i.test(trimmed)) {
     const idMatch = /offsite_conversion\.custom\.(\d+)/i.exec(trimmed.replace(/^actions:/i, ""));
     const id = idMatch?.[1];
-    const known = id ? KNOWN_META_CUSTOM_CONVERSION_RESULT_TYPE[id] : undefined;
+    const known = id ? lookupCustomConversionResultType(id, customConversionResultTypes) : undefined;
     if (known) return known;
     return "website submission (custom conversion)";
   }

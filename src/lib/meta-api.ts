@@ -407,6 +407,42 @@ export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
   return allRows;
 }
 
+export interface MetaCustomConversion {
+  id: string;
+  name?: string;
+}
+
+function normalizeMetaAdAccountId(adAccountId: string): string {
+  const trimmed = adAccountId.trim();
+  return trimmed.startsWith("act_") ? trimmed : `act_${trimmed}`;
+}
+
+/** Lists custom conversions for an ad account (id → human name in Ads Manager). */
+export async function fetchMetaCustomConversions(
+  accessToken: string,
+  adAccountId: string,
+): Promise<MetaCustomConversion[]> {
+  const actId = normalizeMetaAdAccountId(adAccountId);
+  const all: MetaCustomConversion[] = [];
+  let nextUrl: string | null = `${metaGraphBase()}/${actId}/customconversions?fields=id,name&limit=100&access_token=${encodeURIComponent(accessToken)}`;
+
+  while (nextUrl) {
+    const res = await fetch(nextUrl);
+    const data = (await res.json()) as {
+      data?: MetaCustomConversion[];
+      paging?: { next?: string };
+      error?: { message: string };
+    };
+    if (!res.ok || data.error) {
+      throw new Error(data.error?.message ?? `Failed to fetch Meta custom conversions (${res.status})`);
+    }
+    all.push(...(data.data ?? []));
+    nextUrl = data.paging?.next ?? null;
+  }
+
+  return all;
+}
+
 /** Ensures we have a valid long-lived token — refreshes if within 7 days of expiry. */
 export async function ensureFreshMetaAccessToken(params: {
   accessToken: string;
