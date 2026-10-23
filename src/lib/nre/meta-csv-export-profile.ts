@@ -1,5 +1,14 @@
 import type { ColumnMap, NreRow } from "./columns";
-import { csvHasDailyGranularity, hasReportingStartsEndsDailyRow } from "./columns";
+import {
+  csvHasDailyGranularity,
+  getRowDate,
+  hasRealRowDate,
+  hasReportingStartsEndsDailyRow,
+} from "./columns";
+import { parseDate } from "./dates";
+import { toIsoDate } from "./date-range";
+import { parseCellNum } from "./format";
+import { normalizeCampaignName } from "./objective";
 import {
   normalizeMetaSyntheticResultType,
   syntheticResultTypeFromMetaResultIndicator,
@@ -102,8 +111,81 @@ export function reapplyMetaCampaignsTableResultTypes(
     const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
     if (indicator) row.result_type = undefined;
   }
-  enrichMetaCampaignsTableRows(rows, profile, customConversionResultTypes);
+  normalizeMetaCampaignsTableToAdsReportingShape(rows, profile, customConversionResultTypes);
   return profile;
+}
+
+/** Earliest Meta "Starts" date per campaign — same column Ads Reporting exports carry. */
+function campaignStartsIsoByName(rows: NreRow[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const row of rows) {
+    const name = normalizeCampaignName(String(row.campaign_name ?? ""));
+    if (!name) continue;
+    const raw = row._raw ?? {};
+    const starts = String(raw["Starts"] ?? raw["starts"] ?? "").trim();
+    const parsed = parseDate(starts);
+    if (!parsed) continue;
+    const iso = toIsoDate(parsed);
+    const cur = out.get(name);
+    if (!cur || iso < cur) out.set(name, iso);
+  }
+  return out;
+}
+
+function rowDateIso(row: NreRow): string | null {
+  const parsed = parseDate(getRowDate(row));
+  return parsed ? toIsoDate(parsed) : null;
+}
+
+/** Campaigns-table daily rows use Reporting starts/ends; inject `Day` so getRowDate matches Ad Reporting. */
+function injectDayColumnLikeAdsReporting(row: NreRow): void {
+  if (hasRealRowDate(row)) return;
+  if (!hasReportingStartsEndsDailyRow(row)) return;
+  const raw = row._raw ?? {};
+  const startRaw = String(raw["Reporting starts"] ?? row.date_start ?? "").trim();
+  if (!startRaw) return;
+  raw["Day"] = startRaw;
+}
+
+function rowHasDeliverySignal(row: NreRow): boolean {
+  return (
+    parseCellNum(row.spend) > 0 ||
+    parseCellNum(row.results) > 0 ||
+    parseCellNum(row.impressions) > 0 ||
+    parseCellNum(row.reach) > 0 ||
+    parseCellNum(row.link_clicks) > 0
+  );
+}
+
+/**
+ * Single ingest normalizer — after this, campaigns-table uploads follow the
+ * same row/date/result_type conventions as Ad Reporting exports for the
+ * shared wizard + report engine (objectives, metrics, chart dates, CPR, etc.).
+ */
+export function normalizeMetaCampaignsTableToAdsReportingShape(
+  rows: NreRow[],
+  profile: MetaCsvExportProfile,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): void {
+  if (profile.kind !== "campaigns_table") return;
+  enrichMetaCampaignsTableRows(rows, profile, customConversionResultTypes);
+  const startsByCampaign = campaignStartsIsoByName(rows);
+
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]!;
+    injectDayColumnLikeAdsReporting(row);
+
+    const name = normalizeCampaignName(String(row.campaign_name ?? ""));
+    const rowIso = rowDateIso(row);
+    const startIso = name ? startsByCampaign.get(name) : undefined;
+    if (rowIso && startIso && rowIso < startIso) {
+      rows.splice(i, 1);
+      continue;
+    }
+    if (!rowHasDeliverySignal(row)) {
+      rows.splice(i, 1);
+    }
+  }
 }
 
 export function enrichMetaCampaignsTableRows(
