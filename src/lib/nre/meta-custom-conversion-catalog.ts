@@ -15,8 +15,8 @@ export function syntheticResultTypeFromCustomConversionName(name: string): strin
   if (fromExact?.key === "quote_requests") return "Quote Request Submitted";
 
   const meta = getMetaResultLabels(n);
-  if (meta.key === "quote_requests") return "Quote Request Submitted";
-  if (meta.key === "website_leads") return "website submission";
+  if (meta.resultLabel === "QUOTE REQUESTS") return "Quote Request Submitted";
+  if (meta.resultLabel === "WEBSITE LEADS") return "website submission";
   if (meta.resultLabel !== "RESULTS") return n;
 
   if (/quote[\s_]*request/i.test(n)) return "Quote Request Submitted";
