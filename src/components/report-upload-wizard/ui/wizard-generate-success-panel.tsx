@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CopyIcon,
   GoogleDriveIcon,
+  LinkIcon,
   MailIcon,
   PptxDownloadIcon,
   SlackBrandIcon,
@@ -161,8 +162,8 @@ export function WizardGenerateSuccessPanel({
     window.open(href, "_blank", "noopener,noreferrer");
   }
 
-  const shareLinkActionClass =
-    "inline-flex min-h-[44px] min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50 sm:min-w-[7.25rem]";
+  const shareViewCopySplitClass =
+    "inline-flex min-h-[44px] shrink-0 overflow-hidden rounded-lg border border-dash-border bg-dash-sidebar/60";
 
   return (
     <div className="nre-wizard-generate-success overflow-hidden rounded-xl border bg-dash-card nre-dash-surface">
@@ -293,19 +294,31 @@ export function WizardGenerateSuccessPanel({
               >
                 {buildShareReportUrl(shareToken)}
               </div>
-              <div className="flex w-full shrink-0 gap-2 sm:w-[17.5rem]">
-                <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={shareLinkActionClass}>
-                  View
-                </a>
-                <button
-                  type="button"
-                  onClick={() => void onCopyShareLink()}
-                  className={shareLinkActionClass}
-                  aria-live="polite"
-                >
-                  <CopyIcon />
-                  {shareLinkCopied ? "Copied!" : "Copy link"}
-                </button>
+              <div className="flex w-full shrink-0 flex-col gap-1 sm:w-[10.5rem]">
+                <div className={shareViewCopySplitClass}>
+                  <a
+                    href={reportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-w-0 flex-1 items-center justify-center px-4 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-dash-accent"
+                  >
+                    View
+                  </a>
+                  <div className="w-px self-stretch bg-dash-border" role="separator" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => void onCopyShareLink()}
+                    className="flex shrink-0 items-center justify-center px-3.5 py-2.5 text-dash-ink-secondary transition-colors hover:bg-dash-border/80 hover:text-dash-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-dash-accent"
+                    aria-label={shareLinkCopied ? "Link copied" : "Copy link"}
+                  >
+                    <LinkIcon />
+                  </button>
+                </div>
+                {shareLinkCopied ? (
+                  <p className="text-center text-[12px] font-medium text-emerald-400 sm:text-right" aria-live="polite">
+                    Link copied
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
