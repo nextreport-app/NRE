@@ -6,6 +6,7 @@ import { validateMtdDailyCsv } from "../validate";
 import {
   detectMetaCsvExportProfile,
   enrichMetaCampaignsTableRows,
+  normalizeMetaCampaignsTableToAdsReportingShape,
   rowsIncludeNamedAdSets,
 } from "../meta-csv-export-profile";
 
@@ -36,6 +37,14 @@ describe("detectMetaCsvExportProfile", () => {
     enrichMetaCampaignsTableRows(rows, profile);
     const withType = rows.filter((r) => (r.result_type ?? "").includes("website submission"));
     expect(withType.length).toBeGreaterThan(0);
+  });
+
+  it("normalizeMetaCampaignsTableToAdsReportingShape injects Day column on campaigns-table rows", () => {
+    const { colMap, rows, headers } = parseCsvText(readFileSync(CAMPAIGNS, "utf8"));
+    const profile = detectMetaCsvExportProfile(colMap, rows, headers);
+    normalizeMetaCampaignsTableToAdsReportingShape(rows, profile);
+    const withDay = rows.filter((r) => String(r._raw?.["Day"] ?? "").trim().length > 0);
+    expect(withDay.length).toBe(rows.length);
   });
 
   it("validate adds short import hint for campaigns-table uploads", () => {

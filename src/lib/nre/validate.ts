@@ -22,8 +22,8 @@ import {
 import { detectBlankCsvMetricLabels } from "./csv-zero-metric-guidance";
 import {
   detectMetaCsvExportProfile,
-  enrichMetaCampaignsTableRows,
   metaCsvExportImportHint,
+  normalizeMetaCampaignsTableToAdsReportingShape,
   type MetaCsvExportProfile,
 } from "./meta-csv-export-profile";
 
@@ -114,7 +114,7 @@ export function validateMtdDailyCsv(
   let metaCsvExportProfile: MetaCsvExportProfile | undefined;
   if (platform === "META" && rows.length > 0) {
     metaCsvExportProfile = detectMetaCsvExportProfile(colMap, rows, headers);
-    enrichMetaCampaignsTableRows(rows, metaCsvExportProfile, metaCustomConversionResultTypes);
+    normalizeMetaCampaignsTableToAdsReportingShape(rows, metaCsvExportProfile, metaCustomConversionResultTypes);
     const importHint = metaCsvExportImportHint(metaCsvExportProfile);
     if (importHint) {
       warnings.push({ field: "meta_csv_export", message: importHint });

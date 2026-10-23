@@ -8,6 +8,7 @@
 
 import { parseDate, getCalendarDateInTimezone, type ParsedDate } from "./dates";
 import { getRowDate, type NreRow } from "./columns";
+import { parseCellNum } from "./format";
 
 export function toIsoDate(d: ParsedDate): string {
   return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
@@ -70,6 +71,14 @@ export function capRangeEndToData(
  * Used for chart/MTD labels so headings never show calendar days with no data
  * (e.g. a campaign that started Sep 16 must not read "Aug 25 - Sep 23").
  */
+function rowHasChartDateSignal(row: NreRow): boolean {
+  const spend = parseCellNum(row.spend);
+  const results = parseCellNum(row.results);
+  const impressions = parseCellNum(row.impressions);
+  const reach = parseCellNum(row.reach);
+  return spend > 0 || results > 0 || impressions > 0 || reach > 0;
+}
+
 export function computeActualDataRangeInWindow(
   rows: NreRow[],
   range: DateRangeIso,
@@ -78,9 +87,12 @@ export function computeActualDataRangeInWindow(
   const endTs = Date.parse(range.endIso + "T00:00:00Z");
   if (Number.isNaN(startTs) || Number.isNaN(endTs)) return null;
 
+  const dated = rows.filter(rowHasChartDateSignal);
+  const source = dated.length > 0 ? dated : rows;
+
   let minTs: number | null = null;
   let maxTs: number | null = null;
-  rows.forEach((row) => {
+  source.forEach((row) => {
     const d = parseDate(getRowDate(row));
     if (!d) return;
     const ts = Date.UTC(d.year, d.month - 1, d.day);
