@@ -87,6 +87,18 @@ const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
     "app_installs",
   ]),
   leads: withMessagingBlocked(["purchases", "cost_per_purchase", "video_views", "app_installs"]),
+  quote_requests: withMessagingBlocked([
+    "leads",
+    "website_leads",
+    "meta_form_leads",
+    "cost_per_lead",
+    "cost_per_website_lead",
+    "cost_per_meta_form_lead",
+    "purchases",
+    "cost_per_purchase",
+    "video_views",
+    "app_installs",
+  ]),
   purchases: withMessagingBlocked([
     "website_leads",
     "meta_form_leads",

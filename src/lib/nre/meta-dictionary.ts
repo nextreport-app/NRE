@@ -214,6 +214,17 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     explanation: "Average cost to achieve each result through your ads",
     perUnitOf: "results",
   },
+  // Campaigns-table export uses plural "Cost per results" (no Result type column).
+  {
+    csvName: "cost per results",
+    key: "cost_per_result",
+    label: "COST PER RESULT",
+    type: "primary",
+    format: "currency",
+    priority: 80,
+    explanation: "Average cost to achieve each result through your ads",
+    perUnitOf: "results",
+  },
   {
     csvName: "ctr (all)",
     key: "ctr",
@@ -1372,10 +1383,16 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   // see its comment there for why it's excluded from the metric selector.)
 ];
 
+const TRAILING_CURRENCY_SUFFIX = /\s*\((usd|aud|eur|gbp|inr|cad)\)\s*$/i;
+
 /** Case-insensitive exact match on csvName — first entry wins on duplicates (none of the dictionary's own entries collide). */
 export function findMetaMetric(csvName: string): MetaMetricDefinition | undefined {
   const normalized = csvName.trim().toLowerCase();
-  return META_METRIC_DICTIONARY.find((entry) => entry.csvName === normalized);
+  const exact = META_METRIC_DICTIONARY.find((entry) => entry.csvName === normalized);
+  if (exact) return exact;
+  const stripped = normalized.replace(TRAILING_CURRENCY_SUFFIX, "").trim();
+  if (stripped === normalized) return undefined;
+  return META_METRIC_DICTIONARY.find((entry) => entry.csvName === stripped);
 }
 
 /** Looks up a primary/secondary entry by its internal `key` (not csvName) — used by the dynamic legend slide to resolve a SelectedMetric's explanation text. First entry wins when multiple csvName variants share a key (e.g. "spend"). */
