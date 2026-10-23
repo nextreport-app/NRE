@@ -111,6 +111,7 @@ export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
   { key: "page_likes", resultLabel: "PAGE LIKES", costLabel: "COST PER PAGE LIKE", isReach: false },
   { key: "followers", resultLabel: "FOLLOWERS", costLabel: "COST PER FOLLOW", isReach: false },
   { key: "phone_calls", resultLabel: "PHONE CALLS", costLabel: "COST PER CALL", isReach: false },
+  { key: "website_schedule", resultLabel: "WEBSITE SCHEDULE", costLabel: "COST PER BOOKING", isReach: false },
   { key: "appointment_leads", resultLabel: "APPOINTMENT LEADS", costLabel: "COST PER BOOKING", isReach: false },
   { key: "registrations", resultLabel: "REGISTRATIONS", costLabel: "COST PER REGISTRATION", isReach: false },
   {

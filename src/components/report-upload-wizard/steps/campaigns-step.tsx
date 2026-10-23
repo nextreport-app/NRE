@@ -15,6 +15,7 @@ import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
+import { WizardObjectiveSelect } from "../ui/wizard-objective-select";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { wizardStepLabel } from "@/lib/wizard-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
@@ -431,19 +432,13 @@ export function WizardCampaignsStep() {
                         <span className="truncate text-[14px] text-dash-ink" title={name}>
                           {name}
                         </span>
-                        <select
+                        <WizardObjectiveSelect
+                          options={options}
                           value={currentKey}
-                          onChange={(e) => setCampaignObjective(name, e.target.value)}
-                          className={`rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
-                            isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
-                          } bg-dash-bg`}
-                        >
-                          {options.map((o) => (
-                            <option key={o.key} value={o.key}>
-                              {o.resultLabel}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(key) => setCampaignObjective(name, key)}
+                          searchPlaceholder={copy.objectiveSearchPlaceholder}
+                          invalid={isBlocking}
+                        />
                       </div>
                       {csvSummary?.primary ? (
                         <div
