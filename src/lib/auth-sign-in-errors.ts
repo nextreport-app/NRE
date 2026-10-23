@@ -13,6 +13,8 @@ export function messageForAuthSignInError(code: string | null | undefined): stri
       return "Google sign-in was cancelled or denied.";
     case "CredentialsSignin":
       return "Invalid email or password. If you use Google sign-in, choose Continue with Google instead.";
+    case "oauth_only":
+      return "This account was created with Google and does not have a password yet. Use Forgot password to set one, then log in with email.";
     default:
       return "Sign-in failed. Try again or use email and password.";
   }

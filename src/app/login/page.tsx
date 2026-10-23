@@ -16,12 +16,14 @@ function LoginForm() {
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/clients";
   const authErrorCode = params.get("error");
+  const authErrorCodeDetail = params.get("code");
   const passwordResetOk = params.get("reset") === "1";
   const prefilledEmail = params.get("email")?.trim() ?? "";
 
   const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState("");
-  const urlError = messageForAuthSignInError(authErrorCode);
+  const urlError =
+    messageForAuthSignInError(authErrorCodeDetail) ?? messageForAuthSignInError(authErrorCode);
   const [formError, setFormError] = useState<string | null>(null);
   const error = formError ?? urlError;
   const [loading, setLoading] = useState(false);
@@ -39,6 +41,20 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
+      const hintRes = await fetch("/api/auth/account-login-hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const hintJson = (await hintRes.json().catch(() => ({}))) as { hint?: string };
+
+      if (hintJson.hint === "oauth_only") {
+        setFormError(
+          "This account was created with Google and has no password yet. Use Forgot password to set one — same account and data, no Google approval needed.",
+        );
+        return;
+      }
+
       setFormError(
         isGoogleSignInEnabled()
           ? "Invalid email or password. If you signed up with Google, use Continue with Google — or reset your password below."
@@ -138,7 +154,12 @@ function LoginForm() {
         </p>
       ) : (
         <p className="mt-4 text-center text-xs leading-relaxed text-ink-muted">
-          Sign up or log in with email while Google sign-in is pending approval.
+          Google sign-in is pending Google&apos;s approval. New users: sign up with email.{" "}
+          <strong className="font-medium text-ink-secondary">Signed up with Google before?</strong> Use{" "}
+          <Link href={forgotHref} className="text-accent hover:underline">
+            Forgot password
+          </Link>{" "}
+          to set a login password (same workspace).
         </p>
       )}
     </AuthPageShell>
