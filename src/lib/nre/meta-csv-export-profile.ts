@@ -68,7 +68,7 @@ export function metaCsvExportImportHint(profile: MetaCsvExportProfile): string |
 
 /** Campaigns step when ad set slides are impossible for this file. */
 export const META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT =
-  "No ad set column in this file — ad set slides won’t be included.";
+  "No ad set column in this file — ad set slides won’t be included. Download the CSV from Ad Reporting to include ad set slides as well.";
 
 function resultTypeFromCampaignsTableIndicator(indicator: string): string | null {
   const core = indicator.trim().replace(/^actions:/i, "");
