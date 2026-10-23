@@ -1,5 +1,6 @@
 import type { ColumnMap, NreRow } from "./columns";
 import { csvHasDailyGranularity, hasReportingStartsEndsDailyRow } from "./columns";
+import { syntheticResultTypeFromMetaResultIndicator } from "./meta-result-indicator";
 
 export type MetaCsvExportKind = "ads_reporting" | "campaigns_table";
 
@@ -68,17 +69,10 @@ export function metaCsvExportImportHint(profile: MetaCsvExportProfile): string |
 
 /** Campaigns step when ad set slides are impossible for this file. */
 export const META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT =
-  "No ad set column in this file — ad set slides won’t be included.";
+  "No ad set column in this file — ad set slides won’t be included. Download the CSV from Ad Reporting to include ad set slides as well.";
 
 function resultTypeFromCampaignsTableIndicator(indicator: string): string | null {
-  const core = indicator.trim().replace(/^actions:/i, "");
-  if (/offsite_conversion\.custom\./i.test(core)) return "website submission";
-  if (/offsite_conversion\.fb_pixel_lead/i.test(core)) return "website submission";
-  if (/offsite_conversion\.fb_pixel_submit_application/i.test(core)) return "Website applications submitted";
-  if (/onsite_conversion\.lead_grouped/i.test(core)) return "Leads (form)";
-  if (/link_click/i.test(core)) return "Link clicks";
-  if (/landing_page_view/i.test(core)) return "Landing page view";
-  return null;
+  return syntheticResultTypeFromMetaResultIndicator(indicator);
 }
 
 /**

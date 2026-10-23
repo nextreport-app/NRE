@@ -1,6 +1,7 @@
 import type { MetricRow } from "./types";
 import { normalizeCampaignName } from "./objective";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
+import { displayResultIndicatorLabel, syntheticResultTypeFromMetaResultIndicator } from "./meta-result-indicator";
 import { normalizeObjectiveLabel, resolveObjectiveFromResultType } from "./result-type-map";
 
 export interface CsvResultTypeEntry {
@@ -20,11 +21,7 @@ export interface CampaignCsvResultTypeSummary {
 }
 
 function displayResultType(raw: string): string {
-  const trimmed = raw.trim();
-  if (/^actions:offsite_conversion\.custom\./i.test(trimmed)) {
-    return "website submission (custom conversion)";
-  }
-  return trimmed.replace(/^actions:/i, "");
+  return displayResultIndicatorLabel(raw);
 }
 
 /** Summarize Ads Reporting "Result type" column for one campaign's rows. */
@@ -68,16 +65,12 @@ export function expectedResultLabelsFromCsvSummary(summary: CampaignCsvResultTyp
 
 /** Meta Campaigns-table exports use Result indicator (actions:offsite_conversion…). */
 function resultIndicatorObjectiveHint(resultType: string): string | null {
-  const core = resultType.trim().replace(/^actions:/i, "");
-  if (/offsite_conversion\.custom\./i.test(core)) {
-    return normalizeObjectiveLabel("WEBSITE LEADS");
-  }
-  if (/offsite_conversion\.fb_pixel_lead/i.test(core)) {
-    return normalizeObjectiveLabel("WEBSITE LEADS");
-  }
-  if (/offsite_conversion\.fb_pixel_submit_application/i.test(core)) {
-    return normalizeObjectiveLabel("WEBSITE LEADS");
-  }
+  const synthetic = syntheticResultTypeFromMetaResultIndicator(resultType);
+  if (!synthetic) return null;
+  const exact = resolveObjectiveFromResultType(synthetic);
+  if (exact) return normalizeObjectiveLabel(exact.resultLabel);
+  const fuzzy = getMetaResultLabels(synthetic);
+  if (fuzzy.resultLabel !== "RESULTS") return normalizeObjectiveLabel(fuzzy.resultLabel);
   return null;
 }
 

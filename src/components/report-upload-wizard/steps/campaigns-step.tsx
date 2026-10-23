@@ -25,11 +25,22 @@ function csvObjectiveStatusLine(
   csvSummary: CampaignCsvResultTypeSummary,
   detectedLabel: string,
   csvAlign: boolean | null,
+  useResultIndicatorHeading: boolean,
 ): string {
-  const heading = csvSummary.distinct.length > 1 ? copy.csvResultTypesHeading : copy.csvResultTypeHeading;
+  const heading =
+    csvSummary.distinct.length > 1
+      ? useResultIndicatorHeading
+        ? copy.csvResultIndicatorsHeading
+        : copy.csvResultTypesHeading
+      : useResultIndicatorHeading
+        ? copy.csvResultIndicatorHeading
+        : copy.csvResultTypeHeading;
 
   if (csvSummary.distinct.length === 1) {
     if (csvAlign === true && detectedLabel) {
+      if (useResultIndicatorHeading && csvSummary.primary) {
+        return `${heading}: ${csvSummary.primary} → ${detectedLabel} ✓ ${copy.csvResultTypeMatch}`;
+      }
       return `${heading} → ${detectedLabel} ✓ ${copy.csvResultTypeMatch}`;
     }
     if (csvAlign === false) {
@@ -121,6 +132,9 @@ export function WizardCampaignsStep() {
     toggleCampaignExpanded,
     touchedObjectiveCampaigns,
   } = w;
+
+  const useResultIndicatorHeading =
+    metaCsvExportProfile?.kind === "campaigns_table" && metaCsvExportProfile.hasResultIndicatorColumn;
 
   const objectivesLoading = selectedCampaigns.size > 0 && (metricsStatus === "loading" || !objectivesReady);
 
@@ -442,7 +456,13 @@ export function WizardCampaignsStep() {
                           }`}
                         >
                           <p className="font-normal text-dash-ink">
-                            {csvObjectiveStatusLine(copy, csvSummary, detectedLabel, csvAlign)}
+                            {csvObjectiveStatusLine(
+                              copy,
+                              csvSummary,
+                              detectedLabel,
+                              csvAlign,
+                              useResultIndicatorHeading,
+                            )}
                           </p>
                           {csvSummary.distinct.length > 1 ? (
                             <p className="mt-1 text-[12px] text-dash-ink-secondary">{copy.csvResultTypeMultipleHint}</p>

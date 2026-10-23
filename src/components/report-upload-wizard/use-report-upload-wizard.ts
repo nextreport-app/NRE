@@ -64,6 +64,7 @@ import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
 import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
 import type { CsvDateGuidance, CsvDateWarning } from "@/lib/nre/csv-date-guidance";
+import type { MetaCsvExportProfile } from "@/lib/nre/meta-csv-export-profile";
 import {
   ADD_FROM_CSV_VISIBLE,
   ADSET_CHIP_CLASS,
@@ -297,10 +298,7 @@ export function useReportUploadWizard({
   // ad-sets.ts's file header). expandedCampaigns tracks which campaigns'
   // ad-set lists are currently shown — collapsed by default, per campaign.
   const [adSetGroups, setAdSetGroups] = useState<AdSetGroup[]>([]);
-  const [metaCsvExportProfile, setMetaCsvExportProfile] = useState<{
-    kind: "ads_reporting" | "campaigns_table";
-    includesAdSetBreakdown: boolean;
-  } | null>(null);
+  const [metaCsvExportProfile, setMetaCsvExportProfile] = useState<MetaCsvExportProfile | null>(null);
   const [selectedAdSets, setSelectedAdSets] = useState<Set<string>>(new Set());
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
 

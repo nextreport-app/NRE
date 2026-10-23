@@ -62,6 +62,8 @@ const EN_UI = {
   detectedChangeIfWrong: "Detected — change if wrong",
   csvResultTypeHeading: "CSV Result type",
   csvResultTypesHeading: "CSV Result types",
+  csvResultIndicatorHeading: "CSV Result indicator",
+  csvResultIndicatorsHeading: "CSV Result indicators",
   csvResultTypeMultipleHint:
     "This campaign has more than one Result type in the CSV — pick the objective that matches the results you want in the deck.",
   csvResultTypeMatch: "Matches detected objective",
