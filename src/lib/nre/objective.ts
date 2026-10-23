@@ -35,6 +35,7 @@ import {
   isReachCampaignName,
   isWebsiteLeadsCampaignName,
 } from "./campaign-name-heuristics";
+import { normalizeMetaSyntheticResultType, syntheticResultTypeFromMetaResultIndicator } from "./meta-result-indicator";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -974,8 +975,17 @@ function scheduleObjectiveFromResultTypeRows(rows: MetricRow[]): ResultLabels | 
   let websiteScheduleRows = 0;
   let appointmentRows = 0;
   for (const row of rows) {
-    const rt = (row.result_type || "").trim();
+    let rt = (row.result_type || "").trim();
+    if (!rt) {
+      const raw = row._raw ?? {};
+      const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+      if (indicator) {
+        const syn = syntheticResultTypeFromMetaResultIndicator(indicator);
+        if (syn) rt = syn;
+      }
+    }
     if (!rt) continue;
+    rt = normalizeMetaSyntheticResultType(rt);
     const info = resolveObjectiveFromResultType(rt);
     if (!info) continue;
     if (info.key === "website_schedule") websiteScheduleRows++;

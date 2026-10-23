@@ -1,6 +1,7 @@
 import type { ColumnMap, NreRow } from "./columns";
 import { csvHasDailyGranularity, hasReportingStartsEndsDailyRow } from "./columns";
 import {
+  normalizeMetaSyntheticResultType,
   syntheticResultTypeFromMetaResultIndicator,
   type MetaCustomConversionResultTypeLookup,
 } from "./meta-result-indicator";
@@ -119,7 +120,7 @@ export function enrichMetaCampaignsTableRows(
       ? resultTypeFromCampaignsTableIndicator(indicator, customConversionResultTypes)
       : null;
     if (fromIndicator) {
-      row.result_type = fromIndicator;
+      row.result_type = normalizeMetaSyntheticResultType(fromIndicator);
       continue;
     }
     const wl = String(row.website_leads ?? raw["website submission"] ?? "").trim();
