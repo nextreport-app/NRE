@@ -164,9 +164,10 @@ export function WizardCampaignsStep() {
       ) : null}
 
       {metaCsvExportProfile?.kind === "campaigns_table" ? (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[14px] text-amber-200">
-          {META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT}
-        </p>
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[14px] leading-snug text-amber-200">
+          <p>{META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT.headline}</p>
+          <p className="mt-1 text-[13px] text-amber-200/90">{META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT.recommended}</p>
+        </div>
       ) : null}
 
       <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-3">
