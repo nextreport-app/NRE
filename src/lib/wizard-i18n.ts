@@ -54,7 +54,6 @@ const EN_UI = {
   loading: "Loading…",
   campaignObjectives: "Campaign objectives",
   objectivesIntro: "Detected from your CSV. Change a dropdown only if something looks wrong, then continue.",
-  objectiveSearchPlaceholder: "Search objectives…",
   reviewMetrics: "Review metrics",
   reviewMetricsHint: "Metric chips are pre-selected from your CSV — tweak only if needed.",
   includedMetrics: "Included metrics",
