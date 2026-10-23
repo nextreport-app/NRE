@@ -35,7 +35,11 @@ import {
   isReachCampaignName,
   isWebsiteLeadsCampaignName,
 } from "./campaign-name-heuristics";
-import { normalizeMetaSyntheticResultType, syntheticResultTypeFromMetaResultIndicator } from "./meta-result-indicator";
+import {
+  normalizeMetaSyntheticResultType,
+  syntheticResultTypeFromMetaResultIndicator,
+  type MetaCustomConversionResultTypeLookup,
+} from "./meta-result-indicator";
 
 const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAGING_OBJECTIVE;
 
@@ -149,10 +153,13 @@ function objectiveFromCsvResultTypeMajority(rows: MetricRow[]): ResultLabels | n
   return { resultLabel: mapped.resultLabel, costLabel: mapped.costLabel };
 }
 
-export function detectObjectiveFromCampaignRows(rows: MetricRow[]): ResultLabels | null {
+export function detectObjectiveFromCampaignRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   if (rows.length === 0) return null;
 
-  const named = namedCampaignObjectiveFromRows(rows);
+  const named = namedCampaignObjectiveFromRows(rows, customConversionResultTypes);
   if (named) return named;
 
   const fromResultType = objectiveFromCsvResultTypeMajority(rows);
@@ -260,7 +267,10 @@ function activeHeadersForCampaign(rows: MetricRow[]): string[] {
  * Uses this campaign's own numeric activity first, then name+header hints — never
  * the whole file's column list (which mislabels mixed-objective exports).
  */
-export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | null {
+export function columnObjectiveForCampaign(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   const purchaseNamed = purchaseObjectiveIfNamedCampaign(rows);
   if (purchaseNamed) return purchaseNamed;
 
@@ -273,14 +283,22 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
   const linkClicksNamed = linkClicksObjectiveIfNamedCampaign(rows);
   if (linkClicksNamed) return linkClicksNamed;
 
-  if (rows.some((r) => isWebsiteLeadsResultTypeText(r.result_type))) {
+  if (
+    rows.some((r) =>
+      isWebsiteLeadsResultTypeText(resultTypeTextForObjectiveDetection(r, customConversionResultTypes)),
+    )
+  ) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
-  if (rows.some((r) => isQuoteRequestResultTypeText(r.result_type))) {
+  if (
+    rows.some((r) =>
+      isQuoteRequestResultTypeText(resultTypeTextForObjectiveDetection(r, customConversionResultTypes)),
+    )
+  ) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
 
-  const fromRows = detectObjectiveFromCampaignRows(rows);
+  const fromRows = detectObjectiveFromCampaignRows(rows, customConversionResultTypes);
   if (fromRows) return fromRows;
 
   const activeHeaders = activeHeadersForCampaign(rows);
@@ -288,7 +306,7 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
     const fromActive = detectObjectiveFromColumns(activeHeaders);
     if (fromActive) {
       if (TRAFFIC_ONLY_OBJECTIVE_LABELS.has(fromActive.resultLabel) && isLeadFamilyCampaignName(rows)) {
-        const leadFromName = leadObjectiveFromCampaignNameOnly(rows);
+        const leadFromName = leadObjectiveFromCampaignNameOnly(rows, customConversionResultTypes);
         if (leadFromName) return leadFromName;
       } else {
         return fromActive;
@@ -315,7 +333,7 @@ export function columnObjectiveForCampaign(rows: MetricRow[]): ResultLabels | nu
   ]);
   if (!leadFamilyLabels.has(fromHeaders.resultLabel)) {
     if (TRAFFIC_ONLY_OBJECTIVE_LABELS.has(fromHeaders.resultLabel) && isLeadFamilyCampaignName(rows)) {
-      return leadObjectiveFromCampaignNameOnly(rows);
+      return leadObjectiveFromCampaignNameOnly(rows, customConversionResultTypes);
     }
     return fromHeaders;
   }
@@ -949,16 +967,49 @@ function sumCampaignMessagingTotal(rows: MetricRow[]): number {
 
 const TRAFFIC_ONLY_OBJECTIVE_LABELS = new Set(["LANDING PAGE VIEWS", "LINK CLICKS", "REACH"]);
 
+/** Same Result indicator + catalog resolution as campaign-csv-result-type (Ad Reporting parity). */
+export function resultTypeTextForObjectiveDetection(
+  row: MetricRow,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string {
+  const raw = row._raw ?? {};
+  const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+  const stored = (row.result_type ?? "").trim();
+
+  if (indicator) {
+    const fromIndicator = syntheticResultTypeFromMetaResultIndicator(indicator, customConversionResultTypes);
+    if (fromIndicator) {
+      const fromIndNorm = normalizeMetaSyntheticResultType(fromIndicator);
+      if (
+        !stored ||
+        stored.toLowerCase() === "website submission" ||
+        /^actions:/i.test(stored)
+      ) {
+        return fromIndNorm;
+      }
+    }
+  }
+  if (stored) return normalizeMetaSyntheticResultType(stored);
+  if (indicator) {
+    const syn = syntheticResultTypeFromMetaResultIndicator(indicator, customConversionResultTypes);
+    if (syn) return normalizeMetaSyntheticResultType(syn);
+  }
+  return "";
+}
+
 /** Lead objective from campaign/ad-set naming alone — used when LPV/link-click columns exist in the export but the row has no lead yet. */
-function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | null {
+function leadObjectiveFromCampaignNameOnly(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   if (isMetaFormLeadsCampaignName(rows)) {
     return { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD" };
   }
   // Export result_type (e.g. Quote Request Submitted) beats "website leads" in campaign naming.
-  if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows)) {
+  if (isQuoteRequestCampaignName(rows) || hasQuoteRequestResultTypeRows(rows, customConversionResultTypes)) {
     return { resultLabel: "QUOTE REQUESTS", costLabel: "COST PER QUOTE" };
   }
-  const scheduleFromResultType = scheduleObjectiveFromResultTypeRows(rows);
+  const scheduleFromResultType = scheduleObjectiveFromResultTypeRows(rows, customConversionResultTypes);
   if (scheduleFromResultType) return scheduleFromResultType;
   if (isWebsiteLeadsCampaignName(rows)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
@@ -966,26 +1017,25 @@ function leadObjectiveFromCampaignNameOnly(rows: MetricRow[]): ResultLabels | nu
   return null;
 }
 
-function hasQuoteRequestResultTypeRows(rows: MetricRow[]): boolean {
-  return rows.some((r) => resolveObjectiveFromResultType(r.result_type)?.key === "quote_requests");
+function hasQuoteRequestResultTypeRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): boolean {
+  return rows.some(
+    (r) => resolveObjectiveFromResultType(resultTypeTextForObjectiveDetection(r, customConversionResultTypes))?.key === "quote_requests",
+  );
 }
 
 /** Result type column beats "website leads" in campaign naming (same rule as quote requests). */
-function scheduleObjectiveFromResultTypeRows(rows: MetricRow[]): ResultLabels | null {
+function scheduleObjectiveFromResultTypeRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   let websiteScheduleRows = 0;
   let appointmentRows = 0;
   for (const row of rows) {
-    let rt = (row.result_type || "").trim();
-    if (!rt) {
-      const raw = row._raw ?? {};
-      const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
-      if (indicator) {
-        const syn = syntheticResultTypeFromMetaResultIndicator(indicator);
-        if (syn) rt = syn;
-      }
-    }
+    const rt = resultTypeTextForObjectiveDetection(row, customConversionResultTypes);
     if (!rt) continue;
-    rt = normalizeMetaSyntheticResultType(rt);
     const info = resolveObjectiveFromResultType(rt);
     if (!info) continue;
     if (info.key === "website_schedule") websiteScheduleRows++;
@@ -1183,18 +1233,24 @@ function shouldOverrideDefinitiveProof(rows: MetricRow[], info: ObjectiveInfo): 
 }
 
 /** Explicit campaign/ad-set naming beats generic result_type bleed (e.g. "Lead" → WEBSITE LEADS on a LeadGen_InstantForm campaign). */
-function namedCampaignObjectiveFromRows(rows: MetricRow[]): ResultLabels | null {
+function namedCampaignObjectiveFromRows(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels | null {
   return (
     reachObjectiveIfNamedCampaign(rows) ??
     purchaseObjectiveIfNamedCampaign(rows) ??
     metaFormLeadsObjectiveIfNamedCampaign(rows) ??
     linkClicksObjectiveIfNamedCampaign(rows) ??
-    leadObjectiveFromCampaignNameOnly(rows)
+    leadObjectiveFromCampaignNameOnly(rows, customConversionResultTypes)
   );
 }
 
-function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidence {
-  const named = namedCampaignObjectiveFromRows(rows);
+function resolveCampaignObjectiveDetailed(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ObjectiveConfidence {
+  const named = namedCampaignObjectiveFromRows(rows, customConversionResultTypes);
   if (named) {
     return {
       ...named,
@@ -1362,7 +1418,7 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
     };
   }
 
-  const columnFallback = columnObjectiveForCampaign(rows);
+  const columnFallback = columnObjectiveForCampaign(rows, customConversionResultTypes);
   if (columnFallback) {
     return {
       ...columnFallback,
@@ -1381,29 +1437,41 @@ function resolveCampaignObjectiveDetailed(rows: MetricRow[]): ObjectiveConfidenc
   };
 }
 
-export function resolveCampaignObjective(rows: MetricRow[]): ResultLabels {
-  const { resultLabel, costLabel } = resolveCampaignObjectiveDetailed(rows);
+export function resolveCampaignObjective(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ResultLabels {
+  const { resultLabel, costLabel } = resolveCampaignObjectiveDetailed(rows, customConversionResultTypes);
   return { resultLabel, costLabel };
 }
 
 /** Objective Confirmation memory cache (Part 6) — same detection as resolveCampaignObjective, plus a confidence tag the wizard uses for per-campaign badges ("Detected — change if wrong" vs red "Confirmation required"). Never used for report generation itself (buildCampaignObjectiveMap/resolveCampaignObjective above are unaffected) — display-only. */
-export function resolveCampaignObjectiveWithConfidence(rows: MetricRow[]): ObjectiveConfidence {
-  return resolveCampaignObjectiveDetailed(rows);
+export function resolveCampaignObjectiveWithConfidence(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): ObjectiveConfidence {
+  return resolveCampaignObjectiveDetailed(rows, customConversionResultTypes);
 }
 
-export function buildCampaignObjectiveMap(rows: MetricRow[]): Map<string, ResultLabels> {
+export function buildCampaignObjectiveMap(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): Map<string, ResultLabels> {
   const map = new Map<string, ResultLabels>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    map.set(name, resolveCampaignObjective(campRows));
+    map.set(name, resolveCampaignObjective(campRows, customConversionResultTypes));
   });
   return map;
 }
 
 /** Objective Confirmation memory cache (Part 6) — buildCampaignObjectiveMap's confidence-carrying counterpart, for the wizard's own /metrics route (the only consumer that needs the "high"/"low" badge; every other buildCampaignObjectiveMap call site is unaffected). */
-export function buildCampaignObjectiveMapWithConfidence(rows: MetricRow[]): Map<string, ObjectiveConfidence> {
+export function buildCampaignObjectiveMapWithConfidence(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): Map<string, ObjectiveConfidence> {
   const map = new Map<string, ObjectiveConfidence>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
-    map.set(name, resolveCampaignObjectiveWithConfidence(campRows));
+    map.set(name, resolveCampaignObjectiveWithConfidence(campRows, customConversionResultTypes));
   });
   return map;
 }
