@@ -26,6 +26,25 @@ Also confirm:
   - `https://nextreport.in/api/google-drive/callback` (Drive connect)
   - Same paths for `www.nextreport.in` if you use www, plus any Vercel preview URLs you test on.
 
+## Already signed up with Google (founder / early accounts)
+
+While the app keeps **Continue with Google** disabled (`NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED` is not `true`), Google-only accounts have **no password** — logging in with email and a guessed password will fail.
+
+**Recommended (no Google approval needed):**
+
+1. Go to **Forgot password** on [nextreport.in](https://nextreport.in/forgot-password).
+2. Enter the same Gmail you used for Google sign-up.
+3. Open the reset link and **set a password** (this updates your existing user — same clients, reports, and admin access).
+4. Log in with **email + password**.
+
+**Alternative (use Google again):**
+
+1. Set `NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED=true` on Vercel (re-enables the Google button).
+2. Keep your Gmail on **OAuth consent screen → Test users**.
+3. Use **Continue with Google** — only test users pass Google’s screen until the app is published.
+
+Avoid turning the flag on for public launch until verification is complete, or visitors will hit Google’s “app not verified” error.
+
 ### Production (all users)
 
 When you are ready for any Google user to connect without being listed as a tester:
