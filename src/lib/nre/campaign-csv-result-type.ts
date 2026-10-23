@@ -1,7 +1,11 @@
 import type { MetricRow } from "./types";
 import { normalizeCampaignName } from "./objective";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
-import { displayResultIndicatorLabel, syntheticResultTypeFromMetaResultIndicator } from "./meta-result-indicator";
+import {
+  displayResultIndicatorLabel,
+  syntheticResultTypeFromMetaResultIndicator,
+  type MetaCustomConversionResultTypeLookup,
+} from "./meta-result-indicator";
 import { normalizeObjectiveLabel, resolveObjectiveFromResultType } from "./result-type-map";
 
 export interface CsvResultTypeEntry {
@@ -20,12 +24,15 @@ export interface CampaignCsvResultTypeSummary {
   entries: CsvResultTypeEntry[];
 }
 
-function displayResultType(raw: string): string {
-  return displayResultIndicatorLabel(raw);
+function displayResultType(raw: string, customConversionResultTypes?: MetaCustomConversionResultTypeLookup): string {
+  return displayResultIndicatorLabel(raw, customConversionResultTypes);
 }
 
 /** Summarize Ads Reporting "Result type" column for one campaign's rows. */
-export function summarizeCsvResultTypesForCampaign(rows: MetricRow[]): CampaignCsvResultTypeSummary {
+export function summarizeCsvResultTypesForCampaign(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): CampaignCsvResultTypeSummary {
   const counts = new Map<string, number>();
   for (const row of rows) {
     const raw = row._raw ?? {};
@@ -40,16 +47,18 @@ export function summarizeCsvResultTypesForCampaign(rows: MetricRow[]): CampaignC
   }
   const distinctRaw = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([rt]) => rt);
   const primaryRaw = distinctRaw[0] ?? null;
-  const distinct = distinctRaw.map((rt) => displayResultType(rt));
-  const primary = primaryRaw ? displayResultType(primaryRaw) : null;
+  const distinct = distinctRaw.map((rt) => displayResultType(rt, customConversionResultTypes));
+  const primary = primaryRaw ? displayResultType(primaryRaw, customConversionResultTypes) : null;
   const entries = distinctRaw.map((rawType) => ({
-    resultType: displayResultType(rawType),
-    expectedResultLabel: expectedResultLabelFromCsvResultType(rawType),
+    resultType: displayResultType(rawType, customConversionResultTypes),
+    expectedResultLabel: expectedResultLabelFromCsvResultType(rawType, customConversionResultTypes),
   }));
   return {
     primary,
     distinct,
-    expectedResultLabel: primaryRaw ? expectedResultLabelFromCsvResultType(primaryRaw) : null,
+    expectedResultLabel: primaryRaw
+      ? expectedResultLabelFromCsvResultType(primaryRaw, customConversionResultTypes)
+      : null,
     entries,
   };
 }
@@ -64,8 +73,11 @@ export function expectedResultLabelsFromCsvSummary(summary: CampaignCsvResultTyp
 }
 
 /** Meta Campaigns-table exports use Result indicator (actions:offsite_conversion…). */
-function resultIndicatorObjectiveHint(resultType: string): string | null {
-  const synthetic = syntheticResultTypeFromMetaResultIndicator(resultType);
+function resultIndicatorObjectiveHint(
+  resultType: string,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string | null {
+  const synthetic = syntheticResultTypeFromMetaResultIndicator(resultType, customConversionResultTypes);
   if (!synthetic) return null;
   const exact = resolveObjectiveFromResultType(synthetic);
   if (exact) return normalizeObjectiveLabel(exact.resultLabel);
@@ -74,10 +86,13 @@ function resultIndicatorObjectiveHint(resultType: string): string | null {
   return null;
 }
 
-export function expectedResultLabelFromCsvResultType(resultType: string): string | null {
+export function expectedResultLabelFromCsvResultType(
+  resultType: string,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string | null {
   const trimmed = resultType.trim();
   if (!trimmed) return null;
-  const fromIndicator = resultIndicatorObjectiveHint(trimmed);
+  const fromIndicator = resultIndicatorObjectiveHint(trimmed, customConversionResultTypes);
   if (fromIndicator) return fromIndicator;
   const exact = resolveObjectiveFromResultType(trimmed);
   if (exact) return normalizeObjectiveLabel(exact.resultLabel);
@@ -96,7 +111,10 @@ export function csvResultTypeMatchesDetection(
   return expected.includes(normalizeObjectiveLabel(detectedResultLabel));
 }
 
-export function buildCampaignCsvResultTypeMap(rows: MetricRow[]): Map<string, CampaignCsvResultTypeSummary> {
+export function buildCampaignCsvResultTypeMap(
+  rows: MetricRow[],
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): Map<string, CampaignCsvResultTypeSummary> {
   const byCampaign = new Map<string, MetricRow[]>();
   for (const row of rows) {
     const key = normalizeCampaignName(row.campaign_name ?? "");
@@ -107,7 +125,7 @@ export function buildCampaignCsvResultTypeMap(rows: MetricRow[]): Map<string, Ca
   }
   const out = new Map<string, CampaignCsvResultTypeSummary>();
   for (const [name, campRows] of byCampaign) {
-    out.set(name, summarizeCsvResultTypesForCampaign(campRows));
+    out.set(name, summarizeCsvResultTypesForCampaign(campRows, customConversionResultTypes));
   }
   return out;
 }

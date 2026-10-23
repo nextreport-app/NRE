@@ -104,6 +104,7 @@ export function validateMtdDailyCsv(
   now: Date = new Date(),
   headers: string[] = [],
   platform: Platform = "META",
+  metaCustomConversionResultTypes?: import("./meta-result-indicator").MetaCustomConversionResultTypeLookup,
 ): ValidationResult {
   const manager = adsManagerName(platform);
   const spendColumnHint =
@@ -113,7 +114,7 @@ export function validateMtdDailyCsv(
   let metaCsvExportProfile: MetaCsvExportProfile | undefined;
   if (platform === "META" && rows.length > 0) {
     metaCsvExportProfile = detectMetaCsvExportProfile(colMap, rows, headers);
-    enrichMetaCampaignsTableRows(rows, metaCsvExportProfile);
+    enrichMetaCampaignsTableRows(rows, metaCsvExportProfile, metaCustomConversionResultTypes);
     const importHint = metaCsvExportImportHint(metaCsvExportProfile);
     if (importHint) {
       warnings.push({ field: "meta_csv_export", message: importHint });

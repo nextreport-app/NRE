@@ -1,6 +1,9 @@
 import type { ColumnMap, NreRow } from "./columns";
 import { csvHasDailyGranularity, hasReportingStartsEndsDailyRow } from "./columns";
-import { syntheticResultTypeFromMetaResultIndicator } from "./meta-result-indicator";
+import {
+  syntheticResultTypeFromMetaResultIndicator,
+  type MetaCustomConversionResultTypeLookup,
+} from "./meta-result-indicator";
 
 export type MetaCsvExportKind = "ads_reporting" | "campaigns_table";
 
@@ -71,21 +74,48 @@ export function metaCsvExportImportHint(profile: MetaCsvExportProfile): string |
 export const META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT =
   "No ad set column in this file — ad set slides won’t be included. Download the CSV from Ad Reporting to include ad set slides as well.";
 
-function resultTypeFromCampaignsTableIndicator(indicator: string): string | null {
-  return syntheticResultTypeFromMetaResultIndicator(indicator);
+function resultTypeFromCampaignsTableIndicator(
+  indicator: string,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): string | null {
+  return syntheticResultTypeFromMetaResultIndicator(indicator, customConversionResultTypes);
 }
 
 /**
  * Campaigns-table rows often omit Result type; fill from Result indicator or
  * website submission column so counting matches Ads Reporting exports.
  */
-export function enrichMetaCampaignsTableRows(rows: NreRow[], profile: MetaCsvExportProfile): void {
+/** Re-run campaigns-table Result indicator → result_type using an updated custom conversion catalog. */
+export function reapplyMetaCampaignsTableResultTypes(
+  colMap: ColumnMap,
+  rows: NreRow[],
+  headers: string[] | undefined,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): MetaCsvExportProfile | undefined {
+  const profile = detectMetaCsvExportProfile(colMap, rows, headers);
+  if (profile.kind !== "campaigns_table") return profile;
+  for (const row of rows) {
+    const raw = row._raw ?? {};
+    const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+    if (indicator) row.result_type = undefined;
+  }
+  enrichMetaCampaignsTableRows(rows, profile, customConversionResultTypes);
+  return profile;
+}
+
+export function enrichMetaCampaignsTableRows(
+  rows: NreRow[],
+  profile: MetaCsvExportProfile,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): void {
   if (profile.kind !== "campaigns_table") return;
   for (const row of rows) {
     if ((row.result_type ?? "").trim()) continue;
     const raw = row._raw ?? {};
     const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
-    const fromIndicator = indicator ? resultTypeFromCampaignsTableIndicator(indicator) : null;
+    const fromIndicator = indicator
+      ? resultTypeFromCampaignsTableIndicator(indicator, customConversionResultTypes)
+      : null;
     if (fromIndicator) {
       row.result_type = fromIndicator;
       continue;
