@@ -152,16 +152,7 @@ function LoginForm() {
         <p className="mt-4 text-center text-xs leading-relaxed text-ink-muted">
           Use Google if you signed up that way — no separate password needed.
         </p>
-      ) : (
-        <p className="mt-4 text-center text-xs leading-relaxed text-ink-muted">
-          Google sign-in is pending Google&apos;s approval. New users: sign up with email.{" "}
-          <strong className="font-medium text-ink-secondary">Signed up with Google before?</strong> Use{" "}
-          <Link href={forgotHref} className="text-accent hover:underline">
-            Forgot password
-          </Link>{" "}
-          to set a login password (same workspace).
-        </p>
-      )}
+      ) : null}
     </AuthPageShell>
   );
 }
