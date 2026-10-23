@@ -388,9 +388,8 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
   });
 
   // Fix 2 (later round) — Key Insights no longer shrinks by length at all;
-  // it's always 14pt (matching Campaign Summary's own common-case size),
-  // relying on the 400-char truncation above plus the text box's own
-  // normAutofit (shrink-to-fit) setting for overflow protection instead.
+  // it's always 15pt (matching Campaign Summary), with overflow bounded by
+  // the 400-char truncation and noAutofit so edits in PowerPoint stay readable.
   it("keeps Key Insights at a flat 14pt even for long text (under its own 400-char cap)", () => {
     const insights = "B".repeat(349) + ".";
     expect(insights.length).toBe(350);
@@ -402,25 +401,27 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     expect(sizeOfRunContaining(xml, insights)).toBe(15);
   });
 
-  it("uses <a:normAutofit/> (shrink text to fit) instead of <a:spAutoFit/> (grow shape) for the Campaign Summary and Key Insights boxes specifically", () => {
+  it("uses <a:noAutofit/> (fixed font size) for Campaign Summary and Key Insights so PowerPoint edits do not shrink text", () => {
     const summary = "A short campaign summary.";
     const insights = "A short set of key insights.";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, makeCampaignSlide("Shoes - Purchases"), { summary, insights });
-    expect(shapeContaining(xml, summary)).toContain("<a:normAutofit/>");
+    expect(shapeContaining(xml, summary)).toContain("<a:noAutofit/>");
+    expect(shapeContaining(xml, summary)).not.toContain("<a:normAutofit/>");
     expect(shapeContaining(xml, summary)).not.toContain("<a:spAutoFit/>");
-    expect(shapeContaining(xml, insights)).toContain("<a:normAutofit/>");
+    expect(shapeContaining(xml, insights)).toContain("<a:noAutofit/>");
+    expect(shapeContaining(xml, insights)).not.toContain("<a:normAutofit/>");
     expect(shapeContaining(xml, insights)).not.toContain("<a:spAutoFit/>");
     // Only these two shapes are touched — other card shapes on the same
     // slide (e.g. AD SPEND) keep their own template autofit mode as-is.
     expect(xml).toContain("<a:spAutoFit/>");
   });
 
-  it("applies the same truncation/font-size/normAutofit treatment on the dynamic 7-slot metric path", () => {
+  it("applies the same truncation/font-size/noAutofit treatment on the dynamic 7-slot metric path", () => {
     const slide = { ...makeCampaignSlide("Shoes - Search"), dynamicMetrics: sevenSlotMetrics() };
     const summary = "A".repeat(259) + ".";
     const xml = buildCampaignOrAdSetSlideXml(template.campaign, slide, { summary, insights: "Short insights." });
     expect(sizeOfRunContaining(xml, summary)).toBe(15);
-    expect(shapeContaining(xml, summary)).toContain("<a:normAutofit/>");
+    expect(shapeContaining(xml, summary)).toContain("<a:noAutofit/>");
   });
 
   it("applies the same treatment to buildPausedSlideXml's Campaign Summary text", () => {
@@ -432,7 +433,7 @@ describe("buildCampaignOrAdSetSlideXml — Fix 3: permanent Campaign Summary / K
     expect(kept).not.toBeNull();
     expect(kept![1].length).toBeLessThanOrEqual(300);
     expect(kept![1].endsWith(".")).toBe(true);
-    expect(shapeContaining(xml, kept![1])).toContain("<a:normAutofit/>");
+    expect(shapeContaining(xml, kept![1])).toContain("<a:noAutofit/>");
   });
 });
 

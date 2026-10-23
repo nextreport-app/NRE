@@ -247,6 +247,25 @@ export function setShapeNormAutofit(xml: string, locatorText: string): string {
   return xml.slice(0, start) + newSp + xml.slice(end);
 }
 
+/**
+ * Disables PowerPoint's shrink-to-fit (`normAutofit`) and grow-to-fit
+ * (`spAutoFit`) for the located shape — text keeps the run's requested point
+ * size when users edit in PowerPoint or Google Slides. Use on fixed-size
+ * narrative boxes where char-cap truncation already bounds length.
+ */
+export function setShapeNoAutofit(xml: string, locatorText: string): string {
+  const idx = xml.indexOf(locatorText);
+  if (idx === -1) return xml;
+  const start = xml.lastIndexOf("<p:sp>", idx);
+  const end = xml.indexOf("</p:sp>", idx) + "</p:sp>".length;
+  const sp = xml.slice(start, end);
+  let newSp = sp.replace("<a:spAutoFit/>", "<a:noAutofit/>").replace("<a:normAutofit/>", "<a:noAutofit/>");
+  if (!newSp.includes("<a:noAutofit/>") && newSp.includes("<a:bodyPr")) {
+    newSp = newSp.replace(/(<a:bodyPr[^>]*>)/, `$1<a:noAutofit/>`);
+  }
+  return xml.slice(0, start) + newSp + xml.slice(end);
+}
+
 /** Sets wrap="none" | wrap="square" on the text body of the shape containing `locatorText`. */
 export function setShapeWrap(xml: string, locatorText: string, wrap: "none" | "square"): string {
   const idx = xml.indexOf(locatorText);
