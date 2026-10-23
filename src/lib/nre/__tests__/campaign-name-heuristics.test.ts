@@ -47,6 +47,12 @@ describe("campaign-name-heuristics", () => {
     expect(isWebsiteLeadsCampaignHaystack(haystack)).toBe(false);
   });
 
+  it("TRAFFIC - WEBSITE naming is link clicks traffic, not website leads", () => {
+    const haystack = campaignNameHaystack("DC - TRAFFIC - WEBSITE - Q3 - AUG 2026", "");
+    expect(isLinkClicksCampaignHaystack(haystack)).toBe(true);
+    expect(isWebsiteLeadsCampaignHaystack(haystack)).toBe(false);
+  });
+
   it("Southaven lead gen and traffic naming resolves to meta form vs link clicks, not website leads", () => {
     const leadGen = campaignNameHaystack("SouthavenRV&Marine_LeadGen_InstantForm", "");
     const traffic = campaignNameHaystack("SouthavenRV&Marine_Traffic_LinkClicks", "");
