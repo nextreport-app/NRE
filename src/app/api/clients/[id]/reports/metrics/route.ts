@@ -55,13 +55,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const fromApi = await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountId);
       if (fromApi) {
         metaCustomConversionResultTypes = { ...sessionCustomMap, ...fromApi };
-        reapplyMetaCampaignsTableResultTypes(
-          mtdParsed.colMap,
-          mtdParsed.rows,
-          mtdParsed.headers,
-          metaCustomConversionResultTypes,
-        );
       }
+    }
+    if (platform === "META") {
+      reapplyMetaCampaignsTableResultTypes(
+        mtdParsed.colMap,
+        mtdParsed.rows,
+        mtdParsed.headers,
+        metaCustomConversionResultTypes,
+      );
     }
 
     const rowsForObjective = filterRowsByCampaigns(mtdParsed.rows, selectedCampaigns ?? null);
@@ -72,7 +74,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const campaignObjectiveEntries: [
       string,
       { resultLabel: string; costLabel: string; confidence: "cached" | "high" | "medium" | "low" | "verify"; requiresConfirmation: boolean },
-    ][] = Array.from(buildCampaignObjectiveMapWithConfidence(rowsForObjective)).map(([name, detected]) => {
+    ][] = Array.from(
+      buildCampaignObjectiveMapWithConfidence(rowsForObjective, metaCustomConversionResultTypes),
+    ).map(([name, detected]) => {
       if (platform === "GOOGLE") {
         return [name, { ...googleLabels, confidence: "high" as const, requiresConfirmation: false }];
       }
