@@ -1250,6 +1250,28 @@ function resolveCampaignObjectiveDetailed(
   rows: MetricRow[],
   customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
 ): ObjectiveConfidence {
+  const unanimousCsvResultType = resolveUniqueMappedObjectiveFromRows(
+    rows.map((row) => ({
+      result_type: resultTypeTextForObjectiveDetection(row, customConversionResultTypes) || null,
+    })),
+    resolveObjectiveFromResultType,
+  );
+  if (
+    unanimousCsvResultType &&
+    (unanimousCsvResultType.key === "link_clicks" ||
+      unanimousCsvResultType.key === "landing_page_views" ||
+      unanimousCsvResultType.key === "website_schedule" ||
+      unanimousCsvResultType.key === "quote_requests") &&
+    !shouldIgnoreUniqueMappedObjective(rows, unanimousCsvResultType)
+  ) {
+    return {
+      resultLabel: unanimousCsvResultType.resultLabel,
+      costLabel: unanimousCsvResultType.costLabel,
+      confidence: "high",
+      requiresConfirmation: false,
+    };
+  }
+
   const named = namedCampaignObjectiveFromRows(rows, customConversionResultTypes);
   if (named) {
     return {
