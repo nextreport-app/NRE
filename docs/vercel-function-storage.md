@@ -22,16 +22,79 @@ Heavy **Preview** usage (PR branches, Cloud Agent deploys) can fill the 10 GB fr
 1. Open [Vercel Dashboard](https://vercel.com) → team **project-nre** → project **NRE** (or your production project name).
 2. Go to **Deployments**.
 3. Filter **Environment: Preview** (leave **Production** alone unless you know you need to roll back).
-4. **Bulk-select** old previews → **Delete**  
-   - Keep: **Production** (latest).  
-   - Keep: 0–2 recent previews you are actively testing.  
-   - Delete: stale `cursor/*` branch previews, merged PR previews, failed/abandoned builds.
+4. Delete previews **one at a time** via **⋯ → Delete** (the dashboard has **no multi-select bulk delete** as of 2026).
 5. Wait **15–60 minutes**, then check **Settings → Usage** (Function Storage should trend down).
+
+For many previews, use [Bulk delete (CLI or API)](#bulk-delete-preview-deployments) below instead of clicking each row.
 
 Optional one-time deep clean:
 
 - **Settings → General → Deployment Retention** → set **Preview** retention to **7 days** (or **1 day** during heavy agent/PR weeks).
 - Enable **Automatically delete deployments** for previews if available on your plan.
+
+---
+
+## Bulk delete preview deployments
+
+The dashboard only deletes **one deployment per action**. These options remove **many previews at once**.
+
+### Option A — Vercel CLI (simplest one-shot)
+
+Prerequisites: [Vercel CLI](https://vercel.com/docs/cli) installed, logged in (`vercel login`), correct team scope.
+
+From your linked NRE project directory (or pass `--cwd`):
+
+```bash
+# List recent deploys (sanity check)
+vercel list --scope project-nre
+
+# Remove all deployments for this project EXCEPT those still tied to
+# production domain or an active preview URL (--safe).
+# Does NOT delete the Vercel project itself when --safe is set.
+vercel remove <project-name> --safe --yes --scope project-nre
+```
+
+Replace `<project-name>` with the project slug from the dashboard URL (often `nre`, not the team name `project-nre`).
+
+**Warning:** Do **not** run `vercel remove <project-name>` **without** `--safe` — that removes the **entire project** from the team, not just old deploys.
+
+After a big purge, confirm **Production** still shows the deployment you expect under **Deployments → Production**.
+
+### Option B — CLI: delete several URLs in one command
+
+```bash
+vercel remove deployment-a.vercel.app deployment-b.vercel.app --yes --scope project-nre
+```
+
+Use `vercel list` (or the dashboard) to copy preview URLs. Impractical for hundreds of agent branches; use Option A or C.
+
+### Option C — REST API (scriptable, preview-only)
+
+1. Create a token: [Vercel → Account → Tokens](https://vercel.com/account/tokens).
+2. Find **Project ID** and **Team ID** (Project → Settings → General, or `vercel project ls`).
+
+```bash
+export VERCEL_TOKEN="..."
+export VERCEL_TEAM_ID="team_..."      # team project-nre
+export VERCEL_PROJECT_ID="prj_..."
+
+# List deployments (paginate with `until` from pagination.next if needed)
+curl -s "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}&limit=100" \
+  -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+  | jq -r '.deployments[] | select(.target != "production") | .uid' \
+  | while read -r uid; do
+      echo "Deleting $uid"
+      curl -s -X DELETE "https://api.vercel.com/v13/deployments/${uid}?teamId=${VERCEL_TEAM_ID}" \
+        -H "Authorization: Bearer ${VERCEL_TOKEN}"
+      sleep 0.5   # reduce 429 rate limits
+    done
+```
+
+Re-run the list/delete loop until previews stop appearing or usage drops. Respect API rate limits (back off on HTTP 429).
+
+### Option D — Retention only (no bulk delete)
+
+Your **Deployment Retention Policy** (e.g. Pre-Production **1 day**) deletes previews **automatically after they age out**. It does **not** remove deploys already on the account — use A or C once, then let retention prevent recurrence.
 
 ---
 
