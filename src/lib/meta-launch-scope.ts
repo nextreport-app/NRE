@@ -2,7 +2,12 @@
  * Meta-first launch scope — single source of truth for what is live vs deferred.
  * Re-enable items here (and in docs/META_LAUNCH_SCOPE.md) after Meta reporting
  * passes golden CSV/API parity tests in CI.
+ *
+ * Google OAuth verification: set GOOGLE_OAUTH_VERIFICATION_UI=true to expose Google Ads +
+ * GA4 account connections, API import, and the website report wizard without a full launch.
  */
+
+import { isGoogleOAuthVerificationUiEnabled } from "@/lib/google-oauth-verification-ui";
 
 export const META_LAUNCH_PHASE = "meta-v1" as const;
 
@@ -51,7 +56,11 @@ export const LAUNCH_SECONDARY_REPORT_TYPES: readonly LaunchEnabledReportType[] =
 ];
 
 export function isLaunchPlatformEnabled(platform: string): platform is LaunchEnabledPlatform {
-  return (LAUNCH_ENABLED_PLATFORMS as readonly string[]).includes(platform);
+  if ((LAUNCH_ENABLED_PLATFORMS as readonly string[]).includes(platform)) return true;
+  if (isGoogleOAuthVerificationUiEnabled() && (platform === "GOOGLE" || platform === "GA4")) {
+    return true;
+  }
+  return false;
 }
 
 /** Client manage page + account connection summary — hide deferred platforms until live. */
@@ -59,7 +68,8 @@ export type ClientPlatformConnectionKey = "meta" | "googleAds" | "tiktok" | "ga4
 
 /** Wizard import — hide “Change platform” until more than one ad platform is live. */
 export function isWizardPlatformSwitchEnabled(): boolean {
-  return LAUNCH_ENABLED_PLATFORMS.length > 1;
+  if (LAUNCH_ENABLED_PLATFORMS.length > 1) return true;
+  return isGoogleOAuthVerificationUiEnabled();
 }
 
 export function isClientPlatformConnectionVisible(key: ClientPlatformConnectionKey): boolean {
