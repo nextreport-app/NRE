@@ -38,6 +38,7 @@ export function ChevronDownIcon({ className }: { className?: string }) {
 export function WizardPlatformPickerGrid({
   selectedPlatformCard,
   onChoosePlatform,
+  onChooseWebsitePlatform,
 }: {
   showTikTokOption?: boolean;
   selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
