@@ -54,3 +54,4 @@ prisma/*.db
 # workflow video render scratch (Playwright + ffmpeg)
 .tmp-workflow-video/
 public/videos/meta-csv-workflow-demo-silent.mp4
+.tmp-workflow-video/bgm.wav
