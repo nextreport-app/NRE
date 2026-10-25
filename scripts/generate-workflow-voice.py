@@ -10,7 +10,9 @@ import edge_tts
 BPM = 112
 SCENE_MS = (60_000 / BPM) * 8
 TOTAL_SEC = SCENE_MS * 7 / 1000
-VOICE = "en-IN-PrabhatNeural"
+# Christopher is a low male read. Pitch is dropped so it cannot be mistaken for the previous voice.
+VOICE = "en-US-ChristopherNeural"
+PITCH = "-12Hz"
 LINES = [
     "Stop rebuilding slides by hand.",
     "Open Ads reporting, by day.",
@@ -23,7 +25,7 @@ LINES = [
 
 
 async def synth(text: str, path: Path) -> None:
-    await edge_tts.Communicate(text, VOICE, rate="-2%").save(str(path))
+    await edge_tts.Communicate(text, VOICE, rate="-6%", pitch=PITCH).save(str(path))
 
 
 def duration(path: Path) -> float:
@@ -46,7 +48,11 @@ def duration(path: Path) -> float:
 def main() -> None:
     out_wav = Path(sys.argv[1])
     work = out_wav.parent / "voice-lines"
+    if work.exists():
+        for old in work.glob("line-*.mp3"):
+            old.unlink()
     work.mkdir(parents=True, exist_ok=True)
+    print(f"Synthesizing with {VOICE} pitch {PITCH}", flush=True)
     slot = SCENE_MS / 1000 - 0.35
 
     async def all_lines() -> None:

@@ -14,12 +14,12 @@ export function MetaCsvWorkflowVideo({ id }: { id?: string }) {
           poster="/videos/meta-csv-workflow-poster.jpg"
           aria-label="How NextReport works with Meta Ads Manager CSV exports"
         >
-          <source src="/videos/meta-csv-workflow-demo.mp4" type="video/mp4" />
+          <source src="/videos/meta-csv-workflow-male.mp4" type="video/mp4" />
           Your browser does not support embedded video.
         </video>
       </div>
       <p className="text-center text-xs text-ink-muted">
-        Narrated walkthrough with music underneath. Press play, then unmute.
+        Male narration with a quiet music bed. Press play, then unmute.
       </p>
     </div>
   );
