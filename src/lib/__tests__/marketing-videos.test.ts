@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  WORKFLOW_FILM_YOUTUBE_ID,
   metaWalkthroughLoomId,
   metaWalkthroughVideoSource,
   metaWalkthroughYouTubeId,
@@ -43,6 +44,14 @@ describe("marketing-videos", () => {
     expect(url.origin + url.pathname).toBe("https://www.youtube.com/embed/7LfSMNzepP4");
     expect(url.searchParams.get("rel")).toBe("0");
     expect(url.searchParams.get("modestbranding")).toBe("1");
+    expect(url.searchParams.get("autoplay")).toBeNull();
+  });
+
+  it("points the homepage film at the uploaded walkthrough", () => {
+    expect(WORKFLOW_FILM_YOUTUBE_ID).toBe("M6vd8ZnuXfI");
+    expect(new URL(youtubeEmbedUrl(WORKFLOW_FILM_YOUTUBE_ID, { autoplay: true })).searchParams.get("autoplay")).toBe(
+      "1",
+    );
   });
 
   it("returns null when both providers disabled", () => {
