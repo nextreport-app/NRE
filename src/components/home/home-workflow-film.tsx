@@ -11,7 +11,7 @@ export function HomeWorkflowFilm() {
         <p className="text-center text-xs font-semibold uppercase tracking-widest text-accent-orange">30 seconds</p>
         <h2 className="mt-2 text-center text-2xl font-bold text-white sm:text-3xl">From a Meta CSV to a client deck</h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-ink-secondary sm:text-base">
-          A short walkthrough. Press play — the player loads from YouTube only then.
+          A short walkthrough. Press play.
         </p>
         <div className="mt-8">
           <YouTubeVideoEmbed
