@@ -16,58 +16,37 @@ const videoDir = path.join(root, ".tmp-workflow-video");
 const rawWebm = path.join(videoDir, "capture.webm");
 const silentMp4 = path.join(outDir, "meta-csv-workflow-demo-silent.mp4");
 const finalMp4 = path.join(outDir, "meta-csv-workflow-demo.mp4");
-const musicPath = path.join(videoDir, "bg-music.mp3");
+const musicPath = path.join(videoDir, "bgm.mp3");
 
-const DURATION_SEC = Math.ceil((9500 * 7) / 1000);
-const DURATION_MS = DURATION_SEC * 1000;
+const SCENE_COUNT = 7;
+const SCENE_MS = 10000;
+const DURATION_SEC = Math.ceil((SCENE_MS * SCENE_COUNT) / 1000);
+const DURATION_MS = DURATION_SEC * 1000 + 800;
 
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(videoDir, { recursive: true });
 
-function createBackgroundMusic() {
-  console.log("Generating background music (royalty-free synth bed)…");
-  const r = spawnSync(
-    "ffmpeg",
-    [
-      "-y",
-      "-f",
-      "lavfi",
-      "-i",
-      `sine=frequency=392:duration=${DURATION_SEC}`,
-      "-f",
-      "lavfi",
-      "-i",
-      `sine=frequency=523:duration=${DURATION_SEC}`,
-      "-f",
-      "lavfi",
-      "-i",
-      `sine=frequency=659:duration=${DURATION_SEC}`,
-      "-filter_complex",
-      `[0:a]volume=0.035[a0];[1:a]volume=0.028[a1];[2:a]volume=0.022[a2];` +
-        `[a0][a1][a2]amix=inputs=3:duration=longest,` +
-        `afade=t=in:st=0:d=2,afade=t=out:st=${DURATION_SEC - 4}:d=4`,
-      "-c:a",
-      "libmp3lame",
-      "-q:a",
-      "4",
-      musicPath,
-    ],
-    { stdio: "inherit" },
-  );
-  if (r.status !== 0) throw new Error("ffmpeg music generation failed");
-}
+console.log("Generating background music…");
+const bgm = spawnSync("node", [path.join(__dirname, "generate-workflow-bgm.mjs"), String(DURATION_SEC), path.join(videoDir, "bgm.wav")], {
+  stdio: "inherit",
+});
+if (bgm.status !== 0) process.exit(bgm.status ?? 1);
 
-createBackgroundMusic();
-
-console.log("Recording animation with Playwright…");
-const browser = await chromium.launch({ headless: true });
+console.log("Recording animation with Playwright (1920×1080, high-DPI paint)…");
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--disable-dev-shm-usage", "--font-render-hinting=medium"],
+});
 const context = await browser.newContext({
   viewport: { width: 1920, height: 1080 },
+  deviceScaleFactor: 2,
   recordVideo: { dir: videoDir, size: { width: 1920, height: 1080 } },
 });
 const page = await context.newPage();
-await page.goto(`file://${htmlPath}`);
-await page.waitForTimeout(DURATION_MS + 500);
+await page.goto(`file://${htmlPath}`, { waitUntil: "load" });
+await page.waitForFunction(() => document.fonts?.ready?.then(() => true), null, { timeout: 15000 }).catch(() => {});
+await page.waitForTimeout(400);
+await page.waitForTimeout(DURATION_MS);
 const video = page.video();
 await context.close();
 if (video) {
@@ -75,15 +54,33 @@ if (video) {
 }
 await browser.close();
 
-console.log("Encoding silent MP4…");
+console.log("Encoding high-quality MP4…");
 let enc = spawnSync(
   "ffmpeg",
-  ["-y", "-i", rawWebm, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", silentMp4],
+  [
+    "-y",
+    "-i",
+    rawWebm,
+    "-vf",
+    "fps=30,format=yuv420p",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "slow",
+    "-crf",
+    "16",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    silentMp4,
+  ],
   { stdio: "inherit" },
 );
 if (enc.status !== 0) process.exit(enc.status ?? 1);
 
 console.log("Muxing background music…");
+const fadeOut = Math.max(0, DURATION_SEC - 5);
 enc = spawnSync(
   "ffmpeg",
   [
@@ -93,7 +90,7 @@ enc = spawnSync(
     "-i",
     musicPath,
     "-filter_complex",
-    `[1:a]volume=0.35,afade=t=in:st=0:d=2,afade=t=out:st=${DURATION_SEC - 4}:d=4[a]`,
+    `[1:a]volume=0.42,afade=t=in:st=0:d=2.5,afade=t=out:st=${fadeOut}:d=5[a]`,
     "-map",
     "0:v:0",
     "-map",
