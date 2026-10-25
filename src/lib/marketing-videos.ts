@@ -5,6 +5,9 @@
 
 const DEFAULT_META_WALKTHROUGH_YOUTUBE_ID = "7LfSMNzepP4";
 
+/** 30-second Meta CSV workflow film on the homepage. */
+export const WORKFLOW_FILM_YOUTUBE_ID = "M6vd8ZnuXfI";
+
 /** Shown on the YouTube thumbnail facade (matches your YouTube upload title). */
 export const META_WALKTHROUGH_DISPLAY_TITLE = "NextReport Workflow Demo";
 const DEFAULT_META_WALKTHROUGH_LOOM_ID = "b4b96b3b627048bfaa6cd544e00dd977";
@@ -49,12 +52,13 @@ export function youtubeThumbnailUrl(videoId: string, quality: "hq" | "max" = "hq
   return `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/${file}`;
 }
 
-export function youtubeEmbedUrl(videoId: string): string {
+export function youtubeEmbedUrl(videoId: string, opts?: { autoplay?: boolean }): string {
   const params = new URLSearchParams({
     rel: "0",
     modestbranding: "1",
     playsinline: "1",
   });
+  if (opts?.autoplay) params.set("autoplay", "1");
   return `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?${params.toString()}`;
 }
 
