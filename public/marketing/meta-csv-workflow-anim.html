@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>NextReport — Meta CSV workflow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: Inter, system-ui, sans-serif;
+      background: #0a1628;
+      color: #f8fafc;
+    }
+    .stage {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      background: radial-gradient(ellipse 120% 80% at 50% 0%, #1e3a5f 0%, #0a1628 55%);
+    }
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.5;
+    }
+    .scene {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 120px;
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      pointer-events: none;
+    }
+    .scene.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .badge {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #f97316;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 56px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.15;
+      max-width: 1200px;
+    }
+    h2 {
+      font-size: 42px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .sub {
+      font-size: 22px;
+      color: #94a3b8;
+      text-align: center;
+      max-width: 900px;
+      line-height: 1.5;
+      margin-top: 20px;
+    }
+    .card-row {
+      display: flex;
+      gap: 28px;
+      margin-top: 48px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .card {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px;
+      padding: 28px 36px;
+      min-width: 280px;
+      backdrop-filter: blur(8px);
+    }
+    .card strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #e2e8f0;
+    }
+    .card span {
+      font-size: 15px;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 40px;
+    }
+    .flow-step {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 16px;
+      padding: 16px 28px;
+      border-radius: 12px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .flow-step:nth-child(2) { animation-delay: 0.2s; }
+    .flow-step:nth-child(3) { animation-delay: 0.4s; }
+    .flow-step:nth-child(4) { animation-delay: 0.6s; }
+    .arrow {
+      font-size: 28px;
+      color: #64748b;
+    }
+    .mock-ui {
+      width: 1400px;
+      margin-top: 36px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: #111827;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.45);
+    }
+    .mock-bar {
+      height: 48px;
+      background: #1f2937;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 8px;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.r { background: #ef4444; }
+    .dot.y { background: #eab308; }
+    .dot.g { background: #22c55e; }
+    .mock-body {
+      padding: 40px 48px;
+      min-height: 320px;
+    }
+    .mock-line {
+      height: 14px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.08);
+      margin-bottom: 16px;
+      animation: shimmer 1.8s ease-in-out infinite;
+    }
+    .mock-line.w80 { width: 80%; }
+    .mock-line.w60 { width: 60%; }
+    .mock-line.w40 { width: 40%; }
+    .mock-line.accent {
+      background: linear-gradient(90deg, rgba(249,115,22,.35), rgba(249,115,22,.1));
+      width: 55%;
+    }
+    .metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .chip {
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(249,115,22,.2);
+      border: 1px solid rgba(249,115,22,.45);
+      color: #fdba74;
+    }
+    .chip.dim {
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.12);
+      color: #94a3b8;
+    }
+    .logo-lockup {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .logo-mark {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f97316, #fb923c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 28px;
+      color: #0f172a;
+    }
+    .progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: #f97316;
+      width: 0%;
+      transition: width 0.3s linear;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    .meta { color: #60a5fa; }
+    .nr { color: #f97316; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="grid-bg"></div>
+    <div class="progress" id="progress"></div>
+
+    <div class="scene active" data-scene="0">
+      <div class="logo-lockup">
+        <div class="logo-mark">N</div>
+        <span style="font-size:28px;font-weight:700">NextReport</span>
+      </div>
+      <p class="badge">How it works</p>
+      <h1>From <span class="meta">Meta Ads Reporting</span> to a client-ready deck in minutes</h1>
+      <p class="sub">Export a day-wise CSV from Ads Manager, upload to NextReport, and generate a branded PowerPoint with accurate metrics.</p>
+    </div>
+
+    <div class="scene" data-scene="1">
+      <p class="badge">Step 1 — Meta Ads Manager</p>
+      <h2>Open <span class="meta">Ads reporting</span> for your live campaigns</h2>
+      <div class="mock-ui">
+        <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div class="mock-body">
+          <div class="mock-line accent"></div>
+          <div class="mock-line w80"></div>
+          <div class="mock-line w60"></div>
+          <p style="color:#64748b;font-size:14px;margin-top:24px">Create report → Date: Last 30 days → Breakdown: Day</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="scene" data-scene="2">
+      <p class="badge">Step 2 — Choose metrics</p>
+      <h2>Select metrics that match your campaign objective</h2>
+      <div class="metrics" style="max-width:1100px;justify-content:center">
+        <span class="chip dim">Amount spent</span>
+        <span class="chip dim">Impressions</span>
+        <span class="chip dim">Reach</span>
+        <span class="chip">CPC · CTR</span>
+        <span class="chip">Link clicks</span>
+        <span class="chip">Meta / Website leads</span>
+        <span class="chip">Cost per lead</span>
+        <span class="chip">Landing page views</span>
+        <span class="chip">Purchases · ROAS</span>
+      </div>
+      <p class="sub">Save your layout in Ads Manager, then export CSV.</p>
+    </div>
+
+    <div class="scene" data-scene="3">
+      <p class="badge">Step 3 — Export</p>
+      <h2>Download your <span class="meta">day-level CSV</span></h2>
+      <div class="card-row">
+        <div class="card"><strong>Daily rows</strong><span>One row per day per campaign — what the engine expects.</span></div>
+        <div class="card"><strong>Saved columns</strong><span>Same metrics next month — no rework.</span></div>
+        <div class="card"><strong>Export CSV</strong><span>Ready to upload.</span></div>
+      </div>
+    </div>
+
+    <div class="scene" data-scene="4">
+      <p class="badge">Step 4 — NextReport</p>
+      <h2>Upload at <span class="nr">nextreport.in</span></h2>
+      <div class="flow">
+        <span class="flow-step">Clients</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">Generate report</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">Analyze CSV</span>
+      </div>
+      <p class="sub">Pick report type and period, then analyze campaign data.</p>
+    </div>
+
+    <div class="scene" data-scene="5">
+      <p class="badge">Step 5 — Four-step wizard</p>
+      <h2>Confirm campaigns, objectives &amp; metrics</h2>
+      <div class="flow">
+        <span class="flow-step">Import</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">Campaigns</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">Metrics</span>
+        <span class="arrow">→</span>
+        <span class="flow-step">Generate</span>
+      </div>
+      <p class="sub">Preview numbers against your CSV, then generate the deck.</p>
+    </div>
+
+    <div class="scene" data-scene="6">
+      <p class="badge">Step 6 — Deliver</p>
+      <h1>Download, share, or send to Google Drive</h1>
+      <div class="card-row">
+        <div class="card"><strong>PowerPoint</strong><span>Branded PPTX for the client.</span></div>
+        <div class="card"><strong>Live link</strong><span>Share a browser view instantly.</span></div>
+        <div class="card"><strong>Slides</strong><span>Optional Google Slides via Drive.</span></div>
+      </div>
+      <p class="sub" style="margin-top:40px;font-size:26px;color:#e2e8f0">nextreport.in — Meta CSV reporting built for agencies</p>
+    </div>
+  </div>
+  <script>
+    const SCENE_MS = 9500;
+    const scenes = [...document.querySelectorAll(".scene")];
+    const progress = document.getElementById("progress");
+    let i = 0;
+    function show(n) {
+      scenes.forEach((s, j) => s.classList.toggle("active", j === n));
+      progress.style.width = `${((n + 1) / scenes.length) * 100}%`;
+    }
+    show(0);
+    setInterval(() => {
+      i = (i + 1) % scenes.length;
+      show(i);
+    }, SCENE_MS);
+  </script>
+</body>
+</html>

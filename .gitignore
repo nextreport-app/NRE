@@ -50,3 +50,7 @@ prisma/*.db
 
 /src/generated/prisma
 .agents/
+
+# workflow video render scratch (Playwright + ffmpeg)
+.tmp-workflow-video/
+public/videos/meta-csv-workflow-demo-silent.mp4
