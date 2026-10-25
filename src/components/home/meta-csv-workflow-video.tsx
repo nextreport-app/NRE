@@ -19,7 +19,7 @@ export function MetaCsvWorkflowVideo({ id }: { id?: string }) {
         </video>
       </div>
       <p className="text-center text-xs text-ink-muted">
-        Refined film with Maya and Chip. Press play, then unmute for the soundtrack.
+        30-second walkthrough, scored to the steps. Press play, then unmute.
       </p>
     </div>
   );

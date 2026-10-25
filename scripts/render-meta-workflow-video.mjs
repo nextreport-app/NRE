@@ -88,7 +88,7 @@ let enc = spawnSync(
 );
 if (enc.status !== 0) process.exit(enc.status ?? 1);
 
-const fadeOut = Math.max(0, durationSec - 3.5);
+const fadeOut = Math.max(0, durationSec - 1.5);
 console.log("Muxing music…");
 enc = spawnSync(
   "ffmpeg",
@@ -99,7 +99,7 @@ enc = spawnSync(
     "-i",
     musicPath,
     "-filter_complex",
-    `[1:a]volume=0.55,afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOut}:d=3.2[a]`,
+    `[1:a]volume=1.0,afade=t=in:st=0:d=0.2,afade=t=out:st=${fadeOut}:d=1.4[a]`,
     "-map",
     "0:v:0",
     "-map",
@@ -119,7 +119,7 @@ if (enc.status !== 0) process.exit(enc.status ?? 1);
 
 spawnSync(
   "ffmpeg",
-  ["-y", "-i", finalMp4, "-ss", "1.2", "-vframes", "1", "-q:v", "2", poster],
+  ["-y", "-ss", "3.4", "-i", finalMp4, "-frames:v", "1", "-q:v", "2", poster],
   { stdio: "inherit" },
 );
 
