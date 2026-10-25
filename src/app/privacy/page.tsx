@@ -25,7 +25,7 @@ export default async function PrivacyPage() {
       </Link>
 
       <h1 className="mt-6 text-3xl font-semibold text-white">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-ink-muted">Effective date: October 22, 2026</p>
+      <p className="mt-2 text-sm text-ink-muted">Effective date: October 25, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-ink-secondary">
         <p>
@@ -107,11 +107,33 @@ export default async function PrivacyPage() {
               folder you designate (by pasting a folder link). We do not browse, list, or read
               other files in your Drive except the files this app creates for that upload.
             </li>
+            <li>
+              <span className="text-white">Connect Google Ads</span> — with your consent we
+              request the Google Ads API{" "}
+              <span className="text-white">https://www.googleapis.com/auth/adwords</span> scope
+              (read-only reporting access), plus <span className="text-white">openid</span> and{" "}
+              <span className="text-white">email</span> to identify the connected Google account.
+              We use this solely to list Google Ads customer accounts you can access, fetch
+              read-only campaign performance metrics you request for report generation, and
+              verify that API access works. We do not create, edit, or manage ads, budgets, or
+              campaigns on your behalf.
+            </li>
+            <li>
+              <span className="text-white">Connect Google Analytics (GA4)</span> — with your
+              consent we request the{" "}
+              <span className="text-white">https://www.googleapis.com/auth/analytics.readonly</span>{" "}
+              scope, plus <span className="text-white">openid</span> and{" "}
+              <span className="text-white">email</span>. This is a separate OAuth grant from
+              Google Ads and Google Drive. We use it only to list GA4 properties you can access,
+              let you link one property per client workspace, and run read-only Analytics reports
+              (for example sessions, channels, and conversions) for Website Traffic reports you
+              generate. We do not modify your Analytics configuration.
+            </li>
           </ul>
           <p className="mt-2">
-            OAuth access and refresh tokens for Google are stored in our database and are used
-            only to perform the actions above on your behalf until you disconnect Google or
-            revoke access in your{" "}
+            OAuth access and refresh tokens for Google Ads and GA4 are stored in our database and
+            are used only to perform the actions above on your behalf until you disconnect in
+            Account settings or revoke access in your{" "}
             <a
               href="https://myaccount.google.com/permissions"
               className="text-accent hover:underline"
@@ -190,7 +212,8 @@ export default async function PrivacyPage() {
             <li>
               <span className="text-white">Least privilege</span> — we request the minimum Google
               OAuth scopes needed (profile/email for sign-in; drive.file for optional Drive
-              uploads only).
+              uploads; adwords for read-only Google Ads reporting; analytics.readonly for read-only
+              GA4 website reporting).
             </li>
             <li>
               <span className="text-white">Monitoring and updates</span> — we maintain the
