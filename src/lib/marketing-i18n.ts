@@ -33,19 +33,19 @@ export type MarketingCopy = {
 };
 
 const EN: MarketingCopy = {
-  brandTagline: "Client reporting for agencies — Meta, Google Ads, TikTok Ads, and GA4.",
+  brandTagline: "Client reporting for agencies — Meta Ads today; Google Ads, TikTok Ads, and GA4 launching soon.",
   navSignIn: "Log in",
   navContact: "Contact us",
   navSignOut: "Sign out",
   navStartTrial: "Sign up",
   navDashboard: "Dashboard",
-  heroBadge: "Meta, Google Ads, TikTok & GA4 reporting",
+  heroBadge: "Meta Ads reporting for agencies",
   heroHeadline: "Branded client reporting for agencies in minutes.",
   heroHeadlineBefore: "Branded ",
   heroHeadlineAccent: "client reporting",
   heroHeadlineAfter: " for agencies in minutes.",
   heroSubtext:
-    "Turn CSV exports or API sync into accurate, client-branded performance reports for Meta, Google Ads, TikTok, and GA4 — without manually rebuilding slides.",
+    "Turn Meta Ads CSV exports into accurate, client-branded weekly performance reports — without manually rebuilding slides. Google, TikTok, GA4, and Meta API sync are launching soon.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
@@ -66,7 +66,7 @@ const EN: MarketingCopy = {
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = {
   es: {
-    brandTagline: "Reporting de clientes con tu marca — Meta, Google Ads, TikTok y GA4.",
+    brandTagline: "Reporting de clientes con tu marca — Meta activo; Google, TikTok y GA4 en camino.",
     navSignIn: "Iniciar sesión",
     navContact: "Contacto",
     navSignOut: "Cerrar sesión",

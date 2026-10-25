@@ -27,7 +27,7 @@ const FEATURES = [
   { icon: "🎯", title: "Smart objective detection", description: "Automatically identifies leads, purchases, traffic, reach and more." },
   { icon: "🤖", title: "AI-written insights", description: "Campaign summaries and key insights written by AI for every slide." },
   { icon: "☁️", title: "Google Drive sync", description: "Reports save directly to your Drive folder with a shareable link." },
-  { icon: "📱", title: "Multi-platform reporting", description: "Meta Ads, Google Ads, TikTok Ads, and GA4 website analytics." },
+  { icon: "📱", title: "Multi-platform reporting", description: "Meta Ads live today — Google Ads, TikTok, and GA4 launching soon." },
   { icon: "⚡", title: "Under 2 minutes", description: "From CSV upload to downloaded report in minutes not hours." },
 ];
 

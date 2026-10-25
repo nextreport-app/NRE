@@ -92,13 +92,16 @@ export function coerceLaunchPlatform(platform: string): LaunchEnabledPlatform {
 }
 
 /** Shared marketing copy — keep in sync with docs/META_LAUNCH_SCOPE.md */
-export const META_LAUNCH_HERO_BADGE = "Meta, Google Ads, TikTok & GA4 reporting for agencies";
+export const META_LAUNCH_HERO_BADGE = "Meta Ads reporting for agencies";
 
 export const META_LAUNCH_HERO_SUBHEAD =
-  "Upload a CSV or sync from API — Meta, Google Ads, TikTok, and GA4 website traffic. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
+  "Upload a day-wise Meta CSV from Ads Manager. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes. Google Ads, TikTok, GA4, and Meta API sync are launching soon.";
 
 export const META_LAUNCH_FOOTER_BLURB =
-  "Automated multi-platform reporting for digital agencies — ad platforms and GA4 website decks in one workflow.";
+  "Automated Meta Ads reporting for digital agencies — client-ready decks in under two minutes. More platforms launching soon.";
+
+/** Public site — do not call these “live” until launch scope expands. */
+export const LAUNCHING_SOON_PLATFORMS_LABEL = "Google Ads, TikTok Ads, GA4, and Meta API sync";
 
 export const DEFERRED_PLATFORMS_SHORT = "";
 

@@ -81,21 +81,19 @@ const EN: DashboardCopy = {
   clientsSupportOr: "or",
   emptyAddFirstClient: "Add your first client",
   emptyBody:
-    "One workspace per brand — set currency, timezone, and logo once. Then open New Report — CSV upload or API sync for Meta, Google Ads, or TikTok, plus GA4 website reports.",
+    "One workspace per brand — set currency, timezone, and logo once. Then open New Report and upload your Meta CSV (Google, TikTok, GA4, and API sync launching soon).",
   emptyAddClientCta: "+ Add client",
   helpCsvGuide: "CSV Export Guide",
   helpHowItWorks: "How it works",
   gettingStartedTitle: "Start here",
   gettingStartedLead:
-    "Add a client, connect platforms in Account (optional), then generate a branded deck from CSV or API sync.",
+    "Meta Ads CSV reporting is live: add a client, upload a day-wise CSV from Ads Manager, and generate a branded deck.",
   gettingStartedStep1Title: "Add a client",
   gettingStartedStep1Body: "Name, currency, timezone, and logo — one workspace per brand.",
-  gettingStartedStep2Title: "Connect platforms or export CSV",
-  gettingStartedStep2Body:
-    "Connect Meta, Google Ads, TikTok, or GA4 in Account for API sync — or export a day-wise CSV from each ad platform.",
+  gettingStartedStep2Title: "Export your Meta CSV",
+  gettingStartedStep2Body: "Day-wise breakdown from Meta Ads Reporting (not the Campaigns screen export).",
   gettingStartedStep3Title: "Open the wizard & generate",
-  gettingStartedStep3Body:
-    "From the client page, choose New Report → pick platform and report type → CSV or Sync from API → Generate.",
+  gettingStartedStep3Body: "From the client page, choose New Report → pick a report type → upload CSV → Generate.",
   gettingStartedAlsoTitle: "Helpful links",
   gettingStartedAccountLink: "Account settings (agency branding)",
   gettingStartedHowItWorksLink: "How it works (full walkthrough)",
@@ -103,7 +101,7 @@ const EN: DashboardCopy = {
   onboardingWelcome: "Welcome",
   onboardingTitle: "Set up your first client report",
   onboardingLead:
-    "Add a client workspace, import data (CSV or API sync), and generate a branded deck — usually under 2 minutes.",
+    "Add a client workspace, upload a Meta day-wise CSV, and generate a branded deck — usually under 2 minutes after upload.",
   onboardingSkip: "Skip guide",
   onboardingSkipping: "Skipping…",
   onboardingDismissError: "Could not dismiss onboarding.",
@@ -115,10 +113,10 @@ const EN: DashboardCopy = {
     "Set the client name, currency, and logo — every report uses that branding automatically.",
   stepConnectTitle: "Connect ad accounts (optional)",
   stepConnectDesc:
-    "Optional — CSV works for your first deck. Connect Meta, Google Ads, TikTok, or GA4 in Account for API sync.",
+    "Optional — CSV is enough for your first deck. Meta API sync and other platforms are launching soon.",
   stepGenerateTitle: "Generate your first report",
   stepGenerateDesc:
-    "Open New Report → pick platform and Weekly (recommended) → CSV upload or Sync from API. Use the CSV Export Guide for Meta if unsure which export to pull.",
+    "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
 };
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = {

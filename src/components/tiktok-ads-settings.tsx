@@ -91,8 +91,8 @@ export function TikTokAdsSettings({
       <div id="tiktok-ads" className="scroll-mt-24 rounded-lg border border-dash-border bg-dash-card p-5">
         <h3 className="text-[15px] font-semibold text-dash-ink">TikTok Ads</h3>
         <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Reports use a CSV export from TikTok Ads Manager — upload it in the report wizard. Automatic API import is
-          turned off.
+          TikTok Ads reporting is launching soon. When it opens, you will upload a CSV or connect read-only API access
+          in the report wizard.
         </p>
       </div>
     );

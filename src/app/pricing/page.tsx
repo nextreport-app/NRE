@@ -13,7 +13,7 @@ import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for multi-platform agency reporting. Agency from ₹799/mo ($9), Professional unlimited clients from ₹1,299/mo ($15). 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional unlimited clients from ₹1,299/mo ($15). 7-day free trial.",
   path: "/pricing",
 });
 
@@ -41,7 +41,7 @@ export default async function PricingPage() {
         <div className="text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            {PLATFORM_LIST_SHORT} — CSV or API sync; share PowerPoint (.pptx), live links, or Google Slides.
+            {PLATFORM_LIST_SHORT} — share PowerPoint (.pptx), live links, or Google Slides.
           </p>
         </div>
 

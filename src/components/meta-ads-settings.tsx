@@ -86,8 +86,8 @@ export function MetaAdsSettings({
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h3 className="text-[15px] font-semibold text-dash-ink">Meta Ads</h3>
         <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Reports use a CSV export from Meta Ads Manager — upload it in the report wizard. Automatic API import is
-          turned off.
+          Reports use a CSV export from Meta Ads Manager — upload it in the report wizard. Marketing API sync is
+          launching soon (CSV is the supported path today).
         </p>
       </div>
     );

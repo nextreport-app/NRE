@@ -6,14 +6,8 @@ describe("ad platform API sync visibility", () => {
     vi.resetModules();
   });
 
-  it("shows client platform connections by default", async () => {
+  it("hides client platform connections by default", async () => {
     delete process.env.AD_PLATFORM_API_SYNC_ENABLED;
-    const { isClientPlatformConnectionsSectionVisible } = await import("../ad-platform-api-sync");
-    expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
-  });
-
-  it("hides client platform connections when explicitly disabled", async () => {
-    process.env.AD_PLATFORM_API_SYNC_ENABLED = "false";
     const { isClientPlatformConnectionsSectionVisible } = await import("../ad-platform-api-sync");
     expect(isClientPlatformConnectionsSectionVisible()).toBe(false);
   });

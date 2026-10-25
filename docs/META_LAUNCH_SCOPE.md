@@ -1,23 +1,25 @@
 # Product launch scope
 
-**Phase:** `multi-platform`
+**Public messaging:** Only **Meta Ads CSV reporting** is **live**. **Meta Marketing API sync**, **Google Ads**, **TikTok Ads**, and **GA4** are **launching soon** (testing/finalization in progress).
 
-## Live in product UI
+**Engineering:** Platform pickers and account sections may remain visible when `LAUNCH_ENABLED_PLATFORMS` includes deferred platforms and/or `AD_PLATFORM_API_SYNC_ENABLED=true` for internal demos — that does not change customer-facing “live” claims.
+
+## Live in production (customer promise)
 
 | Area | Included |
 |------|----------|
-| **Platforms** | Meta Ads, Google Ads, TikTok Ads, GA4 website reporting |
-| **Ingestion** | Manual CSV upload + read-only API sync (Meta / Google / TikTok) where connected |
-| **Report types** | Weekly, Monthly, Yesterday (Daily), Comparison, Multi-Month Historical, Day-by-Day Table, Quarterly, YTD, Creative (ad-level) |
+| **Platform** | Meta Ads — CSV upload from Ads Manager |
+| **Report types** | Weekly, Monthly, Yesterday, Comparison, Historical, Day breakdown, Quarter, YTD, Creative (Meta CSV where supported) |
 | **Output** | Branded PPTX, share link, Google Slides, Google Drive, AI summaries |
 
-## Engineering invariants
+## Launching soon (not “live” in marketing)
 
-1. **One pipeline:** API sync synthesizes CSV rows → same parsers → `buildReportData` as manual upload where applicable.
-2. **Golden fixtures:** CI parity tests on anonymized accounts — see `src/lib/nre/__tests__/meta-golden-parity.test.ts` and related suites.
-3. **API sync kill switch:** Set `AD_PLATFORM_API_SYNC_ENABLED=false` on Vercel to hide Connect CTAs and wizard “Sync from API” (CSV-only mode).
+- Meta Marketing API sync (`AD_PLATFORM_API_SYNC_ENABLED` — off by default)
+- Google Ads (CSV + API)
+- TikTok Ads (CSV + API)
+- GA4 website reporting wizard
 
 ## Code switches
 
-- `src/lib/meta-launch-scope.ts` — `LAUNCH_ENABLED_PLATFORMS`, `LAUNCH_ENABLED_REPORT_TYPES`
-- `src/lib/ad-platform-api-sync.ts` — API import default on unless env `false`
+- `src/lib/meta-launch-scope.ts` — platform/report visibility + shared hero copy
+- `src/lib/ad-platform-api-sync.ts` — API import + Connect UI (default off)

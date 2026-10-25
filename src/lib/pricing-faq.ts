@@ -2,7 +2,7 @@
 export const PRICING_FAQS = [
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads, Google Ads, TikTok Ads, and GA4 website reporting — CSV upload or read-only API sync from Account settings. Report types include weekly, monthly, daily, comparison, historical, day-breakdown, quarterly, YTD, and creative (ad-level). All platforms are included in your plan with no extra per-platform fee.",
+    a: "Meta Ads CSV reporting is live — upload a day-wise export from Meta Ads Reporting in the wizard (weekly, monthly, daily, comparison, historical, day-breakdown, quarterly, YTD, and creative report types where supported). Google Ads, TikTok Ads, GA4 website reporting, and Meta Marketing API sync are launching soon and included in your plan as each ships — no extra per-platform fee.",
   },
   {
     q: "Is there really no credit card required for the free trial?",
@@ -10,7 +10,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "What's the difference between Agency and Professional?",
-    a: "Both plans include unlimited report generation, all ad platforms and GA4, white-label options, and Slack/Zapier webhooks. Agency supports up to 10 client workspaces; Professional is unlimited clients for larger rosters. Priority email support is on Professional.",
+    a: "Both plans include unlimited report generation, Meta CSV reporting today, white-label options, Slack/Zapier webhooks, and every platform as it launches. Agency supports up to 10 client workspaces; Professional is unlimited clients for larger rosters. Priority email support is on Professional.",
   },
   {
     q: "Do you charge my card automatically each month?",
@@ -26,34 +26,18 @@ export const PRICING_FAQS = [
   },
   {
     q: "Can I connect ad platforms directly instead of uploading a CSV?",
-    a: "Yes. Connect Meta, Google Ads, or TikTok in Account settings and use Sync from API in the wizard, or upload a CSV export from each platform. CSV remains the best parity check against the native UI; API sync is read-only.",
+    a: "Meta Marketing API sync is launching soon. Today the supported path is a day-wise CSV from Meta Ads Reporting (best parity with Ads Manager). Google Ads, TikTok, and GA4 API connect flows are also launching soon.",
   },
   {
-    q: "What file formats can I upload?",
-    a: "CSV, Excel (.xlsx, .xls), TSV, and TXT. Export from Meta Ads Reporting with Day breakdown — no conversion needed.",
+    q: "Can I white-label reports for my clients?",
+    a: "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
   },
   {
-    q: "How many reports can I generate per month?",
-    a: "Unlimited on both plans. No per-report charges.",
+    q: "What currencies do you support?",
+    a: "INR and USD pricing. Razorpay checkout supports UPI, cards, and net banking in India; international cards for USD.",
   },
   {
-    q: "Do you offer annual billing?",
-    a: "Yes. Choose Annual on the pricing page and save 20% versus paying monthly (one payment for 12 months).",
+    q: "Is my data secure?",
+    a: "Reports and uploads are stored on encrypted infrastructure. We do not sell client data. See our Privacy Policy for retention and deletion.",
   },
-  {
-    q: "Can I connect Slack or Zapier?",
-    a: "Yes. In Account settings, add a Slack incoming webhook or automation webhook (Zapier, Make, etc.). When a report finishes generating, NextReport can post a summary and share link.",
-  },
-  {
-    q: "Is my client data secure?",
-    a: "CSV data is processed to generate your report over HTTPS. Raw upload files are not kept indefinitely after generation completes. See our Privacy Policy for retention details.",
-  },
-  {
-    q: "Can I hide NextReport branding on client reports?",
-    a: "Yes — on every plan, including the trial. In Account settings, show NextReport (default), replace with your agency name on share links and emails, or hide third-party branding. Cover slides use your agency name when set.",
-  },
-  {
-    q: "Do you offer an Enterprise plan?",
-    a: "We keep pricing simple with Agency and Professional plus a 7-day trial. For custom billing, onboarding, or rollout across offices, email hello@nextreport.in.",
-  },
-] as const;
+];
