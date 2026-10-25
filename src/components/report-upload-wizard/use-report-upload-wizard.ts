@@ -34,6 +34,7 @@ import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation"
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
 import { wizardReportTypePickerLabel } from "@/lib/nre/wizard-report-type-copy";
+import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 import {
   coerceLaunchPlatform,
   coerceLaunchReportType,

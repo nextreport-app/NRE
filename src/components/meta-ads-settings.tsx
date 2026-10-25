@@ -81,20 +81,14 @@ export function MetaAdsSettings({
     }
   }
 
-  if (!isAdPlatformApiSyncEnabled()) {
-    return (
-      <div className="rounded-lg border border-dash-border bg-dash-card p-5">
-        <h3 className="text-[15px] font-semibold text-dash-ink">Meta Ads</h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Reports use a CSV export from Meta Ads Manager — upload it in the report wizard. Marketing API sync is
-          launching soon (CSV is the supported path today).
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
+      {!isAdPlatformApiSyncEnabled() ? (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] leading-relaxed text-amber-100/90">
+          <span className="font-semibold text-amber-300">Launching soon:</span> Marketing API sync in the wizard.
+          Meta CSV reporting is live today — connect below for preview and OAuth verification.
+        </p>
+      ) : null}
       {!metaConfigured && (
         <p className="text-[13px] text-amber-300">
           Meta App credentials are not configured on this server yet. Add META_APP_ID and META_APP_SECRET

@@ -6,15 +6,24 @@ describe("ad platform API sync visibility", () => {
     vi.resetModules();
   });
 
-  it("hides client platform connections by default", async () => {
+  it("shows client platform connections in UI regardless of API sync env", async () => {
     delete process.env.AD_PLATFORM_API_SYNC_ENABLED;
     const { isClientPlatformConnectionsSectionVisible } = await import("../ad-platform-api-sync");
-    expect(isClientPlatformConnectionsSectionVisible()).toBe(false);
+    expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });
 
-  it("shows client platform connections when env flag is true", async () => {
+  it("does not run wizard sync until env flag is true", async () => {
+    delete process.env.AD_PLATFORM_API_SYNC_ENABLED;
+    const { isAdPlatformApiSyncEnabled } = await import("../ad-platform-api-sync");
+    expect(isAdPlatformApiSyncEnabled()).toBe(false);
+  });
+
+  it("enables functional API sync when env flag is true", async () => {
     process.env.AD_PLATFORM_API_SYNC_ENABLED = "true";
-    const { isClientPlatformConnectionsSectionVisible } = await import("../ad-platform-api-sync");
+    const { isAdPlatformApiSyncEnabled, isClientPlatformConnectionsSectionVisible } = await import(
+      "../ad-platform-api-sync"
+    );
+    expect(isAdPlatformApiSyncEnabled()).toBe(true);
     expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });
 });

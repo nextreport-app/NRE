@@ -173,8 +173,16 @@ export function WizardImportStep() {
 
       {selectedPlatformCard && (
         <div className="space-y-3">
-          {isAdPlatformApiSyncEnabled() ? (
-            <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
+          <WizardDataSourceToggle
+            value={dataSourceMode}
+            onChange={handleDataSourceModeChange}
+            apiLaunchingSoon={!isAdPlatformApiSyncEnabled()}
+          />
+          {!isAdPlatformApiSyncEnabled() && dataSourceMode === "api" ? (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100/90">
+              <span className="font-semibold text-amber-300">Launching soon.</span> Sync from API is not enabled on
+              this deployment yet — use Manual CSV upload for Meta reports today.
+            </p>
           ) : null}
 
           {isAdPlatformApiSyncEnabled() && importPipelineLabel ? (

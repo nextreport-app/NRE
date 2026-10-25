@@ -86,18 +86,6 @@ export function TikTokAdsSettings({
 
   const errorMessage = connectError ? CONNECT_ERROR_MESSAGES[connectError] ?? connectError : null;
 
-  if (!isAdPlatformApiSyncEnabled()) {
-    return (
-      <div id="tiktok-ads" className="scroll-mt-24 rounded-lg border border-dash-border bg-dash-card p-5">
-        <h3 className="text-[15px] font-semibold text-dash-ink">TikTok Ads</h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-          TikTok Ads reporting is launching soon. When it opens, you will upload a CSV or connect read-only API access
-          in the report wizard.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div id="tiktok-ads" className="scroll-mt-24">
       <PlatformBetaNotice platform="TIKTOK" />

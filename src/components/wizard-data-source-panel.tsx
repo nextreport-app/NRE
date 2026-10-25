@@ -456,9 +456,12 @@ export function WizardDataSourcePanel({
 export function WizardDataSourceToggle({
   value,
   onChange,
+  apiLaunchingSoon = false,
 }: {
   value: WizardDataSource;
   onChange: (value: WizardDataSource) => void;
+  /** When true, API option stays visible but disabled — Meta CSV is live; API sync is not launched yet. */
+  apiLaunchingSoon?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -485,18 +488,34 @@ export function WizardDataSourceToggle({
           </button>
           <button
             type="button"
-            onClick={() => onChange("api")}
+            disabled={apiLaunchingSoon}
+            onClick={() => {
+              if (!apiLaunchingSoon) onChange("api");
+            }}
             className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
-              value === "api"
-                ? "border-dash-accent bg-dash-accent text-dash-ink"
-                : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
+              apiLaunchingSoon
+                ? "cursor-not-allowed border-dash-border bg-dash-bg/60 opacity-90"
+                : value === "api"
+                  ? "border-dash-accent bg-dash-accent text-dash-ink"
+                  : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
             }`}
           >
             <DataSourceBadge label="API" />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold">Connect your data via API</span>
-              <span className={`mt-0.5 block text-[11px] leading-snug ${value === "api" ? "text-dash-ink/80" : ""}`}>
-                Sync last 30 days from Meta, Google, or TikTok
+              <span className="block text-[13px] font-semibold">
+                Connect your data via API
+                {apiLaunchingSoon ? (
+                  <span className="ml-1.5 inline-flex rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+                    Launching soon
+                  </span>
+                ) : null}
+              </span>
+              <span
+                className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiLaunchingSoon ? "text-dash-ink/80" : ""}`}
+              >
+                {apiLaunchingSoon
+                  ? "Meta, Google, and TikTok API sync — preview in Account settings"
+                  : "Sync last 30 days from Meta, Google, or TikTok"}
               </span>
             </span>
           </button>
