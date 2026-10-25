@@ -2,655 +2,425 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1920, height=1080" />
   <title>NextReport — Meta CSV workflow</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --orange: #f97316;
-      --orange-soft: #fb923c;
-      --navy: #0a1628;
-      --meta: #1877f2;
-      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-      --scene-ms: 10000;
+      --amber: #f5b45a;
+      --amber-deep: #ed8936;
+      --ink: #f4f7fb;
+      --muted: #9aa8bd;
+      --line: rgba(255,255,255,.12);
+      --ease: cubic-bezier(.22,1,.36,1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 1920px;
-      height: 1080px;
-      overflow: hidden;
-      font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
-      background: var(--navy);
-      color: #f8fafc;
-    }
-    #particles {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
+      width: 1920px; height: 1080px; overflow: hidden;
+      background: #070d18; color: var(--ink);
+      font-family: Inter, system-ui, sans-serif;
     }
     .stage {
-      position: relative;
-      width: 1920px;
-      height: 1080px;
-      z-index: 1;
+      position: relative; width: 1920px; height: 1080px; overflow: hidden;
       background:
-        radial-gradient(ellipse 90% 70% at 50% -10%, rgba(30, 58, 95, 0.95) 0%, transparent 55%),
-        radial-gradient(circle at 85% 90%, rgba(249, 115, 22, 0.12) 0%, transparent 40%),
-        linear-gradient(180deg, #0d1f38 0%, #0a1628 45%, #060d18 100%);
+        radial-gradient(900px 520px at 78% 18%, rgba(76,141,255,.22), transparent 60%),
+        radial-gradient(700px 480px at 12% 88%, rgba(245,180,90,.16), transparent 55%),
+        linear-gradient(180deg, #101a2e 0%, #070d18 42%, #050910 100%);
     }
-    .grid-bg {
-      position: absolute;
-      inset: 0;
+    .grid {
+      position: absolute; inset: 0; pointer-events: none;
       background-image:
-        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
-      background-size: 64px 64px;
-      mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 75%);
-      opacity: 0.55;
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 30%, transparent 78%);
     }
-    .glow-orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.35;
-      animation: drift 12s ease-in-out infinite alternate;
+    canvas#dust { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+    .vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.45) 100%);
     }
-    .glow-orb.a { width: 420px; height: 420px; background: #2563eb; top: 8%; left: 12%; }
-    .glow-orb.b { width: 360px; height: 360px; background: #f97316; bottom: 10%; right: 8%; animation-delay: -4s; }
-
+    .topbar, .footer {
+      position: absolute; left: 88px; right: 88px; z-index: 5;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar { top: 42px; }
+    .footer { bottom: 36px; }
+    .brand { display: flex; align-items: center; gap: 14px; font-family: Outfit, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -.02em; }
+    .mark {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(145deg, #f7c57a, #ed8936);
+      color: #1a1208; display: grid; place-items: center; font-weight: 800; font-size: 22px;
+      box-shadow: 0 10px 28px rgba(237,137,54,.35);
+    }
+    .step-label { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
     .scene {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      align-items: center;
-      gap: 48px;
-      padding: 72px 100px 96px;
-      opacity: 0;
-      visibility: hidden;
-      transform: scale(0.96) translateY(20px);
-      transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out), visibility 0s linear 0.9s;
+      position: absolute; inset: 0; z-index: 2;
+      display: grid; grid-template-columns: 820px 1fr;
+      align-items: center; gap: 36px;
+      padding: 140px 96px 110px 96px;
+      opacity: 0; pointer-events: none;
     }
-    .scene.active {
-      opacity: 1;
-      visibility: visible;
-      transform: scale(1) translateY(0);
-      transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out), visibility 0s;
+    .scene.on { opacity: 1; }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 10px;
+      color: var(--amber); font-weight: 700; letter-spacing: .16em;
+      text-transform: uppercase; font-size: 13px; margin-bottom: 18px;
     }
-    .scene.centered {
-      grid-template-columns: 1fr;
-      justify-items: center;
-      text-align: center;
+    .kicker i { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 6px rgba(245,180,90,.15); }
+    h1, h2 {
+      font-family: Outfit, sans-serif; font-weight: 700; letter-spacing: -.03em; line-height: 1.08;
     }
-    .copy { max-width: 720px; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--orange-soft);
-      margin-bottom: 18px;
-      padding: 8px 16px;
-      border-radius: 999px;
-      background: rgba(249, 115, 22, 0.12);
-      border: 1px solid rgba(249, 115, 22, 0.35);
+    h1 { font-size: 64px; }
+    h2 { font-size: 52px; }
+    .lead { margin-top: 22px; max-width: 640px; font-size: 22px; line-height: 1.5; color: var(--muted); }
+    .blue { color: #8eb6ff; }
+    .amber { color: var(--amber); }
+    .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; max-width: 680px; }
+    .pill {
+      font-size: 15px; font-weight: 600; color: #e8edf5;
+      padding: 10px 16px; border-radius: 999px;
+      background: rgba(255,255,255,.06); border: 1px solid var(--line);
     }
-    .badge .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--orange);
-      box-shadow: 0 0 12px rgba(249,115,22,.8);
-      animation: blink 1.2s ease-in-out infinite;
-    }
-    h1 {
-      font-size: 52px;
-      font-weight: 800;
-      line-height: 1.12;
-      letter-spacing: -0.02em;
-    }
-    h2 {
-      font-size: 44px;
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -0.02em;
-    }
-    .sub {
-      margin-top: 22px;
-      font-size: 20px;
-      line-height: 1.55;
-      color: #94a3b8;
-      font-family: Inter, sans-serif;
-      font-weight: 400;
-    }
-    .meta { color: #60a5fa; }
-    .nr { color: var(--orange-soft); }
-
-    .character-stage {
-      position: relative;
-      height: 520px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-    }
-    .char {
-      position: absolute;
-      bottom: 0;
-      transform-origin: bottom center;
-      opacity: 0;
-      transition: opacity 0.6s var(--ease-out), transform 0.8s var(--ease-out);
-    }
-    .scene.active .char { opacity: 1; }
-    .char-maya { left: 18%; width: 280px; }
-    .char-chip { right: 14%; width: 200px; }
-
-    .scene.active .char-maya { animation: mayaEnter 1s var(--ease-out) forwards; }
-    .scene.active .char-chip { animation: chipFloat 3s ease-in-out infinite; animation-delay: 0.4s; }
-
-    @keyframes mayaEnter {
-      from { transform: translateY(40px) scale(0.92); opacity: 0; }
-      to { transform: translateY(0) scale(1); opacity: 1; }
-    }
-    @keyframes chipFloat {
-      0%, 100% { transform: translateY(0) rotate(-2deg); }
-      50% { transform: translateY(-14px) rotate(2deg); }
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.35; }
-    }
-    @keyframes drift {
-      from { transform: translate(0, 0); }
-      to { transform: translate(30px, -20px); }
-    }
-
-    .scene.active .arm-wave { animation: waveArm 1.2s ease-in-out infinite; transform-origin: 80% 30%; }
-    @keyframes waveArm {
-      0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(-18deg); }
-    }
-    .scene.active .typing .key { animation: keyTap 0.4s ease-in-out infinite; }
-    .typing .key:nth-child(2) { animation-delay: 0.1s; }
-    .typing .key:nth-child(3) { animation-delay: 0.2s; }
-    @keyframes keyTap {
-      0%, 100% { transform: translateY(0); opacity: 0.5; }
-      50% { transform: translateY(3px); opacity: 1; }
-    }
-
-    .visual {
-      position: relative;
-      width: 100%;
-      max-width: 780px;
-      justify-self: end;
-    }
-    .mock-ui {
-      border-radius: 24px;
+    .pill.hot { color: #1a1208; background: linear-gradient(180deg, #f7c57a, #ed8936); border-color: transparent; }
+    .panel {
+      position: relative; height: 640px; border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
       border: 1px solid rgba(255,255,255,.14);
-      background: linear-gradient(165deg, rgba(17,24,39,.95), rgba(15,23,42,.88));
-      box-shadow: 0 40px 100px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+      box-shadow: 0 40px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
       overflow: hidden;
-      transform: perspective(1200px) rotateY(-6deg) rotateX(4deg);
-      animation: uiFloat 4s ease-in-out infinite;
     }
-    @keyframes uiFloat {
-      0%, 100% { transform: perspective(1200px) rotateY(-6deg) rotateX(4deg) translateY(0); }
-      50% { transform: perspective(1200px) rotateY(-4deg) rotateX(2deg) translateY(-8px); }
+    .panel-inner { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; }
+    .cast { position: relative; width: 100%; height: 100%; }
+    .maya, .chip { position: absolute; bottom: 36px; filter: drop-shadow(0 24px 24px rgba(0,0,0,.35)); }
+    .maya { left: 70px; width: 340px; }
+    .chip { right: 64px; width: 230px; }
+    .float-y { transform: translateY(calc(sin(var(--ph)) * 0px)); }
+    .ui-card {
+      position: absolute; left: 48px; right: 48px; top: 48px;
+      border-radius: 18px; background: #0e1728; border: 1px solid rgba(255,255,255,.1);
+      overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.35);
     }
-    .mock-bar {
-      height: 52px;
-      background: rgba(31,41,55,.9);
-      display: flex;
-      align-items: center;
-      padding: 0 22px;
-      gap: 10px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
+    .ui-bar { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #162033; }
+    .d { width: 10px; height: 10px; border-radius: 50%; }
+    .d.r{background:#ff5f57}.d.y{background:#febc2e}.d.g{background:#28c840}
+    .ui-body { padding: 22px 24px 26px; }
+    .bar { height: 12px; border-radius: 8px; background: rgba(255,255,255,.08); margin-bottom: 12px; }
+    .bar.a { width: 58%; background: linear-gradient(90deg, rgba(76,141,255,.7), rgba(76,141,255,.2)); height: 16px; }
+    .bar.b { width: 78%; } .bar.c { width: 46%; }
+    .caption { margin-top: 8px; color: #7f8da3; font-size: 14px; }
+    .watermark {
+      position: absolute; right: 28px; bottom: -18px;
+      font-family: Outfit, sans-serif; font-weight: 800; font-size: 180px;
+      color: rgba(255,255,255,.04); letter-spacing: -.06em; line-height: 1; pointer-events: none;
     }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot.r { background: #ef4444; }
-    .dot.y { background: #eab308; }
-    .dot.g { background: #22c55e; }
-    .mock-body { padding: 36px 40px 44px; }
-    .mock-line {
-      height: 14px;
-      border-radius: 8px;
-      background: linear-gradient(90deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
-      margin-bottom: 14px;
-      animation: shimmer 2s ease-in-out infinite;
+    .progress {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.08); z-index: 6;
     }
-    .mock-line.w70 { width: 70%; }
-    .mock-line.w50 { width: 50%; }
-    .mock-line.accent {
-      height: 18px;
-      width: 62%;
-      background: linear-gradient(90deg, rgba(24,119,242,.5), rgba(24,119,242,.15));
+    .progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--amber-deep), var(--amber)); }
+    .dots { display: flex; gap: 8px; }
+    .dots b { width: 22px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.18); display: block; }
+    .dots b.on { background: var(--amber); width: 36px; }
+    .file {
+      position: absolute; width: 150px; right: 80px; top: 150px;
     }
-    @keyframes shimmer {
-      0%, 100% { opacity: 0.55; }
-      50% { opacity: 1; }
+    .checks { margin-top: 26px; display: grid; gap: 12px; }
+    .check { display: flex; gap: 12px; align-items: center; color: #d5deea; font-size: 18px; }
+    .check em {
+      width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+      background: rgba(245,180,90,.16); color: var(--amber); font-style: normal; font-weight: 800;
     }
-
-    .metrics {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 28px;
-    }
-    .chip {
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px 18px;
-      border-radius: 999px;
-      background: rgba(249,115,22,.18);
-      border: 1px solid rgba(249,115,22,.45);
-      color: #fdba74;
-      animation: chipPop 0.5s var(--ease-out) backwards;
-    }
-    .chip.dim {
-      background: rgba(255,255,255,.06);
-      border-color: rgba(255,255,255,.12);
-      color: #94a3b8;
-    }
-    .scene.active .chip:nth-child(1) { animation-delay: 0.1s; }
-    .scene.active .chip:nth-child(2) { animation-delay: 0.15s; }
-    .scene.active .chip:nth-child(3) { animation-delay: 0.2s; }
-    .scene.active .chip:nth-child(4) { animation-delay: 0.25s; }
-    .scene.active .chip:nth-child(5) { animation-delay: 0.3s; }
-    .scene.active .chip:nth-child(6) { animation-delay: 0.35s; }
-    @keyframes chipPop {
-      from { transform: scale(0.6); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-
-    .flow {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 14px;
-      margin-top: 32px;
-    }
-    .flow-step {
-      font-size: 15px;
-      font-weight: 700;
-      padding: 14px 22px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--orange), #ea580c);
-      color: #0f172a;
-      box-shadow: 0 8px 24px rgba(249,115,22,.35);
-    }
-    .arrow { color: #64748b; font-size: 22px; font-weight: 700; }
-
-    .file-fly {
-      position: absolute;
-      right: 10%;
-      top: 30%;
-      width: 140px;
-      animation: fileFly 2.5s var(--ease-out) infinite;
-    }
-    @keyframes fileFly {
-      0% { transform: translate(120px, -80px) rotate(12deg) scale(0.8); opacity: 0; }
-      30% { opacity: 1; }
-      100% { transform: translate(-40px, 60px) rotate(-6deg) scale(1); opacity: 1; }
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      margin-top: 36px;
-      max-width: 1100px;
-    }
+    .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; width: 100%; }
     .card {
-      padding: 28px 24px;
-      border-radius: 20px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      backdrop-filter: blur(12px);
-      text-align: left;
-      animation: cardUp 0.7s var(--ease-out) backwards;
+      padding: 22px 20px; border-radius: 18px; text-align: left;
+      background: rgba(255,255,255,.05); border: 1px solid var(--line);
     }
-    .scene.active .card:nth-child(2) { animation-delay: 0.12s; }
-    .scene.active .card:nth-child(3) { animation-delay: 0.24s; }
-    @keyframes cardUp {
-      from { transform: translateY(24px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+    .card strong { display: block; font-family: Outfit, sans-serif; font-size: 20px; margin-bottom: 6px; }
+    .card span { color: var(--muted); font-size: 15px; line-height: 1.45; }
+    .scene.finale { grid-template-columns: 1fr; padding-top: 160px; }
+    .scene.finale .copy { max-width: 1500px; }
+    .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .confetti i {
+      position: absolute; top: -20px; width: 8px; height: 14px; border-radius: 2px; opacity: .9;
     }
-    .card strong { display: block; font-size: 18px; margin-bottom: 8px; }
-    .card span { font-size: 15px; color: #94a3b8; line-height: 1.45; font-family: Inter, sans-serif; }
-
-    .logo-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-    .logo-mark {
-      width: 64px; height: 64px;
-      border-radius: 18px;
-      background: linear-gradient(135deg, var(--orange), var(--orange-soft));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 32px;
-      color: #0f172a;
-      box-shadow: 0 12px 40px rgba(249,115,22,.45);
-    }
-
-    .progress-wrap {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 6px;
-      background: rgba(255,255,255,.08);
-    }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--orange), #fbbf24);
-      box-shadow: 0 0 20px rgba(249,115,22,.6);
-      transition: width 0.4s linear;
-    }
-    .step-dots {
-      position: absolute;
-      bottom: 28px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 10px;
-    }
-    .step-dots i {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.2);
-      transition: background 0.3s, transform 0.3s;
-    }
-    .step-dots i.on {
-      background: var(--orange);
-      transform: scale(1.25);
-      box-shadow: 0 0 12px rgba(249,115,22,.7);
-    }
-
-    .confetti {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .confetti span {
-      position: absolute;
-      width: 10px;
-      height: 14px;
-      border-radius: 2px;
-      top: -20px;
-      animation: confFall 3s linear infinite;
-    }
-    @keyframes confFall {
-      to { transform: translateY(1120px) rotate(720deg); }
-    }
-
-    .scene-hero .character-stage { grid-column: 1 / -1; height: 380px; }
-    .scene-hero .hero-copy { grid-column: 1 / -1; text-align: center; max-width: 1100px; margin: 0 auto; }
-    .scene-hero h1 { font-size: 58px; }
   </style>
 </head>
 <body>
-  <canvas id="particles" width="1920" height="1080"></canvas>
   <div class="stage">
-    <div class="grid-bg"></div>
-    <div class="glow-orb a"></div>
-    <div class="glow-orb b"></div>
+    <div class="grid"></div>
+    <canvas id="dust" width="1920" height="1080"></canvas>
+    <div class="vignette"></div>
+    <header class="topbar">
+      <div class="brand"><span class="mark">N</span> NextReport</div>
+      <div class="step-label" id="stepLabel">How it works</div>
+    </header>
 
-    <!-- Scene 0: Hero -->
-    <section class="scene scene-hero centered active" data-scene="0">
-      <div class="character-stage">
-        <div class="char char-maya" aria-hidden="true">
-          <svg viewBox="0 0 280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="140" cy="400" rx="90" ry="12" fill="rgba(0,0,0,.35)"/>
-            <path d="M95 380 L185 380 L175 220 L105 220 Z" fill="#1e293b"/>
-            <path d="M105 220 L175 220 L168 130 L112 130 Z" fill="#f97316"/>
-            <path class="arm-wave" d="M168 150 L220 120 L215 145 L175 165 Z" fill="#fdba74"/>
-            <path d="M112 150 L65 175 L70 195 L105 170 Z" fill="#fdba74"/>
-            <circle cx="140" cy="95" r="42" fill="#fdba74"/>
-            <path d="M98 75 Q140 45 182 75 L178 55 Q140 25 102 55 Z" fill="#1e293b"/>
-            <circle cx="125" cy="92" r="5" fill="#0f172a"/>
-            <circle cx="155" cy="92" r="5" fill="#0f172a"/>
-            <path d="M130 108 Q140 118 150 108" stroke="#0f172a" stroke-width="3" fill="none" stroke-linecap="round"/>
-            <rect x="118" y="175" width="44" height="8" rx="4" fill="#fff" opacity=".9"/>
-          </svg>
-        </div>
-        <div class="char char-chip" aria-hidden="true">
-          <svg viewBox="0 0 200 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="100" cy="165" rx="50" ry="8" fill="rgba(0,0,0,.25)"/>
-            <rect x="40" y="50" width="120" height="100" rx="28" fill="#334155" stroke="#64748b" stroke-width="2"/>
-            <rect x="55" y="70" width="90" height="55" rx="12" fill="#0f172a"/>
-            <circle cx="75" cy="95" r="10" fill="#38bdf8"><animate attributeName="opacity" values="1;0.3;1" dur="2.5s" repeatCount="indefinite"/></circle>
-            <circle cx="125" cy="95" r="10" fill="#38bdf8"><animate attributeName="opacity" values="1;0.3;1" dur="2.5s" begin="0.2s" repeatCount="indefinite"/></circle>
-            <path d="M85 115 Q100 125 115 115" stroke="#38bdf8" stroke-width="3" fill="none"/>
-            <line x1="100" y1="50" x2="100" y2="25" stroke="#94a3b8" stroke-width="4"/>
-            <circle cx="100" cy="20" r="12" fill="#f97316" opacity=".9"/>
-            <path d="M40 100 L15 85 L20 105 Z" fill="#475569"/>
-            <path d="M160 100 L185 85 L180 105 Z" fill="#475569"/>
-          </svg>
-        </div>
+    <section class="scene" data-title="How it works">
+      <div class="copy">
+        <div class="kicker"><i></i> Agency workflow</div>
+        <h1>Meta CSV in.<br>Client deck out.</h1>
+        <p class="lead">Maya runs the account. Chip checks the numbers. Together they turn a day-wise Ads Manager export into a branded report.</p>
       </div>
-      <div class="hero-copy">
-        <div class="logo-row">
-          <div class="logo-mark">N</div>
-          <span style="font-size:32px;font-weight:800">NextReport</span>
-        </div>
-        <p class="badge"><span class="dot"></span> Agency workflow</p>
-        <h1>From <span class="meta">Meta Ads Reporting</span> to a polished client deck</h1>
-        <p class="sub">Meet Maya (your account lead) and Chip (your reporting copilot). Export a day-wise CSV, upload once, and deliver branded PowerPoint in minutes.</p>
+      <div class="panel"><div class="watermark">01</div>
+        <div class="panel-inner"><div class="cast" id="cast-hero"></div></div>
       </div>
     </section>
 
-    <!-- Scene 1 -->
-    <section class="scene" data-scene="1">
+    <section class="scene" data-title="Step 1 · Ads Manager">
       <div class="copy">
-        <p class="badge"><span class="dot"></span> Step 1</p>
-        <h2>Open <span class="meta">Ads reporting</span> in Meta Ads Manager</h2>
-        <p class="sub">Create a report for live campaigns — date range, day breakdown, and the columns you will reuse every month.</p>
+        <div class="kicker"><i></i> Step 1</div>
+        <h2>Open Ads reporting<br>for live campaigns</h2>
+        <p class="lead">In Meta Ads Manager, create a report with a day breakdown. That daily grain is what NextReport reads.</p>
+        <div class="checks">
+          <div class="check"><em>1</em> Date range for the period you will report</div>
+          <div class="check"><em>2</em> Breakdown set to day</div>
+          <div class="check"><em>3</em> Campaign-level rows</div>
+        </div>
       </div>
-      <div class="visual">
-        <div class="mock-ui">
-          <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span style="margin-left:12px;color:#64748b;font-size:13px">Ads Manager · Reporting</span></div>
-          <div class="mock-body">
-            <div class="mock-line accent"></div>
-            <div class="mock-line w70"></div>
-            <div class="mock-line w50"></div>
-            <p style="color:#64748b;font-size:14px;margin-top:20px">Last 30 days · Breakdown: Day · Campaign level</p>
+      <div class="panel"><div class="watermark">02</div>
+        <div class="ui-card" style="top:70px">
+          <div class="ui-bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span style="margin-left:10px;color:#8b9bb3;font-size:13px">Ads Manager · Reporting</span></div>
+          <div class="ui-body">
+            <div class="bar a"></div><div class="bar b"></div><div class="bar c"></div>
+            <p class="caption">Last 30 days · Day · Campaign</p>
           </div>
         </div>
-        <div class="char char-maya" style="left:auto;right:-5%;width:220px;bottom:20px">
-          <svg viewBox="0 0 200 320" fill="none"><ellipse cx="100" cy="305" rx="60" ry="8" fill="rgba(0,0,0,.3)"/><path d="M70 290 L130 290 L125 180 L75 180 Z" fill="#f97316"/><circle cx="100" cy="155" r="32" fill="#fdba74"/><path class="arm-wave" d="M125 195 L170 160 L165 180 L130 200 Z" fill="#fdba74"/></svg>
-        </div>
+        <div class="panel-inner" style="align-items:flex-end"><div class="cast" id="cast-meta"></div></div>
       </div>
     </section>
 
-    <!-- Scene 2 -->
-    <section class="scene" data-scene="2">
+    <section class="scene" data-title="Step 2 · Metrics">
       <div class="copy">
-        <p class="badge"><span class="dot"></span> Step 2</p>
-        <h2>Pick metrics that match each objective</h2>
-        <p class="sub">Spend, reach, clicks, leads, LPV, purchases — Chip highlights what NextReport validates against your CSV.</p>
-        <div class="metrics">
-          <span class="chip dim">Amount spent</span>
-          <span class="chip dim">Impressions</span>
-          <span class="chip">Link clicks · CTR</span>
-          <span class="chip">Meta / Website leads</span>
-          <span class="chip">Cost per result</span>
-          <span class="chip">Landing page views</span>
+        <div class="kicker"><i></i> Step 2</div>
+        <h2>Choose metrics that<br>match the objective</h2>
+        <p class="lead">Save the column set. Next month you export the same layout — no rebuilding the report.</p>
+        <div class="pills">
+          <span class="pill">Amount spent</span>
+          <span class="pill">Impressions</span>
+          <span class="pill hot">Link clicks</span>
+          <span class="pill hot">Leads</span>
+          <span class="pill hot">Cost per result</span>
+          <span class="pill">Landing page views</span>
         </div>
       </div>
-      <div class="character-stage">
-        <div class="char char-chip" style="position:relative;width:260px">
-          <svg viewBox="0 0 260 220" fill="none">
-            <rect x="30" y="40" width="200" height="140" rx="32" fill="#334155"/>
-            <rect x="50" y="65" width="160" height="90" rx="16" fill="#0f172a"/>
-            <text x="130" y="120" text-anchor="middle" fill="#38bdf8" font-size="22" font-weight="700">Metrics OK</text>
-            <circle cx="70" cy="95" r="8" fill="#4ade80"/>
-            <circle cx="190" cy="95" r="8" fill="#4ade80"/>
-          </svg>
-        </div>
+      <div class="panel"><div class="watermark">03</div>
+        <div class="panel-inner"><div class="cast" id="cast-metrics"></div></div>
       </div>
     </section>
 
-    <!-- Scene 3 -->
-    <section class="scene" data-scene="3">
+    <section class="scene" data-title="Step 3 · Export">
       <div class="copy">
-        <p class="badge"><span class="dot"></span> Step 3</p>
-        <h2>Export your <span class="meta">day-level CSV</span></h2>
-        <p class="sub">One row per day per campaign — saved column layout means zero rework next month.</p>
-        <div class="cards" style="grid-template-columns:1fr;max-width:480px">
-          <div class="card"><strong>Daily CSV</strong><span>Exactly what the NextReport engine expects.</span></div>
-        </div>
+        <div class="kicker"><i></i> Step 3</div>
+        <h2>Download the<br><span class="blue">day-level CSV</span></h2>
+        <p class="lead">One row per day, per campaign. That file is the source of truth for spend, results, and cost per result.</p>
       </div>
-      <div class="visual">
-        <svg class="file-fly" viewBox="0 0 140 160" fill="none">
-          <path d="M20 10 H90 L120 40 V150 H20 Z" fill="#1e293b" stroke="#60a5fa" stroke-width="3"/>
-          <path d="M90 10 V40 H120" fill="#334155"/>
-          <text x="70" y="95" text-anchor="middle" fill="#60a5fa" font-size="22" font-weight="800">CSV</text>
+      <div class="panel"><div class="watermark">04</div>
+        <svg class="file" id="csvFile" viewBox="0 0 160 190" fill="none">
+          <path d="M18 12h78l46 46v120H18V12z" fill="#122033" stroke="#8eb6ff" stroke-width="3"/>
+          <path d="M96 12v46h46" fill="#1c2c46"/>
+          <text x="80" y="118" text-anchor="middle" fill="#8eb6ff" font-family="Outfit" font-size="28" font-weight="700">CSV</text>
         </svg>
-        <div class="char char-maya" style="width:200px;left:20%">
-          <svg viewBox="0 0 200 300" fill="none"><path d="M60 280 L140 280 L135 170 L65 170 Z" fill="#1e293b"/><path d="M65 170 L135 170 L130 120 L70 120 Z" fill="#f97316"/><circle cx="100" cy="95" r="28" fill="#fdba74"/></svg>
-        </div>
+        <div class="panel-inner"><div class="cast" id="cast-export"></div></div>
       </div>
     </section>
 
-    <!-- Scene 4 -->
-    <section class="scene" data-scene="4">
+    <section class="scene" data-title="Step 4 · Upload">
       <div class="copy">
-        <p class="badge"><span class="dot"></span> Step 4</p>
-        <h2>Upload at <span class="nr">nextreport.in</span></h2>
-        <p class="sub">Choose client, report type, and period — then analyze the CSV in one click.</p>
-        <div class="flow">
-          <span class="flow-step">Clients</span><span class="arrow">→</span>
-          <span class="flow-step">Generate</span><span class="arrow">→</span>
-          <span class="flow-step">Analyze</span>
+        <div class="kicker"><i></i> Step 4</div>
+        <h2>Upload on<br><span class="amber">nextreport.in</span></h2>
+        <p class="lead">Pick the client, the report type, and the period. Analyze the CSV once — the wizard takes it from there.</p>
+        <div class="pills">
+          <span class="pill hot">Clients</span>
+          <span class="pill">Generate report</span>
+          <span class="pill">Analyze CSV</span>
         </div>
       </div>
-      <div class="visual">
-        <div class="mock-ui typing">
-          <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
-          <div class="mock-body">
-            <div class="mock-line accent"></div>
-            <div class="key mock-line w70"></div>
-            <div class="key mock-line w50"></div>
-            <div class="key mock-line w70"></div>
+      <div class="panel"><div class="watermark">05</div>
+        <div class="ui-card" style="top:90px">
+          <div class="ui-bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span style="margin-left:10px;color:#8b9bb3;font-size:13px">nextreport.in · Generate</span></div>
+          <div class="ui-body">
+            <div class="bar a" style="background:linear-gradient(90deg,#f5b45a,#ed8936);width:70%"></div>
+            <div class="bar b"></div><div class="bar c"></div>
+            <p class="caption">Client · Period · Analyze</p>
           </div>
         </div>
+        <div class="panel-inner"><div class="cast" id="cast-upload"></div></div>
       </div>
     </section>
 
-    <!-- Scene 5 -->
-    <section class="scene centered" data-scene="5">
-      <div class="copy" style="text-align:center;max-width:900px">
-        <p class="badge"><span class="dot"></span> Step 5</p>
-        <h2>Four-step wizard — confirm &amp; generate</h2>
-        <div class="flow" style="justify-content:center">
-          <span class="flow-step">Import</span><span class="arrow">→</span>
-          <span class="flow-step">Campaigns</span><span class="arrow">→</span>
-          <span class="flow-step">Metrics</span><span class="arrow">→</span>
-          <span class="flow-step">Generate</span>
+    <section class="scene" data-title="Step 5 · Wizard">
+      <div class="copy">
+        <div class="kicker"><i></i> Step 5</div>
+        <h2>Confirm, then<br>generate the deck</h2>
+        <p class="lead">Four steps. Preview the totals against the CSV before anything is sent to a client.</p>
+        <div class="pills">
+          <span class="pill hot">Import</span>
+          <span class="pill hot">Campaigns</span>
+          <span class="pill hot">Metrics</span>
+          <span class="pill hot">Generate</span>
         </div>
-        <p class="sub">Preview totals against your CSV, lock objectives, then build the deck.</p>
       </div>
-      <div class="character-stage" style="height:280px;margin-top:20px">
-        <div class="char char-maya" style="left:35%;width:180px"><svg viewBox="0 0 180 260" fill="none"><path d="M50 240 L130 240 L125 140 L55 140 Z" fill="#f97316"/><circle cx="90" cy="110" r="26" fill="#fdba74"/></svg></div>
-        <div class="char char-chip" style="right:35%;width:140px"><svg viewBox="0 0 140 120" fill="none"><rect x="20" y="25" width="100" height="80" rx="20" fill="#334155"/><text x="70" y="75" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="700">✓</text></svg></div>
+      <div class="panel"><div class="watermark">06</div>
+        <div class="panel-inner"><div class="cast" id="cast-wizard"></div></div>
       </div>
     </section>
 
-    <!-- Scene 6 -->
-    <section class="scene centered" data-scene="6">
-      <div class="copy" style="text-align:center">
-        <p class="badge"><span class="dot"></span> Step 6</p>
-        <h1>Deliver — PPTX, share link, or Google Slides</h1>
-        <div class="cards">
-          <div class="card"><strong>PowerPoint</strong><span>White-label PPTX ready for the client call.</span></div>
-          <div class="card"><strong>Share link</strong><span>Instant browser view for stakeholders.</span></div>
-          <div class="card"><strong>Google Slides</strong><span>Optional Drive export when you need it.</span></div>
+    <section class="scene finale" data-title="Step 6 · Deliver">
+      <div class="copy">
+        <div class="kicker"><i></i> Step 6 · Deliver</div>
+        <h1>A deck your client<br>can open today.</h1>
+        <div class="trio">
+          <div class="card"><strong>PowerPoint</strong><span>Branded PPTX, ready for the review call.</span></div>
+          <div class="card"><strong>Share link</strong><span>A live view in the browser — no file attachment.</span></div>
+          <div class="card"><strong>Google Slides</strong><span>Optional Drive export when the team works in Slides.</span></div>
         </div>
-        <p class="sub" style="font-size:22px;color:#e2e8f0;margin-top:32px">nextreport.in — Meta CSV reporting built for agencies</p>
+        <p class="lead">nextreport.in — Meta CSV reporting for agencies.</p>
       </div>
-      <div class="confetti" aria-hidden="true" id="confetti"></div>
+      <div class="confetti" id="confetti"></div>
     </section>
 
-    <div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
-    <div class="step-dots" id="stepDots"></div>
+    <footer class="footer">
+      <div class="step-label">Meta Ads Manager → NextReport</div>
+      <div class="dots" id="dots"></div>
+    </footer>
+    <div class="progress"><span id="bar"></span></div>
   </div>
 
+  <template id="tpl-maya">
+    <svg class="maya" viewBox="0 0 340 460" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="170" cy="442" rx="92" ry="12" fill="rgba(0,0,0,.35)"/>
+      <path d="M118 430c8-78 18-150 22-168h60c6 22 16 96 24 168" fill="#1c2740"/>
+      <path d="M128 268h86l8 46H120l8-46z" fill="#243352"/>
+      <path d="M132 168h78c8 28 10 62 6 100h-90c-4-38-2-72 6-100z" fill="#f3d2b0"/>
+      <path d="M126 176c2-48 22-78 46-82 26-4 48 22 52 70 2 18-4 28-14 34-8-22-22-36-40-36-16 0-30 12-36 30-8-8-10-12-8-16z" fill="#3a2a22"/>
+      <path d="M150 150c18-28 48-30 62-8 4 8-8 16-20 14-10-8-24-6-32 2-6-4-10-6-10-8z" fill="#2a1d18"/>
+      <circle cx="156" cy="214" r="4.2" fill="#1a120c"/>
+      <circle cx="188" cy="214" r="4.2" fill="#1a120c"/>
+      <path d="M164 232c6 8 14 8 20 0" stroke="#c47b62" stroke-width="3" stroke-linecap="round"/>
+      <path d="M118 210c-28 18-36 54-28 92" stroke="#f3d2b0" stroke-width="16" stroke-linecap="round"/>
+      <path class="arm-r" d="M224 208c34-6 58 8 70 28" stroke="#f3d2b0" stroke-width="16" stroke-linecap="round"/>
+      <path d="M136 268h70" stroke="#f5b45a" stroke-width="8" stroke-linecap="round"/>
+      <rect x="214" y="248" width="70" height="46" rx="8" fill="#0e1728" stroke="#8eb6ff" stroke-width="3"/>
+      <path d="M226 268h46M226 278h30" stroke="#8eb6ff" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </template>
+  <template id="tpl-chip">
+    <svg class="chip" viewBox="0 0 240 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="120" cy="262" rx="70" ry="10" fill="rgba(0,0,0,.28)"/>
+      <rect x="48" y="78" width="144" height="156" rx="46" fill="#243044" stroke="#3d516e" stroke-width="3"/>
+      <rect x="68" y="104" width="104" height="78" rx="22" fill="#0c1422"/>
+      <circle cx="98" cy="140" r="10" fill="#7ec8ff"/>
+      <circle cx="142" cy="140" r="10" fill="#7ec8ff"/>
+      <path d="M104 162c8 10 24 10 32 0" stroke="#7ec8ff" stroke-width="4" stroke-linecap="round"/>
+      <path d="M120 78V42" stroke="#9aa8bd" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="120" cy="30" r="16" fill="#f5b45a"/>
+      <circle cx="120" cy="30" r="6" fill="#fff6e8"/>
+      <path d="M48 150H22c-8 0-12 10-6 16l28 10" fill="#1c283c"/>
+      <path d="M192 150h26c8 0 12 10 6 16l-28 10" fill="#1c283c"/>
+      <rect x="92" y="214" width="56" height="10" rx="5" fill="#f5b45a" opacity=".85"/>
+    </svg>
+  </template>
+
   <script>
-    const SCENE_MS = 10000;
+    const SCENE_MS = 9000;
     const scenes = [...document.querySelectorAll(".scene")];
-    const progress = document.getElementById("progress");
-    const dotsEl = document.getElementById("stepDots");
+    const TOTAL = SCENE_MS * scenes.length;
+    const label = document.getElementById("stepLabel");
+    const bar = document.getElementById("bar");
+    const dots = document.getElementById("dots");
     scenes.forEach((_, i) => {
-      const d = document.createElement("i");
-      d.dataset.i = i;
-      dotsEl.appendChild(d);
+      const b = document.createElement("b");
+      dots.appendChild(b);
     });
-    const dots = [...dotsEl.querySelectorAll("i")];
 
-    let sceneIndex = 0;
-    let sceneStart = performance.now();
-
-    function show(n) {
-      scenes.forEach((s, j) => s.classList.toggle("active", j === n));
-      dots.forEach((d, j) => d.classList.toggle("on", j === n));
-      progress.style.width = `${((n + 1) / scenes.length) * 100}%`;
-      sceneIndex = n;
-      sceneStart = performance.now();
+    const maya = document.getElementById("tpl-maya").innerHTML;
+    const chip = document.getElementById("tpl-chip").innerHTML;
+    for (const id of ["cast-hero","cast-meta","cast-metrics","cast-export","cast-upload","cast-wizard"]) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.innerHTML = maya + chip;
     }
-    show(0);
 
-    setInterval(() => {
-      sceneIndex = (sceneIndex + 1) % scenes.length;
-      show(sceneIndex);
-    }, SCENE_MS);
+    const dust = document.getElementById("dust");
+    const ctx = dust.getContext("2d");
+    const motes = Array.from({ length: 70 }, (_, i) => ({
+      x: (i * 137) % 1920,
+      y: (i * 89) % 1080,
+      r: 1 + (i % 5) * 0.45,
+      s: 0.15 + (i % 7) * 0.05,
+      p: i,
+    }));
 
     const confetti = document.getElementById("confetti");
-    const colors = ["#f97316", "#60a5fa", "#fbbf24", "#4ade80", "#f472b6"];
-    for (let i = 0; i < 48; i++) {
-      const s = document.createElement("span");
-      s.style.left = `${Math.random() * 100}%`;
+    const colors = ["#f5b45a", "#8eb6ff", "#fff", "#ed8936", "#7ec8ff"];
+    for (let i = 0; i < 36; i++) {
+      const s = document.createElement("i");
+      s.style.left = (i * 53) % 1920 + "px";
       s.style.background = colors[i % colors.length];
-      s.style.animationDelay = `${Math.random() * 2.5}s`;
-      s.style.animationDuration = `${2.2 + Math.random() * 2}s`;
+      s.dataset.i = String(i);
       confetti.appendChild(s);
     }
 
-    const canvas = document.getElementById("particles");
-    const ctx = canvas.getContext("2d");
-    const pts = Array.from({ length: 55 }, () => ({
-      x: Math.random() * 1920,
-      y: Math.random() * 1080,
-      r: 1 + Math.random() * 2.5,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      a: 0.15 + Math.random() * 0.35,
-    }));
-    function drawParticles() {
+    function drawDust(ms) {
       ctx.clearRect(0, 0, 1920, 1080);
-      for (const p of pts) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0 || p.x > 1920) p.vx *= -1;
-        if (p.y < 0 || p.y > 1080) p.vy *= -1;
+      for (const m of motes) {
+        const x = (m.x + ms * m.s * 0.02) % 1920;
+        const y = (m.y + Math.sin(ms / 900 + m.p) * 18 + 1080) % 1080;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(148, 163, 184, ${p.a})`;
+        ctx.arc(x, y, m.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(220,230,245,.35)";
         ctx.fill();
       }
-      requestAnimationFrame(drawParticles);
     }
-    drawParticles();
+
+    function placeCast(ms) {
+      const bob = Math.sin(ms / 700) * 8;
+      document.querySelectorAll(".maya").forEach((el) => {
+        el.style.transform = `translateY(${bob}px)`;
+      });
+      document.querySelectorAll(".chip").forEach((el) => {
+        el.style.transform = `translateY(${Math.sin(ms / 560 + 1) * 12}px)`;
+      });
+      document.querySelectorAll(".arm-r").forEach((el) => {
+        const wave = Math.sin(ms / 280) * 8;
+        el.setAttribute("d", `M224 208c${34 + wave} ${-6 - wave * 0.4} ${58 + wave} ${8} ${70 + wave * 0.3} ${28 - wave}`);
+      });
+      const file = document.getElementById("csvFile");
+      if (file) {
+        const t = (ms % SCENE_MS) / SCENE_MS;
+        const y = 150 + Math.sin(t * Math.PI) * -30;
+        const x = 40 + (1 - t) * 40;
+        file.style.transform = `translate(${x}px, ${y - 150}px) rotate(${-8 + t * 6}deg)`;
+      }
+      [...confetti.children].forEach((s) => {
+        const i = Number(s.dataset.i);
+        const fall = ((ms / 28 + i * 40) % 1140) - 40;
+        s.style.transform = `translateY(${fall}px) rotate(${(ms / 8 + i * 20) % 360}deg)`;
+      });
+    }
+
+    function seek(ms) {
+      const clamped = Math.max(0, Math.min(TOTAL - 1, ms));
+      const idx = Math.min(scenes.length - 1, Math.floor(clamped / SCENE_MS));
+      const local = clamped - idx * SCENE_MS;
+      const fade = local < 450 ? local / 450 : local > SCENE_MS - 500 ? (SCENE_MS - local) / 500 : 1;
+      scenes.forEach((s, i) => {
+        s.classList.toggle("on", i === idx);
+        s.style.opacity = i === idx ? String(Math.max(0, Math.min(1, fade))) : "0";
+        const shift = i === idx ? (1 - fade) * 18 : 18;
+        s.style.transform = `translateY(${shift}px)`;
+      });
+      label.textContent = scenes[idx].dataset.title || "";
+      bar.style.width = `${(clamped / TOTAL) * 100}%`;
+      [...dots.children].forEach((d, i) => d.classList.toggle("on", i === idx));
+      drawDust(clamped);
+      placeCast(clamped);
+    }
+
+    window.__seek = seek;
+    window.__DURATION = TOTAL;
+    seek(0);
   </script>
 </body>
 </html>
