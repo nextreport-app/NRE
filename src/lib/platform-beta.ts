@@ -18,7 +18,7 @@ export function isPlatformBeta(platform: PlatformBetaId): boolean {
 /** Short line for cards and compact UI. */
 export function platformBetaCardNote(platform: PlatformBetaId): string | null {
   if (!isPlatformBeta(platform)) return null;
-  return "Launching soon — not open for production report generation yet.";
+  return "Read-only connect works for testing and OAuth verification. Customer-facing report generation for this platform is launching soon.";
 }
 
 /** Full notice for wizard and settings panels. */

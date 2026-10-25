@@ -7,7 +7,7 @@ Product UI exposes **Google Ads**, **GA4**, **TikTok**, and **Sync from API** by
 1. Confirm OAuth clients and redirect URIs (`.env.example`):
    - `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` → `/api/google-ads/callback`
    - `GA4_CLIENT_ID` / `GA4_CLIENT_SECRET` → `/api/ga4/callback`
-2. On Vercel Production, ensure **`AD_PLATFORM_API_SYNC_ENABLED` is not `false`** (API Connect + wizard sync are on by default).
+2. For wizard **Sync from API** in the video, set **`AD_PLATFORM_API_SYNC_ENABLED=true`** on Vercel Production. Account **Connect** + **Verify API access** / **List properties** work without it (default off).
 3. Add reviewer Gmail(s) under **Google Cloud → OAuth consent screen → Test users** while the app stays in Testing mode.
 
 ## Suggested Loom script (read-only app)
