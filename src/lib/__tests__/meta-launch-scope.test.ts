@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   coerceLaunchPlatform,
   coerceLaunchReportType,
@@ -11,35 +11,23 @@ import {
 } from "../meta-launch-scope";
 
 describe("meta launch scope", () => {
-  afterEach(() => {
-    delete process.env.GOOGLE_OAUTH_VERIFICATION_UI;
-  });
-  it("enables Meta only", () => {
-    expect(LAUNCH_ENABLED_PLATFORMS).toEqual(["META"]);
+  it("enables all ad and analytics platforms", () => {
+    expect(LAUNCH_ENABLED_PLATFORMS).toEqual(["META", "GOOGLE", "TIKTOK"]);
     expect(isLaunchPlatformEnabled("META")).toBe(true);
-    expect(isLaunchPlatformEnabled("GOOGLE")).toBe(false);
+    expect(isLaunchPlatformEnabled("GOOGLE")).toBe(true);
+    expect(isLaunchPlatformEnabled("TIKTOK")).toBe(true);
+    expect(isLaunchPlatformEnabled("GA4")).toBe(true);
+    expect(isClientPlatformConnectionVisible("googleAds")).toBe(true);
+    expect(isClientPlatformConnectionVisible("tiktok")).toBe(true);
+    expect(isClientPlatformConnectionVisible("ga4")).toBe(true);
+    expect(isWizardPlatformSwitchEnabled()).toBe(true);
   });
 
-  it("coerces deferred platforms to Meta", () => {
-    expect(coerceLaunchPlatform("GOOGLE")).toBe("META");
-    expect(coerceLaunchPlatform("TIKTOK")).toBe("META");
-    expect(coerceLaunchPlatform("GA4")).toBe("META");
+  it("coerces unknown platforms to Meta", () => {
+    expect(coerceLaunchPlatform("UNKNOWN")).toBe("META");
   });
 
-  it("unlocks Google Ads and GA4 for OAuth verification when env is set", async () => {
-    process.env.GOOGLE_OAUTH_VERIFICATION_UI = "true";
-    vi.resetModules();
-    const scope = await import("../meta-launch-scope");
-    expect(scope.isLaunchPlatformEnabled("GOOGLE")).toBe(true);
-    expect(scope.isLaunchPlatformEnabled("GA4")).toBe(true);
-    expect(scope.isLaunchPlatformEnabled("TIKTOK")).toBe(false);
-    expect(scope.isClientPlatformConnectionVisible("googleAds")).toBe(true);
-    expect(scope.isClientPlatformConnectionVisible("ga4")).toBe(true);
-    expect(scope.isClientPlatformConnectionVisible("tiktok")).toBe(false);
-    expect(scope.isWizardPlatformSwitchEnabled()).toBe(true);
-  });
-
-  it("enables the six Meta v1 report types", () => {
+  it("enables standard and extended report types", () => {
     expect(LAUNCH_ENABLED_REPORT_TYPES).toEqual([
       "WEEKLY",
       "MONTHLY",
@@ -47,10 +35,13 @@ describe("meta launch scope", () => {
       "COMPARISON",
       "HISTORICAL",
       "DAY_BREAKDOWN",
+      "QUARTER",
+      "YTD",
+      "CREATIVE",
     ]);
     for (const rt of ["QUARTER", "YTD", "CREATIVE"] as const) {
-      expect(isLaunchReportTypeEnabled(rt)).toBe(false);
-      expect(coerceLaunchReportType(rt)).toBe("WEEKLY");
+      expect(isLaunchReportTypeEnabled(rt)).toBe(true);
+      expect(coerceLaunchReportType(rt)).toBe(rt);
     }
   });
 });

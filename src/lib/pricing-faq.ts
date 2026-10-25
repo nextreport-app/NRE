@@ -2,7 +2,7 @@
 export const PRICING_FAQS = [
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads reporting is live today — upload a day-wise CSV from Meta Ads Reporting in the wizard (weekly, monthly, daily, comparison, historical, and day-breakdown report types). Google Ads, TikTok Ads, and GA4 website reporting are on the roadmap and included in your plan as each platform launches — no extra per-platform fee.",
+    a: "Meta Ads, Google Ads, TikTok Ads, and GA4 website reporting — CSV upload or read-only API sync from Account settings. Report types include weekly, monthly, daily, comparison, historical, day-breakdown, quarterly, YTD, and creative (ad-level). All platforms are included in your plan with no extra per-platform fee.",
   },
   {
     q: "Is there really no credit card required for the free trial?",
@@ -10,7 +10,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "What's the difference between Agency and Professional?",
-    a: "Both plans include unlimited report generation, Meta CSV reporting, white-label options, Slack/Zapier webhooks, and every platform as it launches. Agency supports up to 10 client workspaces; Professional is unlimited clients for larger rosters. Priority email support is on Professional.",
+    a: "Both plans include unlimited report generation, all ad platforms and GA4, white-label options, and Slack/Zapier webhooks. Agency supports up to 10 client workspaces; Professional is unlimited clients for larger rosters. Priority email support is on Professional.",
   },
   {
     q: "Do you charge my card automatically each month?",
@@ -25,8 +25,8 @@ export const PRICING_FAQS = [
     a: "Yes. Upgrade or downgrade from Billing. Changes take effect immediately; client limits apply to active workspaces on Agency.",
   },
   {
-    q: "Can I connect Meta directly instead of uploading a CSV?",
-    a: "The supported path today is a day-wise CSV from Meta Ads Reporting (best parity with Ads Manager). Optional Meta API sync may be available on your account when enabled — CSV upload remains the reference workflow in the wizard.",
+    q: "Can I connect ad platforms directly instead of uploading a CSV?",
+    a: "Yes. Connect Meta, Google Ads, or TikTok in Account settings and use Sync from API in the wizard, or upload a CSV export from each platform. CSV remains the best parity check against the native UI; API sync is read-only.",
   },
   {
     q: "What file formats can I upload?",

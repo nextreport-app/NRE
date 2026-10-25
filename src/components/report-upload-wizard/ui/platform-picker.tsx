@@ -7,11 +7,7 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
-import {
-  DEFERRED_PLATFORMS,
-  isLaunchPlatformEnabled,
-  SHOW_DEFERRED_PLATFORM_UI,
-} from "@/lib/meta-launch-scope";
+import { isLaunchPlatformEnabled } from "@/lib/meta-launch-scope";
 import { wizardPlatformImportDescription } from "../utils";
 import { ReportTypeCard } from "./report-type-card";
 
@@ -39,6 +35,7 @@ export function WizardPlatformPickerGrid({
   selectedPlatformCard,
   onChoosePlatform,
   onChooseWebsitePlatform,
+  showTikTokOption = true,
 }: {
   showTikTokOption?: boolean;
   selectedPlatformCard: "META" | "GOOGLE" | "TIKTOK" | null;
@@ -46,8 +43,9 @@ export function WizardPlatformPickerGrid({
   onChooseWebsitePlatform?: () => void;
 }) {
   const showGoogleAds = isLaunchPlatformEnabled("GOOGLE");
+  const showTikTokAds = isLaunchPlatformEnabled("TIKTOK");
   const showGa4Website = isLaunchPlatformEnabled("GA4");
-  const multiColumn = SHOW_DEFERRED_PLATFORM_UI || showGoogleAds || showGa4Website;
+  const multiColumn = showGoogleAds || showTikTokAds || showGa4Website;
 
   return (
     <div className={`grid grid-cols-1 gap-3 ${multiColumn ? "sm:grid-cols-2 lg:grid-cols-4" : "max-w-md"}`}>
@@ -69,6 +67,16 @@ export function WizardPlatformPickerGrid({
           singleLineHeading
         />
       ) : null}
+      {showTikTokAds && showTikTokOption ? (
+        <ReportTypeCard
+          icon={<TikTokAdsBrandIcon />}
+          heading="TikTok Ads"
+          description={wizardPlatformImportDescription("TIKTOK")}
+          selected={selectedPlatformCard === "TIKTOK"}
+          onSelect={() => onChoosePlatform("TIKTOK")}
+          singleLineHeading
+        />
+      ) : null}
       {showGa4Website && onChooseWebsitePlatform ? (
         <ReportTypeCard
           icon={<Ga4BrandIcon />}
@@ -79,30 +87,6 @@ export function WizardPlatformPickerGrid({
           singleLineHeading
         />
       ) : null}
-      {SHOW_DEFERRED_PLATFORM_UI
-        ? DEFERRED_PLATFORMS.filter((platform) => !isLaunchPlatformEnabled(platform.id)).map((platform) => {
-        const icon =
-          platform.id === "GOOGLE" ? (
-            <GoogleAdsBrandIcon />
-          ) : platform.id === "TIKTOK" ? (
-            <TikTokAdsBrandIcon />
-          ) : (
-            <Ga4BrandIcon />
-          );
-        return (
-          <ReportTypeCard
-            key={platform.id}
-            icon={icon}
-            heading={platform.label}
-            description={platform.status}
-            selected={false}
-            onSelect={() => {}}
-            disabled
-            singleLineHeading
-          />
-        );
-      })
-        : null}
     </div>
   );
 }

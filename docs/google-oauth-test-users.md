@@ -7,7 +7,7 @@ NextReport uses one Google Cloud **OAuth 2.0 Web client** (`AUTH_GOOGLE_ID` / `A
 
 Google Ads and GA4 use **separate** OAuth clients (see `.env.example`).
 
-For **OAuth verification demo video** while Meta is the only public launch platform, see [google-oauth-verification-demo.md](./google-oauth-verification-demo.md) (`GOOGLE_OAUTH_VERIFICATION_UI`).
+For **OAuth verification demo video**, see [google-oauth-verification-demo.md](./google-oauth-verification-demo.md).
 
 ## Error: “Access blocked — has not completed the Google verification process” (403)
 

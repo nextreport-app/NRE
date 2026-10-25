@@ -1,50 +1,23 @@
-# Meta-first launch scope (v1)
+# Product launch scope
 
-**Phase:** `meta-v1`  
-**Goal:** Ship Meta Ads reporting (CSV + API sync) with confidence before adding other platforms or report types.
+**Phase:** `multi-platform`
 
-## Live now
+## Live in product UI
 
 | Area | Included |
 |------|----------|
-| **Platform** | Meta Ads only |
-| **Ingestion** | Manual CSV upload + Meta Marketing API sync (must produce identical calculations — see `dc-credit-firm-api-parity.test.ts`) |
-| **Report types** | Weekly, Monthly, Yesterday (Daily), Comparison, Multi-Month Historical, Daily Performance (day breakdown) |
+| **Platforms** | Meta Ads, Google Ads, TikTok Ads, GA4 website reporting |
+| **Ingestion** | Manual CSV upload + read-only API sync (Meta / Google / TikTok) where connected |
+| **Report types** | Weekly, Monthly, Yesterday (Daily), Comparison, Multi-Month Historical, Day-by-Day Table, Quarterly, YTD, Creative (ad-level) |
 | **Output** | Branded PPTX, share link, Google Slides, Google Drive, AI summaries |
 
-## Deferred until Meta v1 is stable
+## Engineering invariants
 
-### Platforms (code retained; wizard + marketing show "Launching soon")
+1. **One pipeline:** API sync synthesizes CSV rows → same parsers → `buildReportData` as manual upload where applicable.
+2. **Golden fixtures:** CI parity tests on anonymized accounts — see `src/lib/nre/__tests__/meta-golden-parity.test.ts` and related suites.
+3. **API sync kill switch:** Set `AD_PLATFORM_API_SYNC_ENABLED=false` on Vercel to hide Connect CTAs and wizard “Sync from API” (CSV-only mode).
 
-- Google Ads (CSV + API)
-- TikTok Ads (CSV + API)
-- Google Analytics / GA4 (website reporting wizard)
+## Code switches
 
-**Re-enable checklist:** golden parity tests for that platform + 2 live account smoke tests + update `LAUNCH_ENABLED_PLATFORMS` in `src/lib/meta-launch-scope.ts`.
-
-**Google OAuth verification only (temporary):** set `GOOGLE_OAUTH_VERIFICATION_UI=true` on production to expose Google Ads + GA4 account UI and API import without changing `LAUNCH_ENABLED_PLATFORMS`. See `docs/google-oauth-verification-demo.md`.
-
-### Report types (code retained; hidden from wizard)
-
-- Quarterly Performance Report (`QUARTER`)
-- Year-to-Date Report (`YTD`)
-- Creative Performance Report (`CREATIVE` — ad-level)
-
-**Re-enable checklist:** add to `LAUNCH_ENABLED_REPORT_TYPES` + regression tests for that window.
-
-## Engineering invariants (non-negotiable for launch)
-
-1. **One pipeline:** API sync synthesizes CSV rows → same `parseCsvText` → `buildReportData` as manual upload.
-2. **Golden fixtures:** Real anonymized accounts (Credit Firm, Southaven, GZ, BumperTech, …) — CI fails if manual ≠ API on leads, CPL, chart totals. See `src/lib/nre/__tests__/meta-golden-parity.test.ts` (all six launch report types on Credit Firm; weekly on GZ + Southaven).
-3. **Report windows:** Each report type uses one primary date window for campaign slides, Combined Total row, and chart (see `resolveStandardChartRange`).
-
-## Marketing copy
-
-Public site keeps mentions of Google/TikTok/GA4 where useful for SEO but labels them **Launching soon** — not removed, so we can flip the flag without rewriting pages.
-
-## How to expand scope
-
-1. Fix + test on a branch  
-2. Add/update golden parity test  
-3. Add platform or report type to `src/lib/meta-launch-scope.ts`  
-4. Update this doc with date and checklist  
+- `src/lib/meta-launch-scope.ts` — `LAUNCH_ENABLED_PLATFORMS`, `LAUNCH_ENABLED_REPORT_TYPES`
+- `src/lib/ad-platform-api-sync.ts` — API import default on unless env `false`

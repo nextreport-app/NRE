@@ -12,7 +12,7 @@ import { AboutStoryDivider } from "@/components/about/about-story-divider";
 export const metadata: Metadata = pageMetadata({
   title: "About — Built for Agency Reporting",
   description:
-    "NextReport is a small team building Meta Ads reporting automation for agencies — branded decks from CSV exports in minutes. Meta live; Google, TikTok & GA4 on the roadmap.",
+    "NextReport is a small team building multi-platform reporting automation for agencies — branded decks from CSV or API sync in minutes. Meta, Google Ads, TikTok, and GA4.",
   path: "/about",
 });
 
@@ -31,7 +31,7 @@ const STORY_SECTIONS: { heading: string; paragraphs: string[] }[] = [
       "We looked for tooling that matched how agencies actually ship work: the export you already pull from Ads Manager, the template your team already uses, and a finished deck in minutes — not a generic dashboard.",
       PRODUCT_DIFFERENTIATOR_LINE,
       "NextReport reads Meta Ads Manager CSV exports, detects campaign objectives, selects the right metrics, and generates PowerPoint, a live browser link, or Google Slides with AI-written insights — often in under two minutes.",
-      "Meta CSV reporting is live today. Google Ads, TikTok Ads, and GA4 are in active development and stay behind “launching soon” until each platform passes the same accuracy bar we use for production reports.",
+      "Meta, Google Ads, TikTok Ads, and GA4 website reporting are available via CSV upload or read-only API sync. We regression-test against real exports so totals stay aligned with each platform’s native UI.",
     ],
   },
   {
