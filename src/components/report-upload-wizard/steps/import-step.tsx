@@ -5,7 +5,7 @@ import { useWizardContext } from "../wizard-context";
 import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-instructions";
 import Link from "next/link";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
-import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
+import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
@@ -173,11 +173,11 @@ export function WizardImportStep() {
 
       {selectedPlatformCard && (
         <div className="space-y-3">
-          {AD_PLATFORM_API_SYNC_ENABLED ? (
+          {isAdPlatformApiSyncEnabled() ? (
             <WizardDataSourceToggle value={dataSourceMode} onChange={handleDataSourceModeChange} />
           ) : null}
 
-          {AD_PLATFORM_API_SYNC_ENABLED && importPipelineLabel ? (
+          {isAdPlatformApiSyncEnabled() && importPipelineLabel ? (
             <p className="rounded-md border border-dash-border nre-wizard-panel px-3 py-2 text-[14px] text-dash-ink-secondary">
               {importPipelineLabel}
             </p>
@@ -190,7 +190,7 @@ export function WizardImportStep() {
             clientTimezone={clientTimezone}
           />
 
-          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" ? (
+          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
               clientId={clientId}
               platform={selectedPlatformCard}
@@ -217,7 +217,7 @@ export function WizardImportStep() {
             />
           ) : null}
 
-          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
+          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
             <div className="space-y-2 rounded-lg border border-dash-border nre-wizard-panel px-4 py-3">
               <p className="text-[14px] font-medium text-dash-ink">Optional: Ads Manager reference CSV</p>
               <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
@@ -232,7 +232,7 @@ export function WizardImportStep() {
             </div>
           ) : null}
 
-          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && metaSyncDiagnostics ? (
+          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && metaSyncDiagnostics ? (
             <div className="rounded-lg border border-dash-border nre-wizard-panel px-4 py-3">
               <button
                 type="button"
@@ -348,7 +348,7 @@ export function WizardImportStep() {
             </div>
           ) : null}
 
-          {AD_PLATFORM_API_SYNC_ENABLED && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
+          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
             <div className="rounded-lg border border-emerald-500/35 nre-wizard-panel px-4 py-3">
               <p className="text-[14px] font-medium text-dash-ink">API sync complete</p>
               <button
@@ -361,7 +361,7 @@ export function WizardImportStep() {
             </div>
           ) : null}
 
-          {(!AD_PLATFORM_API_SYNC_ENABLED || dataSourceMode === "csv") && (
+          {(!isAdPlatformApiSyncEnabled() || dataSourceMode === "csv") && (
             <>
               <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
 

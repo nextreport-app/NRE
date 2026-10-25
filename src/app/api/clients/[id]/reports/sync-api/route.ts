@@ -19,7 +19,7 @@ import {
   parsePreviousMonthSelectedCampaigns,
 } from "@/lib/nre/previous-month-data";
 import { platformSchema } from "@/lib/validators/report-wizard";
-import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
+import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 
 /** Meta insights: multiple paginated ad-set chunks — align with generate-report (300s). */
 export const maxDuration = 300;
@@ -72,7 +72,7 @@ async function previousMonthPayloadFromClient(client: {
  * there on.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!AD_PLATFORM_API_SYNC_ENABLED) {
+  if (!isAdPlatformApiSyncEnabled()) {
     return NextResponse.json(
       {
         error:

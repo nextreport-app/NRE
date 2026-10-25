@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlatformBetaNotice } from "@/components/platform-beta-badge";
-import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
+import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Google authorisation was cancelled — your Google Ads account was not connected.",
@@ -86,7 +86,7 @@ export function GoogleAdsSettings({
     }
   }
 
-  if (!AD_PLATFORM_API_SYNC_ENABLED) {
+  if (!isAdPlatformApiSyncEnabled()) {
     return (
       <div id="google-ads" className="scroll-mt-6 rounded-lg border border-dash-border bg-dash-card p-5">
         <h3 className="text-[15px] font-semibold text-dash-ink">Google Ads</h3>

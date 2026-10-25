@@ -22,6 +22,8 @@
 
 **Re-enable checklist:** golden parity tests for that platform + 2 live account smoke tests + update `LAUNCH_ENABLED_PLATFORMS` in `src/lib/meta-launch-scope.ts`.
 
+**Google OAuth verification only (temporary):** set `GOOGLE_OAUTH_VERIFICATION_UI=true` on production to expose Google Ads + GA4 account UI and API import without changing `LAUNCH_ENABLED_PLATFORMS`. See `docs/google-oauth-verification-demo.md`.
+
 ### Report types (code retained; hidden from wizard)
 
 - Quarterly Performance Report (`QUARTER`)

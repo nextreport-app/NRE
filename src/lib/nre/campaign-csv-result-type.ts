@@ -14,6 +14,45 @@ export interface CsvResultTypeEntry {
   expectedResultLabel: string | null;
 }
 
+export function campaignCsvSummaryHasWizardSignal(summary: CampaignCsvResultTypeSummary | undefined): boolean {
+  if (!summary) return false;
+  return !!(summary.primary || summary.expectedResultLabel || summary.entries.length > 0);
+}
+
+function rawCsvResultSignalTexts(row: MetricRow): string[] {
+  const raw = row._raw ?? {};
+  const signals: string[] = [];
+  const indicator = String(raw["Result indicator"] ?? raw["result indicator"] ?? "").trim();
+  if (indicator) signals.push(indicator);
+  const resultTypeCol = String(raw["Result type"] ?? raw["result type"] ?? "").trim();
+  if (resultTypeCol) signals.push(resultTypeCol);
+  const stored = (row.result_type ?? "").trim();
+  if (stored) signals.push(stored);
+  return signals;
+}
+
+function buildSummaryFromRawCounts(
+  counts: Map<string, number>,
+  customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
+): CampaignCsvResultTypeSummary {
+  const distinctRaw = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([rt]) => rt);
+  const primaryRaw = distinctRaw[0] ?? null;
+  const distinct = distinctRaw.map((rt) => displayResultType(rt, customConversionResultTypes));
+  const primary = primaryRaw ? displayResultType(primaryRaw, customConversionResultTypes) : null;
+  const entries = distinctRaw.map((rawType) => ({
+    resultType: displayResultType(rawType, customConversionResultTypes),
+    expectedResultLabel: expectedResultLabelFromCsvResultType(rawType, customConversionResultTypes),
+  }));
+  return {
+    primary,
+    distinct,
+    expectedResultLabel: primaryRaw
+      ? expectedResultLabelFromCsvResultType(primaryRaw, customConversionResultTypes)
+      : null,
+    entries,
+  };
+}
+
 export interface CampaignCsvResultTypeSummary {
   /** Most common non-empty Result type cell for this campaign. */
   primary: string | null;
@@ -40,25 +79,20 @@ export function summarizeCsvResultTypesForCampaign(
     if (!rt) continue;
     counts.set(rt, (counts.get(rt) ?? 0) + 1);
   }
-  if (counts.size === 0) {
+  if (counts.size > 0) {
+    return buildSummaryFromRawCounts(counts, customConversionResultTypes);
+  }
+
+  const rawCounts = new Map<string, number>();
+  for (const row of rows) {
+    for (const signal of rawCsvResultSignalTexts(row)) {
+      rawCounts.set(signal, (rawCounts.get(signal) ?? 0) + 1);
+    }
+  }
+  if (rawCounts.size === 0) {
     return { primary: null, distinct: [], expectedResultLabel: null, entries: [] };
   }
-  const distinctRaw = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([rt]) => rt);
-  const primaryRaw = distinctRaw[0] ?? null;
-  const distinct = distinctRaw.map((rt) => displayResultType(rt, customConversionResultTypes));
-  const primary = primaryRaw ? displayResultType(primaryRaw, customConversionResultTypes) : null;
-  const entries = distinctRaw.map((rawType) => ({
-    resultType: displayResultType(rawType, customConversionResultTypes),
-    expectedResultLabel: expectedResultLabelFromCsvResultType(rawType, customConversionResultTypes),
-  }));
-  return {
-    primary,
-    distinct,
-    expectedResultLabel: primaryRaw
-      ? expectedResultLabelFromCsvResultType(primaryRaw, customConversionResultTypes)
-      : null,
-    entries,
-  };
+  return buildSummaryFromRawCounts(rawCounts, customConversionResultTypes);
 }
 
 /** Distinct engine labels implied by all non-empty Result types in this campaign's CSV rows. */
