@@ -109,8 +109,8 @@ enc = spawnSync(
     voiceWav,
     "-filter_complex",
     `[2:a]volume=1.08,afade=t=in:st=0:d=0.06,afade=t=out:st=${fadeOut}:d=0.9,asplit=2[vox][sc];` +
-      `[1:a]volume=0.32,afade=t=in:st=0:d=0.3,afade=t=out:st=${Math.max(0, fadeOut - 0.2)}:d=1.5[bed];` +
-      `[bed][sc]sidechaincompress=threshold=0.015:ratio=8:attack=15:release=320[ducked];` +
+      `[1:a]volume=0.42,afade=t=in:st=0:d=0.3,afade=t=out:st=${Math.max(0, fadeOut - 0.2)}:d=1.5[bed];` +
+      `[bed][sc]sidechaincompress=threshold=0.04:ratio=3.5:attack=20:release=400[ducked];` +
       `[ducked][vox]amix=inputs=2:duration=first:normalize=0[a]`,
     "-map",
     "0:v:0",

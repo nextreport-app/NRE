@@ -10,7 +10,7 @@ import edge_tts
 BPM = 112
 SCENE_MS = (60_000 / BPM) * 8
 TOTAL_SEC = SCENE_MS * 7 / 1000
-VOICE = "en-IN-NeerjaNeural"
+VOICE = "en-IN-PrabhatNeural"
 LINES = [
     "Stop rebuilding slides by hand.",
     "Open Ads reporting, by day.",
