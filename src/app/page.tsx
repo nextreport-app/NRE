@@ -7,6 +7,16 @@ import dynamic from "next/dynamic";
 import { HeroSection } from "@/components/home/hero-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
 
+const HomeWorkflowFilm = dynamic(
+  () => import("@/components/home/home-workflow-film").then((m) => m.HomeWorkflowFilm),
+  {
+    loading: () => (
+      <section className="border-t border-navy-border bg-navy px-6 py-16" aria-hidden="true">
+        <div className="mx-auto h-48 max-w-3xl animate-pulse rounded-lg bg-navy-border/30 sm:h-56" />
+      </section>
+    ),
+  },
+);
 const MetaWalkthroughPromoSection = dynamic(
   () => import("@/components/home/meta-walkthrough-promo-section").then((m) => m.MetaWalkthroughPromoSection),
   {
@@ -66,6 +76,7 @@ export default async function Home() {
         <LeadCaptureSection />
         <PricingTeaserStrip />
         <TryNextReportCtaSection loggedIn={loggedIn} />
+        <HomeWorkflowFilm />
       </main>
     </>
   );
