@@ -37,6 +37,9 @@ function WizardReportTypePickerGrid({
   const comparison = wizardReportTypeCopyForLocale(locale, "COMPARISON") ?? WIZARD_REPORT_TYPE_COPY.COMPARISON;
   const historical = wizardReportTypeCopyForLocale(locale, "HISTORICAL") ?? WIZARD_REPORT_TYPE_COPY.HISTORICAL;
   const dayTable = wizardReportTypeCopyForLocale(locale, "DAY_BREAKDOWN") ?? WIZARD_REPORT_TYPE_COPY.DAY_BREAKDOWN;
+  const quarter = wizardReportTypeCopyForLocale(locale, "QUARTER") ?? WIZARD_REPORT_TYPE_COPY.QUARTER;
+  const ytd = wizardReportTypeCopyForLocale(locale, "YTD") ?? WIZARD_REPORT_TYPE_COPY.YTD;
+  const creative = wizardReportTypeCopyForLocale(locale, "CREATIVE") ?? WIZARD_REPORT_TYPE_COPY.CREATIVE;
 
   function select(next: ReportTypeValue) {
     onReportTypeChange(next);
@@ -119,6 +122,36 @@ function WizardReportTypePickerGrid({
               csvRequiredNote={csvNote("DAY_BREAKDOWN", clientTimezone)}
               selected={reportType === "DAY_BREAKDOWN"}
               onSelect={() => select("DAY_BREAKDOWN")}
+              layout="compact"
+            />
+            <ReportTypeCard
+              icon="📈"
+              heading={quarter.cardHeading}
+              description={quarter.cardOneLiner}
+              detailTooltip={quarter.cardYouGet}
+              csvRequiredNote={csvNote("QUARTER", clientTimezone)}
+              selected={reportType === "QUARTER"}
+              onSelect={() => select("QUARTER")}
+              layout="compact"
+            />
+            <ReportTypeCard
+              icon="🗓️"
+              heading={ytd.cardHeading}
+              description={ytd.cardOneLiner}
+              detailTooltip={ytd.cardYouGet}
+              csvRequiredNote={csvNote("YTD", clientTimezone)}
+              selected={reportType === "YTD"}
+              onSelect={() => select("YTD")}
+              layout="compact"
+            />
+            <ReportTypeCard
+              icon="🎨"
+              heading={creative.cardHeading}
+              description={creative.cardOneLiner}
+              detailTooltip={creative.cardYouGet}
+              csvRequiredNote={csvNote("CREATIVE", clientTimezone)}
+              selected={reportType === "CREATIVE"}
+              onSelect={() => select("CREATIVE")}
               layout="compact"
             />
           </div>

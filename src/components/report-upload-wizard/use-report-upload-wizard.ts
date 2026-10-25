@@ -229,16 +229,12 @@ export function useReportUploadWizard({
   }
 
   function chooseWebsitePlatform() {
-    if (isLaunchPlatformEnabled("GA4")) {
-      setWizardKind("website");
-      rememberPlatformChoice("GA4");
-      setMismatchWarning(false);
-      setAnalyzeStatus("idle");
-      setAnalyzeErrors([]);
-      setAnalyzeMessage(null);
-      return;
-    }
-    choosePlatform("META");
+    setWizardKind("website");
+    rememberPlatformChoice("GA4");
+    setMismatchWarning(false);
+    setAnalyzeStatus("idle");
+    setAnalyzeErrors([]);
+    setAnalyzeMessage(null);
   }
   const initialRememberedFolder: RememberedDriveFolder | null =
     initialLastDriveFolderId && initialLastDriveFolderName

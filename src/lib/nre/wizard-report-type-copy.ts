@@ -59,6 +59,27 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
     cardYouGet: "Account totals only - one row per day in a table.",
     defaultDeckTitle: "Day-by-Day Table Report",
   },
+  QUARTER: {
+    pickerLabel: "Quarterly Performance Report",
+    cardHeading: "Quarterly Performance Report",
+    cardOneLiner: "Calendar quarter to date.",
+    cardYouGet: "Quarter-to-date campaign performance and chart for the current quarter.",
+    defaultDeckTitle: "Quarterly Performance Report",
+  },
+  YTD: {
+    pickerLabel: "Year-to-Date Performance Report",
+    cardHeading: "Year-to-Date Performance Report",
+    cardOneLiner: "Jan 1 through yesterday.",
+    cardYouGet: "Year-to-date totals and chart from January 1 through yesterday.",
+    defaultDeckTitle: "Year-to-Date Performance Report",
+  },
+  CREATIVE: {
+    pickerLabel: "Creative Performance Report",
+    cardHeading: "Creative Performance Report",
+    cardOneLiner: "Ad-level creative rows.",
+    cardYouGet: "Creative-level CSV (ad name / ad ID rows) with spend and results per ad.",
+    defaultDeckTitle: "Creative Performance Report",
+  },
 };
 
 export function wizardReportTypeCopy(reportType: ReportTypeValue): WizardReportTypeCopy | null {

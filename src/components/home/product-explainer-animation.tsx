@@ -19,7 +19,7 @@ const FRAMES: ExplainerFrame[] = [
     title: "Add your ad data",
     caption: "Upload a CSV export from Meta Ads Manager.",
     voiceoverScript:
-      "Start by uploading a CSV export from Meta Ads Manager. Google, TikTok, and GA4 are launching soon.",
+      "Choose Meta, Google Ads, TikTok, or GA4 — upload a CSV or sync from API when your accounts are connected.",
   },
   {
     step: "2 / 5",

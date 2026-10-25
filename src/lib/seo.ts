@@ -11,7 +11,7 @@ export const OG_IMAGE = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "NextReport — Meta Ads reporting for agencies (Google, TikTok & GA4 launching soon)",
+  alt: "NextReport — Meta, Google Ads, TikTok & GA4 reporting for agencies",
 } as const;
 
 /** High-intent and long-tail terms — used on homepage and key landing pages. */
@@ -132,11 +132,11 @@ export function pageMetadata({
 export const ROOT_METADATA: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Automated Meta Ads Reports in 2 Minutes",
+    default: "Automated Ad & GA4 Reports in 2 Minutes",
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok & GA4 launching soon.",
+    "Send polished client reports in under 2 minutes — Meta, Google Ads, TikTok, and GA4. CSV upload or API sync — branded .pptx, live browser link & Google Slides.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -156,9 +156,9 @@ export const ROOT_METADATA: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: "en_IN",
-    title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
+    title: `Automated Ad & GA4 Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok & GA4 launching soon.",
+      "Send polished client reports in under 2 minutes — Meta, Google Ads, TikTok, and GA4. CSV upload or API sync — branded .pptx, live browser link & Google Slides.",
     images: ogImages(),
   },
   twitter: {
@@ -216,7 +216,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: SUPPORT_EMAIL,
       description:
-        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Google, TikTok, and GA4 launching soon.",
+        "Automated reporting for digital agencies — Meta, Google Ads, TikTok, and GA4. Branded PowerPoint, live share links, and Google Slides export in under two minutes.",
       contactPoint: {
         "@type": "ContactPoint",
         email: SUPPORT_EMAIL,
@@ -258,13 +258,12 @@ export const HOME_JSON_LD = {
         },
       ],
       description:
-        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and Google Slides export with AI-written insights.",
+        "Upload CSV exports or sync from API — Meta, Google Ads, TikTok, and GA4 — to generate client-ready PowerPoint (.pptx) reports, live browser share links, and Google Slides export with AI-written insights.",
       featureList: [
-        "Meta Ads CSV import",
-        "Meta Ads CSV upload",
-        "Google Ads CSV import (launching soon)",
-        "TikTok CSV import (launching soon)",
-        "Google Analytics 4 website reporting (launching soon)",
+        "Meta Ads CSV import and Marketing API sync",
+        "Google Ads CSV import and Google Ads API sync",
+        "TikTok Ads CSV import and Marketing API sync",
+        "Google Analytics 4 website reporting",
         "CSV to PowerPoint (.pptx)",
         "Live browser share link",
         "AI campaign summaries",
@@ -331,7 +330,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Google Ads, TikTok Ads, and GA4 website reporting are launching soon.",
+      "NextReport supports Meta Ads, Google Ads, TikTok Ads, and GA4 website reporting — CSV upload or read-only API sync from Account settings.",
   },
   {
     question: "What file formats can I upload?",
@@ -351,7 +350,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional is unlimited. Google Ads, TikTok Ads, and GA4 are on the product roadmap, not part of the Meta-first launch.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces; Professional is unlimited. All platforms (Meta, Google Ads, TikTok, GA4) are included in each client slot.",
   },
   {
     question: "Can I white-label reports for my clients?",

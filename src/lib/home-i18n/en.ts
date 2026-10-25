@@ -185,8 +185,8 @@ export const HOME_EN: HomeCopy = {
         features: [
           AGENCY_CLIENT_LIMIT_FEATURE,
           "Unlimited report generation",
-          "Meta Ads — CSV upload (live)",
-          "Google, TikTok & GA4 — launching soon",
+          "Meta, Google Ads & TikTok — CSV or API sync",
+          "GA4 website traffic reports",
           "AI-written campaign summaries & insights",
           "PowerPoint, Google Slides & live browser share",
           "Google Drive auto-save",
@@ -200,8 +200,8 @@ export const HOME_EN: HomeCopy = {
         features: [
           PROFESSIONAL_CLIENT_LIMIT_FEATURE,
           "Everything in Agency",
-          "Meta CSV reporting for every client; more platforms as we launch",
-          "Quarterly, YTD & creative reports — launching soon",
+          "All platforms for every client workspace",
+          "Quarterly, YTD & creative (ad-level) reports",
           "Priority email support",
           "Early access to new features",
         ],
