@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AD_PLATFORM_API_SYNC_ENABLED } from "@/lib/ad-platform-api-sync";
+import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Meta authorisation was cancelled — your ad account was not connected.",
@@ -81,7 +81,7 @@ export function MetaAdsSettings({
     }
   }
 
-  if (!AD_PLATFORM_API_SYNC_ENABLED) {
+  if (!isAdPlatformApiSyncEnabled()) {
     return (
       <div className="rounded-lg border border-dash-border bg-dash-card p-5">
         <h3 className="text-[15px] font-semibold text-dash-ink">Meta Ads</h3>

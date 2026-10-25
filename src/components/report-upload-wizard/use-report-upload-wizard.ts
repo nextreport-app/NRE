@@ -229,7 +229,15 @@ export function useReportUploadWizard({
   }
 
   function chooseWebsitePlatform() {
-    // GA4 website wizard deferred until post-Meta launch — stay on Meta ads flow.
+    if (isLaunchPlatformEnabled("GA4")) {
+      setWizardKind("website");
+      rememberPlatformChoice("GA4");
+      setMismatchWarning(false);
+      setAnalyzeStatus("idle");
+      setAnalyzeErrors([]);
+      setAnalyzeMessage(null);
+      return;
+    }
     choosePlatform("META");
   }
   const initialRememberedFolder: RememberedDriveFolder | null =
