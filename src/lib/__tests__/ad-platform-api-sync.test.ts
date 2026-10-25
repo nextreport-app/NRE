@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("ad platform API sync visibility", () => {
   afterEach(() => {
     delete process.env.AD_PLATFORM_API_SYNC_ENABLED;
+    delete process.env.GOOGLE_OAUTH_VERIFICATION_UI;
   });
 
   it("hides client platform connections by default", async () => {
@@ -13,6 +14,13 @@ describe("ad platform API sync visibility", () => {
 
   it("shows client platform connections when env flag is true", async () => {
     process.env.AD_PLATFORM_API_SYNC_ENABLED = "true";
+    const { isClientPlatformConnectionsSectionVisible } = await import("../ad-platform-api-sync");
+    expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
+  });
+
+  it("shows client platform connections during Google OAuth verification UI", async () => {
+    process.env.GOOGLE_OAUTH_VERIFICATION_UI = "true";
+    vi.resetModules();
     const { isClientPlatformConnectionsSectionVisible } = await import("../ad-platform-api-sync");
     expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });

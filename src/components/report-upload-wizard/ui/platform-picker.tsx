@@ -7,7 +7,11 @@ import {
   MetaAdsBrandIcon,
   TikTokAdsBrandIcon,
 } from "@/components/platform-brand-icons";
-import { DEFERRED_PLATFORMS, SHOW_DEFERRED_PLATFORM_UI } from "@/lib/meta-launch-scope";
+import {
+  DEFERRED_PLATFORMS,
+  isLaunchPlatformEnabled,
+  SHOW_DEFERRED_PLATFORM_UI,
+} from "@/lib/meta-launch-scope";
 import { wizardPlatformImportDescription } from "../utils";
 import { ReportTypeCard } from "./report-type-card";
 
@@ -40,8 +44,12 @@ export function WizardPlatformPickerGrid({
   onChoosePlatform: (next: "META" | "GOOGLE" | "TIKTOK") => void;
   onChooseWebsitePlatform?: () => void;
 }) {
+  const showGoogleAds = isLaunchPlatformEnabled("GOOGLE");
+  const showGa4Website = isLaunchPlatformEnabled("GA4");
+  const multiColumn = SHOW_DEFERRED_PLATFORM_UI || showGoogleAds || showGa4Website;
+
   return (
-    <div className={`grid grid-cols-1 gap-3 ${SHOW_DEFERRED_PLATFORM_UI ? "sm:grid-cols-2 lg:grid-cols-4" : "max-w-md"}`}>
+    <div className={`grid grid-cols-1 gap-3 ${multiColumn ? "sm:grid-cols-2 lg:grid-cols-4" : "max-w-md"}`}>
       <ReportTypeCard
         icon={<MetaAdsBrandIcon />}
         heading="Meta Ads"
@@ -50,8 +58,28 @@ export function WizardPlatformPickerGrid({
         onSelect={() => onChoosePlatform("META")}
         singleLineHeading
       />
+      {showGoogleAds ? (
+        <ReportTypeCard
+          icon={<GoogleAdsBrandIcon />}
+          heading="Google Ads"
+          description={wizardPlatformImportDescription("GOOGLE")}
+          selected={selectedPlatformCard === "GOOGLE"}
+          onSelect={() => onChoosePlatform("GOOGLE")}
+          singleLineHeading
+        />
+      ) : null}
+      {showGa4Website && onChooseWebsitePlatform ? (
+        <ReportTypeCard
+          icon={<Ga4BrandIcon />}
+          heading="Google Analytics"
+          description="Website traffic — sessions, channels, and landing pages"
+          selected={false}
+          onSelect={onChooseWebsitePlatform}
+          singleLineHeading
+        />
+      ) : null}
       {SHOW_DEFERRED_PLATFORM_UI
-        ? DEFERRED_PLATFORMS.map((platform) => {
+        ? DEFERRED_PLATFORMS.filter((platform) => !isLaunchPlatformEnabled(platform.id)).map((platform) => {
         const icon =
           platform.id === "GOOGLE" ? (
             <GoogleAdsBrandIcon />
