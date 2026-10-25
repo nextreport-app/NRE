@@ -6,6 +6,7 @@ import {
   listAccessibleGoogleAdsCustomers,
   refreshGoogleAdsAccessToken,
 } from "@/lib/google-ads-api";
+import { googleOAuthReconnectMessage, isGoogleOAuthRefreshFailure } from "@/lib/google-oauth-refresh-error";
 
 /** Lists Google Ads customer IDs the connected user can access — verifies API access. */
 export async function GET() {
@@ -22,7 +23,7 @@ export async function GET() {
       return NextResponse.json({ error: "Google Ads is not connected" }, { status: 400 });
     }
 
-    let accessToken = user.googleAdsAccessToken ?? "";
+    let accessToken: string;
     try {
       const refreshed = await refreshGoogleAdsAccessToken(user.googleAdsRefreshToken);
       accessToken = refreshed.access_token;
@@ -30,12 +31,20 @@ export async function GET() {
         where: { id: session.user.id },
         data: { googleAdsAccessToken: accessToken },
       });
-    } catch {
-      /* use stored access token if refresh fails */
-      if (!accessToken) throw new Error("Could not obtain Google Ads access token");
+    } catch (refreshErr) {
+      console.error("[google-ads:customers] token refresh failed:", refreshErr);
+      return NextResponse.json({ error: googleOAuthReconnectMessage("Google Ads") }, { status: 400 });
     }
 
-    const resourceNames = await listAccessibleGoogleAdsCustomers(accessToken);
+    let resourceNames: string[];
+    try {
+      resourceNames = await listAccessibleGoogleAdsCustomers(accessToken);
+    } catch (apiErr) {
+      if (isGoogleOAuthRefreshFailure(apiErr)) {
+        return NextResponse.json({ error: googleOAuthReconnectMessage("Google Ads") }, { status: 400 });
+      }
+      throw apiErr;
+    }
     const customers = resourceNames.map((name) => {
       const id = name.replace(/^customers\//, "");
       return { id, resourceName: name };
