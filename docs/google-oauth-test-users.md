@@ -28,6 +28,26 @@ Also confirm:
   - `https://nextreport.in/api/google-drive/callback` (Drive connect)
   - Same paths for `www.nextreport.in` if you use www, plus any Vercel preview URLs you test on.
 
+## “Connected ✓” but Verify API access / List properties fails (401 or refresh error)
+
+The UI can still show **Connected** while tokens in the database are **stale**. Typical causes:
+
+1. **OAuth client secret rotated** in Google Cloud — existing refresh tokens stop working until **Disconnect → Connect** again.
+2. **Vercel Production env mismatch** — `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` (and `GA4_CLIENT_*` if used) must match the Web client that issued the tokens.
+3. **GA4 vs Ads client drift** — GA4 connect uses `GA4_CLIENT_*` when set, otherwise falls back to `GOOGLE_ADS_*`. Changing Production env without reconnecting breaks refresh.
+4. **Expired access token** — retry after a fresh connect so refresh_token is reissued with `prompt=consent`.
+
+**Fix on prod:**
+
+1. Account → **Google Ads** → **Disconnect** → **Connect Google Ads** → Allow on consent.
+2. Account → **GA4** → **Disconnect** → **Connect Google Analytics** → Allow.
+3. Retry **Verify API access** / **List GA4 properties**.
+
+Confirm redirect URIs on the **Ads/GA4 OAuth client** (not necessarily the Drive client):
+
+- `https://nextreport.in/api/google-ads/callback`
+- `https://nextreport.in/api/ga4/callback`
+
 ## Already signed up with Google (founder / early accounts)
 
 While the app keeps **Continue with Google** disabled (`NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED` is not `true`), Google-only accounts have **no password** — logging in with email and a guessed password will fail.

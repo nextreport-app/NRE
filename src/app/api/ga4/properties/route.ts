@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listGa4Properties, refreshGa4AccessToken } from "@/lib/ga4-api";
+import { googleOAuthReconnectMessage } from "@/lib/google-oauth-refresh-error";
 
 export async function GET() {
   const session = await auth();
@@ -24,8 +25,9 @@ export async function GET() {
       where: { id: session.user.id },
       data: { ga4AccessToken: accessToken },
     });
-  } catch {
-    return NextResponse.json({ error: "Could not refresh GA4 access token — reconnect in Account Settings" }, { status: 400 });
+  } catch (refreshErr) {
+    console.error("[ga4:properties] token refresh failed:", refreshErr);
+    return NextResponse.json({ error: googleOAuthReconnectMessage("Google Analytics") }, { status: 400 });
   }
 
   const properties = await listGa4Properties(accessToken);
