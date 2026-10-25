@@ -13,6 +13,7 @@ export function YouTubeVideoEmbed({
   className = "",
   loadStrategy = "click",
   activateWhenHash,
+  autoplay = false,
 }: {
   videoId: string;
   title: string;
@@ -21,6 +22,8 @@ export function YouTubeVideoEmbed({
   className?: string;
   loadStrategy?: "click" | "inView";
   activateWhenHash?: string;
+  /** Start playback when the iframe mounts (after the visitor presses play). */
+  autoplay?: boolean;
 }) {
   const [active, setActive] = useState(false);
   const [thumbSrc, setThumbSrc] = useState(() => youtubeThumbnailUrl(videoId, "max"));
@@ -96,7 +99,7 @@ export function YouTubeVideoEmbed({
   return (
     <div ref={containerRef} className={shellClass}>
       <iframe
-        src={youtubeEmbedUrl(videoId)}
+        src={youtubeEmbedUrl(videoId, { autoplay })}
         title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen

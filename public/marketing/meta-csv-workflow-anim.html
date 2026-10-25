@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NextReport — 30s workflow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --amber:#f5b45a; --ink:#f4f7fb; --muted:#9aa8bd; --line:rgba(255,255,255,.12); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 1920px; height: 1080px; overflow: hidden; background: #070d18; color: var(--ink); font-family: Inter, sans-serif; }
+    .stage {
+      position: relative; width: 1920px; height: 1080px; overflow: hidden;
+      background:
+        radial-gradient(880px 480px at 70% 12%, rgba(76,141,255,.2), transparent 60%),
+        radial-gradient(640px 420px at 10% 90%, rgba(245,180,90,.14), transparent 55%),
+        linear-gradient(180deg, #101a2e, #070d18 50%, #050910);
+    }
+    .grid {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse 80% 75% at 50% 45%, #000 25%, transparent 78%);
+    }
+    .top, .foot {
+      position: absolute; left: 72px; right: 72px; z-index: 8;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .top { top: 36px; }
+    .foot { bottom: 28px; }
+    .brand { display: flex; gap: 12px; align-items: center; font-family: Outfit, sans-serif; font-weight: 700; font-size: 22px; }
+    .mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(145deg,#f7c57a,#e8943a); color: #1a1208; font-weight: 800; }
+    .step { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .scene { position: absolute; inset: 0; z-index: 2; opacity: 0; }
+    .scene.on { opacity: 1; }
+    h1, h2 { font-family: Outfit, sans-serif; font-weight: 750; letter-spacing: -.03em; line-height: 1.05; }
+    h1 { font-size: 84px; }
+    h2 { font-size: 58px; }
+    .amber { color: var(--amber); }
+    .muted { color: var(--muted); }
+    .kicker { color: var(--amber); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: 14px; margin-bottom: 16px; }
+    .actor { position: absolute; z-index: 4; filter: drop-shadow(0 18px 18px rgba(0,0,0,.35)); }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 28px;
+      box-shadow: 0 30px 70px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.16);
+    }
+    .hook { position: absolute; left: 120px; right: 120px; top: 230px; text-align: center; }
+    .rule { height: 5px; width: 0; margin: 22px auto 0; border-radius: 5px; background: linear-gradient(90deg, #e8943a, #f5b45a); }
+    .strike { position: relative; display: inline-block; font-family: Outfit, sans-serif; font-size: 54px; font-weight: 650; color: #c5d0e0; }
+    .strike i { position: absolute; left: -2%; top: 54%; height: 6px; width: 0; background: #f07167; border-radius: 4px; }
+    #sc1 .copy { position: absolute; left: 80px; top: 220px; width: 620px; }
+    #browser {
+      position: absolute; right: 90px; top: 180px; width: 980px; height: 640px; overflow: hidden;
+    }
+    .chrome { height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 18px; background: #162033; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .d { width: 11px; height: 11px; border-radius: 50%; } .r{background:#ff5f57} .y{background:#febc2e} .g{background:#28c840}
+    .rows { padding: 28px 32px; display: grid; gap: 14px; }
+    .row { height: 18px; border-radius: 9px; background: rgba(255,255,255,.08); }
+    .toggle { margin: 8px 32px 0; display: inline-flex; gap: 8px; }
+    .toggle span { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-weight: 600; font-size: 16px; }
+    .toggle span.on { background: var(--amber); color: #1a1208; border-color: transparent; }
+    #cursor { position: absolute; width: 28px; height: 28px; z-index: 5; }
+    #sc2 .copy { position: absolute; left: 80px; top: 180px; width: 700px; }
+    .pills { position: absolute; right: 100px; top: 220px; width: 760px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pill {
+      padding: 22px 24px; border-radius: 18px; background: rgba(255,255,255,.05); border: 1px solid var(--line);
+      font-family: Outfit, sans-serif; font-size: 26px; font-weight: 650; display: flex; justify-content: space-between; align-items: center;
+    }
+    .pill.hot { background: linear-gradient(180deg,#f7c57a,#e8943a); color: #1a1208; border-color: transparent; }
+    #sc3 .copy, #sc4 .copy { position: absolute; left: 80px; top: 240px; width: 640px; }
+    .csv {
+      position: absolute; left: 980px; top: 250px; width: 420px; height: 500px;
+    }
+    .csv svg { width: 100%; height: 100%; }
+    .pct { position: absolute; left: 80px; top: 500px; width: 640px; font-family: Outfit, sans-serif; font-size: 28px; color: var(--amber); font-weight: 700; }
+    .drop {
+      position: absolute; right: 160px; top: 200px; width: 720px; height: 520px;
+      display: grid; place-items: center; text-align: center;
+    }
+    .ring-wrap { position: relative; width: 280px; height: 280px; }
+    .ring-wrap svg { width: 280px; height: 280px; transform: rotate(-90deg); }
+    .ring-label { position: absolute; inset: 0; display: grid; place-items: center; font-family: Outfit, sans-serif; font-weight: 750; font-size: 42px; }
+    #sc5 .copy { position: absolute; left: 80px; top: 160px; }
+    .rail { position: absolute; left: 100px; right: 100px; top: 460px; height: 180px; }
+    .track { position: absolute; left: 40px; right: 40px; top: 36px; height: 6px; background: rgba(255,255,255,.12); border-radius: 6px; }
+    .track > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg,#e8943a,#f5b45a); border-radius: 6px; }
+    .nodes { position: absolute; inset: 0; display: flex; justify-content: space-between; }
+    .node { width: 220px; text-align: center; }
+    .node b {
+      width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center;
+      background: #121b2d; border: 2px solid rgba(255,255,255,.16); font-family: Outfit, sans-serif; font-size: 22px;
+    }
+    .node b { transition: transform .35s cubic-bezier(.22,1,.36,1), background .25s; }
+    .node.on b { background: var(--amber); color: #1a1208; border-color: transparent; transform: scale(1.12); }
+    .node span { font-weight: 650; font-size: 20px; color: var(--muted); }
+    .node.on span { color: var(--ink); }
+    #sc6 .send { position: absolute; left: 0; right: 0; top: 180px; text-align: center; }
+    .cards { position: absolute; left: 160px; right: 160px; top: 460px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .card { padding: 32px 28px; border-radius: 22px; background: rgba(255,255,255,.05); border: 1px solid var(--line); text-align: left; }
+    .card strong { display: block; font-family: Outfit, sans-serif; font-size: 28px; margin-bottom: 8px; }
+    .card span { color: var(--muted); font-size: 18px; line-height: 1.4; }
+    .url { margin-top: 18px; font-size: 22px; color: var(--amber); font-weight: 700; letter-spacing: .04em; }
+    .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.08); z-index: 9; }
+    .progress > span { display: block; height: 100%; background: linear-gradient(90deg,#e8943a,#f5b45a); }
+    .dots { display: flex; gap: 8px; }
+    .dots b { width: 18px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.18); display: block; }
+    .dots b.on { width: 32px; background: var(--amber); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="grid"></div>
+    <header class="top">
+      <div class="brand"><span class="mark">N</span> NextReport</div>
+      <div class="step" id="stepLabel">How it works</div>
+    </header>
+
+    <section class="scene" id="sc0" data-title="How it works">
+      <div class="hook">
+        <div class="strike" id="hookOld">Copying cells into slides?<i id="strike"></i></div>
+        <div id="hookNew" style="margin-top: 12px;">
+          <h1>Client deck.<br><span class="amber">Before the call.</span></h1>
+          <div class="rule" id="rule"></div>
+          <p class="muted" style="margin-top:22px;font-size:26px;">One Meta CSV. A report you can send.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc1" data-title="Step 1  ·  Ads reporting">
+      <div class="copy">
+        <div class="kicker">Step 1</div>
+        <h2>Open Ads reporting.</h2>
+        <p class="muted" style="margin-top:18px;font-size:24px;line-height:1.4;">Day breakdown. Campaign rows. The grain NextReport reads.</p>
+      </div>
+      <div class="panel" id="browser">
+        <div class="chrome"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span style="margin-left:12px;color:#8b9bb3;font-size:15px">Ads Manager · Reporting</span></div>
+        <div class="toggle" id="toggles"><span>Summary</span><span id="dayToggle">Day</span></div>
+        <div class="rows" id="rows">
+          <div class="row" style="width:72%"></div>
+          <div class="row" style="width:88%"></div>
+          <div class="row" style="width:64%"></div>
+          <div class="row" style="width:80%"></div>
+          <div class="row" style="width:52%"></div>
+        </div>
+        <svg id="cursor" viewBox="0 0 24 24"><path d="M4 2l16 12-7 1-3 7z" fill="#fff"/></svg>
+      </div>
+    </section>
+
+    <section class="scene" id="sc2" data-title="Step 2  ·  Metrics">
+      <div class="copy">
+        <div class="kicker">Step 2</div>
+        <h2>Lock the metrics that matter.</h2>
+        <p class="muted" style="margin-top:18px;font-size:24px;">Save the columns. Export the same layout next month.</p>
+      </div>
+      <div class="pills" id="pills">
+        <div class="pill" data-hot="0">Amount spent</div>
+        <div class="pill" data-hot="0">Impressions</div>
+        <div class="pill" data-hot="1">Link clicks</div>
+        <div class="pill" data-hot="1">Leads</div>
+        <div class="pill" data-hot="1">Cost per result</div>
+        <div class="pill" data-hot="0">Landing page views</div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc3" data-title="Step 3  ·  Export">
+      <div class="copy">
+        <div class="kicker">Step 3</div>
+        <h2>Export the day-level CSV.</h2>
+        <p class="muted" style="margin-top:18px;font-size:24px;line-height:1.4;">One row per day, per campaign. That file is the source of truth.</p>
+      </div>
+      <div class="csv" id="csv">
+        <svg viewBox="0 0 420 500" fill="none">
+          <path d="M40 20h210l110 110v330H40V20z" fill="#122033" stroke="#8eb6ff" stroke-width="6"/>
+          <path d="M250 20v110h110" fill="#1c2c46"/>
+          <text x="200" y="270" text-anchor="middle" fill="#8eb6ff" font-family="Outfit" font-size="72" font-weight="700">CSV</text>
+          <text x="200" y="330" text-anchor="middle" fill="#9aa8bd" font-family="Inter" font-size="28">day · campaign</text>
+        </svg>
+      </div>
+      <div class="pct" id="pct">Exporting…</div>
+    </section>
+
+    <section class="scene" id="sc4" data-title="Step 4  ·  Upload">
+      <div class="copy">
+        <div class="kicker">Step 4</div>
+        <h2>Drop it into NextReport.</h2>
+        <p class="muted" style="margin-top:18px;font-size:24px;">Pick the client and the period. Analyze once.</p>
+      </div>
+      <div class="panel drop" id="drop">
+        <div>
+          <div class="ring-wrap">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="48" stroke="rgba(255,255,255,.12)" stroke-width="8" fill="none"/>
+              <circle id="ring" cx="60" cy="60" r="48" stroke="#f5b45a" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+            </svg>
+            <div class="ring-label" id="ringLabel">0%</div>
+          </div>
+          <p id="dropCaption" class="muted" style="margin-top:18px;font-size:22px;">Waiting for CSV</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc5" data-title="Step 5  ·  Wizard">
+      <div class="copy">
+        <div class="kicker">Step 5</div>
+        <h2>Four steps. Then generate.</h2>
+      </div>
+      <div class="rail">
+        <div class="track"><i id="railFill"></i></div>
+        <div class="nodes" id="nodes">
+          <div class="node"><b>1</b><span>Import</span></div>
+          <div class="node"><b>2</b><span>Campaigns</span></div>
+          <div class="node"><b>3</b><span>Metrics</span></div>
+          <div class="node"><b>4</b><span>Generate</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc6" data-title="Send it">
+      <div class="send">
+        <div class="kicker">Deliver</div>
+        <h1>Send it <span class="amber">today.</span></h1>
+        <p class="url">nextreport.in</p>
+      </div>
+      <div class="cards" id="cards">
+        <div class="card"><strong>PowerPoint</strong><span>Branded PPTX for the review.</span></div>
+        <div class="card"><strong>Share link</strong><span>A live view. No attachment.</span></div>
+        <div class="card"><strong>Google Slides</strong><span>Optional, when the team lives in Drive.</span></div>
+      </div>
+    </section>
+
+    <svg class="actor" id="maya" viewBox="0 0 200 280">
+      <ellipse cx="100" cy="268" rx="58" ry="8" fill="rgba(0,0,0,.35)"/>
+      <path d="M70 262c6-70 14-120 18-132h24c5 14 14 68 20 132" fill="#1c2740"/>
+      <path d="M78 132h46c4 22 4 48 2 70H76c-2-22-1-48 2-70z" fill="#243352"/>
+      <path d="M86 78c2-28 14-46 28-48 16-2 30 14 32 42 1 12-4 20-10 24-6-16-16-24-26-22-8 1-16 10-18 22-6-6-8-12-6-18z" fill="#3a2a22"/>
+      <circle cx="100" cy="108" r="28" fill="#f3d2b0"/>
+      <circle cx="90" cy="108" r="3" fill="#1a120c"/>
+      <circle cx="112" cy="108" r="3" fill="#1a120c"/>
+      <path d="M94 120c4 5 10 5 14 0" stroke="#c47b62" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <path d="M78 140c-22 10-30 36-24 62" stroke="#f3d2b0" stroke-width="12" stroke-linecap="round"/>
+      <path id="armR" d="M128 140c22-4 40 6 48 22" stroke="#f3d2b0" stroke-width="12" stroke-linecap="round"/>
+      <path d="M84 150h34" stroke="#f5b45a" stroke-width="6" stroke-linecap="round"/>
+    </svg>
+    <svg class="actor" id="chip" viewBox="0 0 160 210">
+      <ellipse cx="80" cy="198" rx="46" ry="7" fill="rgba(0,0,0,.28)"/>
+      <rect x="28" y="58" width="104" height="116" rx="36" fill="#243044" stroke="#3d516e" stroke-width="3"/>
+      <rect x="42" y="78" width="76" height="58" rx="16" fill="#0c1422"/>
+      <circle id="eyeL" cx="64" cy="104" r="7" fill="#7ec8ff"/>
+      <circle id="eyeR" cx="96" cy="104" r="7" fill="#7ec8ff"/>
+      <path d="M70 120c6 7 16 7 22 0" stroke="#7ec8ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M80 58V34" stroke="#9aa8bd" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="80" cy="24" r="12" fill="#f5b45a"/>
+      <path d="M28 112H12l16 16" fill="#1c283c"/>
+      <path d="M132 112h16l-16 16" fill="#1c283c"/>
+    </svg>
+
+    <footer class="foot">
+      <div class="step">Meta Ads Manager → NextReport</div>
+      <div class="dots" id="dots"></div>
+    </footer>
+    <div class="progress"><span id="bar"></span></div>
+  </div>
+  <script>
+    const BPM = 112;
+    const SCENE_MS = (60_000 / BPM) * 8;
+    const scenes = [...document.querySelectorAll(".scene")];
+    const TOTAL = SCENE_MS * scenes.length;
+    const stepLabel = document.getElementById("stepLabel");
+    const bar = document.getElementById("bar");
+    const dots = document.getElementById("dots");
+    scenes.forEach(() => dots.appendChild(document.createElement("b")));
+    const dotEls = [...dots.children];
+
+    const poses = [
+      { m: { x: 220, y: 690, w: 280, o: 1 }, c: { x: 1420, y: 740, w: 230, o: 1 } },
+      { m: { x: 1080, y: 800, w: 190, o: 1 }, c: { x: 1500, y: 860, w: 140, o: 0 } },
+      { m: { x: 80, y: 860, w: 140, o: 0 }, c: { x: 1540, y: 700, w: 250, o: 1 } },
+      { m: { x: 640, y: 760, w: 230, o: 1 }, c: { x: 1320, y: 800, w: 180, o: 1 } },
+      { m: { x: 200, y: 780, w: 200, o: 1 }, c: { x: 1480, y: 760, w: 190, o: 1 } },
+      { m: { x: 160, y: 800, w: 170, o: 1 }, c: { x: 1580, y: 810, w: 160, o: 1 } },
+      { m: { x: 120, y: 700, w: 250, o: 1 }, c: { x: 1560, y: 730, w: 210, o: 1 } },
+    ];
+
+    const ease = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+    const seg = (local, a, b) => ease((local - a) / (b - a));
+
+    function mix(a, b, t) {
+      return {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        w: a.w + (b.w - a.w) * t,
+        o: a.o + (b.o - a.o) * t,
+      };
+    }
+    function place(el, p, bob) {
+      el.style.left = p.x + "px";
+      el.style.top = p.y + bob + "px";
+      el.style.width = p.w + "px";
+      el.style.opacity = String(Math.max(0, Math.min(1, p.o)));
+    }
+
+    const maya = document.getElementById("maya");
+    const chip = document.getElementById("chip");
+    const eyeL = document.getElementById("eyeL");
+    const eyeR = document.getElementById("eyeR");
+    const pills = [...document.querySelectorAll("#pills .pill")];
+    const rows = [...document.querySelectorAll("#rows .row")];
+    const nodes = [...document.querySelectorAll("#nodes .node")];
+    const cards = [...document.querySelectorAll("#cards .card")];
+
+    function seek(ms) {
+      const clamped = Math.max(0, Math.min(TOTAL - 0.001, ms));
+      const idx = Math.min(scenes.length - 1, Math.floor(clamped / SCENE_MS));
+      const local = (clamped - idx * SCENE_MS) / SCENE_MS;
+      const fadeIn = local < 0.08 ? local / 0.08 : 1;
+      scenes.forEach((s, i) => {
+        const on = i === idx;
+        s.classList.toggle("on", on);
+        s.style.opacity = on ? String(fadeIn) : "0";
+      });
+      stepLabel.textContent = scenes[idx].dataset.title;
+      bar.style.width = (clamped / TOTAL) * 100 + "%";
+      dotEls.forEach((d, i) => d.classList.toggle("on", i === idx));
+
+      const intro = idx === 0 ? 1 : ease(Math.min(1, local / 0.2));
+      const from = poses[Math.max(0, idx - 1)];
+      const to = poses[idx];
+      const bob = Math.sin(clamped / 380) * 7;
+      place(maya, { ...mix(from.m, to.m, intro) }, bob);
+      place(chip, mix(from.c, to.c, intro), -bob);
+      const wave = Math.sin(clamped / 260) * (idx === 0 || idx === 6 ? 10 : 2);
+      document.getElementById("armR").setAttribute("d", `M128 140c${22 + wave} ${-4 - wave * 0.3} ${40 + wave} 6 ${48 + wave * 0.4} ${22 - wave * 0.2}`);
+      const look = idx === 2 ? (local - 0.5) * 8 : 0;
+      eyeL.setAttribute("cx", String(64 + look));
+      eyeR.setAttribute("cx", String(96 + look));
+
+      const oldT = seg(local, 0.02, 0.14);
+      const strike = seg(local, 0.14, 0.3);
+      const oldOut = 1 - seg(local, 0.3, 0.4);
+      const neu = seg(local, 0.44, 0.64);
+      const hookOld = document.getElementById("hookOld");
+      hookOld.style.opacity = String(idx === 0 ? oldT * oldOut : 0);
+      hookOld.style.transform = `translateY(${(1 - oldT) * 16}px)`;
+      document.getElementById("strike").style.width = (idx === 0 ? strike * 104 : 0) + "%";
+      const hookNew = document.getElementById("hookNew");
+      hookNew.style.opacity = String(idx === 0 ? neu : 0);
+      hookNew.style.transform = `translateY(${(1 - neu) * 24}px)`;
+      document.getElementById("rule").style.width = (idx === 0 ? seg(local, 0.68, 0.9) * 240 : 0) + "px";
+
+      const browser = document.getElementById("browser");
+      const bIn = seg(local, 0.05, 0.28);
+      browser.style.opacity = String(idx === 1 ? bIn : 0);
+      browser.style.transform = `translateY(${(1 - (idx === 1 ? bIn : 0)) * 28}px) scale(${0.96 + 0.04 * (idx === 1 ? bIn : 0)})`;
+      const cursor = document.getElementById("cursor");
+      const cT = idx === 1 ? seg(local, 0.1, 0.38) : 0;
+      cursor.style.left = 460 - cT * 340 + "px";
+      cursor.style.top = 150 - cT * 72 + "px";
+      cursor.style.transform = `scale(${idx === 1 && local > 0.38 && local < 0.48 ? 0.78 : 1})`;
+      document.getElementById("dayToggle").classList.toggle("on", idx === 1 && local > 0.4);
+      rows.forEach((row, i) => {
+        const t = idx === 1 ? seg(local, 0.18 + i * 0.04, 0.34 + i * 0.04) : 0;
+        row.style.opacity = String(0.25 + 0.75 * t);
+        row.style.transform = `scaleX(${0.4 + 0.6 * t})`;
+        row.style.transformOrigin = "left center";
+      });
+
+      pills.forEach((pill, i) => {
+        const t = idx === 2 ? seg(local, 0.06 + i * 0.08, 0.28 + i * 0.08) : 0;
+        const hot = pill.dataset.hot === "1" && idx === 2 && local > 0.36 + i * 0.02;
+        pill.classList.toggle("hot", hot);
+        pill.style.opacity = String(t);
+        pill.style.transform = `translateX(${(1 - t) * 40}px)`;
+        pill.innerHTML = pill.dataset.label + (hot ? "  ✓" : "");
+      });
+
+      const csvT = idx === 3 ? seg(local, 0.08, 0.7) : 0;
+      const csv = document.getElementById("csv");
+      csv.style.opacity = String(idx === 3 ? seg(local, 0.05, 0.2) : 0);
+      csv.style.transform = `translateY(${(1 - csvT) * 30 - (idx === 3 ? Math.max(0, local - 0.72) * 80 : 0)}px) rotate(${idx === 3 ? -6 + csvT * 6 : 0}deg) scale(${0.86 + csvT * 0.14})`;
+      const days = idx === 3 ? Math.round(csvT * 30) : 0;
+      document.getElementById("pct").textContent = idx === 3 ? (csvT > 0.92 ? "Ready to upload" : `Exporting  ${days} days`) : "";
+      document.getElementById("pct").style.opacity = idx === 3 ? "1" : "0";
+
+      const up = idx === 4 ? seg(local, 0.12, 0.82) : 0;
+      const ring = document.getElementById("ring");
+      ring.style.strokeDashoffset = String(301.6 * (1 - up));
+      document.getElementById("ringLabel").textContent = Math.round(up * 100) + "%";
+      document.getElementById("dropCaption").textContent = up > 0.96 ? "Analyzed" : up > 0.15 ? "Reading the CSV" : "Waiting for CSV";
+      document.getElementById("drop").style.opacity = idx === 4 ? "1" : "0";
+
+      const rail = idx === 5 ? ease(Math.min(1, local / 0.92)) : 0;
+      document.getElementById("railFill").style.width = rail * 100 + "%";
+      nodes.forEach((node, i) => node.classList.toggle("on", idx === 5 && rail >= (i + 0.15) / 4));
+
+      cards.forEach((card, i) => {
+        const t = idx === 6 ? seg(local, 0.12 + i * 0.12, 0.38 + i * 0.12) : 0;
+        card.style.opacity = String(t);
+        card.style.transform = `translateY(${(1 - t) * 28}px)`;
+      });
+      const send = document.querySelector("#sc6 .send");
+      const sT = idx === 6 ? seg(local, 0.02, 0.3) : 0;
+      send.style.opacity = String(sT);
+      send.style.transform = `translateY(${(1 - sT) * 16}px)`;
+    }
+
+    pills.forEach((p) => { p.dataset.label = p.textContent; });
+    window.__seek = seek;
+    window.__DURATION = TOTAL;
+    seek(0);
+  </script>
+</body>
+</html>
