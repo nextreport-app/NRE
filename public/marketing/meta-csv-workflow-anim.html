@@ -45,7 +45,8 @@
       border-radius: 28px;
       box-shadow: 0 30px 70px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.16);
     }
-    .hook { position: absolute; left: 120px; right: 120px; top: 250px; text-align: center; }
+    .hook { position: absolute; left: 120px; right: 120px; top: 230px; text-align: center; }
+    .rule { height: 5px; width: 0; margin: 22px auto 0; border-radius: 5px; background: linear-gradient(90deg, #e8943a, #f5b45a); }
     .strike { position: relative; display: inline-block; font-family: Outfit, sans-serif; font-size: 54px; font-weight: 650; color: #c5d0e0; }
     .strike i { position: absolute; left: -2%; top: 54%; height: 6px; width: 0; background: #f07167; border-radius: 4px; }
     #sc1 .copy { position: absolute; left: 80px; top: 220px; width: 620px; }
@@ -90,7 +91,8 @@
       width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center;
       background: #121b2d; border: 2px solid rgba(255,255,255,.16); font-family: Outfit, sans-serif; font-size: 22px;
     }
-    .node.on b { background: var(--amber); color: #1a1208; border-color: transparent; }
+    .node b { transition: transform .35s cubic-bezier(.22,1,.36,1), background .25s; }
+    .node.on b { background: var(--amber); color: #1a1208; border-color: transparent; transform: scale(1.12); }
     .node span { font-weight: 650; font-size: 20px; color: var(--muted); }
     .node.on span { color: var(--ink); }
     #sc6 .send { position: absolute; left: 0; right: 0; top: 180px; text-align: center; }
@@ -119,6 +121,7 @@
         <div class="strike" id="hookOld">Copying cells into slides?<i id="strike"></i></div>
         <div id="hookNew" style="margin-top: 12px;">
           <h1>Client deck.<br><span class="amber">Before the call.</span></h1>
+          <div class="rule" id="rule"></div>
           <p class="muted" style="margin-top:22px;font-size:26px;">One Meta CSV. A report you can send.</p>
         </div>
       </div>
@@ -343,6 +346,7 @@
       const hookNew = document.getElementById("hookNew");
       hookNew.style.opacity = String(idx === 0 ? neu : 0);
       hookNew.style.transform = `translateY(${(1 - neu) * 24}px)`;
+      document.getElementById("rule").style.width = (idx === 0 ? seg(local, 0.68, 0.9) * 240 : 0) + "px";
 
       const browser = document.getElementById("browser");
       const bIn = seg(local, 0.05, 0.28);

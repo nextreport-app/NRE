@@ -19,6 +19,7 @@ const finalMp4 = path.join(outDir, "meta-csv-workflow-demo.mp4");
 const poster = path.join(outDir, "meta-csv-workflow-poster.jpg");
 const musicWav = path.join(videoDir, "bgm.wav");
 const musicPath = path.join(videoDir, "bgm.mp3");
+const voiceWav = path.join(videoDir, "voice.wav");
 
 const FPS = 30;
 
@@ -88,8 +89,14 @@ let enc = spawnSync(
 );
 if (enc.status !== 0) process.exit(enc.status ?? 1);
 
+console.log("Recording narration…");
+const voice = spawnSync("python3", [path.join(__dirname, "generate-workflow-voice.py"), voiceWav], {
+  stdio: "inherit",
+});
+if (voice.status !== 0) process.exit(voice.status ?? 1);
+
 const fadeOut = Math.max(0, durationSec - 1.5);
-console.log("Muxing music…");
+console.log("Muxing music under the narration…");
 enc = spawnSync(
   "ffmpeg",
   [
@@ -98,8 +105,13 @@ enc = spawnSync(
     silentMp4,
     "-i",
     musicPath,
+    "-i",
+    voiceWav,
     "-filter_complex",
-    `[1:a]volume=1.0,afade=t=in:st=0:d=0.2,afade=t=out:st=${fadeOut}:d=1.4[a]`,
+    `[2:a]volume=1.08,afade=t=in:st=0:d=0.06,afade=t=out:st=${fadeOut}:d=0.9,asplit=2[vox][sc];` +
+      `[1:a]volume=0.32,afade=t=in:st=0:d=0.3,afade=t=out:st=${Math.max(0, fadeOut - 0.2)}:d=1.5[bed];` +
+      `[bed][sc]sidechaincompress=threshold=0.015:ratio=8:attack=15:release=320[ducked];` +
+      `[ducked][vox]amix=inputs=2:duration=first:normalize=0[a]`,
     "-map",
     "0:v:0",
     "-map",
