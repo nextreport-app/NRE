@@ -27,7 +27,9 @@ export function ClientsGettingStarted() {
         </Link>
         <div className="mt-8 max-w-xl">
           <p className="text-[13px] font-semibold text-dash-ink">Video walkthrough</p>
-          <p className="mt-1 text-[13px] text-dash-ink-secondary">Meta CSV export through generate and share.</p>
+          <p className="mt-1 text-[13px] text-dash-ink-secondary">
+            Meta CSV export walkthrough — same wizard flow for other platforms.
+          </p>
           <div className="mt-3 [&_.text-ink-muted]:text-dash-ink-secondary [&_a.text-accent-orange]:text-dash-accent">
             <MetaWalkthroughVideoCompact id="clients-getting-started-video" />
           </div>

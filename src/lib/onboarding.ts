@@ -44,7 +44,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
       id: "generate-report",
       title: "Generate your first report",
       description:
-        "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
+        "Open New Report → Weekly (recommended) → choose platform → CSV upload or Sync from API. Use the CSV Export Guide for Meta exports if unsure.",
       href: reportHref,
       done: input.completeReportCount > 0,
     },

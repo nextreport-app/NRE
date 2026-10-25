@@ -260,7 +260,7 @@ export default async function ClientDetailPage({
         ) : null}
 
         <Card accent id="generate-report">
-          <CardHeading hint="Upload a day-wise Meta CSV on Import — see the CSV export guide if you need help.">
+          <CardHeading hint="CSV upload or Sync from API on Import — see the CSV export guide for Meta if you need help.">
             Generate report
           </CardHeading>
           <Link

@@ -12,11 +12,11 @@ export function isIndiaCountryCode(countryCode: string | null | undefined): bool
 }
 
 /**
- * TikTok Ads is banned in India — hide marketing and wizard options for Indian visitors.
- * Unknown geo defaults to showing TikTok (international / US-EU expansion).
+ * TikTok Ads wizard + marketing visibility (all regions).
+ * Agencies in restricted markets can skip TikTok in the wizard; product no longer geo-hides the option.
  */
-export function shouldShowTikTokToVisitor(countryCode: string | null | undefined): boolean {
-  return !isIndiaCountryCode(countryCode);
+export function shouldShowTikTokToVisitor(_countryCode: string | null | undefined): boolean {
+  return true;
 }
 
 export async function shouldShowTikTokForCurrentVisitor(): Promise<boolean> {

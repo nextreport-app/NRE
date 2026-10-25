@@ -1,11 +1,11 @@
-import { platformBetaCardNote, type PlatformBetaId } from "@/lib/platform-beta";
+import { PLATFORM_BETA_NOTICE, platformBetaCardNote, type PlatformBetaId } from "@/lib/platform-beta";
 
 export function PlatformBetaBadge({ className }: { className?: string }) {
   return (
     <span
       className={`inline-flex shrink-0 items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400 ${className ?? ""}`}
     >
-      Soon
+      Beta
     </span>
   );
 }
@@ -15,9 +15,8 @@ export function PlatformBetaNotice({ platform }: { platform?: PlatformBetaId }) 
   return (
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
       <p className="text-[13px] leading-relaxed text-amber-100/90">
-        <span className="font-semibold text-amber-300">Launching soon.</span>{" "}
-        {note ??
-          "Meta Ads reporting is live. Google Ads, TikTok, and GA4 connections work in settings — report generation opens after parity testing."}
+        <span className="font-semibold text-amber-300">Beta.</span>{" "}
+        {note ?? PLATFORM_BETA_NOTICE}
       </p>
     </div>
   );
