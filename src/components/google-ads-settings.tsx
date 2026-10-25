@@ -86,18 +86,6 @@ export function GoogleAdsSettings({
     }
   }
 
-  if (!isAdPlatformApiSyncEnabled()) {
-    return (
-      <div id="google-ads" className="scroll-mt-6 rounded-lg border border-dash-border bg-dash-card p-5">
-        <h3 className="text-[15px] font-semibold text-dash-ink">Google Ads</h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-dash-ink-secondary">
-          Reports use a CSV export from Google Ads — upload it in the report wizard. Automatic API import is turned
-          off.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div id="google-ads" className="scroll-mt-6 space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
       <PlatformBetaNotice platform="GOOGLE" />

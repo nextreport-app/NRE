@@ -1,16 +1,15 @@
 /**
- * Meta / Google / TikTok wizard "Sync from API" import and account Connect CTAs.
+ * Meta / Google / TikTok wizard "Sync from API" import (server + functional sync).
  *
- * On by default. Set AD_PLATFORM_API_SYNC_ENABLED=false to hide API import and
- * show CSV-only messaging in account settings.
- * Optional Ads Manager reference CSV on Meta sync remains in code when enabled.
+ * Off by default — UI still shows "Sync from API" with launching-soon copy. Set
+ * AD_PLATFORM_API_SYNC_ENABLED=true to run sync and analyze from the wizard.
  */
 
 export function isAdPlatformApiSyncEnabled(): boolean {
-  return process.env.AD_PLATFORM_API_SYNC_ENABLED !== "false";
+  return process.env.AD_PLATFORM_API_SYNC_ENABLED === "true";
 }
 
-/** Client detail "Platform connections" + Connect CTAs — only when wizard API import is on. */
+/** Client detail "Platform connections" — always visible; connect flows may be preview until launch. */
 export function isClientPlatformConnectionsSectionVisible(): boolean {
-  return isAdPlatformApiSyncEnabled();
+  return true;
 }

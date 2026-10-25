@@ -33,19 +33,19 @@ export type MarketingCopy = {
 };
 
 const EN: MarketingCopy = {
-  brandTagline: "Client reporting for agencies — Meta, Google Ads, TikTok Ads, and GA4.",
+  brandTagline: "Client reporting for agencies — Meta Ads today; Google Ads, TikTok Ads, and GA4 launching soon.",
   navSignIn: "Log in",
   navContact: "Contact us",
   navSignOut: "Sign out",
   navStartTrial: "Sign up",
   navDashboard: "Dashboard",
-  heroBadge: "Meta, Google Ads, TikTok & GA4 reporting",
+  heroBadge: "Meta Ads reporting for agencies",
   heroHeadline: "Branded client reporting for agencies in minutes.",
   heroHeadlineBefore: "Branded ",
   heroHeadlineAccent: "client reporting",
   heroHeadlineAfter: " for agencies in minutes.",
   heroSubtext:
-    "Turn CSV exports or API sync into accurate, client-branded performance reports for Meta, Google Ads, TikTok, and GA4 — without manually rebuilding slides.",
+    "Turn Meta Ads CSV exports into accurate, client-branded weekly performance reports — without manually rebuilding slides. Google, TikTok, GA4, and Meta API sync are launching soon.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
@@ -66,13 +66,13 @@ const EN: MarketingCopy = {
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = {
   es: {
-    brandTagline: "Reporting de clientes con tu marca — Meta, Google Ads, TikTok y GA4.",
+    brandTagline: "Reporting de clientes con tu marca — Meta activo; Google, TikTok y GA4 en camino.",
     navSignIn: "Iniciar sesión",
     navContact: "Contacto",
     navSignOut: "Cerrar sesión",
     navStartTrial: "Prueba gratis",
     navDashboard: "Panel",
-    heroBadge: "Meta, Google Ads, TikTok y GA4",
+    heroBadge: "Meta Ads — activo · Google, TikTok y GA4 — pronto",
     heroHeadline: "Reporting de clientes con tu marca para agencias en minutos.",
     heroStartTrial: "Prueba gratis",
     heroGoDashboard: "Ir al panel",
@@ -87,7 +87,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     tryCtaDashboard: "Ir al panel",
   },
   fr: {
-    brandTagline: "Reporting client avec votre marque — Meta, Google Ads, TikTok et GA4.",
+    brandTagline: "Reporting client avec votre marque — Meta en ligne ; Google, TikTok et GA4 bientôt.",
     navSignIn: "Connexion",
     navContact: "Contact",
     navSignOut: "Déconnexion",
@@ -107,7 +107,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     tryCtaDashboard: "Tableau de bord",
   },
   pt: {
-    brandTagline: "Reporting de clientes com sua marca — Meta, Google Ads, TikTok e GA4.",
+    brandTagline: "Reporting de clientes com sua marca — Meta ativo; Google, TikTok e GA4 em breve.",
     navSignIn: "Entrar",
     navContact: "Contato",
     navSignOut: "Sair",
@@ -124,7 +124,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     tryCtaStartTrial: "Teste grátis",
   },
   de: {
-    brandTagline: "Gebrandetes Client-Reporting — Meta, Google Ads, TikTok & GA4.",
+    brandTagline: "Gebrandetes Client-Reporting für Agenturen — Meta live, Google, TikTok & GA4 folgen.",
     navSignIn: "Anmelden",
     navContact: "Kontakt",
     navSignOut: "Abmelden",
@@ -143,7 +143,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navStartTrial: "Бесплатный период",
     navDashboard: "Кабинет",
     heroHeadline: "Брендированная отчётность для агентств за минуты.",
-    brandTagline: "Отчётность для клиентов — Meta, Google Ads, TikTok и GA4.",
+    brandTagline: "Отчётность для клиентов с вашим брендом — Meta сейчас, Google, TikTok и GA4 скоро.",
     pricingTitle: "Простые тарифы для агентств",
     tryCtaTitle: "Попробуйте NextReport.",
   },
@@ -153,7 +153,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navSignOut: "Esci",
     navStartTrial: "Prova gratuita",
     heroHeadline: "Reporting clienti brandizzato per agenzie in pochi minuti.",
-    brandTagline: "Reporting clienti — Meta, Google Ads, TikTok e GA4.",
+    brandTagline: "Reporting clienti con il tuo brand — Meta attivo; Google, TikTok e GA4 in arrivo.",
     tryCtaTitle: "Prova NextReport ora.",
   },
   zh: {
@@ -163,7 +163,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navStartTrial: "免费试用",
     navDashboard: "控制台",
     heroHeadline: "为代理商提供品牌化客户报告，几分钟即可完成。",
-    brandTagline: "品牌化客户报告 — Meta、Google Ads、TikTok 与 GA4。",
+    brandTagline: "品牌化客户报告 — Meta 已上线，Google、TikTok 与 GA4 即将推出。",
     pricingTitle: "为成长型代理商提供的简单定价",
     tryCtaTitle: "立即试用 NextReport。",
   },
@@ -173,7 +173,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navSignOut: "সাইন আউট",
     navStartTrial: "বিনামূল্যে ট্রায়াল",
     heroHeadline: "এজেন্সির জন্য ব্র্যান্ডেড ক্লায়েন্ট রিপোর্টিং, মিনিটেই।",
-    brandTagline: "ব্র্যান্ডেড রিপোর্টিং — Meta, Google Ads, TikTok ও GA4।",
+    brandTagline: "এজেন্সির জন্য ব্র্যান্ডেড রিপোর্টিং — Meta চালু, Google, TikTok ও GA4 শীঘ্রই।",
   },
   mr: {
     navSignIn: "साइन इन",
@@ -181,7 +181,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navSignOut: "साइन आउट",
     navStartTrial: "मोफत ट्रायल",
     heroHeadline: "एजन्सीसाठी ब्रँडेड क्लायंट रिपोर्टिंग, मिनिटांत.",
-    brandTagline: "ब्रँडेड रिपोर्टिंग — Meta, Google Ads, TikTok आणि GA4.",
+    brandTagline: "एजन्सीसाठी ब्रँडेड रिपोर्टिंग — Meta सुरू, Google, TikTok आणि GA4 लवकरच.",
   },
   te: {
     navSignIn: "సైన్ ఇన్",
@@ -189,7 +189,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navSignOut: "సైన్ అవుట్",
     navStartTrial: "ఉచిత ట్రయల్",
     heroHeadline: "ఏజెన్సీల కోసం బ్రాండెడ్ క్లయింట్ రిపోర్టింగ్, నిమిషాల్లో.",
-    brandTagline: "బ్రాండెడ్ రిపోర్టింగ్ — Meta, Google Ads, TikTok & GA4.",
+    brandTagline: "ఏజెన్సీలకు బ్రాండెడ్ రిపోర్టింగ్ — Meta లైవ్, Google, TikTok & GA4 త్వరలో.",
   },
   ta: {
     navSignIn: "உள்நுழை",
@@ -197,7 +197,7 @@ const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<MarketingCopy>>> = 
     navSignOut: "வெளியேறு",
     navStartTrial: "இலவச trial",
     heroHeadline: "நிறுவனங்களுக்கான பிராண்டட் கிளையண்ட் ரிப்போர்டிங், நிமிடங்களில்.",
-    brandTagline: "பிராண்டட் ரிப்போர்டிங் — Meta, Google Ads, TikTok & GA4.",
+    brandTagline: "நிறுவனங்களுக்கான பிராண்டட் ரிப்போர்டிங் — Meta live, Google, TikTok & GA4 விரைவில்.",
   },
 };
 

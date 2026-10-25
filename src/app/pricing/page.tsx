@@ -41,8 +41,7 @@ export default async function PricingPage() {
         <div className="text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            {PLATFORM_LIST_SHORT} — Meta CSV reporting live today; share PowerPoint (.pptx), live links, or Google
-            Slides.
+            {PLATFORM_LIST_SHORT} — share PowerPoint (.pptx), live links, or Google Slides.
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 import type { Platform } from "@/lib/nre/google-columns";
+import { LAUNCHING_SOON_PLATFORMS_LABEL } from "@/lib/meta-launch-scope";
 
-/** Platforms still in beta — Meta Ads is production-ready and fully tested. */
+/** Platforms still in beta — Meta Ads CSV is production-ready and fully tested. */
 export type PlatformBetaId = Platform | "GA4";
 
 export const PLATFORM_BETA_STATUS: Record<PlatformBetaId, boolean> = {
@@ -17,9 +18,8 @@ export function isPlatformBeta(platform: PlatformBetaId): boolean {
 /** Short line for cards and compact UI. */
 export function platformBetaCardNote(platform: PlatformBetaId): string | null {
   if (!isPlatformBeta(platform)) return null;
-  return "Beta — spot-check totals against the native platform export.";
+  return "Launching soon — not open for production report generation yet.";
 }
 
 /** Full notice for wizard and settings panels. */
-export const PLATFORM_BETA_NOTICE =
-  "Google Ads, TikTok Ads, and GA4 are in beta. Connect in Account settings, then use CSV upload or Sync from API in the wizard. Confirm key metrics against the ad platform or GA4 UI.";
+export const PLATFORM_BETA_NOTICE = `Meta Ads CSV reporting is live. ${LAUNCHING_SOON_PLATFORMS_LABEL} are in testing — connect and try flows if enabled on your account, but treat output as preview until we announce launch.`;

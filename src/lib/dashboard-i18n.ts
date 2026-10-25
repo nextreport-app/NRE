@@ -81,13 +81,13 @@ const EN: DashboardCopy = {
   clientsSupportOr: "or",
   emptyAddFirstClient: "Add your first client",
   emptyBody:
-    "One workspace per brand — set currency, timezone, and logo once. Then open New Report and upload your Meta CSV.",
+    "One workspace per brand — set currency, timezone, and logo once. Then open New Report and upload your Meta CSV (Google, TikTok, GA4, and API sync launching soon).",
   emptyAddClientCta: "+ Add client",
   helpCsvGuide: "CSV Export Guide",
   helpHowItWorks: "How it works",
   gettingStartedTitle: "Start here",
   gettingStartedLead:
-    "NextReport is Meta Ads reporting only today: add a client, upload a day-wise CSV from Ads Manager, and generate a branded deck.",
+    "Meta Ads CSV reporting is live: add a client, upload a day-wise CSV from Ads Manager, and generate a branded deck.",
   gettingStartedStep1Title: "Add a client",
   gettingStartedStep1Body: "Name, currency, timezone, and logo — one workspace per brand.",
   gettingStartedStep2Title: "Export your Meta CSV",
@@ -113,7 +113,7 @@ const EN: DashboardCopy = {
     "Set the client name, currency, and logo — every report uses that branding automatically.",
   stepConnectTitle: "Connect ad accounts (optional)",
   stepConnectDesc:
-    "Optional — CSV is enough for your first deck. Connect Meta in Account later if you want API import.",
+    "Optional — CSV is enough for your first deck. Meta API sync and other platforms are launching soon.",
   stepGenerateTitle: "Generate your first report",
   stepGenerateDesc:
     "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
