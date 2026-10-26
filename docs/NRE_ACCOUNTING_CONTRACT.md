@@ -82,3 +82,14 @@ The source acceptance suite covers actual deck tables; production build, TypeScr
 Both owner reference workbooks have now been read. See [catalogue audit](REFERENCE_CATALOG_ALIGNMENT.md) for cell-level coverage and limits. Engine `nre-accounting-2026-10-26-v3` invalidates older snapshots. Count/value separation, Google primary-versus-all metrics, explicit average components, scoped ROAS, and distinct Contact/Trial/video events are covered by source regressions. Google source provenance keeps displayed Clicks additive through the legacy reach field and prioritizes observed clicks over rounded rates. The mixed catalogue now has 43 registered event families.
 
 This establishes corrected behavior for reproduced cases, not every listed metric. The broad follow-up run reported 2,182 passes and 22 failures, with historical expectations, API inference, and missing private fixtures outstanding. Manual owner acceptance remains required; API sync stays on hold.
+
+
+## Numeric verification and date coverage are separate
+
+Engine `nre-accounting-2026-10-27-v4` separates numeric mismatches from dates with no source rows. Meta daily exports can omit dates without delivery; the CSV alone cannot establish whether a missing date is inactivity or an incomplete export. No synthetic zero-delivery rows are inserted.
+
+`CsvVerificationResult.status` describes agreement with the available CSV observations. Optional `coverageWarnings` carries scoped missing dates and source-range review guidance. Numeric helpers no longer accept a calendar-completeness flag that can turn equal spend/results/CTR/CPC/link-click values into mismatches. Existing numeric tolerances and result equality rules remain intact. Successful numbers with coverage warnings use a neutral comparison summary plus an amber date notice; readiness remains a warning until the source range is reviewed. Actual mismatches keep their metric-level details. Post-generation mismatch messaging is reserved for actual mismatches.
+
+Anonymous regression: one campaign ends October 20 and a replacement starts October 22. The absent October 21 previously produced one coverage mismatch plus 13 false numeric mismatches across campaign/ad-set checks. The corrected comparison preserves numeric matches and one date-coverage notice. Corrupted spend, CTR, Results and ad-set spend still fail. The UI regression also verifies that a real mismatch plus a coverage notice counts only the real differing metric.
+
+Client-uploaded regression exports and before/after receipts remain outside Git; committed tests use anonymous synthetic facts. This fix does not certify the missing day, modify report calculations, widen tolerances or change existing generated decks. Run a fresh comparison/generation after deploying it.
