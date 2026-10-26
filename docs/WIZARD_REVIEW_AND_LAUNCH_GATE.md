@@ -31,7 +31,7 @@ The implementation was inspected across all four steps, success panel, network h
 
 Rejected fetches now enter existing recoverable error states for analyze/re-analyze, API-import analysis, objective/metric loading, preview and previous-month generation. Main Generate and Drive save no longer remain loading after a network rejection. A polling-error message is no longer erased in `finally`. Publish clears its saving state after a network rejection and retains local edits. Drive-link clipboard rejection shows an error rather than an unhandled promise rejection.
 
-Generated share/copy links use the current deployment origin, preserving HTTPS previews and HTTP localhost rather than sending Preview tokens to production. Production on nextreport.in continues using nextreport.in. Regression checks cover these origins. The success screen states that anyone with the link can view it.
+Generated share/copy links in the wizard, review and history use the current deployment origin, preserving HTTPS previews and HTTP localhost rather than sending Preview tokens to production. Production on nextreport.in continues using nextreport.in. Regression checks cover these origins. The success screen states that anyone with the link can view it.
 
 ## Delivery and sharing
 
@@ -39,7 +39,7 @@ Current essentials already exist: PPTX download, Drive save with a remembered fo
 
 Useful next additions, not implemented in this PR:
 
-1. Owner-controlled revoke/regenerate link, then optional expiration. Current public report links do not expose these controls in the reviewed flow; an unguessable URL is still a bearer link.
+1. Owner-controlled revoke/regenerate link, then optional expiration. Current public report links do not expose separate revoke/rotate controls in the reviewed flow; an unguessable URL is still a bearer link. Existing report-retention auto-removal already limits the report lifetime; optional custom link expiration would be a distinct feature.
 2. Clear per-destination freshness after publishing edits. The existing UI already says Drive requires a manual re-save; make that state more visible. Do not imply an old downloaded PPTX or Drive copy updates itself.
 3. Optional native mobile share sheet, retaining copy message/link as universal fallbacks.
 4. Only after validation: opt-in scheduled delivery and view receipts. Opening a share-composer URL is not proof that a client received or read the report.
