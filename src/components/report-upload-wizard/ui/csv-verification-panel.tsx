@@ -19,12 +19,6 @@ function groupByScope(checks: CsvVerificationResult["checks"]) {
   return map;
 }
 
-function verifiedScopesLabel(scopes: string[] | undefined): string {
-  if (!scopes?.length) return "key totals in this report";
-  if (scopes.length <= 3) return scopes.join(" · ");
-  return `${scopes.slice(0, 3).join(" · ")} +${scopes.length - 3} more`;
-}
-
 export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const copy = useWizardCopy();
   const [open, setOpen] = useState(true);
@@ -61,43 +55,15 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const byScope = groupByScope(mismatches);
 
   if (ok) {
-    const detailText = copy.csvVerifiedDetail(verifiedScopesLabel(verification.scopesVerified));
-    const scopeList = verification.scopesVerified ?? [];
+    const scopeList = [...new Set(verification.scopesVerified ?? [])];
     return (
-      <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
-        <details className="group">
-          <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
-            <span
-              className="nre-wizard-callout-success__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[13px] text-emerald-200"
-              aria-hidden
-            >
-              ✓
-            </span>
-            <span className="nre-wizard-callout-success__title min-w-0 flex-1 text-[14px] font-medium">
-              {copy.csvVerifiedTitle}
-            </span>
-            <span
-              className="nre-wizard-callout-success__detail shrink-0 text-[15px] leading-none transition-transform group-open:rotate-180"
-              aria-hidden
-            >
-              ▾
-            </span>
-          </summary>
-          <div className="nre-wizard-callout-success__detail mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug">
-            <p>{detailText}</p>
-            <p className="mt-2">Only the checks listed below passed. Unique period Reach may be estimated; unchecked metrics and API parity are not certified by this comparison.</p>
-            <ul className="mt-2 space-y-1 text-xs">
-              {verification.checks.map((check, index) => <li key={`${check.scope}-${check.metric}-${index}`}>{check.scope}: {check.metric} — {check.reportDisplay}{check.note ? ` · ${check.note}` : ""}</li>)}
-            </ul>
-            {scopeList.length > 0 ? (
-              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[12px] text-emerald-100/90">
-                {scopeList.map((scope) => (
-                  <li key={scope}>{scope}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        </details>
+      <div className="nre-wizard-callout-success rounded-lg px-4 py-3 text-[13px] leading-relaxed" role="status">
+        <p className="nre-wizard-callout-success__detail">{copy.csvVerifiedDetail()}</p>
+        {scopeList.length > 0 ? (
+          <ul className="nre-wizard-callout-success__detail mt-2 list-disc space-y-0.5 pl-4">
+            {scopeList.map((scope) => <li key={scope}>{scope}</li>)}
+          </ul>
+        ) : null}
       </div>
     );
   }

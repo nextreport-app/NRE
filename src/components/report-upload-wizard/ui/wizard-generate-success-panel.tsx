@@ -29,13 +29,13 @@ import type { ReportTypeValue } from "../types";
 import { reportingWeekLabel } from "@/lib/nre/weekly-report-labels";
 
 const chipClass =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
+  "nre-wizard-success-secondary inline-flex items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
 
 const primaryActionClass =
-  "flex w-full items-center justify-center gap-2 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-4 py-3 text-[15px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
+  "nre-wizard-success-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dash-accent/45 px-4 py-3 text-[15px] font-semibold text-dash-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
 
 const secondaryExportClass =
-  "inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
+  "nre-wizard-success-secondary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
 
 const sectionTitleClass =
   "text-[13px] font-semibold uppercase tracking-wide text-dash-ink-muted";
@@ -163,21 +163,27 @@ export function WizardGenerateSuccessPanel({
   }
 
   const shareViewCopySplitClass =
-    "inline-flex min-h-[44px] shrink-0 overflow-hidden rounded-lg border border-dash-border bg-dash-sidebar/60";
+    "nre-wizard-success-secondary inline-flex min-h-[44px] shrink-0 overflow-hidden rounded-lg border border-dash-border bg-dash-sidebar/60";
 
   return (
-    <div className="nre-wizard-generate-success overflow-hidden rounded-xl border bg-dash-card nre-dash-surface">
+    <div className="nre-wizard-generate-success overflow-hidden rounded-2xl border bg-dash-card shadow-lg nre-dash-surface">
       {/* Section A — success header */}
-      <div className="nre-wizard-generate-success__header border-b border-dash-border px-4 py-4 sm:px-5 sm:py-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-          <div className="nre-wizard-generate-success__check mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl sm:mx-0" aria-hidden>
+      <div className="nre-wizard-generate-success__header relative isolate overflow-hidden border-b border-dash-border px-5 py-6 sm:px-7 sm:py-7" role="status">
+        <div className="pointer-events-none absolute -top-12 -right-8 -z-10 h-48 w-48 rounded-full bg-dash-accent/10 blur-3xl" aria-hidden />
+        <svg className="pointer-events-none absolute top-5 right-6 hidden h-14 w-14 text-dash-accent/65 sm:block" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+          <path d="m30 4 4 13 13 4-13 4-4 13-4-13-13-4 13-4zM51 36l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM10 40l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" />
+        </svg>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+          <div className="nre-wizard-generate-success__check mx-auto flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl ring-1 ring-emerald-400/30 sm:mx-0" aria-hidden>
             ✓
           </div>
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <h2 className="nre-wizard-generate-success__title text-[17px] font-bold sm:text-[18px]">
-              Report generated successfully
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-dash-accent">Ready to review</p>
+            <h2 className="nre-wizard-generate-success__title text-[22px] font-bold leading-tight sm:pr-12 sm:text-[26px]">
+              Report generated successfully!
             </h2>
-            <p className="mt-1 text-[15px] font-semibold text-dash-ink">{clientName}</p>
+            <p className="nre-wizard-generate-success__meta mt-2 text-sm">One less report on your to-do list.</p>
+            <p className="mt-4 text-[16px] font-semibold text-dash-ink">{clientName}</p>
             <dl className="nre-wizard-generate-success__meta mt-2 space-y-0.5 text-[13px] leading-snug sm:text-[14px]">
               <div className="flex flex-wrap justify-center sm:justify-start">
                 <dt className="sr-only">Report title</dt>
@@ -192,7 +198,7 @@ export function WizardGenerateSuccessPanel({
               {slideCount > 0 ? (
                 <div>
                   <dt className="sr-only">Slides</dt>
-                  <dd>
+                  <dd className="inline-flex rounded-full border border-dash-border bg-dash-card/60 px-2.5 py-1 text-xs font-medium text-dash-ink">
                     {slideCount} slide{slideCount === 1 ? "" : "s"}
                   </dd>
                 </div>
