@@ -3,7 +3,7 @@
 import { YouTubeVideoEmbed } from "@/components/youtube-video-embed";
 import { WORKFLOW_FILM_YOUTUBE_ID } from "@/lib/marketing-videos";
 
-/** Closing homepage block — 30s narrated workflow film, hosted on YouTube. */
+/** Demo-page block — 30s narrated workflow film, hosted on YouTube. */
 export function HomeWorkflowFilm() {
   return (
     <section id="workflow-film" className="border-t border-navy-border bg-navy px-6 py-16 sm:py-20">

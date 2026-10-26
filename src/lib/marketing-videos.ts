@@ -5,7 +5,7 @@
 
 const DEFAULT_META_WALKTHROUGH_YOUTUBE_ID = "7LfSMNzepP4";
 
-/** 30-second Meta CSV workflow film on the homepage. */
+/** 30-second Meta CSV workflow film on the demo page. */
 export const WORKFLOW_FILM_YOUTUBE_ID = "M6vd8ZnuXfI";
 
 /** Shown on the YouTube thumbnail facade (matches your YouTube upload title). */
