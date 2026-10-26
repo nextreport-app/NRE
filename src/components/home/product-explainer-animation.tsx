@@ -19,7 +19,7 @@ const FRAMES: ExplainerFrame[] = [
     title: "Add your ad data",
     caption: "Upload a CSV export from Meta Ads Manager.",
     voiceoverScript:
-      "Start with a Meta Ads CSV export from Ads Manager. Google, TikTok, GA4, and Meta API sync are launching soon.",
+      "Start with a Meta Ads CSV export from Ads Manager. Meta API sync are launching soon.",
   },
   {
     step: "2 / 5",
@@ -60,9 +60,6 @@ function MockWizardPanel({ frameIndex }: { frameIndex: number }) {
       <div className="flex gap-1.5">
         {[
           { label: "Meta", live: true },
-          { label: "Google", live: false },
-          { label: "TikTok", live: false },
-          { label: "GA4", live: false },
         ].map((p) => (
           <span
             key={p.label}

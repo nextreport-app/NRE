@@ -9,10 +9,10 @@ import {
 } from "@/lib/seo";
 
 describe("seo", () => {
-  it("includes all four platforms in default keywords", () => {
+  it("promotes Meta without advertising untested platforms", () => {
     const joined = DEFAULT_KEYWORDS.join(" ");
-    expect(joined).toContain("tiktok");
-    expect(joined).toContain("ga4");
+    expect(joined).toContain("meta ads");
+    expect(joined).not.toMatch(/google ads|tiktok|ga4|google analytics/i);
   });
 
   it("builds page metadata with canonical, hreflang, and large twitter card", () => {

@@ -150,7 +150,7 @@ export function BookDemoForm() {
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="e.g. Meta weekly reports for 8 clients, GA4 website decks, API sync vs CSV..."
+          placeholder="e.g. Meta weekly reports for 8 clients, branded decks, API sync vs CSV..."
           className={inputClassName}
         />
       </div>

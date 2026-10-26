@@ -23,16 +23,16 @@ const BORDER = "#e2e8f0";
 const MUTED = "#64748b";
 
 const FEATURES = [
-  { icon: "📊", title: "Auto-detects any CSV", description: "Works with any column layout from Meta or Google Ads exports." },
+  { icon: "📊", title: "Reads Meta Ads exports", description: "Works with Meta Ads CSV and Excel exports." },
   { icon: "🎯", title: "Smart objective detection", description: "Automatically identifies leads, purchases, traffic, reach and more." },
   { icon: "🤖", title: "AI-written insights", description: "Campaign summaries and key insights written by AI for every slide." },
   { icon: "☁️", title: "Google Drive sync", description: "Reports save directly to your Drive folder with a shareable link." },
-  { icon: "📱", title: "Multi-platform reporting", description: "Meta Ads live today — Google Ads, TikTok, and GA4 launching soon." },
+  { icon: "📱", title: "Meta Ads reporting", description: "Branded reports from your Meta Ads exports." },
   { icon: "⚡", title: "Under 2 minutes", description: "From CSV upload to downloaded report in minutes not hours." },
 ];
 
 const STEPS = [
-  { number: "1", title: "Upload your CSV", description: "Download from Meta Ads Manager or Google Ads. Upload any format — CSV, Excel, or Google Sheets export." },
+  { number: "1", title: "Upload your CSV", description: "Download from Meta Ads Manager. Upload any format — CSV, Excel, or Google Sheets export." },
   { number: "2", title: "Select campaigns and dates", description: "Filter to only the campaigns you manage. Choose your reporting period." },
   { number: "3", title: "Download or share", description: "Get a branded PowerPoint or save directly to Google Drive with a shareable link." },
 ];
@@ -44,9 +44,8 @@ const PLANS = [
     bestFor: "Freelancers and small agencies",
     highlighted: false,
     features: [
-      "Up to 10 clients — Meta, Google, TikTok & GA4 included",
+      "Up to 10 clients — Meta Ads reporting",
       "Meta Ads reporting",
-      "Google Ads reporting",
       "Unlimited report generation",
       "Email support",
     ],
@@ -57,9 +56,8 @@ const PLANS = [
     bestFor: "Growing agencies managing multiple clients",
     highlighted: true,
     features: [
-      "Unlimited clients — all platforms included",
+      "Unlimited clients — Meta Ads reporting",
       "Meta Ads reporting",
-      "Google Ads reporting",
       "AI-written campaign summaries",
       "Google Drive auto-save",
       "Priority email support",
@@ -103,7 +101,7 @@ export default function LightPreviewPage() {
                 className="inline-block rounded-full border px-3 py-1 text-xs font-medium tracking-wide"
                 style={{ borderColor: BORDER, background: CARD_BG, color: NAVY }}
               >
-                Meta Ads + Google Ads Reporting
+                Meta Ads Reporting
               </span>
 
               <h1 className="mt-5 text-[2.25rem] font-bold leading-tight sm:text-[3rem]" style={{ color: NAVY }}>

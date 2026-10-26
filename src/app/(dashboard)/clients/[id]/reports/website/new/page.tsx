@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { isLaunchPlatformEnabled } from "@/lib/meta-launch-scope";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 
 export default async function NewWebsiteReportPage({ params }: { params: Promise<{ id: string }> }) {
+  if (!isLaunchPlatformEnabled("GA4")) notFound();
   const { id } = await params;
   const session = await auth();
   if (!session?.user) notFound();

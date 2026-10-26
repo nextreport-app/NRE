@@ -6,8 +6,7 @@ describe("plan-labels", () => {
     expect(getPlanDisplayName("starter")).toBe("Agency");
   });
 
-  it("lists all four platforms in marketing copy", () => {
-    expect(PLATFORM_LIST_SHORT).toContain("TikTok");
-    expect(PLATFORM_LIST_SHORT).toContain("GA4");
+  it("lists the currently available Meta reporting platform", () => {
+    expect(PLATFORM_LIST_SHORT).toBe("Meta Ads reporting");
   });
 });

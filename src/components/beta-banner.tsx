@@ -50,7 +50,7 @@ export function BetaBanner() {
     >
       <p className="min-w-0 flex-1 text-center text-[11px] font-medium leading-snug sm:text-[13px]">
         <span className="block sm:inline">
-          🚀 Meta Ads reporting is live · Google, TikTok, GA4 &amp; Meta API sync launching soon — 7-day free trial, no card required
+          🚀 Meta Ads reporting is live · Meta API sync launching soon — 7-day free trial, no card required
         </span>
         <span className="hidden sm:inline"> · </span>
         <a

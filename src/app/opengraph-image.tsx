@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "NextReport — Meta Ads reporting for agencies (Google, TikTok & GA4 launching soon)";
+export const alt = "NextReport — Meta Ads reporting for agencies";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -52,7 +52,7 @@ export default function OpenGraphImage() {
             maxWidth: 880,
           }}
         >
-          Meta Ads — CSV upload → .pptx, live link & Slides · Google, TikTok & GA4 soon
+          Meta Ads — CSV upload → .pptx, live link & Slides
         </div>
       </div>
     ),

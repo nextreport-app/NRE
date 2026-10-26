@@ -2,7 +2,7 @@
 export const PRICING_FAQS = [
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads CSV reporting is live — upload a day-wise export from Meta Ads Reporting in the wizard (weekly, monthly, daily, comparison, historical, day-breakdown, quarterly, YTD, and creative report types where supported). Google Ads, TikTok Ads, GA4 website reporting, and Meta Marketing API sync are launching soon and included in your plan as each ships — no extra per-platform fee.",
+    a: "Meta Ads CSV reporting is live — upload a day-wise export from Meta Ads Reporting in the wizard (weekly, monthly, daily, comparison, historical, day-breakdown, quarterly, YTD, and creative report types where supported). Meta API sync is launching soon and included in your plan when it launches.",
   },
   {
     q: "Is there really no credit card required for the free trial?",
@@ -10,7 +10,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "What's the difference between Agency and Professional?",
-    a: "Both plans include unlimited report generation, Meta CSV reporting today, white-label options, Slack/Zapier webhooks, and every platform as it launches. Agency supports up to 10 client workspaces; Professional is unlimited clients for larger rosters. Priority email support is on Professional.",
+    a: "Both plans include unlimited report generation, Meta CSV reporting today, white-label options, Slack/Zapier webhooks, and client sharing tools. Agency supports up to 10 client workspaces; Professional is unlimited clients for larger rosters. Priority email support is on Professional.",
   },
   {
     q: "Do you charge my card automatically each month?",
@@ -26,7 +26,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "Can I connect ad platforms directly instead of uploading a CSV?",
-    a: "Meta Marketing API sync is launching soon. Today the supported path is a day-wise CSV from Meta Ads Reporting (best parity with Ads Manager). Google Ads, TikTok, and GA4 API connect flows are also launching soon.",
+    a: "Meta Marketing API sync is launching soon. Today the supported path is a day-wise CSV from Meta Ads Reporting (best parity with Ads Manager).",
   },
   {
     q: "Can I white-label reports for my clients?",
