@@ -26,7 +26,7 @@ export function BillingIntervalToggle({
   const shell = isDashboard
     ? "border border-dash-border bg-dash-card"
     : "border border-navy-border bg-navy-panel";
-  const active = isDashboard ? "bg-dash-accent text-white" : "bg-accent text-white";
+  const active = isDashboard ? "bg-dash-accent text-[#0d1b2e]" : "bg-accent text-[#0d1b2e]";
   const inactive = isDashboard
     ? "text-dash-ink-secondary hover:text-dash-ink"
     : "text-ink-muted hover:text-ink-secondary";

@@ -9,9 +9,11 @@ const FIXTURE = resolve(__dirname, "fixtures/mentee-ascend-last30-sep7-oct6.csv"
 const NOW = new Date("2026-10-07T12:00:00Z");
 const TZ = "America/Chicago";
 const CAMPAIGN = "Ascend Mastermind | Website Leads | Baton Rouge";
-const OBJECTIVE = { resultLabel: "WEBSITE LEADS" as const, costLabel: "COST PER LEAD" as const };
+// The fixture declares Website applications submitted; retain that event
+// while checking Results 23 versus the secondary Website leads total 24.
+const OBJECTIVE = { resultLabel: "WEBSITE SUBMIT APPLICATIONS" as const, costLabel: "COST PER APPLICATION" as const };
 
-describe("CSV verification — Mentee website leads", () => {
+describe("CSV verification — Mentee explicit applications", () => {
   const rows = parseCsvText(readFileSync(FIXTURE, "utf8")).rows;
   const weeklyRange = { startIso: "2026-09-29", endIso: "2026-10-05" };
 
@@ -42,7 +44,7 @@ describe("CSV verification — Mentee website leads", () => {
     });
 
     const chartCheck = verification.checks.find(
-      (c) => c.scope.startsWith("Last 30 days") && c.metric === "WEBSITE LEADS",
+      (c) => c.scope.startsWith("Last 30 days") && c.metric === "WEBSITE SUBMIT APPLICATIONS",
     );
     expect(chartCheck?.csvDisplay).toBe("23");
     expect(chartCheck?.status).toBe("ok");
@@ -64,7 +66,7 @@ describe("CSV verification — Mentee website leads", () => {
 
     expect(report.chart).not.toBeNull();
     report.chart!.campaigns[0]!.results = 24;
-    const wlObjective = report.chart!.snapshot.objectives.find((o) => o.label === "WEBSITE LEADS");
+    const wlObjective = report.chart!.snapshot.objectives.find((o) => o.label === "WEBSITE SUBMIT APPLICATIONS");
     if (wlObjective) wlObjective.resultsValue = "24";
 
     const verification = reconcileStandardReportWithCsv({
@@ -81,7 +83,7 @@ describe("CSV verification — Mentee website leads", () => {
 
     expect(verification.status).toBe("mismatch");
     const chartCheck = verification.checks.find(
-      (c) => c.scope.startsWith("Last 30 days") && c.metric === "WEBSITE LEADS",
+      (c) => c.scope.startsWith("Last 30 days") && c.metric === "WEBSITE SUBMIT APPLICATIONS",
     );
     expect(chartCheck?.status).toBe("mismatch");
     expect(chartCheck?.reportDisplay).toBe("24");

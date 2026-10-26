@@ -1,0 +1,1024 @@
+{
+  "baselineCommit": "cc9fbbbe930dc745df28ceebc39f04db7640f92b",
+  "asOf": "2026-10-03T12:00:00Z",
+  "timezone": "UTC",
+  "reportType": "WEEKLY",
+  "weeklyRange": {
+    "startIso": "2026-10-01",
+    "endIso": "2026-10-02"
+  },
+  "cases": [
+    {
+      "name": "Explicit purchases with secondary website leads",
+      "raw": [
+        {
+          "_raw": {
+            "Campaign name": "Campaign A",
+            "Ad set name": "Set A",
+            "Day": "2026-10-01",
+            "Result type": "Website purchases",
+            "Results": "2",
+            "Amount spent (USD)": "100",
+            "Website leads": "1",
+            "Purchases": "2",
+            "Reach": "100",
+            "Impressions": "200"
+          },
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Website purchases",
+          "results": "2",
+          "spend": "100",
+          "website_leads": "1",
+          "purchases": "2",
+          "reach": "100",
+          "impressions": "200"
+        }
+      ],
+      "aggregated": [
+        {
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Website lead",
+          "delivery_status": "",
+          "objectiveConfident": true,
+          "spend": 100,
+          "reach": 100,
+          "impressions": 200,
+          "results": 2,
+          "link_clicks": 0,
+          "purchases": 2,
+          "initiate_checkout": 0,
+          "add_to_cart": 0,
+          "ctr": 0,
+          "cpc": 0,
+          "cpr": 50,
+          "frequency": 0,
+          "date_start": "2026-10-01",
+          "date_end": "2026-10-01"
+        }
+      ],
+      "rawObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "PURCHASES",
+            "costLabel": "COST PER PURCHASE"
+          }
+        ]
+      ],
+      "aggregateObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD"
+          }
+        ]
+      ],
+      "mtd": {
+        "hasData": true,
+        "monthLabel": "Oct 1",
+        "fullMonthLabel": "Oct 1",
+        "monthName": "October",
+        "sameMonthAsCurrentMTD": false,
+        "spend": "$100",
+        "reach": "100",
+        "impressions": "200",
+        "ctr": "\u2014",
+        "cpc": "\u2014",
+        "resultColumns": [
+          {
+            "label": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD",
+            "value": "0",
+            "cprValue": "N/A"
+          }
+        ]
+      },
+      "slides": [
+        {
+          "objective": "WEBSITE LEADS",
+          "spend": "$100",
+          "reach": "100",
+          "impressions": "200",
+          "results": "0",
+          "ctr": "\u2014",
+          "cpr": "N/A",
+          "cpc": "\u2014"
+        }
+      ],
+      "verification": {
+        "status": "ok",
+        "checks": [
+          {
+            "metric": "Amount spent",
+            "scope": "Month-to-date (Oct 1)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Month-to-date (Oct 1)",
+            "reportDisplay": "0",
+            "csvDisplay": "0",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Report week (Sep 30 - Oct 1)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Report week (Sep 30 - Oct 1)",
+            "reportDisplay": "0",
+            "csvDisplay": "0",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Last 30 days (Oct 1, 2026)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Last 30 days (Oct 1, 2026)",
+            "reportDisplay": "0",
+            "csvDisplay": "0",
+            "status": "ok"
+          }
+        ],
+        "primaryResultLabel": "WEBSITE LEADS",
+        "scopesVerified": [
+          "Month-to-date (Oct 1)",
+          "Report week (Sep 30 - Oct 1)",
+          "Last 30 days (Oct 1, 2026)"
+        ],
+        "canAlignWithCsvExport": false,
+        "alignedWithCsvExport": false
+      }
+    },
+    {
+      "name": "Two result families in one ad set",
+      "raw": [
+        {
+          "_raw": {
+            "Campaign name": "Campaign A",
+            "Ad set name": "Set A",
+            "Day": "2026-10-01",
+            "Result type": "Website purchases",
+            "Results": "2",
+            "Amount spent (USD)": "100",
+            "Website leads": "0",
+            "Purchases": "2",
+            "Reach": "100",
+            "Impressions": "200"
+          },
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Website purchases",
+          "results": "2",
+          "spend": "100",
+          "website_leads": "0",
+          "purchases": "2",
+          "reach": "100",
+          "impressions": "200"
+        },
+        {
+          "_raw": {
+            "Campaign name": "Campaign A",
+            "Ad set name": "Set A",
+            "Day": "2026-10-02",
+            "Result type": "website submission",
+            "Results": "3",
+            "Amount spent (USD)": "60",
+            "Website leads": "3",
+            "Purchases": "0",
+            "Reach": "100",
+            "Impressions": "200"
+          },
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "website submission",
+          "results": "3",
+          "spend": "60",
+          "website_leads": "3",
+          "purchases": "0",
+          "reach": "100",
+          "impressions": "200"
+        }
+      ],
+      "aggregated": [
+        {
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Website lead",
+          "delivery_status": "",
+          "objectiveConfident": true,
+          "spend": 160,
+          "reach": 133,
+          "impressions": 400,
+          "results": 5,
+          "link_clicks": 0,
+          "purchases": 2,
+          "initiate_checkout": 0,
+          "add_to_cart": 0,
+          "ctr": 0,
+          "cpc": 0,
+          "cpr": 32,
+          "frequency": 0,
+          "date_start": "2026-10-01",
+          "date_end": "2026-10-02"
+        }
+      ],
+      "rawObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "PURCHASES",
+            "costLabel": "COST PER PURCHASE"
+          }
+        ]
+      ],
+      "aggregateObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD"
+          }
+        ]
+      ],
+      "mtd": {
+        "hasData": true,
+        "monthLabel": "Oct 1 - 2",
+        "fullMonthLabel": "Oct 1 - Oct 2",
+        "monthName": "October",
+        "sameMonthAsCurrentMTD": false,
+        "spend": "$160",
+        "reach": "133",
+        "impressions": "400",
+        "ctr": "\u2014",
+        "cpc": "\u2014",
+        "resultColumns": [
+          {
+            "label": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD",
+            "value": "3",
+            "cprValue": "$53.33"
+          }
+        ]
+      },
+      "slides": [
+        {
+          "objective": "WEBSITE LEADS",
+          "spend": "$160",
+          "reach": "133",
+          "impressions": "400",
+          "results": "3",
+          "ctr": "\u2014",
+          "cpr": "$53.33",
+          "cpc": "\u2014"
+        }
+      ],
+      "verification": {
+        "status": "ok",
+        "checks": [
+          {
+            "metric": "Amount spent",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "$160",
+            "csvDisplay": "$160",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "3",
+            "csvDisplay": "3",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER WEBSITE LEAD",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "$53.33",
+            "csvDisplay": "$53",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "$160",
+            "csvDisplay": "$160",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "3",
+            "csvDisplay": "3",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER WEBSITE LEAD",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "$53.33",
+            "csvDisplay": "$53",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "$160",
+            "csvDisplay": "$160",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "3",
+            "csvDisplay": "3",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER WEBSITE LEAD",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "$53.33",
+            "csvDisplay": "$53",
+            "status": "ok"
+          }
+        ],
+        "primaryResultLabel": "WEBSITE LEADS",
+        "scopesVerified": [
+          "Month-to-date (Oct 1 - 2)",
+          "Report week (Oct 1 - Oct 2)",
+          "Last 30 days (Oct 1 - Oct 2, 2026)"
+        ],
+        "canAlignWithCsvExport": false,
+        "alignedWithCsvExport": false
+      }
+    },
+    {
+      "name": "Reach with known period reach",
+      "raw": [
+        {
+          "_raw": {
+            "Campaign name": "Reach campaign",
+            "Ad set name": "Set A",
+            "Day": "2026-10-01",
+            "Result type": "Reach",
+            "Results": "100",
+            "Amount spent (USD)": "50",
+            "Reach": "100",
+            "Impressions": "100",
+            "Frequency": "1"
+          },
+          "campaign_name": "Reach campaign",
+          "ad_set_name": "Set A",
+          "result_type": "Reach",
+          "results": "100",
+          "spend": "50",
+          "reach": "100",
+          "impressions": "100",
+          "frequency": "1"
+        },
+        {
+          "_raw": {
+            "Campaign name": "Reach campaign",
+            "Ad set name": "Set A",
+            "Day": "2026-10-02",
+            "Result type": "Reach",
+            "Results": "100",
+            "Amount spent (USD)": "50",
+            "Reach": "100",
+            "Impressions": "100",
+            "Frequency": "1"
+          },
+          "campaign_name": "Reach campaign",
+          "ad_set_name": "Set A",
+          "result_type": "Reach",
+          "results": "100",
+          "spend": "50",
+          "reach": "100",
+          "impressions": "100",
+          "frequency": "1"
+        }
+      ],
+      "aggregated": [
+        {
+          "campaign_name": "Reach campaign",
+          "ad_set_name": "Set A",
+          "result_type": "Reach",
+          "delivery_status": "",
+          "objectiveConfident": true,
+          "spend": 100,
+          "reach": 133,
+          "impressions": 200,
+          "results": 200,
+          "link_clicks": 0,
+          "purchases": 0,
+          "initiate_checkout": 0,
+          "add_to_cart": 0,
+          "ctr": 0,
+          "cpc": 0,
+          "cpr": 751.8796992481203,
+          "frequency": 1,
+          "date_start": "2026-10-01",
+          "date_end": "2026-10-02"
+        }
+      ],
+      "rawObjectiveMap": [
+        [
+          "reach campaign",
+          {
+            "resultLabel": "REACH",
+            "costLabel": "COST PER 1K REACH"
+          }
+        ]
+      ],
+      "aggregateObjectiveMap": [
+        [
+          "reach campaign",
+          {
+            "resultLabel": "REACH",
+            "costLabel": "COST PER 1K REACH"
+          }
+        ]
+      ],
+      "mtd": {
+        "hasData": true,
+        "monthLabel": "Oct 1 - 2",
+        "fullMonthLabel": "Oct 1 - Oct 2",
+        "monthName": "October",
+        "sameMonthAsCurrentMTD": false,
+        "spend": "$100",
+        "reach": "100",
+        "impressions": "200",
+        "ctr": "\u2014",
+        "cpc": "\u2014",
+        "resultColumns": [
+          {
+            "label": "REACH",
+            "costLabel": "COST PER 1K REACH",
+            "value": "200",
+            "cprValue": "$500.00"
+          }
+        ]
+      },
+      "slides": [
+        {
+          "objective": "REACH",
+          "spend": "$100",
+          "reach": "100",
+          "impressions": "200",
+          "results": "100",
+          "ctr": "\u2014",
+          "cpr": "$1000.00",
+          "cpc": "\u2014"
+        }
+      ],
+      "verification": {
+        "status": "ok",
+        "checks": [
+          {
+            "metric": "Amount spent",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          }
+        ],
+        "primaryResultLabel": "REACH",
+        "scopesVerified": [
+          "Month-to-date (Oct 1 - 2)",
+          "Report week (Oct 1 - Oct 2)",
+          "Last 30 days (Oct 1 - Oct 2, 2026)"
+        ],
+        "canAlignWithCsvExport": false,
+        "alignedWithCsvExport": false
+      }
+    },
+    {
+      "name": "Checkout quantity reads cost column",
+      "raw": [
+        {
+          "_raw": {
+            "Campaign name": "Campaign A",
+            "Ad set name": "Set A",
+            "Day": "2026-10-01",
+            "Result type": "Initiate checkout",
+            "Results": "2",
+            "Amount spent (USD)": "100",
+            "Initiate checkout": "2",
+            "Cost per initiate checkout": "50",
+            "Reach": "100",
+            "Impressions": "200"
+          },
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Initiate checkout",
+          "results": "2",
+          "spend": "100",
+          "reach": "100",
+          "impressions": "200"
+        }
+      ],
+      "aggregated": [
+        {
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Initiate checkout",
+          "delivery_status": "",
+          "objectiveConfident": true,
+          "spend": 100,
+          "reach": 100,
+          "impressions": 200,
+          "results": 52,
+          "link_clicks": 0,
+          "purchases": 0,
+          "initiate_checkout": 52,
+          "add_to_cart": 0,
+          "ctr": 0,
+          "cpc": 0,
+          "cpr": 1.9230769230769231,
+          "frequency": 0,
+          "date_start": "2026-10-01",
+          "date_end": "2026-10-01"
+        }
+      ],
+      "rawObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "INITIATE CHECKOUT",
+            "costLabel": "COST PER CHECKOUT"
+          }
+        ]
+      ],
+      "aggregateObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "INITIATE CHECKOUT",
+            "costLabel": "COST PER CHECKOUT"
+          }
+        ]
+      ],
+      "mtd": {
+        "hasData": true,
+        "monthLabel": "Oct 1",
+        "fullMonthLabel": "Oct 1",
+        "monthName": "October",
+        "sameMonthAsCurrentMTD": false,
+        "spend": "$100",
+        "reach": "100",
+        "impressions": "200",
+        "ctr": "\u2014",
+        "cpc": "\u2014",
+        "resultColumns": [
+          {
+            "label": "INITIATE CHECKOUT",
+            "costLabel": "COST PER CHECKOUT",
+            "value": "52",
+            "cprValue": "$1.92"
+          }
+        ]
+      },
+      "slides": [
+        {
+          "objective": "INITIATE CHECKOUT",
+          "spend": "$100",
+          "reach": "100",
+          "impressions": "200",
+          "results": "52",
+          "ctr": "\u2014",
+          "cpr": "$1.92",
+          "cpc": "\u2014"
+        }
+      ],
+      "verification": {
+        "status": "ok",
+        "checks": [
+          {
+            "metric": "Amount spent",
+            "scope": "Month-to-date (Oct 1)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "INITIATE CHECKOUT",
+            "scope": "Month-to-date (Oct 1)",
+            "reportDisplay": "52",
+            "csvDisplay": "52",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER CHECKOUT",
+            "scope": "Month-to-date (Oct 1)",
+            "reportDisplay": "$1.92",
+            "csvDisplay": "$2",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Report week (Sep 30 - Oct 1)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "INITIATE CHECKOUT",
+            "scope": "Report week (Sep 30 - Oct 1)",
+            "reportDisplay": "52",
+            "csvDisplay": "52",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER CHECKOUT",
+            "scope": "Report week (Sep 30 - Oct 1)",
+            "reportDisplay": "$1.92",
+            "csvDisplay": "$2",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Last 30 days (Oct 1, 2026)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "INITIATE CHECKOUT",
+            "scope": "Last 30 days (Oct 1, 2026)",
+            "reportDisplay": "52",
+            "csvDisplay": "52",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER CHECKOUT",
+            "scope": "Last 30 days (Oct 1, 2026)",
+            "reportDisplay": "$1.92",
+            "csvDisplay": "$2",
+            "status": "ok"
+          }
+        ],
+        "primaryResultLabel": "INITIATE CHECKOUT",
+        "scopesVerified": [
+          "Month-to-date (Oct 1)",
+          "Report week (Sep 30 - Oct 1)",
+          "Last 30 days (Oct 1, 2026)"
+        ],
+        "canAlignWithCsvExport": false,
+        "alignedWithCsvExport": false
+      }
+    },
+    {
+      "name": "CPM units",
+      "raw": [
+        {
+          "_raw": {
+            "Campaign name": "Campaign A",
+            "Ad set name": "Set A",
+            "Day": "2026-10-01",
+            "Result type": "Impressions",
+            "Results": "10000",
+            "Amount spent (USD)": "100",
+            "Reach": "100",
+            "Impressions": "10000"
+          },
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Impressions",
+          "results": "10000",
+          "spend": "100",
+          "reach": "100",
+          "impressions": "10000"
+        }
+      ],
+      "aggregated": [
+        {
+          "campaign_name": "Campaign A",
+          "ad_set_name": "Set A",
+          "result_type": "Impressions",
+          "delivery_status": "",
+          "objectiveConfident": true,
+          "spend": 100,
+          "reach": 100,
+          "impressions": 10000,
+          "results": 10000,
+          "link_clicks": 0,
+          "purchases": 0,
+          "initiate_checkout": 0,
+          "add_to_cart": 0,
+          "ctr": 0,
+          "cpc": 0,
+          "cpr": 0.01,
+          "frequency": 0,
+          "date_start": "2026-10-01",
+          "date_end": "2026-10-01"
+        }
+      ],
+      "rawObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "IMPRESSIONS",
+            "costLabel": "CPM"
+          }
+        ]
+      ],
+      "aggregateObjectiveMap": [
+        [
+          "campaign a",
+          {
+            "resultLabel": "IMPRESSIONS",
+            "costLabel": "CPM"
+          }
+        ]
+      ],
+      "mtd": {
+        "hasData": true,
+        "monthLabel": "Oct 1",
+        "fullMonthLabel": "Oct 1",
+        "monthName": "October",
+        "sameMonthAsCurrentMTD": false,
+        "spend": "$100",
+        "reach": "100",
+        "impressions": "10,000",
+        "ctr": "\u2014",
+        "cpc": "\u2014",
+        "resultColumns": [
+          {
+            "label": "IMPRESSIONS",
+            "costLabel": "CPM",
+            "value": "10,000",
+            "cprValue": "$0.01"
+          }
+        ]
+      },
+      "slides": [
+        {
+          "objective": "IMPRESSIONS",
+          "spend": "$100",
+          "reach": "100",
+          "impressions": "10,000",
+          "results": "10,000",
+          "ctr": "\u2014",
+          "cpr": "$0.01",
+          "cpc": "\u2014"
+        }
+      ],
+      "verification": {
+        "status": "ok",
+        "checks": [
+          {
+            "metric": "Amount spent",
+            "scope": "Month-to-date (Oct 1)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Report week (Sep 30 - Oct 1)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Last 30 days (Oct 1, 2026)",
+            "reportDisplay": "$100",
+            "csvDisplay": "$100",
+            "status": "ok"
+          }
+        ],
+        "primaryResultLabel": "IMPRESSIONS",
+        "scopesVerified": [
+          "Month-to-date (Oct 1)",
+          "Report week (Sep 30 - Oct 1)",
+          "Last 30 days (Oct 1, 2026)"
+        ],
+        "canAlignWithCsvExport": false,
+        "alignedWithCsvExport": false
+      }
+    },
+    {
+      "name": "Website Leads good baseline",
+      "raw": [
+        {
+          "_raw": {
+            "Campaign name": "Website Leads",
+            "Ad set name": "Set A",
+            "Day": "2026-10-01",
+            "Result type": "website submission",
+            "Results": "5",
+            "Amount spent (USD)": "100",
+            "Website leads": "5",
+            "Reach": "100",
+            "Impressions": "200"
+          },
+          "campaign_name": "Website Leads",
+          "ad_set_name": "Set A",
+          "result_type": "website submission",
+          "results": "5",
+          "spend": "100",
+          "website_leads": "5",
+          "reach": "100",
+          "impressions": "200"
+        },
+        {
+          "_raw": {
+            "Campaign name": "Website Leads",
+            "Ad set name": "Set A",
+            "Day": "2026-10-02",
+            "Result type": "",
+            "Results": "",
+            "Amount spent (USD)": "20",
+            "Website leads": "",
+            "Reach": "100",
+            "Impressions": "200"
+          },
+          "campaign_name": "Website Leads",
+          "ad_set_name": "Set A",
+          "result_type": "",
+          "results": "",
+          "spend": "20",
+          "website_leads": "",
+          "reach": "100",
+          "impressions": "200"
+        }
+      ],
+      "aggregated": [
+        {
+          "campaign_name": "Website Leads",
+          "ad_set_name": "Set A",
+          "result_type": "Website lead",
+          "delivery_status": "",
+          "objectiveConfident": true,
+          "spend": 120,
+          "reach": 133,
+          "impressions": 400,
+          "results": 5,
+          "link_clicks": 0,
+          "purchases": 0,
+          "initiate_checkout": 0,
+          "add_to_cart": 0,
+          "ctr": 0,
+          "cpc": 0,
+          "cpr": 24,
+          "frequency": 0,
+          "date_start": "2026-10-01",
+          "date_end": "2026-10-02"
+        }
+      ],
+      "rawObjectiveMap": [
+        [
+          "website leads",
+          {
+            "resultLabel": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD"
+          }
+        ]
+      ],
+      "aggregateObjectiveMap": [
+        [
+          "website leads",
+          {
+            "resultLabel": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD"
+          }
+        ]
+      ],
+      "mtd": {
+        "hasData": true,
+        "monthLabel": "Oct 1 - 2",
+        "fullMonthLabel": "Oct 1 - Oct 2",
+        "monthName": "October",
+        "sameMonthAsCurrentMTD": false,
+        "spend": "$120",
+        "reach": "133",
+        "impressions": "400",
+        "ctr": "\u2014",
+        "cpc": "\u2014",
+        "resultColumns": [
+          {
+            "label": "WEBSITE LEADS",
+            "costLabel": "COST PER WEBSITE LEAD",
+            "value": "5",
+            "cprValue": "$24.00"
+          }
+        ]
+      },
+      "slides": [
+        {
+          "objective": "WEBSITE LEADS",
+          "spend": "$120",
+          "reach": "133",
+          "impressions": "400",
+          "results": "5",
+          "ctr": "\u2014",
+          "cpr": "$24.00",
+          "cpc": "\u2014"
+        }
+      ],
+      "verification": {
+        "status": "ok",
+        "checks": [
+          {
+            "metric": "Amount spent",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "$120",
+            "csvDisplay": "$120",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "5",
+            "csvDisplay": "5",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER WEBSITE LEAD",
+            "scope": "Month-to-date (Oct 1 - 2)",
+            "reportDisplay": "$24.00",
+            "csvDisplay": "$24",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "$120",
+            "csvDisplay": "$120",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "5",
+            "csvDisplay": "5",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER WEBSITE LEAD",
+            "scope": "Report week (Oct 1 - Oct 2)",
+            "reportDisplay": "$24.00",
+            "csvDisplay": "$24",
+            "status": "ok"
+          },
+          {
+            "metric": "Amount spent",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "$120",
+            "csvDisplay": "$120",
+            "status": "ok"
+          },
+          {
+            "metric": "WEBSITE LEADS",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "5",
+            "csvDisplay": "5",
+            "status": "ok"
+          },
+          {
+            "metric": "COST PER WEBSITE LEAD",
+            "scope": "Last 30 days (Oct 1 - Oct 2, 2026)",
+            "reportDisplay": "$24.00",
+            "csvDisplay": "$24",
+            "status": "ok"
+          }
+        ],
+        "primaryResultLabel": "WEBSITE LEADS",
+        "scopesVerified": [
+          "Month-to-date (Oct 1 - 2)",
+          "Report week (Oct 1 - Oct 2)",
+          "Last 30 days (Oct 1 - Oct 2, 2026)"
+        ],
+        "canAlignWithCsvExport": false,
+        "alignedWithCsvExport": false
+      }
+    }
+  ]
+}

@@ -74,7 +74,7 @@ import {
 import { normalizeSavedDateSelection } from "./ui/normalize-date-selection";
 import {
   buildClientReportShareMessage,
-  buildShareReportUrl,
+  buildShareReportAbsoluteUrl,
   buildUploadFormData,
   defaultReportTitleFor,
   formatIso,
@@ -1238,10 +1238,10 @@ export function useReportUploadWizard({
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(mtdFile),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
 
-    if (!res.ok || !json) {
+    if (!res?.ok || !json) {
       setAnalyzeStatus("error");
       setAnalyzeMessage("Something went wrong analyzing the CSV. Please try again.");
       return;
@@ -1310,11 +1310,11 @@ export function useReportUploadWizard({
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { platform }),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
     setReanalyzeSessionStatus("idle");
 
-    if (!res.ok || !json?.valid) {
+    if (!res?.ok || !json?.valid) {
       setAnalyzeStatus("error");
       setAnalyzeMessage(
         json?.errors?.[0]?.message || "Could not re-analyze your file. Try uploading again from step 1.",
@@ -1406,10 +1406,10 @@ export function useReportUploadWizard({
         metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
         metaAdAccountId: meta?.metaAdAccountId,
       }),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
 
-    if (!res.ok || !json) {
+    if (!res?.ok || !json) {
       setAnalyzeStatus("error");
       setAnalyzeMessage("Something went wrong analyzing the synced data. Please try again.");
       return;
@@ -1456,12 +1456,12 @@ export function useReportUploadWizard({
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { platform: selectedPlatformCard }),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
     setContinueStatus("idle");
     setMismatchWarning(false);
 
-    if (!res.ok || !json) {
+    if (!res?.ok || !json) {
       setAnalyzeStatus("error");
       setAnalyzeMessage("Something went wrong analyzing the CSV. Please try again.");
       return;
@@ -1581,8 +1581,8 @@ export function useReportUploadWizard({
         { platform: platformForRequest, selectedCampaigns: campaignsForRequest },
         uploadSessionId,
       ),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
 
     // Ignore stale responses when the user changed selection mid-fetch.
     const requestKey = options?.selectedCampaignsOverride
@@ -1596,7 +1596,7 @@ export function useReportUploadWizard({
       return { ok: false };
     }
 
-    if (!res.ok || !json || json.error) {
+    if (!res?.ok || !json || json.error) {
       // Objectives/Metrics are a nice-to-have preview, not a hard
       // requirement — a failure here shouldn't strand the wizard. Fall
       // through with an empty selection (the engine's automatic
@@ -2097,8 +2097,8 @@ export function useReportUploadWizard({
         },
         uploadSessionId,
       ),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
@@ -2107,7 +2107,7 @@ export function useReportUploadWizard({
       return null;
     }
 
-    if (!res.ok || !json) {
+    if (!res?.ok || !json) {
       setPreviewStatus("error");
       const apiMsg =
         typeof json?.error === "string"
@@ -2279,7 +2279,12 @@ export function useReportUploadWizard({
         },
         uploadSessionId,
       ),
-    });
+    }).catch(() => null);
+    if (!res) {
+      setGenerateStatus("error");
+      setGenerateMessage("The connection was interrupted. Check Reports before retrying — your report may still finish in the background.");
+      return;
+    }
     const json = await res.json().catch(() => null);
 
     if (json?.uploadSessionExpired) {
@@ -2314,9 +2319,8 @@ export function useReportUploadWizard({
             : "Report generation failed. Please try again.",
         );
         return;
-      } finally {
-        setGenerateMessage(null);
       }
+      setGenerateMessage(null);
     }
 
     setUploadSessionId(null);
@@ -2347,8 +2351,8 @@ export function useReportUploadWizard({
     const res = await fetch(`/api/clients/${clientId}/reports`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { platform, reportType: "PREVIOUS_MONTH_SUMMARY" }, uploadSessionId),
-    });
-    const json = await res.json().catch(() => null);
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
@@ -2356,7 +2360,7 @@ export function useReportUploadWizard({
       return;
     }
 
-    if (!res.ok || !json?.ok || !json.reportId) {
+    if (!res?.ok || !json?.ok || !json.reportId) {
       setPmsStatus("error");
       setPmsError(json?.error || "Report generation failed. Please try again.");
       return;
@@ -2406,7 +2410,7 @@ export function useReportUploadWizard({
   async function handleCopyShareLink() {
     if (!shareToken || shareCopyInFlightRef.current) return;
     shareCopyInFlightRef.current = true;
-    const fullUrl = `https://${buildShareReportUrl(shareToken)}`;
+    const fullUrl = buildShareReportAbsoluteUrl(shareToken);
     try {
       await navigator.clipboard.writeText(fullUrl);
       setShareLinkCopied(true);
@@ -2422,7 +2426,7 @@ export function useReportUploadWizard({
   async function handleCopyClientShareMessage() {
     if (!shareToken || clientMessageCopyInFlightRef.current) return;
     clientMessageCopyInFlightRef.current = true;
-    const reportUrl = `https://${buildShareReportUrl(shareToken)}`;
+    const reportUrl = buildShareReportAbsoluteUrl(shareToken);
     const text = buildClientReportShareMessage(buildClientShareMessageInput(reportUrl));
     try {
       await navigator.clipboard.writeText(text);
@@ -2445,7 +2449,12 @@ export function useReportUploadWizard({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ folderId, folderName }),
-    });
+    }).catch(() => null);
+    if (!res) {
+      setDriveSaving(false);
+      setDriveSaveError("Could not reach Google Drive. Check your connection and try Save to Drive again; your report is still available here.");
+      return;
+    }
     const json = await res.json().catch(() => null);
 
     if (!res.ok || !json?.url) {
@@ -2498,9 +2507,13 @@ export function useReportUploadWizard({
 
   async function handleCopyLink() {
     if (!driveSaveUrl) return;
-    await navigator.clipboard.writeText(driveSaveUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(driveSaveUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToast("Could not copy the Drive link. Try again or open the saved report in Drive.");
+    }
   }
 
 

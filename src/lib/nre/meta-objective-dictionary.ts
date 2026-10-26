@@ -173,7 +173,6 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "website_lead",
       "onsite_web_lead",
       "offsite_conversion.fb_pixel_lead",
-      "contact",
       "lead",
     ],
   },
@@ -336,10 +335,25 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "subscriptions",
       "recurring_subscription_payment_made",
       "offsite_conversion.fb_pixel_subscribe",
-      "start trial",
-      "start_trial",
-      "offsite_conversion.fb_pixel_start_trial",
     ],
+  },
+  {
+    key: "contacts",
+    resultLabel: "CONTACTS",
+    costLabel: "COST PER CONTACT",
+    isReach: false,
+    canonicalText: "Contact",
+    definitiveProof: true,
+    aliases: ["contact", "contacts", "website contacts", "in-app contacts", "offline contacts", "offsite_conversion.fb_pixel_contact"],
+  },
+  {
+    key: "trials_started",
+    resultLabel: "TRIALS STARTED",
+    costLabel: "COST PER TRIAL",
+    isReach: false,
+    canonicalText: "Start trial",
+    definitiveProof: true,
+    aliases: ["start trial", "start_trial", "trial started", "trials started", "website trials started", "in-app trials started", "offline trials started", "offsite_conversion.fb_pixel_start_trial"],
   },
   {
     key: "quote_requests",
@@ -441,11 +455,19 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "video view",
       "video play",
       "video plays",
-      "thruplay",
-      "thruplays",
-      "video_plays_at_least_2_secs",
-      "2_second_continuous_video_plays",
+      "3-second video plays",
+      "3_second_video_plays",
     ],
+  },
+  {
+    key: "thruplays", resultLabel: "THRUPLAYS", costLabel: "COST PER THRUPLAY", isReach: false,
+    canonicalText: "ThruPlay", definitiveProof: true,
+    aliases: ["thruplay", "thruplays", "video_thruplay_watched_actions"],
+  },
+  {
+    key: "video_2s_plays", resultLabel: "2-SECOND VIDEO VIEWS", costLabel: "COST PER 2-SEC VIEW", isReach: false,
+    canonicalText: "2-second continuous video plays", definitiveProof: true,
+    aliases: ["2-second continuous video plays", "2_second_continuous_video_plays", "video_plays_at_least_2_secs"],
   },
   {
     key: "post_engagements",
@@ -779,10 +801,14 @@ const MESSAGING_FUZZY_COST = "COST PER CONVERSATION";
  * the exact alias map for substring matches on human-readable export text.
  */
 export const META_FUZZY_CATALOG: readonly MetaFuzzyCatalogEntry[] = [
+  { resultLabel: "THRUPLAYS", costLabel: "COST PER THRUPLAY", pattern: /thru[ _-]*plays?/, canonicalText: "ThruPlay" },
+  { resultLabel: "2-SECOND VIDEO VIEWS", costLabel: "COST PER 2-SEC VIEW", pattern: /2[ _-]*(?:second|sec)[ _-]*(?:continuous[ _-]*)?video[ _-]*plays?/, canonicalText: "2-second continuous video plays" },
+  { resultLabel: "CONTACTS", costLabel: "COST PER CONTACT", pattern: /\bcontacts?\b/, canonicalText: "Contact" },
+  { resultLabel: "TRIALS STARTED", costLabel: "COST PER TRIAL", pattern: /start[ _-]*trials?|trials?[ _-]*started/, canonicalText: "Start trial" },
   {
     resultLabel: "WEBSITE LEADS",
     costLabel: "COST PER WEBSITE LEAD",
-    pattern: /website\s*submission|website\s*leads?|web\s*leads?|leads?\s*\(\s*website\s*\)|\bcontact\b/,
+    pattern: /website\s*submission|website\s*leads?|web\s*leads?|leads?\s*\(\s*website\s*\)/,
     canonicalText: "Website lead",
   },
   {
@@ -998,7 +1024,7 @@ export const META_FUZZY_CATALOG: readonly MetaFuzzyCatalogEntry[] = [
   {
     resultLabel: "VIDEO VIEWS",
     costLabel: "COST PER VIDEO VIEW",
-    pattern: /video\s*views?|video\s*plays?|thruplays?/,
+    pattern: /video\s*views?|video\s*plays?/,
     canonicalText: "Video view",
   },
   { resultLabel: "LEADS", costLabel: "COST PER LEAD", pattern: /leads?/, canonicalText: "Lead" },

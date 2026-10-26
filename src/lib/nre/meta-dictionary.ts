@@ -1,11 +1,10 @@
+import type { MetricAggregation } from "./metric-aggregation";
 /**
- * Comprehensive Meta Ads metric dictionary — every column NextReport
- * recognizes for the dynamic metric-selection system (Metric Preview wizard
- * step + dynamic PPT card generation). This is a parallel, additive system:
- * it does not replace or interact with columns.ts's small fixed-field
- * detection (which still drives the always-on Combined Total table, MTD
- * chart, and health score) or objective.ts's OBJECTIVE_CATALOG (which still
- * drives per-row result-type labeling for those same untouched features).
+ * Meta CSV metric bindings and numeric aggregation components for optional
+ * cards. Core structural binding lives in columns.ts; primary event identity
+ * lives in meta-objective-dictionary.ts. A display format alone must not decide
+ * whether a value is additive, and a location-specific count is not an alias
+ * for an all-location total.
  *
  * `type` meaning:
  *  - 'dimension'/'metadata': structural columns, never shown as a metric card.
@@ -25,7 +24,7 @@
 export type MetaMetricType = "dimension" | "metadata" | "primary" | "secondary" | "never";
 export type MetricFormat = "currency" | "number" | "percentage" | "duration" | "ratio" | "text";
 
-export interface MetaMetricDefinition {
+export interface MetaMetricDefinition extends MetricAggregation {
   /** Exact lowercase CSV column header this entry matches. */
   csvName: string;
   /** Internal identifier — shared across csvName variants of the same underlying metric. */
@@ -57,7 +56,7 @@ export interface MetaMetricDefinition {
   perUnitScale?: number;
 }
 
-export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
+const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   // ── DIMENSIONS — used for structure, never shown as cards ────────────────
   { csvName: "campaign name", key: "campaign_name", type: "dimension" },
   { csvName: "ad set name", key: "ad_set_name", type: "dimension" },
@@ -1382,6 +1381,43 @@ export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   // (Result rate's own dictionary entry lives up in the METADATA section —
   // see its comment there for why it's excluded from the metric selector.)
 ];
+
+const AGGREGATION_RULES: Record<string, MetricAggregation> = {
+  avg_purchase_value: { numeratorKey: "purchases_conversion_value", denominatorKey: "purchases" },
+  app_purchase_roas: { numeratorKey: "app_purchase_value", denominatorKey: "spend" },
+};
+// Explicit export synonyms only. Location-specific counts/values below retain
+// distinct keys; Website purchases is not an alias for all-location Purchases.
+const REFERENCE_ALIASES: readonly [string, string][] = [
+  ["checkouts initiated", "initiate_checkout"], ["cost per checkout initiated", "cost_per_initiate_checkout"],
+  ["add to cart", "add_to_cart"], ["in-app purchase roas (return on ad spend)", "app_purchase_roas"],
+];
+const REFERENCE_COUNTS: readonly [string, string, string][] = [
+  ["contacts", "contacts", "CONTACTS"], ["trials started", "trials_started", "TRIALS STARTED"],
+  ["subscriptions", "subscriptions", "SUBSCRIPTIONS"], ["donations", "donations", "DONATIONS"],
+  ["registrations completed", "registrations", "REGISTRATIONS"], ["adds of payment info", "payment_info", "PAYMENT INFO"],
+  ["content views", "content_views", "CONTENT VIEWS"], ["website purchases", "website_purchases", "WEBSITE PURCHASES"],
+  ["in-app purchases", "in_app_purchases", "IN-APP PURCHASES"],
+];
+const REFERENCE_VALUES: readonly [string, string, string][] = [
+  ["website purchases conversion value", "website_purchase_value", "WEBSITE PURCHASE VALUE"],
+  ["in-app purchases conversion value", "app_purchase_value", "IN-APP PURCHASE VALUE"],
+  ["mobile app purchases conversion value", "app_purchase_value", "IN-APP PURCHASE VALUE"],
+  ["mobile app purchase conversion value", "app_purchase_value", "IN-APP PURCHASE VALUE"],
+];
+const REFERENCE_METADATA = [
+  "reporting starts", "reporting ends", "objective", "performance goal", "buying type", "bid", "bid type", "account id", "account name", "ad id", "ad set budget", "ad set budget type", "ad set id", "campaign budget", "campaign budget type", "campaign id", "body (ad settings)", "preview link", "link (ad settings)", "currency", "time zone", "page id", "description", "headline", "website url", "call_to_action_type", "image hash", "video id", "image name", "video name", "url parameters", "included custom audiences", "excluded custom audiences",
+];
+const referenceMetrics: MetaMetricDefinition[] = [
+  ...REFERENCE_METADATA.map(csvName => ({ csvName, key: `metadata_${csvName.replace(/[^a-z0-9]+/g, "_")}`, type: "metadata" as const })),
+  ...REFERENCE_ALIASES.map(([csvName, key]) => ({ ...BASE_META_METRIC_DICTIONARY.find(entry => entry.key === key)!, csvName })),
+  ...REFERENCE_COUNTS.map(([csvName, key, label]) => ({ csvName, key, label, type: "secondary" as const, format: "number" as const, objectives: ["sales", "leads", "app_promotion"], priority: 60, explanation: `Number of ${csvName} attributed to the selected source rows` })),
+  ...REFERENCE_VALUES.map(([csvName, key, label]) => ({ csvName, key, label, type: "secondary" as const, format: "currency" as const, objectives: ["sales", "app_promotion"], priority: 60, explanation: `Total ${csvName} in the selected source rows` })),
+  { csvName: "cost per contact", key: "cost_per_contact", label: "COST PER CONTACT", type: "secondary", format: "currency", objectives: ["sales", "leads"], priority: 60, perUnitOf: "contacts", explanation: "Spend divided by contacts" },
+  { csvName: "cost per trial started", key: "cost_per_trial", label: "COST PER TRIAL", type: "secondary", format: "currency", objectives: ["sales", "app_promotion"], priority: 60, perUnitOf: "trials_started", explanation: "Spend divided by trials started" },
+  { csvName: "website purchase roas (return on ad spend)", key: "website_purchase_roas", label: "WEBSITE PURCHASE ROAS", type: "secondary", format: "ratio", objectives: ["sales"], priority: 60, numeratorKey: "website_purchase_value", denominatorKey: "spend", explanation: "Website purchase conversion value divided by spend" },
+];
+export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [...BASE_META_METRIC_DICTIONARY, ...referenceMetrics.filter(entry => !BASE_META_METRIC_DICTIONARY.some(existing => existing.csvName === entry.csvName))].map(entry => ({ ...entry, ...AGGREGATION_RULES[entry.key] }));
 
 const TRAILING_CURRENCY_SUFFIX = /\s*\((usd|aud|eur|gbp|inr|cad)\)\s*$/i;
 

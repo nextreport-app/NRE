@@ -110,9 +110,9 @@ export function buildGenerateStepReadinessItems(input: {
   if (v?.status === "ok") {
     items.push({
       id: "csv",
-      label: "CSV verification",
+      label: "Listed CSV checks passed",
       status: "done",
-      detail: v.scopesVerified?.length ? v.scopesVerified.join(" · ") : "Totals match your export",
+      detail: v.scopesVerified?.length ? v.scopesVerified.join(" · ") : "Listed totals and rates match this export",
     });
   } else if (v?.status === "mismatch") {
     items.push({

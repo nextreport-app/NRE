@@ -1,3 +1,4 @@
+import { mockRouteAuth } from "@/test/api-route-harness";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonBody, mockSession } from "@/test/api-route-harness";
 
@@ -24,7 +25,7 @@ describe("GET /api/payments/config", () => {
 
 describe("POST /api/payments/create-subscription", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(isRazorpaySubscriptionsConfigured).mockReset();
     vi.mocked(createRazorpaySubscription).mockReset();
   });
@@ -34,7 +35,7 @@ describe("POST /api/payments/create-subscription", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await createSubscription(
       new Request("http://localhost/api/payments/create-subscription", { method: "POST", body: "{}" }),
     );
@@ -42,7 +43,7 @@ describe("POST /api/payments/create-subscription", () => {
   });
 
   it("returns 503 with useOrders when subscriptions are not configured", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(isRazorpaySubscriptionsConfigured).mockReturnValue(false);
 
     const res = await createSubscription(
@@ -58,7 +59,7 @@ describe("POST /api/payments/create-subscription", () => {
   });
 
   it("creates a subscription for authenticated users", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1", "pay@example.com"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1", "pay@example.com"));
     vi.mocked(isRazorpaySubscriptionsConfigured).mockReturnValue(true);
     vi.mocked(createRazorpaySubscription).mockResolvedValue({
       subscriptionId: "sub_123",

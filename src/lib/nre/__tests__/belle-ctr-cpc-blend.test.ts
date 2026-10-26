@@ -39,8 +39,8 @@ describe("The Belle — CTR/CPC blended from CSV (not daily averages)", () => {
     expect(parseCellNum(slide!.metrics.ctr)).toBeCloseTo(csvCtr, 2);
     expect(parseCellNum(slide!.metrics.cpc)).toBeCloseTo(csvCpc, 2);
 
-    const linkCard = slide!.dynamicMetrics?.find((m) => m.key === "link_clicks");
-    const cplcCard = slide!.dynamicMetrics?.find((m) => m.key === "cpc_link_click");
+    const linkCard = slide!.dynamicMetrics?.find((m) => m?.key === "link_clicks");
+    const cplcCard = slide!.dynamicMetrics?.find((m) => m?.key === "cpc_link_click");
     expect(parseCellNum(linkCard?.value ?? "0")).toBe(csvLinkClicks);
     expect(parseCellNum(cplcCard?.value ?? "0")).toBeCloseTo(csvCplc, 2);
 

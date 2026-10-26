@@ -34,6 +34,7 @@
  */
 
 import { findMetaMetricByKey } from "./meta-dictionary";
+import { parseCellNum } from "./format";
 import { findGoogleMetricByKey } from "./google-dictionary";
 import { lookupMetricValue, type DynamicMetricValue, type RawMetricRow } from "./dynamic-metrics";
 import { googleObjectiveSpecForKey, type GoogleObjectiveKey } from "./detect-objective";
@@ -345,7 +346,10 @@ export interface MetaSlotBaseline {
  * branch) so the mapping fires correctly against real data.
  */
 export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow[], currencySymbol: string): (DynamicMetricValue | null)[] {
-  const v = (key: string) => metaSlotValue(rawRows, key, currencySymbol);
+  const hasFrequencyColumn = rawRows.some(row => Object.keys(row._raw).some(header => /^(?:ad |avg\. )?frequency$/i.test(header.trim())));
+  const v = (key: string) => key === "frequency"
+    ? (hasFrequencyColumn || /^(?:UNIQUE )?REACH$/i.test(baseline.resultLabel)) && parseCellNum(baseline.reach) > 0 ? `${(parseCellNum(baseline.impressions) / parseCellNum(baseline.reach)).toFixed(2)}x` : "—"
+    : metaSlotValue(rawRows, key, currencySymbol);
   const resultLabel = (baseline.resultLabel || "").toUpperCase();
 
   let slot4: DynamicMetricValue;
@@ -380,7 +384,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     // costLabel happened to say.
     case "META FORM LEADS": {
       const dedicatedResult = firstAvailable([{ key: "meta_form_leads", label: "META FORM LEADS", format: "number" }], v);
-      slot4 = dedicatedResult ?? slot("results", "META FORM LEADS", "number", baseline.resultValue);
+      slot4 = dedicatedResult ? { ...dedicatedResult, value: baseline.resultValue } : slot("results", "META FORM LEADS", "number", baseline.resultValue);
       // "cost per lead" is tried second — some real InstantForms exports
       // use that literal header instead of "cost per on-facebook lead".
       const dedicatedCost = firstAvailable(
@@ -390,7 +394,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
         ],
         v,
       );
-      slot5 = dedicatedCost ?? slot("cost_per_result", "COST PER LEAD", "currency", baseline.cprValue);
+      slot5 = dedicatedCost ? { ...dedicatedCost, value: baseline.cprValue } : slot("cost_per_result", "COST PER LEAD", "currency", baseline.cprValue);
       slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
       // Meta Instant Form campaigns don't use landing pages (the lead is
       // captured on-Facebook), so LANDING PAGE VIEWS is irrelevant/
@@ -402,8 +406,8 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     }
 
     case "LINK CLICKS":
-      slot4 = slot("link_clicks", "LINK CLICKS", "number", v("link_clicks"));
-      slot5 = slot("cpc_link_click", "COST PER CLICK", "currency", v("cpc_link_click"));
+      slot4 = slot("link_clicks", "LINK CLICKS", "number", baseline.resultValue);
+      slot5 = slot("cpc_link_click", "COST PER CLICK", "currency", baseline.cprValue);
       slot7 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5), v);
       // Product spec's "Link Clicks/Traffic: LANDING PAGE VIEWS" would
       // duplicate this case's own slot 7, and CLICKS (ALL) would duplicate
@@ -418,8 +422,8 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     // IMPRESSIONS, LANDING PAGE VIEWS, COST PER LPV, CTR, LINK CLICKS,
     // COST PER LINK CLICK — no CLICKS (ALL).
     case "LANDING PAGE VIEWS":
-      slot4 = slot("landing_page_views", "LANDING PAGE VIEWS", "number", v("landing_page_views"));
-      slot5 = slot("cost_per_lpv", "COST PER LPV", "currency", v("cost_per_lpv"));
+      slot4 = slot("landing_page_views", "LANDING PAGE VIEWS", "number", baseline.resultValue);
+      slot5 = slot("cost_per_lpv", "COST PER LPV", "currency", baseline.cprValue);
       slot7 = pickSlot([LINK_CLICKS], usedKeys(slot4, slot5), v);
       slot8 = pickSlot([COST_PER_LINK_CLICK], usedKeys(slot4, slot5, slot7), v);
       break;
@@ -429,16 +433,17 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
       slot4 = slot("frequency", "FREQUENCY", "ratio", v("frequency"));
       slot5 = slot("cpm", "CPM", "currency", v("cpm"));
       slot7 = slot("cpc_all", "CPC (ALL)", "currency", v("cpc_all"));
-      slot8 = slot("cost_per_1k_reached", "COST PER 1K REACHED", "currency", v("cost_per_1k_reached"));
+      slot8 = slot("cost_per_1k_reached", "COST PER 1K REACHED", "currency", baseline.cprValue);
       break;
 
     case "VIDEO VIEWS":
     case "THRUPLAYS":
-      slot4 = slot("video_views", "VIDEO VIEWS", "number", v("video_views"));
-      slot5 = slot("cost_per_thruplay", "COST PER VIEW", "currency", v("cost_per_thruplay"));
+    case "2-SECOND VIDEO VIEWS":
+      slot4 = slot(resultLabel === "THRUPLAYS" ? "thruplays" : resultLabel === "2-SECOND VIDEO VIEWS" ? "video_2s_plays" : "video_views", resultLabel, "number", baseline.resultValue);
+      slot5 = slot(resultLabel === "2-SECOND VIDEO VIEWS" ? "cost_per_2s_video" : "cost_per_thruplay", baseline.costLabel, "currency", baseline.cprValue);
       // REDUNDANT_WITH already blocks VIDEO PLAYS from ever following
       // either VIDEO VIEWS (slot 4) or THRUPLAYS (slot 7) here.
-      slot7 = pickSlot([{ key: "thruplays", label: "THRUPLAYS", format: "number" }], usedKeys(slot4, slot5), v);
+      slot7 = pickSlot([{ key: resultLabel === "THRUPLAYS" ? "video_views" : "thruplays", label: resultLabel === "THRUPLAYS" ? "3-SECOND VIDEO VIEWS" : "THRUPLAYS", format: "number" }], usedKeys(slot4, slot5), v);
       slot8 = pickSlot([{ key: "video_p100", label: "VIDEO AT 100%", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
@@ -449,8 +454,8 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
     case "MESSAGING / CONVERSATIONS":
     case "MESSAGING CONVERSATIONS STARTED":
     case "CONVERSATIONS":
-      slot4 = slot("messaging_conversations_started", "CONVERSATIONS", "number", v("messaging_conversations_started"));
-      slot5 = slot("cost_per_conversation", "COST PER CONV.", "currency", v("cost_per_conversation"));
+      slot4 = slot("messaging_conversations_started", "CONVERSATIONS", "number", baseline.resultValue);
+      slot5 = slot("cost_per_conversation", "COST PER CONV.", "currency", baseline.cprValue);
       slot7 = pickSlot([{ key: "new_messaging_contacts", label: "NEW CONTACTS", format: "number" }], usedKeys(slot4, slot5), v);
       slot8 = pickSlot([{ key: "messaging_contacts", label: "MESSAGING CONTACTS", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;

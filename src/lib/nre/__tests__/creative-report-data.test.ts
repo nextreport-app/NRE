@@ -6,7 +6,7 @@ function adRow(overrides: Partial<Record<string, string>> & { campaign: string; 
   return {
     campaign_name: overrides.campaign,
     ad_set_name: "Ad Set 1",
-    day: overrides.day,
+    date_start: overrides.day,
     spend: overrides.spend ?? "100",
     results: overrides.results ?? "5",
     impressions: overrides.impressions ?? "1000",

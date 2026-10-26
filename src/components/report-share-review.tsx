@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { buildShareReportAbsoluteUrl } from "@/lib/report-share-url";
 import { useToast } from "@/components/toast";
 import { ShareReportView } from "@/components/share-report-view";
 import type { ShareReportData, ShareVisibility, ShareChartData } from "@/lib/nre/share-report";
@@ -396,8 +397,12 @@ export function ReportShareReview({
             : undefined,
         },
       }),
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!res) {
+      showToast("The connection was interrupted. Your edits are still here. Check the live report before publishing again.", "error");
+      return;
+    }
     if (!res.ok) {
       showToast("Could not publish changes. Try again.", "error");
       return;
@@ -463,7 +468,7 @@ export function ReportShareReview({
         <div className="flex flex-wrap gap-2">
           {shareToken ? (
             <Link
-              href={`https://nextreport.in/r/${shareToken}`}
+              href={buildShareReportAbsoluteUrl(shareToken)}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:bg-dash-border"

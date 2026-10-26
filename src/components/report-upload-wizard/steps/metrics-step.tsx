@@ -12,6 +12,8 @@ import { readClientWizardPreferences } from "../client-wizard-preferences";
 
 export function WizardMetricsStep() {
   const w = useWizardContext();
+  const copy = useWizardCopy();
+  const { locale } = useSiteTheme();
   const stepActive = w.step === 3;
 
   const activeCampaigns = useMemo(() => {
@@ -26,9 +28,6 @@ export function WizardMetricsStep() {
 
   if (!stepActive) return null;
 
-  const copy = useWizardCopy();
-  const { locale } = useSiteTheme();
-
   const {
     ADD_FROM_CSV_VISIBLE,
     MAX_METRICS_PER_SLIDE,
@@ -37,7 +36,6 @@ export function WizardMetricsStep() {
     addCampaignMetric,
     campaignAvailableMetrics,
     campaignObjectives,
-    campaigns,
     confirmOpenSecondSlide,
     expandedCsvExtras,
     handleMetricsContinue,
@@ -47,7 +45,6 @@ export function WizardMetricsStep() {
     perCampaignMetrics,
     perCampaignMinWarning,
     removeCampaignMetric,
-    selectedCampaigns,
     setExpandedCsvExtras,
     setOverflowDialog,
     setStep,

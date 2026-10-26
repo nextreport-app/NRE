@@ -1,3 +1,4 @@
+import { mockRouteAuth } from "@/test/api-route-harness";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonBody, mockSession, mockTrialUser } from "@/test/api-route-harness";
 
@@ -22,18 +23,18 @@ import { GET, POST } from "../clients/route";
 
 describe("GET /api/clients", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(prisma.client.findMany).mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await GET();
     expect(res.status).toBe(401);
   });
 
   it("lists clients for the signed-in user", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.client.findMany).mockResolvedValue([{ id: "c1", accountName: "Brand A" }] as never);
 
     const res = await GET();
@@ -49,7 +50,7 @@ describe("GET /api/clients", () => {
 
 describe("POST /api/clients", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(prisma.user.findUnique).mockReset();
     vi.mocked(prisma.client.count).mockReset();
     vi.mocked(prisma.client.create).mockReset();
@@ -57,13 +58,13 @@ describe("POST /api/clients", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await POST(new Request("http://localhost/api/clients", { method: "POST", body: "{}" }));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 for invalid body", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockTrialUser() as never);
     vi.mocked(prisma.client.count).mockResolvedValue(0);
 
@@ -78,7 +79,7 @@ describe("POST /api/clients", () => {
   });
 
   it("creates a client when subscription and capacity allow", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockTrialUser() as never);
     vi.mocked(prisma.client.count).mockResolvedValue(0);
     vi.mocked(prisma.client.create).mockResolvedValue({

@@ -129,6 +129,8 @@ export function buildShareReportUrl(shareToken: string): string {
   return `nextreport.in/r/${shareToken}`;
 }
 
+export { buildShareReportAbsoluteUrl } from "@/lib/report-share-url";
+
 export function isApiSyncArtifact(file: File | null): boolean {
   return Boolean(file?.name.includes("-api-sync-"));
 }

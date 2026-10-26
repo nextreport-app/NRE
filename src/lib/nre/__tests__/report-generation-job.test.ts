@@ -1,3 +1,4 @@
+import { buildReportData } from "../report-data";
 import { describe, expect, it } from "vitest";
 import {
   parseReportGenerationJob,
@@ -15,15 +16,7 @@ describe("report-generation-job", () => {
       uploadSessionId: "550e8400-e29b-41d4-a716-446655440000",
       platform: "META",
       reportTitle: "Weekly Performance Report",
-      reportData: {
-        reportType: "WEEKLY",
-        fileDateRange: "Aug 1 to Aug 26",
-        isPaused: false,
-        cover: { healthScore: 80, healthBadge: "Good", dateRange: "Aug 1 to Aug 26", budgetSummary: null },
-        campaignSlides: [],
-        adSetSlides: [],
-        periodRow: { fullMonthLabel: "August 2026" },
-      } as StandardReportJobPayload["reportData"],
+      reportData: buildReportData({ accountName: "Test", currencySymbol: "$", timezone: "UTC", monthlyBudget: null, mtdDailyRows: [], reportType: "MONTHLY", now: new Date("2026-10-03T12:00:00Z") }),
     };
 
     const raw = serializeReportGenerationJob(payload);

@@ -72,7 +72,7 @@ export const META_OBJECTIVE_REGRESSION_FIXTURES: readonly MetaObjectiveRegressio
       { campaignName: "Instagram DM Campaign", resultLabel: "INSTAGRAM DM LEADS", minConfidence: "high" },
       { campaignName: "Registration Campaign", resultLabel: "REGISTRATIONS", minConfidence: "high" },
       { campaignName: "App Install Campaign", resultLabel: "APP INSTALLS", minConfidence: "high" },
-      { campaignName: "Video Views Campaign", resultLabel: "VIDEO VIEWS", minConfidence: "high" },
+      { campaignName: "Video Views Campaign", resultLabel: "THRUPLAYS", minConfidence: "high" },
       { campaignName: "Impressions Campaign", resultLabel: "IMPRESSIONS", minConfidence: "high" },
       { campaignName: "Ad Recall Campaign", resultLabel: "AD RECALL LIFT", minConfidence: "high" },
       { campaignName: "Event Response Campaign", resultLabel: "EVENT RESPONSES", minConfidence: "high" },

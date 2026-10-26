@@ -44,18 +44,18 @@ export type GoogleMetricKey = (typeof GOOGLE_METRIC_KEYS)[number];
 
 export const GOOGLE_COLUMN_KEYWORDS: Record<GoogleMetricKey, string[]> = {
   campaign_name: ["campaign", "campaign name"],
-  ad_group_name: ["ad group", "ad group name"],
+  ad_group_name: ["ad group", "ad group name", "adgroup name"],
   day: ["day", "date", "week", "month"],
-  status: ["campaign state", "status", "campaign status"],
+  status: ["campaign state", "campaign status", "status"],
   cost: ["cost", "spend", "total cost"],
-  clicks: ["clicks", "interactions"],
+  clicks: ["clicks"],
   impressions: ["impr.", "impressions"],
-  ctr: ["ctr", "click-through rate", "interaction rate"],
-  avg_cpc: ["avg. cpc", "average cpc", "avg. cost"],
-  conversions: ["conversions", "all conv.", "conv."],
-  cost_per_conv: ["cost / conv.", "cost per conversion", "cost / all conv."],
-  conv_rate: ["conv. rate", "conversion rate", "all conv. rate"],
-  conv_value: ["conv. value", "all conv. value", "conversion value"],
+  ctr: ["ctr", "click-through rate"],
+  avg_cpc: ["avg. cpc", "average cpc"],
+  conversions: ["conversions", "conv."],
+  cost_per_conv: ["cost / conv.", "cost per conversion"],
+  conv_rate: ["conv. rate", "conversion rate"],
+  conv_value: ["conv. value", "conversion value"],
   roas: ["conv. value / cost", "roas", "return on ad spend"],
   search_impr_share: ["search impr. share", "impression share"],
   quality_score: ["qual. score", "quality score"],
@@ -96,14 +96,24 @@ export type GoogleColumnMap = Partial<Record<GoogleMetricKey, string>>;
 /** Priority-ordered, single-claim port of columns.ts's buildColumnMap — see file header for why the algorithm differs. */
 export function buildGoogleColumnMap(headers: string[]): GoogleColumnMap {
   const map: GoogleColumnMap = {};
+  // Prefer canonical exact fields over variants, IDs and derived metrics.
+  for (const metric of MATCH_PRIORITY) {
+    for (const keyword of GOOGLE_COLUMN_KEYWORDS[metric]) {
+      const exact = headers.find(header => String(header).trim().toLowerCase() === keyword);
+      if (exact) { map[metric] = exact; break; }
+    }
+  }
   headers.forEach((header) => {
     if (!header) return;
     const h = String(header).toLowerCase().trim();
     for (const metric of MATCH_PRIORITY) {
-      if (map[metric]) continue;
       const keywords = GOOGLE_COLUMN_KEYWORDS[metric];
+      const withoutCurrency = h.replace(/\s*\([a-z]{3}\)$/, "").trim();
+      if (["campaign_name", "ad_group_name", "cost", "clicks", "impressions", "ctr", "avg_cpc", "conversions", "cost_per_conv", "conv_rate", "conv_value"].includes(metric) && !keywords.includes(withoutCurrency)) continue;
       if (keywords.some((kw) => h.includes(kw))) {
-        map[metric] = header;
+        if (!map[metric]) map[metric] = header;
+        // An already-bound cost/rate still owns its alternate headers.
+        // Never let them fall through to cost or conversion counts.
         break;
       }
     }
@@ -149,24 +159,25 @@ export type Platform = "META" | "GOOGLE" | "TIKTOK";
  * generate routes with platform=GOOGLE instead of a parallel simplified path.
  */
 export function normalizeGoogleCsvHeaders(headers: string[]): string[] {
+  const names = new Set(headers.map(header => String(header).trim().toLowerCase()));
   return headers.map((h) => {
     const lower = String(h).toLowerCase().trim();
     if (lower === "cost" || lower === "total cost") return "Amount spent";
     if (lower === "campaign" || lower === "campaign name") return "Campaign name";
     if (lower === "ad group" || lower === "ad group name" || lower === "adgroup name") return "Ad set name";
-    if (lower === "clicks" || lower === "interactions") return "Link clicks";
-    if (lower === "avg. cpc" || lower === "average cpc" || lower === "avg. cost") return "CPC (cost per link click)";
-    if (lower === "ctr" || lower === "click-through rate" || lower === "interaction rate") return "CTR (All)";
-    if (lower === "conversions" || lower === "all conv." || lower === "conv.") return "Results";
+    if (lower === "impr.") return "Impressions";
+    if (lower === "clicks") return "Link clicks";
+    if (lower === "avg. cpc" || lower === "average cpc") return "CPC (cost per link click)";
+    if (lower === "ctr" || lower === "click-through rate") return "CTR (All)";
+    if (lower === "conversions" || lower === "conv.") return "Results";
     if (
       lower === "cost / conv." ||
-      lower === "cost per conversion" ||
-      lower === "cost / all conv."
+      lower === "cost per conversion"
     ) {
       return "Cost per result";
     }
     if (lower === "day" || lower === "date") return "Day";
-    if (lower === "campaign state" || lower === "campaign status" || lower === "status") return "Delivery status";
+    if (lower === "campaign state" || (lower === "campaign status" && !names.has("campaign state")) || (lower === "status" && !names.has("campaign state") && !names.has("campaign status"))) return "Delivery status";
     return h;
   });
 }

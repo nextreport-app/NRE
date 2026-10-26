@@ -358,10 +358,10 @@ describe("stripNeverKeys on mixed-objective CSV pools — messaging columns only
         resultLabel,
         costLabel: resultLabel === "META FORM LEADS" ? "COST PER LEAD" : "COST PER WEBSITE LEAD",
         headers,
-      }).filter(Boolean);
+      }).filter((metric): metric is NonNullable<typeof metric> => metric !== null);
       const objectiveKey = resultLabel === "META FORM LEADS" ? "meta_form_leads" : "website_leads";
       const addable = filterAddableMetrics(
-        stripNeverKeys(fullPool, objectiveKey).filter(Boolean),
+        stripNeverKeys(fullPool, objectiveKey).filter((metric): metric is NonNullable<typeof metric> => metric !== null),
         selection,
       );
       expect(addable.map((m) => m.key)).not.toContain("messaging_conversations_started");
@@ -433,23 +433,21 @@ describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-co
     expect(real[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$40.00" });
   });
 
-  it("prefers a dedicated 'on-facebook leads'/'cost per on-facebook lead' column over the generic Results fallback when the CSV has one", () => {
+  it("retains dedicated slot keys while using the resolved primary count and cost", () => {
     const headersWithDedicated = [...META_HEADERS, "On-Facebook leads", "Cost per on-facebook lead"];
     const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headersWithDedicated);
     expect(preview[3]).toMatchObject({ key: "meta_form_leads" });
     expect(preview[4]).toMatchObject({ key: "cost_per_meta_form_lead" });
 
-    // cost_per_meta_form_lead is a perUnitOf ("meta_form_leads") metric —
-    // computed as sum(spend) / sum(on-facebook leads), same convention as
-    // every other cost-per-X entry in the dictionary (e.g.
-    // cost_per_website_lead) — not read directly off a "cost per..." column.
+    // A secondary tracking column must not replace the resolved primary
+    // Results/CPR; otherwise the chip disagrees with the campaign/table.
     const real = buildMetaSlots(
       { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "5", cprValue: "$40.00" },
       [{ _raw: { "On-Facebook leads": "9", "Amount spent": "198" } }],
       "$",
     );
-    expect(real[3]).toMatchObject({ key: "meta_form_leads", label: "META FORM LEADS", value: "9" });
-    expect(real[4]).toMatchObject({ key: "cost_per_meta_form_lead", label: "COST PER LEAD", value: "$22.00" });
+    expect(real[3]).toMatchObject({ key: "meta_form_leads", label: "META FORM LEADS", value: "5" });
+    expect(real[4]).toMatchObject({ key: "cost_per_meta_form_lead", label: "COST PER LEAD", value: "$40.00" });
   });
 
   // Reported bug: some real InstantForms exports have a plain "Cost per

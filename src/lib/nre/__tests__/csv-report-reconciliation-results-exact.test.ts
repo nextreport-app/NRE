@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { resultsMatch } from "../csv-report-reconciliation";
 
 /** Mirrors production rules — results must be exact integers. */
 function resultsWouldMismatch(reportResults: number, csvResults: number): boolean {
-  return Math.round(reportResults) !== Math.round(csvResults);
+  return !resultsMatch(reportResults, csvResults);
 }
 
 describe("CSV verification result matching rules", () => {
@@ -14,8 +15,8 @@ describe("CSV verification result matching rules", () => {
     expect(resultsWouldMismatch(189, 189)).toBe(false);
   });
 
-  it("treats fractional display noise as equal when rounded", () => {
-    expect(resultsWouldMismatch(25.0, 25.4)).toBe(false);
+  it("does not hide fractional result discrepancies by rounding", () => {
+    expect(resultsWouldMismatch(25.0, 25.4)).toBe(true);
   });
 });
 

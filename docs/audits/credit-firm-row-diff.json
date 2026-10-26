@@ -1,0 +1,1106 @@
+{
+  "inputSha256": {
+    "manual": "1aaf5c901ea324c1a10a1cf0c286199818ee6e76b5fb899e98f4867b943ab24f",
+    "api": "5a0c0392427e9f2e8fa954110052cd8e97a8c970a14354d7524ad37f29af739c"
+  },
+  "window": {
+    "since": "2026-09-03",
+    "until": "2026-10-02"
+  },
+  "rawCounts": {
+    "manual": 30,
+    "api": 30
+  },
+  "comparison": "Exact trimmed campaign + ad-set + ISO day; names are case-sensitive; no dedupe, rollup, enrichment, or hybrid merge",
+  "tolerances": {
+    "results": 0,
+    "spend": 0.005,
+    "cpr": 0.005,
+    "blankEqualsZero": false
+  },
+  "summary": {
+    "equal": 26,
+    "different": 4,
+    "manual-only": 0,
+    "api-only": 0,
+    "ambiguous": 0
+  },
+  "manualTotals": {
+    "rows": 30,
+    "spend": 444.4100000000001,
+    "resultsByType": {
+      "(blank)": 0,
+      "website submission": 12
+    }
+  },
+  "apiTotals": {
+    "rows": 30,
+    "spend": 444.41,
+    "resultsByType": {
+      "(blank)": 0,
+      "website submission": 16
+    }
+  },
+  "rows": [
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-03"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 31,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-03",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 11.58,
+          "cpr": 11.58
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 2,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-03",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 11.58,
+          "cpr": 11.58
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-04"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 30,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-04",
+          "resultType": "",
+          "results": null,
+          "spend": 11.57,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 3,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-04",
+          "resultType": "",
+          "results": null,
+          "spend": 11.57,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-05"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 29,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-05",
+          "resultType": "",
+          "results": null,
+          "spend": 4.92,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 4,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-05",
+          "resultType": "",
+          "results": null,
+          "spend": 4.92,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-06"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 28,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-06",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 21.25,
+          "cpr": 21.25
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 5,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-06",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 21.25,
+          "cpr": 21.25
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-07"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 27,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-07",
+          "resultType": "",
+          "results": null,
+          "spend": 18.43,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 6,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-07",
+          "resultType": "",
+          "results": null,
+          "spend": 18.43,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-08"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 26,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-08",
+          "resultType": "",
+          "results": null,
+          "spend": 14.06,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 7,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-08",
+          "resultType": "",
+          "results": null,
+          "spend": 14.06,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-09"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 25,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-09",
+          "resultType": "",
+          "results": null,
+          "spend": 16.86,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 8,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-09",
+          "resultType": "",
+          "results": null,
+          "spend": 16.86,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-10"
+      ],
+      "status": "different",
+      "manual": [
+        {
+          "sourceRow": 24,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-10",
+          "resultType": "",
+          "results": null,
+          "spend": 14.12,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 9,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-10",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 14.12,
+          "cpr": 14.12
+        }
+      ],
+      "differences": [
+        {
+          "field": "resultType",
+          "manual": "",
+          "api": "website submission"
+        },
+        {
+          "field": "results",
+          "manual": null,
+          "api": 1
+        },
+        {
+          "field": "cpr",
+          "manual": null,
+          "api": 14.12
+        }
+      ]
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-11"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 23,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-11",
+          "resultType": "",
+          "results": null,
+          "spend": 12.79,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 10,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-11",
+          "resultType": "",
+          "results": null,
+          "spend": 12.79,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-12"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 22,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-12",
+          "resultType": "",
+          "results": null,
+          "spend": 7.22,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 11,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-12",
+          "resultType": "",
+          "results": null,
+          "spend": 7.22,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-13"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 21,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-13",
+          "resultType": "",
+          "results": null,
+          "spend": 22.08,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 12,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-13",
+          "resultType": "",
+          "results": null,
+          "spend": 22.08,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-14"
+      ],
+      "status": "different",
+      "manual": [
+        {
+          "sourceRow": 20,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-14",
+          "resultType": "",
+          "results": null,
+          "spend": 16.69,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 13,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-14",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 16.69,
+          "cpr": 16.69
+        }
+      ],
+      "differences": [
+        {
+          "field": "resultType",
+          "manual": "",
+          "api": "website submission"
+        },
+        {
+          "field": "results",
+          "manual": null,
+          "api": 1
+        },
+        {
+          "field": "cpr",
+          "manual": null,
+          "api": 16.69
+        }
+      ]
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-15"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 19,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-15",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 15.7,
+          "cpr": 15.7
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 14,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-15",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 15.7,
+          "cpr": 15.7
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-16"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 18,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-16",
+          "resultType": "",
+          "results": null,
+          "spend": 15.99,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 15,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-16",
+          "resultType": "",
+          "results": null,
+          "spend": 15.99,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-17"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 17,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-17",
+          "resultType": "",
+          "results": null,
+          "spend": 14.94,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 16,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-17",
+          "resultType": "",
+          "results": null,
+          "spend": 14.94,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-18"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 16,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-18",
+          "resultType": "",
+          "results": null,
+          "spend": 13.18,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 17,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-18",
+          "resultType": "",
+          "results": null,
+          "spend": 13.18,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-19"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 15,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-19",
+          "resultType": "",
+          "results": null,
+          "spend": 6.23,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 18,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-19",
+          "resultType": "",
+          "results": null,
+          "spend": 6.23,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-20"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 14,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-20",
+          "resultType": "website submission",
+          "results": 3,
+          "spend": 21,
+          "cpr": 7
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 19,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-20",
+          "resultType": "website submission",
+          "results": 3,
+          "spend": 21,
+          "cpr": 7
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-21"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 13,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-21",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 19.34,
+          "cpr": 19.34
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 20,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-21",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 19.34,
+          "cpr": 19.34
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-22"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 12,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-22",
+          "resultType": "",
+          "results": null,
+          "spend": 16.24,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 21,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-22",
+          "resultType": "",
+          "results": null,
+          "spend": 16.24,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-23"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 11,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-23",
+          "resultType": "",
+          "results": null,
+          "spend": 15.15,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 22,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-23",
+          "resultType": "",
+          "results": null,
+          "spend": 15.15,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-24"
+      ],
+      "status": "different",
+      "manual": [
+        {
+          "sourceRow": 10,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-24",
+          "resultType": "",
+          "results": null,
+          "spend": 15.44,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 23,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-24",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 15.44,
+          "cpr": 15.44
+        }
+      ],
+      "differences": [
+        {
+          "field": "resultType",
+          "manual": "",
+          "api": "website submission"
+        },
+        {
+          "field": "results",
+          "manual": null,
+          "api": 1
+        },
+        {
+          "field": "cpr",
+          "manual": null,
+          "api": 15.44
+        }
+      ]
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-25"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 9,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-25",
+          "resultType": "",
+          "results": null,
+          "spend": 10.94,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 24,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-25",
+          "resultType": "",
+          "results": null,
+          "spend": 10.94,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-26"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 8,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-26",
+          "resultType": "",
+          "results": null,
+          "spend": 6.54,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 25,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-26",
+          "resultType": "",
+          "results": null,
+          "spend": 6.54,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-27"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 7,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-27",
+          "resultType": "website submission",
+          "results": 3,
+          "spend": 22.93,
+          "cpr": 7.64333333
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 26,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-27",
+          "resultType": "website submission",
+          "results": 3,
+          "spend": 22.93,
+          "cpr": 7.64
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-28"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 6,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-28",
+          "resultType": "",
+          "results": null,
+          "spend": 21.2,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 27,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-28",
+          "resultType": "",
+          "results": null,
+          "spend": 21.2,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-29"
+      ],
+      "status": "different",
+      "manual": [
+        {
+          "sourceRow": 5,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-29",
+          "resultType": "",
+          "results": null,
+          "spend": 17.07,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 28,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-29",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 17.07,
+          "cpr": 17.07
+        }
+      ],
+      "differences": [
+        {
+          "field": "resultType",
+          "manual": "",
+          "api": "website submission"
+        },
+        {
+          "field": "results",
+          "manual": null,
+          "api": 1
+        },
+        {
+          "field": "cpr",
+          "manual": null,
+          "api": 17.07
+        }
+      ]
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-09-30"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 4,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-30",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 17.3,
+          "cpr": 17.3
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 29,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-09-30",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 17.3,
+          "cpr": 17.3
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-10-01"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 3,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-10-01",
+          "resultType": "",
+          "results": null,
+          "spend": 15.6,
+          "cpr": null
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 30,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-10-01",
+          "resultType": "",
+          "results": null,
+          "spend": 15.6,
+          "cpr": null
+        }
+      ],
+      "differences": []
+    },
+    {
+      "key": [
+        "DC Leads Campaign Main",
+        "Homebuyers - Broad Targeting",
+        "2026-10-02"
+      ],
+      "status": "equal",
+      "manual": [
+        {
+          "sourceRow": 2,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-10-02",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 8.05,
+          "cpr": 8.05
+        }
+      ],
+      "api": [
+        {
+          "sourceRow": 31,
+          "campaign": "DC Leads Campaign Main",
+          "adSet": "Homebuyers - Broad Targeting",
+          "day": "2026-10-02",
+          "resultType": "website submission",
+          "results": 1,
+          "spend": 8.05,
+          "cpr": 8.05
+        }
+      ],
+      "differences": []
+    }
+  ],
+  "limits": [
+    "Name keys cannot establish identity after renames or distinguish different IDs sharing a name.",
+    "CSV-only mode compares saved artifacts, not today's mapper. Raw Insights mode runs today's mapper without upstream enrichment.",
+    "Matching rows do not establish matching timezone, attribution window, API version, currency or snapshot time; capture those alongside inputs.",
+    "Result type aliases are not silently equated; inspect label-only differences."
+  ]
+}

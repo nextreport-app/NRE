@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { buildShareReportAbsoluteUrl } from "@/lib/report-share-url";
 import { useToast } from "@/components/toast";
-import { reportHistoryMetaSubtitle, shareReportUrl } from "@/lib/report-list-shared";
+import { reportHistoryMetaSubtitle } from "@/lib/report-list-shared";
 
 export interface FullReportHistoryItem {
   id: string;
@@ -97,8 +98,12 @@ export function FullReportHistoryList({
   }
 
   async function handleCopyShareLink(shareToken: string) {
-    await navigator.clipboard.writeText(shareReportUrl(shareToken));
-    showToast("Share link copied!");
+    try {
+      await navigator.clipboard.writeText(buildShareReportAbsoluteUrl(shareToken));
+      showToast("Share link copied!");
+    } catch {
+      showToast("Could not copy the link. Try again.", "error");
+    }
   }
 
   function startEditing(r: FullReportHistoryItem) {
@@ -286,7 +291,7 @@ export function FullReportHistoryList({
                     )}
                     {r.status === "COMPLETE" && r.shareToken && (
                       <a
-                        href={`https://${shareReportUrl(r.shareToken)}`}
+                        href={buildShareReportAbsoluteUrl(r.shareToken)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[13px] font-semibold text-dash-accent hover:underline"

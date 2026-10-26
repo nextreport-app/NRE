@@ -24,11 +24,13 @@ describe("purgeStaleWizardBlobs", () => {
           {
             url: "https://blob/upload-old",
             pathname: "wizard-upload-sessions/u/c/s.json",
+            downloadUrl: "https://blob/download", size: 1, etag: "test",
             uploadedAt: new Date("2026-10-10T12:00:00.000Z"),
           },
           {
             url: "https://blob/upload-new",
             pathname: "wizard-upload-sessions/u/c/s2.json",
+            downloadUrl: "https://blob/download", size: 1, etag: "test",
             uploadedAt: new Date("2026-10-12T10:00:00.000Z"),
           },
         ],
@@ -40,6 +42,7 @@ describe("purgeStaleWizardBlobs", () => {
           {
             url: "https://blob/draft-old",
             pathname: "wizard-drafts/u/c.json",
+            downloadUrl: "https://blob/download", size: 1, etag: "test",
             uploadedAt: new Date("2026-09-01T12:00:00.000Z"),
           },
         ],

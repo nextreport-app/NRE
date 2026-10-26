@@ -25,13 +25,12 @@ describe("aggregateDynamicMetrics", () => {
     expect(result.spend).toBe(350);
   });
 
-  it("averages non-zero values for percentage/ratio/duration metrics", () => {
+  it("does not average daily percentages without their period denominator", () => {
     const rows = [row({ CTR: "2" }), row({ CTR: "4" }), row({ CTR: "0" })];
     const m = metric({ key: "ctr", format: "percentage", csvName: "ctr" });
     const result = aggregateDynamicMetrics(rows, [m], "meta");
-    // Average of the two non-zero values (2, 4) = 3 — zero rows excluded,
-    // same treatment the existing fixed CTR/CPC pipeline already gives.
-    expect(result.ctr).toBe(3);
+    // Daily percentages cannot be combined without their impression counts.
+    expect(result.ctr).toBeNaN();
   });
 
   it("returns 0 for a percentage/ratio metric when every row's value is zero", () => {
@@ -194,12 +193,12 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     expect(result.cpc_all).toBe(100 / 25); // total spend / total clicks
   });
 
-  it("falls back to spend/clicks when the CPC column's own values are all zero", () => {
+  it("does not substitute link clicks when all-click CPC is zero and all-click counts are absent", () => {
     const rows = [
       row({ "Amount spent": "60", "CPC (all)": "0", "Link clicks": "30" }),
     ];
     const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
-    expect(result.cpc_all).toBe(2); // 60 / 30, not "—"
+    expect(result.cpc_all).toBeNaN(); // Link clicks cannot establish all-click CPC.
   });
 
   it("still shows a dash only when spend or clicks are genuinely both absent", () => {

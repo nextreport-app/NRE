@@ -1,16 +1,9 @@
+import type { MetricAggregation } from "./metric-aggregation";
 /**
- * Raw-row aggregation for the dynamic metric dictionary system — reads each
- * selected metric's value straight off `row._raw` (the CSV row's original,
- * un-mapped column values) rather than going through columns.ts's small
- * fixed-field `NreMetricKey` set.
- *
- * This deliberately runs as a SEPARATE pass over the same raw rows
- * aggregate.ts's `aggregateRows` consumes, not a change to it — `_raw` is
- * dropped once `aggregateRows` collapses rows into `AggRow`, and every
- * existing consumer of `AggRow` (Combined Total table, MTD chart, health
- * score) must keep behaving exactly as it does today. Callers pass in
- * whichever raw-row group they need a total for (one campaign's rows, or
- * one ad set's rows) — grouping itself isn't this module's concern.
+ * Aggregate optional metrics from original CSV observations in the selected scope.
+ * Dictionary metadata defines numerator/denominator semantics independently of
+ * display format. Primary result chips use the report's resolved accounting;
+ * optional tracking metrics retain their own event/location definitions.
  */
 
 import type { MetricFormat } from "./meta-dictionary";
@@ -30,7 +23,7 @@ export interface RawMetricRow {
 }
 
 /** The minimal shape aggregateDynamicMetrics needs to read one metric's value(s) off raw CSV rows — a dictionary entry's own key/format/csvName/perUnitOf/perUnitScale, independent of any particular selection mechanism (see slot-assignment.ts, the sole caller now that the wizard's metric-selector.ts is gone). */
-export interface MetricRef {
+export interface MetricRef extends MetricAggregation {
   key: string;
   format: MetricFormat;
   csvName: string;
@@ -87,29 +80,12 @@ function resolveActualHeader(key: string, platform: "meta" | "google", headerMap
   return undefined;
 }
 
-/**
- * Fix 5 (product report) — CPC (All)/Cost per Link Click were rendering as
- * "—" on real accounts even with plenty of spend and clicks in the CSV.
- * Root cause: the generic perUnitOf branch below always DISCARDS a metric's
- * own raw column value and recomputes purely from spend/count — but the
- * denominator ("clicks_all") is only found if the CSV happens to use the
- * exact column-name variant meta-dictionary.ts already lists for it; a real
- * account's own "CPC (All)"/"Avg. CPC" column, with perfectly good data,
- * was being ignored in favor of a spend/0 = NaN recompute whenever the
- * clicks denominator's own header didn't match.
- *
- * These two CPC keys get their own path instead: try reading the value
- * directly off any of its known column-name variants first (an average of
- * its own non-zero raw values, same treatment a rate/ratio metric gets) —
- * only falling back to spend/clicks when that's genuinely missing or zero,
- * and trying every common "clicks" column name for that fallback too, so a
- * CPC card only ever shows "—" when spend or clicks are truly both absent.
- */
+/** All-click and link-click CPC retain distinct denominators. */
 const CPC_METRIC_KEYS = new Set(["cpc_all", "cpc_link_click"]);
 const CPC_ALL_VALUE_HEADER_CANDIDATES = ["cpc (all)", "avg. cpc", "average cpc"];
 const CPC_LINK_VALUE_HEADER_CANDIDATES = ["cpc (cost per link click)"];
-/** Last resort for CPC (All) when the export only has link clicks, not clicks (all). */
-const CPC_ALL_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "clicks", "link clicks"];
+/** All-click CPC cannot use a link-click denominator. */
+const CPC_ALL_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "clicks"];
 const CPC_LINK_CLICKS_HEADER_CANDIDATES = ["link clicks"];
 
 function aggregateCpc<T extends RawMetricRow>(
@@ -158,11 +134,12 @@ function aggregateCpc<T extends RawMetricRow>(
  * value column is present in this CSV, this returns NaN — callers render
  * NaN as "—" — rather than ever falling back to the wrong per-row column.
  */
-const ROAS_METRIC_KEYS = new Set(["results_roas", "roas"]);
+const ROAS_METRIC_KEYS = new Set(["results_roas", "roas", "app_purchase_roas"]);
 const ROAS_CONVERSION_VALUE_HEADER_CANDIDATES = ["purchases conversion value", "purchase conversion value", "conv. value", "conversion value"];
 
-function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number): number {
-  for (const candidate of ROAS_CONVERSION_VALUE_HEADER_CANDIDATES) {
+function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number, key: string): number {
+  const candidates = key === "app_purchase_roas" ? ["mobile app purchases conversion value", "mobile app purchase conversion value"] : ROAS_CONVERSION_VALUE_HEADER_CANDIDATES;
+  for (const candidate of candidates) {
     const header = headerMap.get(candidate);
     if (!header) continue;
     const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
@@ -172,23 +149,11 @@ function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string,
 }
 
 /**
- * Sums currency/number metrics; averages non-zero values for
- * percentage/ratio/duration metrics — the same treatment the existing
- * fixed-field pipeline already gives CTR/CPC (a straight sum would be
- * meaningless for a rate or a per-unit average).
- *
- * Per-unit currency metrics (a "cost per X" / CPC / CPM-style average —
- * see MetricRef.perUnitOf) are a further special case: THESE must
- * never be summed either — summing a per-day "cost per lead" across 30 CSV
- * rows produces a meaningless number. Instead they're recomputed as
- * sum(spend) / sum(<perUnitOf column>) [× perUnitScale] over the same row
- * group, matching how a real cost-per-result is actually calculated. A
- * zero denominator (no results/leads/clicks/etc. yet) resolves to NaN
- * rather than 0 or a divide-by-zero — callers (report-data.ts/
- * google-report-data.ts) render NaN as "—", never "$0.00" or "$NaN".
- * perUnitOf: "__avg__" (e.g. Target CPA, a configured bid, not something
- * derived from spend/count) instead averages the metric's own non-zero raw
- * values, same as a percentage/ratio metric.
+ * Add totals; recompute declared ratios from their components. An exported
+ * average is never additive merely because it is formatted as currency.
+ * Missing components produce unavailable multi-row ratios; a single observed
+ * non-ROAS average can be retained. The legacy __avg__ bid-target policy is
+ * preserved separately and is not a claim of traffic-weighted target parity.
  */
 export function aggregateDynamicMetrics<T extends RawMetricRow>(
   rows: T[],
@@ -216,6 +181,42 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   let totalSpend: number | null = null;
 
   for (const metric of metrics) {
+    const dictionary = platform === "google" ? GOOGLE_METRIC_DICTIONARY : META_METRIC_DICTIONARY;
+    const definition = dictionary.find(entry => entry.key === metric.key && entry.csvName === (metric.csvName ?? "").toLowerCase()) ?? dictionary.find(entry => entry.key === metric.key);
+    const numeratorKey = metric.numeratorKey ?? definition?.numeratorKey;
+    const denominatorKey = metric.denominatorKey ?? definition?.denominatorKey;
+    if (numeratorKey && denominatorKey) {
+      // Both components must exist. Missing input is not an observed zero.
+      const numeratorHeader = resolveActualHeader(numeratorKey, platform, headerMap);
+      const denominatorHeader = resolveActualHeader(denominatorKey, platform, headerMap);
+      if (!numeratorHeader || !denominatorHeader) {
+        const header = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+        const observed = header ? String(rows[0]._raw[header] ?? "").trim() : "";
+        result[metric.key] = rows.length === 1 && observed !== "" && metric.format !== "ratio" ? parseCellNum(observed) : NaN;
+        continue;
+      }
+      const numerator = sumByKey(numeratorKey);
+      const denominator = sumByKey(denominatorKey);
+      result[metric.key] = denominator > 0 ? numerator / denominator * (metric.ratioScale ?? definition?.ratioScale ?? 1) : NaN;
+      continue;
+    }
+    if (metric.key === "frequency") {
+      const reachHeader = headerMap.get("reach"), impressionsHeader = headerMap.get("impressions");
+      if (reachHeader && impressionsHeader) {
+        const mapped = rows.map(row => ({ ...row, reach: row._raw[reachHeader], impressions: row._raw[impressionsHeader] }));
+        const reach = aggregateReach(mapped);
+        const impressions = rows.reduce((sum, row) => sum + parseCellNum(row._raw[impressionsHeader]), 0);
+        result[metric.key] = reach > 0 ? impressions / reach : NaN;
+      } else {
+        const header = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+        result[metric.key] = rows.length === 1 && header ? parseCellNum(rows[0]._raw[header]) : NaN;
+      }
+      continue;
+    }
+    if (metric.key === "ctr" && headerMap.has("impressions")) {
+      result[metric.key] = combinedCtrCpcFromRawRows(rows, headerMap).ctr;
+      continue;
+    }
     if (CPC_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
       result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
@@ -224,7 +225,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
 
     if (ROAS_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
-      result[metric.key] = aggregateRoas(rows, headerMap, totalSpend);
+      result[metric.key] = aggregateRoas(rows, headerMap, totalSpend, metric.key);
       continue;
     }
 
@@ -259,8 +260,10 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     if (metric.format === "currency" || metric.format === "number") {
       result[metric.key] = rawValues.reduce((sum, v) => sum + v, 0);
     } else {
-      const nonZero = rawValues.filter((v) => v > 0);
-      result[metric.key] = nonZero.length > 0 ? nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length : 0;
+      // An exported daily rate/average lacks a valid period denominator.
+      // Preserve a single observation; do not invent a multi-row arithmetic mean.
+      const allObservedZero = rawValues.every(value => value === 0) && rows.every(row => String(row._raw[actualHeader] ?? "").trim() !== "");
+      result[metric.key] = rows.length === 1 ? rawValues[0] : allObservedZero ? 0 : NaN;
     }
   }
 

@@ -23,6 +23,7 @@ const snapshot: WizardGenerateSnapshot = {
   weeklyOptions: {
     last7: { startIso: "2026-08-20", endIso: "2026-08-26" },
     prev7: { startIso: "2026-08-13", endIso: "2026-08-19" },
+    last14: { startIso: "2026-08-13", endIso: "2026-08-26" },
   },
   mtdRange: { startIso: "2026-08-01", endIso: "2026-08-26" },
   monthComparisonOptions: null,

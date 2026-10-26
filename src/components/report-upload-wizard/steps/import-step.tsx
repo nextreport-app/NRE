@@ -198,6 +198,13 @@ export function WizardImportStep() {
             clientTimezone={clientTimezone}
           />
 
+          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-dash-ink-secondary">
+              <strong className="font-semibold text-dash-ink">Experimental API import.</strong>{" "}
+              Compare Results and cost per result with an Ads Manager export before sharing. Manual CSV is recommended while API accuracy is being validated.
+            </p>
+          ) : null}
+
           {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
               clientId={clientId}

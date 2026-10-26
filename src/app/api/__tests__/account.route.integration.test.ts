@@ -1,3 +1,4 @@
+import { mockRouteAuth } from "@/test/api-route-harness";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonBody, mockSession } from "@/test/api-route-harness";
 
@@ -17,18 +18,18 @@ import { GET, PATCH } from "../account/route";
 
 describe("GET /api/account", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(prisma.user.findUnique).mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await GET();
     expect(res.status).toBe(401);
   });
 
   it("returns account settings for the signed-in user", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       agencyName: "Acme Agency",
       googleDriveEnabled: false,
@@ -50,19 +51,19 @@ describe("GET /api/account", () => {
 
 describe("PATCH /api/account", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(prisma.user.findUnique).mockReset();
     vi.mocked(prisma.user.update).mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await PATCH(new Request("http://localhost/api/account", { method: "PATCH", body: "{}" }));
     expect(res.status).toBe(401);
   });
 
   it("rejects retention days above plan cap", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       planId: "trial",
       trialEndsAt: new Date("2026-09-22T00:00:00Z"),
@@ -82,7 +83,7 @@ describe("PATCH /api/account", () => {
   });
 
   it("updates allowed settings", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       planId: "professional",
       trialEndsAt: new Date("2026-09-22T00:00:00Z"),

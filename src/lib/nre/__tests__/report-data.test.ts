@@ -3836,7 +3836,8 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
       "cpc_all",
       "cost_per_1k_reached",
     ]);
-    expect(slots[3]).toMatchObject({ key: "frequency", label: "FREQUENCY", value: "1.80x" });
+    // Frequency uses the same period Reach and Impressions printed on this slide.
+    expect(slots[3]).toMatchObject({ key: "frequency", label: "FREQUENCY", value: "3.71x" });
     expect(slots[4]).toMatchObject({ key: "cpm", label: "CPM" });
     expect(slots[6]).toMatchObject({ key: "cpc_all", label: "CPC (ALL)" });
     expect(slots.map((s) => s?.key)).not.toContain("landing_page_views");

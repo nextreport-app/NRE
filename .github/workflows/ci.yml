@@ -27,6 +27,9 @@ jobs:
       - name: Run objective regression gate
         run: npm run test:objective-regression
 
+      - name: Check source accounting and rendered deck cells
+        run: npm run test:reporting-accuracy
+
   api-routes:
     name: API route integration tests
     runs-on: ubuntu-latest

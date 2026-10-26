@@ -518,7 +518,7 @@ function websiteLeadFromUncostedResultsPixel(row: MetaInsightRow): ManualExportP
 /** No results[] — costed pixel CPA, or spend-derived CPR when Meta omits cost_per_action_type. */
 function websiteLeadFromActionsWhenNoResultsArray(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const pixel = websitePixelCountFromActions(row);
-  if (!pixel) return null;
+  if (!pixel || pixel.actionType === "offsite_conversion.fb_pixel_custom") return null;
   if (isLikelyLinkClickMisattribution(row, pixel.count)) return null;
 
   const costed = costPerAction(row, pixel.actionType);
@@ -610,8 +610,9 @@ function isReachRow(row: MetaInsightRow): boolean {
   return isReachCampaignHaystack(campaignNameHaystack(row.campaign_name, row.adset_name));
 }
 
-function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
+export function isWebsiteLeadCampaign(row: MetaInsightRow): boolean {
   const hay = campaignNameHaystack(row.campaign_name, row.adset_name);
+  if (isQuoteRequestCampaignHaystack(hay) || isMessagingCampaignHaystack(hay) || isMetaFormLeadsCampaignHaystack(hay)) return false;
   if (isWebsiteLeadsCampaignHaystack(hay)) return true;
   const goal = row.optimization_goal?.toUpperCase();
   return goal === "OUTCOME_LEADS" || goal === "OFFSITE_CONVERSIONS";
@@ -641,7 +642,7 @@ function pickCostedWebsiteFromResultsChannel(row: MetaInsightRow): ManualExportP
   const objectiveLead = objectiveCosted.find((c) => c.actionType === "lead");
 
   const resultsCosted = costedAdsManagerResults(row);
-  const websiteCosted = resultsCosted.filter((c) => isWebsiteSubmissionResultsAction(c.actionType));
+  const websiteCosted = resultsCosted.filter((c) => c.actionType !== "lead" && isWebsiteSubmissionResultsAction(c.actionType));
   if (websiteCosted.length === 0) {
     return null;
   }
@@ -708,6 +709,17 @@ function costedWebsiteResultCorroboratedInActions(
   return false;
 }
 
+/** A combined lead cost is insufficient unless it accounts for this row's spend.
+ * Never bypass a conflicting costed pixel result. This prevents the old early
+ * generic-lead shortcut from fabricating leads on blank manual-export days.
+ */
+function genericLeadHasSpendEvidence(row: MetaInsightRow, lead: CostedAdsManagerResult): boolean {
+  const spend = Number(row.spend);
+  if (!(spend > 0) || Math.abs(spend - lead.count * lead.cost) > Math.max(0.02, lead.count * 0.0051)) return false;
+  const pixel = costedWebsiteLeadFromActions(row);
+  return !pixel || parseFloat(pixel.value) === lead.count;
+}
+
 function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const fromObjective = pickCostedWebsiteLeadFromCostedList(row, costedObjectiveResults(row));
   if (fromObjective) return finalizeWebsiteLeadManualExport(row, fromObjective);
@@ -718,6 +730,7 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
   const costedLeadOnly = costedAdsManagerResults(row).find((c) => c.actionType === "lead");
   if (
     costedLeadOnly &&
+    genericLeadHasSpendEvidence(row, costedLeadOnly) &&
     isWebsiteLeadCampaign(row) &&
     !costedAdsManagerResults(row).some((c) => isWebsiteLeadAction(c.actionType)) &&
     !isLikelyLinkClickMisattribution(row, costedLeadOnly.count)
@@ -764,6 +777,7 @@ function pickWebsiteLeadManualExport(row: MetaInsightRow): ManualExportPrimaryRe
     // (no fb_pixel_lead breakdown). Ads Manager still labels these "website submission".
     if (
       isWebsiteLeadCampaign(row) &&
+      genericLeadHasSpendEvidence(row, leadInResults) &&
       !costed.some((c) => isWebsiteLeadAction(c.actionType)) &&
       !isLikelyLinkClickMisattribution(row, leadInResults.count)
     ) {

@@ -35,7 +35,7 @@ describe("CSV reconciliation reach campaigns", () => {
       platform: "META",
     });
 
-    const cprChecks = verification.checks.filter((c) => c.metric.toUpperCase().includes("1K REACH"));
+    const cprChecks = verification.checks.filter((c) => c.metric.toUpperCase().includes("1K REACH") && !c.metric.endsWith(" formula"));
     expect(cprChecks).toHaveLength(0);
 
     const reachResultChecks = verification.checks.filter((c) => c.metric.toUpperCase() === "REACH");

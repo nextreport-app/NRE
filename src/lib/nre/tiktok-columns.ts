@@ -31,6 +31,7 @@ export function normalizeTikTokCsvRowValues(headers: string[], dataRows: string[
 /** Google Ads uses clicks as reach in client-facing tables (no Meta-style Reach column). */
 function applyGoogleReachFallback(rows: NreRow[]): void {
   rows.forEach((row) => {
+    row._sourcePlatform = "GOOGLE";
     if (!row.reach?.trim() && row.link_clicks?.trim()) {
       row.reach = row.link_clicks;
     }

@@ -128,7 +128,7 @@ export function GoogleDriveFolderPicker({
         <button
           type="button"
           onClick={() => onSelect(current)}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-[#0d1b2e] hover:bg-accent-hover"
         >
           Select This Folder
         </button>

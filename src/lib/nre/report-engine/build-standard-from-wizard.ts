@@ -94,6 +94,7 @@ export async function resolveStandardReportForGenerate(
 export async function buildStandardReportForWizard(
   input: BuildStandardReportWizardInput,
 ): Promise<BuildStandardReportWizardResult> {
+  const now = new Date();
   const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
     input;
   const engine = createReportEngine(platform);
@@ -125,11 +126,11 @@ export async function buildStandardReportForWizard(
 
   let weeklyRange: { startIso: string; endIso: string } | undefined;
   if (reportType === "DAILY") {
-    const daily = computeDailyRangeIso(mtdParsed.rows, new Date(), client.timezone);
+    const daily = computeDailyRangeIso(mtdParsed.rows, now, client.timezone);
     if (!daily) return { error: "Could not determine yesterday's date from the CSV." };
     weeklyRange = daily;
   } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, new Date(), client.timezone);
+    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, now, client.timezone);
     if (!dateResolution.ok) {
       return { error: dateResolution.error || "Invalid date selection." };
     }
@@ -174,6 +175,7 @@ export async function buildStandardReportForWizard(
   });
 
   const data = engine.buildStandard({
+    now,
     accountName: client.accountName,
     currencySymbol: CURRENCY_SYMBOLS[client.currency],
     timezone: client.timezone,

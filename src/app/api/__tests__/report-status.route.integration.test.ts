@@ -1,3 +1,4 @@
+import { mockRouteAuth } from "@/test/api-route-harness";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonBody, mockSession, routeParams } from "@/test/api-route-harness";
 
@@ -16,18 +17,18 @@ import { GET } from "../reports/[id]/status/route";
 
 describe("GET /api/reports/[id]/status", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(prisma.report.findUnique).mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await GET(new Request("http://localhost/api/reports/r1/status"), routeParams({ id: "r1" }));
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when report belongs to another user", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.report.findUnique).mockResolvedValue({
       status: "GENERATING",
       shareToken: "tok",
@@ -40,7 +41,7 @@ describe("GET /api/reports/[id]/status", () => {
   });
 
   it("returns poll payload for GENERATING reports without share token", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.report.findUnique).mockResolvedValue({
       status: "GENERATING",
       shareToken: "tok",
@@ -57,7 +58,7 @@ describe("GET /api/reports/[id]/status", () => {
   });
 
   it("returns share token when generation completes", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.report.findUnique).mockResolvedValue({
       status: "COMPLETE",
       shareToken: "abc123",
@@ -72,7 +73,7 @@ describe("GET /api/reports/[id]/status", () => {
   });
 
   it("returns error message when generation fails", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.report.findUnique).mockResolvedValue({
       status: "FAILED",
       shareToken: null,

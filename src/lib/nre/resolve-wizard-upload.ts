@@ -63,6 +63,8 @@ export async function resolveWizardMtdFromFormData(
         },
       };
     }
+    const validation = validateMtdDailyCsv(session.colMap, session.rows, undefined, session.headers, session.platform);
+    if (!validation.valid) return { ok: false, status: 400, body: { valid: false, errors: validation.errors, warnings: validation.warnings, error: "This cached upload no longer passes source validation. Please correct the export and analyze it again." } };
     return {
       ok: true,
       data: {

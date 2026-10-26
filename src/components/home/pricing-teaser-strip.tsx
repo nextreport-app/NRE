@@ -5,17 +5,14 @@ import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 import { getPlanDisplayName } from "@/lib/plan-labels";
 
-const MONTHLY_FROM = {
-  starter: { inr: "₹799", usd: "$9" },
-  professional: { inr: "₹1,299", usd: "$15" },
-} as const;
+import { formattedPlanPrice } from "@/lib/plan-pricing";
 
 export function PricingTeaserStrip() {
   const { marketing, home } = useSiteCopy();
   const { currency } = usePricingCurrency();
   const perMonth = home.pricing.perMonth;
-  const agencyFrom = currency === "INR" ? MONTHLY_FROM.starter.inr : MONTHLY_FROM.starter.usd;
-  const proFrom = currency === "INR" ? MONTHLY_FROM.professional.inr : MONTHLY_FROM.professional.usd;
+  const agencyFrom = formattedPlanPrice("starter", currency);
+  const proFrom = formattedPlanPrice("professional", currency);
 
   return (
     <section

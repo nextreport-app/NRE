@@ -1,0 +1,5 @@
+Campaign name,Ad set name,Day,Result type,Results,Amount spent (USD),Reach,Impressions,Clicks (all)
+Meta Form Leads,Forms,2026-10-01,Leads (form),10,100,500,1000,20
+Link Clicks,Traffic,2026-10-01,Link clicks,20,40,500,1000,40
+Purchase Conversion,Sales,2026-10-01,Website purchases,2,100,500,1000,10
+Meta Form Leads,Forms,2026-10-02,,0,20,500,1000,10
