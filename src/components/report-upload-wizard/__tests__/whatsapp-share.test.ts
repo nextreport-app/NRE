@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildShareReportAbsoluteUrl,
   buildClientReportShareMessage,
   buildClientReportSlackShareUrl,
   buildClientReportTeamsShareUrl,
@@ -71,5 +72,16 @@ describe("buildClientReportSlackShareUrl", () => {
     expect(url).toContain("slack.com/share");
     expect(decodeURIComponent(url)).toContain("Acme Co");
     expect(decodeURIComponent(url)).toContain("nextreport.in/r/abc");
+  });
+});
+
+
+describe("report link deployment scope", () => {
+  it("keeps preview tokens on the preview deployment rather than production", () => {
+    expect(buildShareReportAbsoluteUrl("preview-token", "https://nre-preview.vercel.app")).toBe("https://nre-preview.vercel.app/r/preview-token");
+    expect(buildShareReportAbsoluteUrl("live-token", "https://nextreport.in")).toBe("https://nextreport.in/r/live-token");
+  });
+  it("preserves HTTP for local review links", () => {
+    expect(buildShareReportAbsoluteUrl("local-token", "http://localhost:3002")).toBe("http://localhost:3002/r/local-token");
   });
 });

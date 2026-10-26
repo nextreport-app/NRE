@@ -396,8 +396,12 @@ export function ReportShareReview({
             : undefined,
         },
       }),
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!res) {
+      showToast("The connection was interrupted. Your edits are still here. Check the live report before publishing again.", "error");
+      return;
+    }
     if (!res.ok) {
       showToast("Could not publish changes. Try again.", "error");
       return;

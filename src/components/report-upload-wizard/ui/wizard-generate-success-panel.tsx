@@ -20,7 +20,7 @@ import {
   buildClientReportSlackShareUrl,
   buildClientReportTeamsShareUrl,
   buildClientReportWhatsAppShareUrl,
-  buildShareReportUrl,
+  buildShareReportAbsoluteUrl,
   buildTelegramShareUrl,
   type ClientReportShareMessageInput,
 } from "../utils";
@@ -120,7 +120,7 @@ export function WizardGenerateSuccessPanel({
   children,
 }: WizardGenerateSuccessPanelProps) {
   const copy = useWizardCopy();
-  const reportUrl = shareToken ? `https://${buildShareReportUrl(shareToken)}` : null;
+  const reportUrl = shareToken ? buildShareReportAbsoluteUrl(shareToken) : null;
   const shareDateLabel = dateRangeLabel || "this period";
   const showDriveCollapsed = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
   const isWeekly = reportType === "WEEKLY";
@@ -284,6 +284,7 @@ export function WizardGenerateSuccessPanel({
             <h3 id="success-share-heading" className={sectionTitleClass}>
               Share with client
             </h3>
+            <p className="text-[13px] text-dash-ink-secondary">Anyone with this link can view the report. Review it before sending.</p>
             <label className="sr-only" htmlFor="wizard-live-report-url">
               Live report URL
             </label>
@@ -292,7 +293,7 @@ export function WizardGenerateSuccessPanel({
                 id="wizard-live-report-url"
                 className="min-w-0 flex-1 break-all rounded-lg border border-dash-border bg-dash-sidebar px-3 py-2.5 font-mono text-[12px] text-dash-ink-secondary sm:text-[13px]"
               >
-                {buildShareReportUrl(shareToken)}
+                {reportUrl.replace(/^https?:\/\//, "")}
               </div>
               <div className="flex w-full shrink-0 flex-col gap-1 sm:w-[10.5rem]">
                 <div className={shareViewCopySplitClass}>

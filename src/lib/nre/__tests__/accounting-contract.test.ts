@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseCsvText } from "../parse-csv";
 import { buildReportData } from "../report-data";
@@ -16,6 +18,19 @@ function report(csv: string, extra = {}) {
 }
 
 describe("source-backed reporting accounting", () => {
+  it("keeps form leads, link clicks and purchases separate in the same CSV", () => {
+    const csv = readFileSync(resolve(__dirname, "fixtures/mixed-three-objectives.csv"), "utf8");
+    const { data, verify } = report(csv);
+    expect(data.mtdRow.spend).toBe("$260");
+    expect(data.mtdRow.ctr).toBe("2.00%");
+    expect(data.mtdRow.cpc).toBe("$3.25");
+    expect(data.mtdRow.resultColumns).toHaveLength(3);
+    for (const [label, value, cprValue] of [["META FORM LEADS", "10", "$12.00"], ["LINK CLICKS", "20", "$2.00"], ["PURCHASES", "2", "$50.00"]]) {
+      expect(data.mtdRow.resultColumns).toContainEqual(expect.objectContaining({ label, value, cprValue }));
+      expect(data.campaignSlides.find(slide => slide.resultLabel === label)?.metrics).toMatchObject({ results: value, cpr: cprValue });
+    }
+    expect(verify().status).toBe("ok");
+  });
   it("uses the same objective evidence for DD-MM-YYYY and ISO daily exports", () => {
     const csv = "Campaign name,Ad set name,Day,Result type,Results,Amount spent\nCampaign A,Set A,01-10-2026,Website purchases,2,100";
     const { data } = report(csv);
