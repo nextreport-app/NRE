@@ -2,9 +2,9 @@
  * Cross-check generated report totals against independent sums from the uploaded CSV.
  *
  * Weekly spend compares campaign-slide totals to a fresh sum of raw daily rows in
- * the labeled report window (not splitMtdDaily's cached slice). If the CSV is
- * missing calendar days inside that window, verification fails even when report
- * and partial CSV agree — otherwise under-counts vs Ads Manager show a green check.
+ * the labeled report window (not splitMtdDaily's cached slice). Numeric mismatch
+ * means values disagree. Dates with no observations are separate source-coverage
+ * notices: Meta can omit no-delivery days, so absence alone proves no numeric error.
  */
 
 import type { NreRow } from "./columns";
@@ -51,13 +51,21 @@ export interface CsvVerificationCheck {
   note?: string;
 }
 
+export interface CsvCoverageWarning {
+  scope: string;
+  missingDays: string[];
+  message: string;
+}
+
 export interface CsvVerificationResult {
   status: CsvVerificationStatus;
   checks: CsvVerificationCheck[];
+  /** Source completeness is separate from agreement with the available rows. */
+  coverageWarnings?: CsvCoverageWarning[];
   primaryResultLabel?: string;
   canAlignWithCsvExport?: boolean;
   alignedWithCsvExport?: boolean;
-  /** Human-readable windows that were checked (for green-state copy). */
+  /** Windows whose available observations were compared; date coverage is separate. */
   scopesVerified?: string[];
   /** When status is skipped — shown in the wizard instead of hiding the row. */
   skipReason?: string;
@@ -285,9 +293,6 @@ function scopedChecks(params: {
   csvStandardResults: number;
   csvExportResults: number;
   countingMode: ResultCountingMode;
-  /** When false, spend/results/CPR cannot match Ads Manager — flag even if report matches partial CSV sum. */
-  calendarComplete?: boolean;
-  calendarIncompleteNote?: string;
   /** When CPR uses objective-bucket spend (MTD columns, chart), pass spend basis for spend÷results. */
   cprReportSpend?: number;
   cprCsvSpend?: number;
@@ -313,8 +318,6 @@ function scopedChecks(params: {
     csvStandardResults,
     csvExportResults,
     countingMode,
-    calendarComplete = true,
-    calendarIncompleteNote,
     cprReportSpend,
     cprCsvSpend,
     skipSpendCheck = false,
@@ -332,13 +335,10 @@ function scopedChecks(params: {
       scope,
       reportDisplay: reportSpendDisplay,
       csvDisplay: fmtCurrency(csvSpend, currencySymbol),
-      status: calendarComplete && spendMatches ? "ok" : "mismatch",
-      note: !calendarComplete
-        ? calendarIncompleteNote ??
-          "CSV is missing days in this report week — report totals may not match Ads Manager."
-        : spendMatches
-          ? undefined
-          : `Report shows ${reportSpendDisplay}; CSV sums to ${fmtCurrency(csvSpend, currencySymbol)} for this window.`,
+      status: spendMatches ? "ok" : "mismatch",
+      note: spendMatches
+        ? undefined
+        : `Report shows ${reportSpendDisplay}; CSV sums to ${fmtCurrency(csvSpend, currencySymbol)} for this window.`,
     });
   }
 
@@ -348,12 +348,10 @@ function scopedChecks(params: {
       scope,
       reportDisplay: reportResultsDisplay,
       csvDisplay: fmtNumber(csvResults),
-      status: calendarComplete && resultsOk ? "ok" : "mismatch",
-      note: !calendarComplete
-        ? calendarIncompleteNote
-        : resultsOk
-          ? undefined
-          : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
+      status: resultsOk ? "ok" : "mismatch",
+      note: resultsOk
+        ? undefined
+        : `Report shows ${Math.round(reportResults)}; CSV sums to ${Math.round(csvResults)} for this window.`,
     });
   }
 
@@ -376,7 +374,6 @@ function scopedChecks(params: {
     const csvAttributedConsistent =
       impliedCsvCpr <= 0 || closeEnough(csvCpr, impliedCsvCpr, CPR_TOLERANCE) || closeEnough(csvCpr, impliedReportCpr, CPR_TOLERANCE);
     const cprOk =
-      calendarComplete &&
       cprMatches &&
       cprTotalsMatch &&
       reportCprConsistent &&
@@ -389,9 +386,7 @@ function scopedChecks(params: {
       reportDisplay: reportCprDisplay,
       csvDisplay: csvCpr > 0 ? fmtCurrency2dp(csvCpr, currencySymbol) : "—",
       status: cprOk ? "ok" : "mismatch",
-      note: !calendarComplete
-        ? calendarIncompleteNote
-        : !displayMatchesPrinted
+      note: !displayMatchesPrinted
           ? `Report ${costLabel} on the deck (${reportCprDisplay}) must match spend ÷ results (${fmtCurrency(impliedReportCpr, currencySymbol)}).`
           : !cprTotalsMatch
             ? `Cost per result should be spend ÷ results (${fmtCurrency(impliedReportCpr, currencySymbol)} vs CSV ${fmtCurrency(impliedCsvCpr, currencySymbol)}).`
@@ -420,7 +415,6 @@ function appendCtrCpcChecks(params: {
   reportCtrDisplay: string;
   reportCpcDisplay: string;
   currencySymbol: string;
-  calendarComplete?: boolean;
   campaignSuffix?: string;
 }): void {
   const {
@@ -430,7 +424,6 @@ function appendCtrCpcChecks(params: {
     reportCtrDisplay,
     reportCpcDisplay,
     currencySymbol,
-    calendarComplete = true,
     campaignSuffix,
   } = params;
   if (rawRows.length === 0) return;
@@ -446,13 +439,10 @@ function appendCtrCpcChecks(params: {
       scope,
       reportDisplay: reportCtrDisplay,
       csvDisplay: fmtPercent(csvCtr),
-      status: calendarComplete && closeEnough(reportCtr, csvCtr, CTR_TOLERANCE) ? "ok" : "mismatch",
-      note:
-        !calendarComplete
-          ? undefined
-          : closeEnough(reportCtr, csvCtr, CTR_TOLERANCE)
-            ? undefined
-            : "CTR (all) is blended from your CSV (total all-clicks ÷ impressions), not a simple average of daily rows.",
+      status: closeEnough(reportCtr, csvCtr, CTR_TOLERANCE) ? "ok" : "mismatch",
+      note: closeEnough(reportCtr, csvCtr, CTR_TOLERANCE)
+        ? undefined
+        : "CTR (all) is blended from your CSV (total all-clicks ÷ impressions), not a simple average of daily rows.",
     });
   }
 
@@ -462,13 +452,10 @@ function appendCtrCpcChecks(params: {
       scope,
       reportDisplay: reportCpcDisplay,
       csvDisplay: fmtCurrency2dp(csvCpc, currencySymbol),
-      status: calendarComplete && closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
-      note:
-        !calendarComplete
-          ? undefined
-          : closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE)
-            ? undefined
-            : "CPC (all) is total spend ÷ all-clicks for this window — not cost per link click.",
+      status: closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
+      note: closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE)
+        ? undefined
+        : "CPC (all) is total spend ÷ all-clicks for this window — not cost per link click.",
     });
   }
 }
@@ -486,7 +473,6 @@ function appendLinkClickCpcChecks(params: {
   reportLinkClicksDisplay?: string;
   reportCplcDisplay?: string;
   currencySymbol: string;
-  calendarComplete?: boolean;
   campaignSuffix?: string;
 }): void {
   const {
@@ -496,7 +482,6 @@ function appendLinkClickCpcChecks(params: {
     reportLinkClicksDisplay,
     reportCplcDisplay,
     currencySymbol,
-    calendarComplete = true,
     campaignSuffix,
   } = params;
   if (rawRows.length === 0) return;
@@ -510,7 +495,7 @@ function appendLinkClickCpcChecks(params: {
       scope,
       reportDisplay: reportLinkClicksDisplay ?? "—",
       csvDisplay: fmtNumber(csvLinkClicks),
-      status: calendarComplete && reportLinkClicks === csvLinkClicks ? "ok" : "mismatch",
+      status: reportLinkClicks === csvLinkClicks ? "ok" : "mismatch",
       note:
         reportLinkClicks === csvLinkClicks
           ? undefined
@@ -526,7 +511,7 @@ function appendLinkClickCpcChecks(params: {
       scope,
       reportDisplay: reportCplcDisplay ?? "—",
       csvDisplay: fmtCurrency2dp(csvCplc, currencySymbol),
-      status: calendarComplete && closeEnough(reportCplc, csvCplc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
+      status: closeEnough(reportCplc, csvCplc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
       note: closeEnough(reportCplc, csvCplc, CPC_ALL_TOLERANCE)
         ? undefined
         : "Cost per link click = total spend ÷ total link clicks for the window — not an average of daily CPC cells.",
@@ -664,8 +649,6 @@ function appendAdSetSlideChecks(params: {
   rawRows: NreRow[];
   objectiveMap: Map<string, ResultLabels>;
   countingMode: ResultCountingMode;
-  calendarComplete?: boolean;
-  calendarIncompleteNote?: string;
 }): void {
   const {
     checks,
@@ -675,8 +658,6 @@ function appendAdSetSlideChecks(params: {
     rawRows,
     objectiveMap,
     countingMode,
-    calendarComplete = true,
-    calendarIncompleteNote,
   } = params;
   if (rawRows.length === 0) return;
 
@@ -724,8 +705,6 @@ function appendAdSetSlideChecks(params: {
       csvStandardResults: csvStdResults,
       csvExportResults: csvExportResults,
       countingMode,
-      calendarComplete,
-      calendarIncompleteNote,
       cprReportSpend: reportSpend,
       cprCsvSpend: csvSpend,
     }),
@@ -738,7 +717,6 @@ function appendAdSetSlideChecks(params: {
     reportCtrDisplay: adSlide.metrics.ctr,
     reportCpcDisplay: adSlide.metrics.cpc,
     currencySymbol,
-    calendarComplete,
   });
 
   const { linkClicks, cplc } = linkClickMetricsFromSlide(adSlide);
@@ -749,7 +727,6 @@ function appendAdSetSlideChecks(params: {
     reportLinkClicksDisplay: linkClicks,
     reportCplcDisplay: cplc,
     currencySymbol,
-    calendarComplete,
   });
 }
 
@@ -802,6 +779,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   const costLabel = primaryCol.costLabel;
   const canAlignRef = { value: false };
   const checks: CsvVerificationCheck[] = [];
+  const coverageWarnings: CsvCoverageWarning[] = [];
   const reportObjectiveMap = report.calculationContext
     ? new Map(Object.entries(report.calculationContext.campaignObjectives))
     : buildReportScopeObjectiveMap(split, reportType, campaignObjectives);
@@ -860,13 +838,9 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
   const displayWeeklyRange =
     reportType === "WEEKLY" ? effectiveWeeklyForSplit : input.weeklyRange;
 
-  let weeklyCalendarComplete = true;
-  let weeklyCalendarNote: string | undefined;
-  if (displayWeeklyRange && reportType === "WEEKLY") {
-    const coverage = validateWeeklyCsvDayRowsPresent(filtered, displayWeeklyRange, selectedCampaigns);
-    weeklyCalendarComplete = coverage.ok;
-    weeklyCalendarNote = coverage.error;
-  }
+  const weeklyCoverage = displayWeeklyRange && reportType === "WEEKLY"
+    ? validateWeeklyCsvDayRowsPresent(filtered, displayWeeklyRange, selectedCampaigns)
+    : undefined;
 
   const weeklyRawRows =
     displayWeeklyRange && (reportType === "WEEKLY" || reportType === "DAILY")
@@ -912,14 +886,11 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
           ? `Report week (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`
           : "Report week";
 
-    if (!weeklyCalendarComplete && displayWeeklyRange) {
-      checks.push({
-        metric: "Daily rows in report week",
+    if (weeklyCoverage && !weeklyCoverage.ok && weeklyCoverage.missingDays.length > 0) {
+      coverageWarnings.push({
         scope: weeklyScope,
-        reportDisplay: `${displayWeeklyRange.startIso} – ${displayWeeklyRange.endIso}`,
-        csvDisplay: "Missing days",
-        status: "mismatch",
-        note: weeklyCalendarNote,
+        missingDays: weeklyCoverage.missingDays,
+        message: "Some dates have no rows for the selected campaigns. Meta exports can omit dates without delivery; confirm that the export covers your intended reporting window.",
       });
     }
 
@@ -942,8 +913,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         csvStandardResults: csvStdWeeklyResults,
         csvExportResults: csvExportWeeklyResults,
         countingMode,
-        calendarComplete: weeklyCalendarComplete,
-        calendarIncompleteNote: weeklyCalendarNote,
         cprReportSpend: reportWeeklyBucketSpend,
         cprCsvSpend: weeklyBucketSpend,
       }),
@@ -966,7 +935,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportCtrDisplay: slide.metrics.ctr,
         reportCpcDisplay: slide.metrics.cpc,
         currencySymbol,
-        calendarComplete: weeklyCalendarComplete,
         campaignSuffix,
       });
       const { linkClicks, cplc } = linkClickMetricsFromSlide(slide);
@@ -977,7 +945,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         reportLinkClicksDisplay: linkClicks,
         reportCplcDisplay: cplc,
         currencySymbol,
-        calendarComplete: weeklyCalendarComplete,
         campaignSuffix,
       });
     }
@@ -992,8 +959,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         rawRows: adRaw,
         objectiveMap: reportObjectiveMap,
         countingMode,
-        calendarComplete: weeklyCalendarComplete,
-        calendarIncompleteNote: weeklyCalendarNote,
       });
     }
   }
@@ -1076,9 +1041,9 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     return { status: "skipped", checks: [] };
   }
 
-  const hasMismatch = checks.some((c) => c.status === "mismatch");
   return finalizeVerificationResult({
     checks,
+    coverageWarnings,
     primaryResultLabel: resultLabel,
     canAlignRef,
     countingMode,
@@ -1087,6 +1052,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
 
 function finalizeVerificationResult(params: {
   checks: CsvVerificationCheck[];
+  coverageWarnings?: CsvCoverageWarning[];
   primaryResultLabel?: string;
   canAlignRef: { value: boolean };
   countingMode: ResultCountingMode;
@@ -1096,6 +1062,7 @@ function finalizeVerificationResult(params: {
   return {
     status: hasMismatch ? "mismatch" : "ok",
     checks: params.checks,
+    ...(params.coverageWarnings?.length ? { coverageWarnings: params.coverageWarnings } : {}),
     primaryResultLabel: params.primaryResultLabel,
     scopesVerified,
     canAlignWithCsvExport: hasMismatch && params.canAlignRef.value,

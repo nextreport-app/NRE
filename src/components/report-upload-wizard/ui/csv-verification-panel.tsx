@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
+import type { CsvCoverageWarning, CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 type Props = {
   verification: CsvVerificationResult | null;
@@ -17,6 +17,22 @@ function groupByScope(checks: CsvVerificationResult["checks"]) {
     map.set(c.scope, list);
   }
   return map;
+}
+
+function DateCoverageNotice({ warnings }: { warnings: CsvCoverageWarning[] }) {
+  if (!warnings.length) return null;
+  return (
+    <div className="nre-wizard-callout-warn rounded-lg px-4 py-3 text-[13px] leading-relaxed" role="status">
+      <p className="nre-wizard-callout-warn__title font-medium">CSV date coverage to review</p>
+      {warnings.map(warning => (
+        <div key={warning.scope} className="nre-wizard-callout-warn__body mt-2">
+          <p className="font-medium">{warning.scope}</p>
+          <p>No CSV rows on: {warning.missingDays.join(", ")}.</p>
+          <p>{warning.message}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function CsvVerificationPanel({ verification, refreshing }: Props) {
@@ -53,17 +69,23 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const ok = verification.status === "ok";
   const mismatches = verification.checks.filter((c) => c.status === "mismatch");
   const byScope = groupByScope(mismatches);
+  const coverageWarnings = verification.coverageWarnings ?? [];
 
   if (ok) {
     const scopeList = [...new Set(verification.scopesVerified ?? [])];
+    const tone = coverageWarnings.length ? "nre-wizard-callout-neutral" : "nre-wizard-callout-success";
+    const textTone = coverageWarnings.length ? "nre-wizard-callout-neutral__body" : "nre-wizard-callout-success__detail";
     return (
-      <div className="nre-wizard-callout-success rounded-lg px-4 py-3 text-[13px] leading-relaxed" role="status">
-        <p className="nre-wizard-callout-success__detail">{copy.csvVerifiedDetail()}</p>
-        {scopeList.length > 0 ? (
-          <ul className="nre-wizard-callout-success__detail mt-2 list-disc space-y-0.5 pl-4">
-            {scopeList.map((scope) => <li key={scope}>{scope}</li>)}
-          </ul>
-        ) : null}
+      <div className="space-y-3">
+        <DateCoverageNotice warnings={coverageWarnings} />
+        <div className={`${tone} rounded-lg px-4 py-3 text-[13px] leading-relaxed`} role="status">
+          <p className={textTone}>{copy.csvVerifiedDetail()}</p>
+          {scopeList.length > 0 ? (
+            <ul className={`${textTone} mt-2 list-disc space-y-0.5 pl-4`}>
+              {scopeList.map((scope) => <li key={scope}>{scope}</li>)}
+            </ul>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -96,6 +118,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
           <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
+          <DateCoverageNotice warnings={coverageWarnings} />
 
           {[...byScope.entries()].map(([scope, scopeChecks]) => (
             <div key={scope} className="rounded-md border border-dash-border/40 bg-dash-bg/30 px-3 py-2.5">

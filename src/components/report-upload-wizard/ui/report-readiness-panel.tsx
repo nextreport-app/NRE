@@ -107,7 +107,14 @@ export function buildGenerateStepReadinessItems(input: {
   }
 
   const v = input.csvVerification;
-  if (v?.status === "ok") {
+  if (v?.status === "ok" && v.coverageWarnings?.length) {
+    items.push({
+      id: "csv",
+      label: "CSV totals match; review date coverage",
+      status: "warning",
+      detail: "Some dates have no CSV rows. Confirm the export covers your intended reporting window.",
+    });
+  } else if (v?.status === "ok") {
     items.push({
       id: "csv",
       label: "CSV comparison complete",

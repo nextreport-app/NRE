@@ -11,12 +11,12 @@ const FIXTURE = resolve(__dirname, "fixtures/gz-australia-weekly-verify.csv");
 const CAMPAIGN = "GZ Australia | Lead Forms | Top Funnel | A3HD";
 const TZ = "Australia/Sydney";
 
-describe("CSV verification — incomplete weekly CSV must not show green", () => {
+describe("CSV verification — date gaps require review independently of matching totals", () => {
   const allRows = parseCsvText(readFileSync(FIXTURE, "utf8")).rows;
   const weeklyRange = { startIso: "2026-10-02", endIso: "2026-10-08" };
   const now = new Date("2026-10-08T14:00:00Z");
 
-  it("flags mismatch when Oct 2 is missing from a Last-30 export (report matches partial CSV only)", () => {
+  it("keeps matching totals while warning when Oct 2 is absent from a Last-30 export", () => {
     const rows = allRows.filter((r) => getRowDate(r) !== "2026-10-02");
     const report = buildReportData({
       accountName: "GZ",
@@ -41,14 +41,15 @@ describe("CSV verification — incomplete weekly CSV must not show green", () =>
       now,
     });
 
-    expect(verification.status).toBe("mismatch");
-    expect(verification.checks.some((c) => c.metric === "Daily rows in report week" && c.status === "mismatch")).toBe(
-      true,
-    );
+    expect(verification.status).toBe("ok");
+    expect(verification.coverageWarnings).toEqual([
+      expect.objectContaining({ missingDays: ["2026-10-02"] }),
+    ]);
+    expect(verification.checks.every(check => check.status === "ok")).toBe(true);
     const weeklySpend = verification.checks.find(
       (c) => c.scope.startsWith("Report week") && c.metric === "Amount spent",
     );
-    expect(weeklySpend?.status).toBe("mismatch");
+    expect(weeklySpend?.status).toBe("ok");
   });
 
   it("flags mismatch when report spend is wrong but CSV sum is unchanged", () => {
