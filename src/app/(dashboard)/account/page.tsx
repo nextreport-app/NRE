@@ -16,7 +16,6 @@ import { GoogleAdsSettings } from "@/components/google-ads-settings";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { isGoogleAdsApiConfigured, isGa4ApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
-import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
 import { Ga4Settings } from "@/components/ga4-settings";
 import { TikTokAdsSettings } from "@/components/tiktok-ads-settings";
 
@@ -133,44 +132,38 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      {isClientPlatformConnectionVisible("googleAds") ? (
-        <section id="google-ads" className="mb-10 scroll-mt-6">
-          <SectionHeading>Google Ads</SectionHeading>
-          <GoogleAdsSettings
-            initialConnectedEmail={user.googleAdsConnectedEmail}
-            initialConnected={user.googleAdsEnabled}
-            justConnected={google_ads_connected === "1"}
-            connectError={google_ads_error ?? null}
-            googleAdsConfigured={googleAdsConfigured}
-          />
-        </section>
-      ) : null}
+      <section id="google-ads" className="mb-10 scroll-mt-6">
+        <SectionHeading>Google Ads</SectionHeading>
+        <GoogleAdsSettings
+          initialConnectedEmail={user.googleAdsConnectedEmail}
+          initialConnected={user.googleAdsEnabled}
+          justConnected={google_ads_connected === "1"}
+          connectError={google_ads_error ?? null}
+          googleAdsConfigured={googleAdsConfigured}
+        />
+      </section>
 
-      {isClientPlatformConnectionVisible("ga4") ? (
-        <section id="ga4" className="mb-10 scroll-mt-6">
-          <SectionHeading>Google Analytics (GA4)</SectionHeading>
-          <Ga4Settings
-            initialConnectedEmail={user.ga4ConnectedEmail}
-            initialConnected={user.ga4Enabled}
-            justConnected={ga4_connected === "1"}
-            connectError={ga4_error ?? null}
-            ga4Configured={ga4Configured}
-          />
-        </section>
-      ) : null}
+      <section id="ga4" className="mb-10 scroll-mt-6">
+        <SectionHeading>Google Analytics (GA4)</SectionHeading>
+        <Ga4Settings
+          initialConnectedEmail={user.ga4ConnectedEmail}
+          initialConnected={user.ga4Enabled}
+          justConnected={ga4_connected === "1"}
+          connectError={ga4_error ?? null}
+          ga4Configured={ga4Configured}
+        />
+      </section>
 
-      {isClientPlatformConnectionVisible("tiktok") ? (
-        <section id="tiktok-ads" className="mb-10 scroll-mt-6">
-          <SectionHeading>TikTok Ads</SectionHeading>
-          <TikTokAdsSettings
-            initialConnectedName={user.tiktokConnectedName}
-            initialConnected={user.tiktokAdsEnabled}
-            justConnected={tiktok_ads_connected === "1"}
-            connectError={tiktok_ads_error ?? null}
-            tiktokConfigured={tiktokConfigured}
-          />
-        </section>
-      ) : null}
+      <section id="tiktok-ads" className="mb-10 scroll-mt-6">
+        <SectionHeading>TikTok Ads</SectionHeading>
+        <TikTokAdsSettings
+          initialConnectedName={user.tiktokConnectedName}
+          initialConnected={user.tiktokAdsEnabled}
+          justConnected={tiktok_ads_connected === "1"}
+          connectError={tiktok_ads_error ?? null}
+          tiktokConfigured={tiktokConfigured}
+        />
+      </section>
 
       <section className="mb-10">
         <IntegrationSettings

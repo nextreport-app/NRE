@@ -19,8 +19,8 @@ const EN_UI = {
   csvMismatchBody:
     "Review the differing metrics, date windows, and objective choices below. If you generate for internal review, do not share it with a client until these differences are resolved.",
   csvVerifiedTitle: "Listed CSV checks passed",
-  csvVerifiedDetail: (_scopesLabel: string) =>
-    "The comparisons listed below passed for their own reporting windows. This is a consistency check, not a guarantee that every source metric or inferred objective is correct.",
+  csvVerifiedDetail: () =>
+    "The comparisons passed for their own reporting windows. This is a consistency check, not a guarantee that every source metric or inferred objective is correct.",
   csvSkippedTitle: "CSV cross-check not run",
   csvSkippedLead:
     "This is not a pass — deck totals were not compared to your CSV for this report setup.",

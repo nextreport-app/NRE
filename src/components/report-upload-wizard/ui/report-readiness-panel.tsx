@@ -110,7 +110,7 @@ export function buildGenerateStepReadinessItems(input: {
   if (v?.status === "ok") {
     items.push({
       id: "csv",
-      label: "Listed CSV checks passed",
+      label: "CSV comparison complete",
       status: "done",
       detail: v.scopesVerified?.length ? v.scopesVerified.join(" · ") : "Listed totals and rates match this export",
     });

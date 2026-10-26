@@ -149,12 +149,7 @@ export function WizardCampaignsStep() {
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
       <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-3 text-sm text-dash-ink" role="status">
         <p>{selectedCampaigns.size} of {campaigns.length} campaigns included · {campaigns.length - selectedCampaigns.size} excluded</p>
-        <p className="mt-1 text-dash-ink-secondary">
-          Uploaded-file spend: included {campaigns.filter(name => selectedCampaigns.has(name)).reduce((sum, name) => sum + (campaignSpend[name] ?? 0), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          {" · excluded "}{campaigns.filter(name => !selectedCampaigns.has(name)).reduce((sum, name) => sum + (campaignSpend[name] ?? 0), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          {" (account currency; the report applies its selected date windows)."}
-        </p>
-        <p className="mt-1 text-xs text-dash-ink-secondary">Ad-set selections control detail slides. Campaign and combined totals include all ad sets in each selected campaign.</p>
+
       </div>
       {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
         <CsvDateGuidanceBanner

@@ -715,7 +715,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
 }
 
 .nre-wizard-generate-success__header {
-  background-color: rgb(2 44 34 / 0.22);
+  background: linear-gradient(120deg, rgb(6 78 59 / 0.4), rgb(2 44 34 / 0.16) 65%, rgb(251 191 36 / 0.08));
 }
 
 .nre-wizard-generate-success__check {
@@ -737,12 +737,36 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
   color: #a7f3d0;
 }
 
+.nre-wizard-generate-success .nre-wizard-success-primary {
+  background-color: var(--nre-dash-accent);
+  border-color: var(--nre-dash-accent);
+  color: #0d1b2e;
+}
+
+.nre-wizard-generate-success .nre-wizard-success-primary:hover {
+  background-color: var(--nre-dash-accent-hover);
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success .text-dash-ink {
+  color: #0f172a;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-secondary {
+  background-color: #ffffff;
+  border-color: var(--nre-dash-border);
+  color: #0f172a;
+}
+
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-secondary:hover {
+  background-color: #f1f5f9;
+}
+
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success {
   border-color: #6ee7b7;
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__header {
-  background-color: #ecfdf5;
+  background: linear-gradient(120deg, #ecfdf5, #f0fdf4 65%, #fffbeb);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__check {
