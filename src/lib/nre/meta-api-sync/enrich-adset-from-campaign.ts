@@ -1,8 +1,5 @@
 import type { MetaInsightRow } from "@/lib/meta-api";
-import {
-  campaignNameHaystack,
-  isWebsiteLeadsCampaignHaystack,
-} from "../campaign-name-heuristics";
+import { isWebsiteLeadCampaign } from "./manual-export-mapper";
 import {
   hasMeaningfulConversionFields,
   hasMeaningfulWebsiteConversionFields,
@@ -118,9 +115,7 @@ export function enrichAdSetInsightsFromCampaignLevel(
   }
 
   function isWebsiteLeadRow(row: MetaInsightRow): boolean {
-    return isWebsiteLeadsCampaignHaystack(
-      campaignNameHaystack(row.campaign_name, row.adset_name),
-    );
+    return isWebsiteLeadCampaign(row);
   }
 
   function mergeConversionFromCampaign(

@@ -1082,6 +1082,15 @@ function hasPurchasesColumnHeader(rows: MetricRow[]): boolean {
 /** Named purchase/sales campaign → PURCHASES even when Result type is blank (zero-sale weeks). */
 function purchaseObjectiveIfNamedCampaign(rows: MetricRow[]): ResultLabels | null {
   if (!isPurchaseCampaignName(rows)) return null;
+  // A stale campaign name must not defeat source evidence identifying a
+  // different funnel event. Only use this when every Result type is blank.
+  if (rows.every(row => !(row.result_type ?? "").trim())) {
+    const results = preciseSum(rows.map(row => parseCellNum(row.results)));
+    const purchases = preciseSum(rows.map(row => parseCellNum(row.purchases)));
+    const checkouts = preciseSum(rows.map(rowInitiateCheckout));
+    const carts = preciseSum(rows.map(rowAddToCart));
+    if (results > 0 && purchases !== results && (checkouts === results || carts === results)) return null;
+  }
   if (hasPurchasesColumnHeader(rows)) {
     return { resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE" };
   }
@@ -1292,6 +1301,18 @@ function resolveCampaignObjectiveDetailed(
       confidence: "high",
       requiresConfirmation: false,
     };
+  }
+
+  // A precise declared conversion event beats campaign naming. Generic
+  // Lead/Conversion aliases and incidental traffic retain the established
+  // naming/column disambiguation rules used by instant-form campaigns.
+  const declared = resolveUniqueMappedObjectiveFromRows(
+    rows.map(row => ({ result_type: resultTypeTextForObjectiveDetection(row, customConversionResultTypes) })),
+    resolveObjectiveFromResultType,
+  );
+  const hasGenericDeclaration = rows.some(row => /^(?:lead|leads|result|results|conversion|conversions)$/i.test((row.result_type ?? "").trim()));
+  if (declared && !hasGenericDeclaration && !shouldIgnoreUniqueMappedObjective(rows, declared) && !["reach", "impressions", "link_clicks", "landing_page_views", "messaging"].includes(declared.key)) {
+    return { resultLabel: declared.resultLabel, costLabel: declared.costLabel, confidence: "high", requiresConfirmation: false };
   }
 
   const named = namedCampaignObjectiveFromRows(rows, customConversionResultTypes);

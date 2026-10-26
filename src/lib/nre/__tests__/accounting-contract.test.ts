@@ -34,6 +34,14 @@ describe("source-backed reporting accounting", () => {
     expect(slide.dynamicMetrics[4]?.value).toBe("$50.00");
     expect(data.mtdRow.resultColumns[0]).toMatchObject({ value: "2", cprValue: "$50.00" });
   });
+  it("uses an explicit website event despite a misleading form campaign name", () => {
+    const { data } = report("Campaign name,Ad set name,Day,Result type,Results,Amount spent (USD)\nWebsite Lead Forms Campaign,Set A,2026-10-01,Website lead,2,100");
+    expect(data.mtdRow.resultColumns[0]).toMatchObject({ label: "WEBSITE LEADS", value: "2", cprValue: "$50.00" });
+  });
+  it("uses matching checkout evidence when the purchase campaign name is stale", () => {
+    const { data } = report("Campaign name,Ad set name,Day,Results,Amount spent (USD),Initiate checkout,Purchases\nPurchase Campaign,Set A,2026-10-01,4,100,4,2");
+    expect(data.mtdRow.resultColumns[0]).toMatchObject({ label: "INITIATE CHECKOUT", value: "4", cprValue: "$25.00" });
+  });
   it("does not erase purchases when a secondary Website Leads column is present", () => {
     const { data, verify } = report("Campaign name,Ad set name,Day,Result type,Results,Amount spent (USD),Website leads,Purchases,Reach,Impressions\nCampaign A,Set A,2026-10-01,Website purchases,2,100,1,2,100,200");
     expect(data.mtdRow.resultColumns).toEqual([expect.objectContaining({ label: "PURCHASES", value: "2", cprValue: "$50.00" })]);

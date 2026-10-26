@@ -51,7 +51,7 @@ Malformed CSV quotes, ragged records, invalid calendar dates, ambiguous same-nam
 
 Use `--insights snapshot.json` instead of `--api-csv` to inspect actual mapper decisions. Optional `--since YYYY-MM-DD --until YYYY-MM-DD` constrain the window. The output records file hashes, row keys, duplicates/unmatched rows, and metric differences. Exit codes: 0 equal, 1 differences, 2 invalid usage/input. The command will not overwrite an existing receipt.
 
-The saved Credit Firm receipt is historical: 26 equal and 4 different days, manual 12 vs mapped 16 Results on equal $444.41 spend. It is not a live API acceptance run. The production mapper and enrichment rules remain unchanged: trial changes improved some fixtures while breaking others, without a real paired raw API snapshot to resolve the conflict. The row diff makes those disagreements reviewable before changing production mapping. API rollout gates remain unchanged.
+The saved Credit Firm receipt is historical: 26 equal and 4 different days, manual 12 vs mapped 16 Results on equal $444.41 spend. It is not a live API acceptance run. The mapper now rejects a generic costed lead if its count/cost cannot account for row spend (allowing two-decimal cost rounding), avoids generic leads bypassing pixel reconciliation, and rejects generic fb_pixel_custom CPA as proof of a website submission when Results is absent. Enrichment shares the website predicate, preventing a campaign custom total from filling a blank ad-set day. These are bounded reproduced fixes, not proof of complete API/manual parity. Numeric custom IDs still require event identity evidence, and some legacy enrichment expectations remain unresolved. The row diff makes those disagreements reviewable. API rollout gates remain unchanged.
 
 ## Remaining architecture work
 
@@ -67,3 +67,12 @@ No production schema, template assets, API launch gates, plan charges or existin
 - `npx tsc --noEmit` and targeted ESLint.
 - `npm test -- --maxWorkers=2`: wider suite; inspect failures, including baseline failures.
 - `npm run build`: executes Prisma migrations first; use a disposable test database locally.
+
+
+## Final review status
+
+A further review added precedence for precise declared conversion events over misleading campaign names, and matching checkout/cart source evidence over a stale purchase name. It preserves existing incidental-traffic/messaging guards. Application fixtures now assert their actual exported application event while still checking 23 Results versus 24 secondary Website Leads.
+
+Before that final follow-up, the broad suite returned 2,137 passes and 33 failures; 32 failing test names were also present on baseline, and the additional failure was a PPTX test timeout. This is not a clean full-suite result. The final follow-up's focused objective/application/report-data run has 339 passes and 8 existing report-data failures. The API matrix has 104 passes and 5 existing failures (quote-ID inference, generic enrichment, and an old CPR expectation that excludes zero-result-day spend). Missing private fixtures and older chart/range expectations remain outstanding. Do not treat this PR as a universal accuracy certification.
+
+The source acceptance suite covers actual deck tables; production build, TypeScript, API-route checks and hosted PR CI/Preview have also been exercised. Final command counts and hosted status are recorded on the PR. Homepage browser checks found the corrected $83.74 illustrative CPL, no JavaScript page errors, and no horizontal overflow at a 390px viewport. External agency pilots and paired live API snapshots are still required.

@@ -10,7 +10,7 @@ const NOW = new Date("2026-10-07T12:00:00Z");
 const TZ = "America/Chicago";
 const CAMPAIGN = "Ascend Mastermind | Website Leads | Baton Rouge";
 
-describe("Mentee Ascend last-30 website leads chart", () => {
+describe("Mentee Ascend last-30 applications chart", () => {
   it("matches Ads Manager Results sum (23), not Website leads column sum (24)", () => {
     const rows = parseCsvText(readFileSync(FIXTURE, "utf8")).rows;
     const weeklyRange = { startIso: "2026-09-29", endIso: "2026-10-05" };
@@ -32,10 +32,10 @@ describe("Mentee Ascend last-30 website leads chart", () => {
     expect(data.chart!.periodSubLabel).toContain("Oct 6");
 
     const camp = data.chart!.campaigns.find((c) => c.name === CAMPAIGN);
-    expect(camp?.resLabel).toBe("WEBSITE LEADS");
+    expect(camp?.resLabel).toBe("WEBSITE SUBMIT APPLICATIONS");
     expect(camp?.results).toBe(23);
 
-    const snap = data.chart!.snapshot.objectives.find((o) => o.label === "WEBSITE LEADS");
+    const snap = data.chart!.snapshot.objectives.find((o) => o.label === "WEBSITE SUBMIT APPLICATIONS");
     expect(parseCellNum(snap?.resultsValue ?? "0")).toBe(23);
   });
 });
