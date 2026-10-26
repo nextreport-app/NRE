@@ -6,14 +6,13 @@ import {
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-total";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
-import { resolveChartFooterInsight } from "@/lib/nre/share-chart-projection";
 import {
   preparedByCoverLine,
   reportBrandingFromShareJson,
   resolveShareBrandingDisplay,
 } from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
-import { formatGroupedDonutLegendEntry, visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
+import { formatGroupedDonutLegendValue, visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -304,14 +303,10 @@ function VisualSpendDonut({
   segments: { name: string; color: string; percentage: number; spendLabel: string }[];
   centerLabel: string;
 }) {
-  let cursor = 0;
-  const gradient = segments
-    .map((seg) => {
-      const start = cursor;
-      cursor += seg.percentage;
-      return `#${seg.color} ${start}% ${cursor}%`;
-    })
-    .join(", ");
+  const gradient = segments.reduce<{ stops: string[]; end: number }>((acc, seg) => ({
+    end: acc.end + seg.percentage,
+    stops: [...acc.stops, `#${seg.color} ${acc.end}% ${acc.end + seg.percentage}%`],
+  }), { stops: [], end: 0 }).stops.join(", ");
   return (
     <div className="flex flex-col items-center">
       <div
@@ -319,10 +314,10 @@ function VisualSpendDonut({
         style={{ background: `conic-gradient(${gradient})` }}
       >
         <div
-          className="flex h-[122px] w-[122px] items-center justify-center rounded-full text-center text-[18px] font-bold text-[#94a3b8]"
+          className="flex h-[122px] w-[122px] items-center justify-center rounded-full text-center text-[18px] font-bold text-[#f1f5f9]"
           style={{ backgroundColor: "#111f35" }}
         >
-          {centerLabel}
+          <div><span className="block">{centerLabel}</span><span className="mt-1 block text-[9px] font-medium tracking-wide text-[#94a3b8]">TOTAL SPEND</span></div>
         </div>
       </div>
       <ul className="mt-4 w-full space-y-2 text-[15px] text-[#94a3b8]">
@@ -333,7 +328,7 @@ function VisualSpendDonut({
               style={{ backgroundColor: `#${seg.color}` }}
               aria-hidden="true"
             />
-            <span className="min-w-0 truncate">{formatGroupedDonutLegendEntry(seg)}</span>
+            <span className="min-w-0"><span className="block text-[13px] font-medium text-[#cbd5e1]">{seg.name}</span><span className="block text-[12px]">{formatGroupedDonutLegendValue(seg)}</span></span>
           </li>
         ))}
       </ul>
@@ -346,6 +341,8 @@ function VisualResultBar({
   name,
   color,
   statLine,
+  valueLabel,
+  fullName,
   barPct,
   resultsSharePct,
   compact = false,
@@ -354,18 +351,20 @@ function VisualResultBar({
   name: string;
   color: string;
   statLine: string;
+  valueLabel?: string;
+  fullName?: string;
   barPct: number;
   resultsSharePct: number;
   compact?: boolean;
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
-  const rightLabel = visualResultBarRightLabel({ barPct, resultsSharePct });
+  const rightLabel = visualResultBarRightLabel({ barPct, resultsSharePct, valueLabel });
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-3">
         <p
           className={`min-w-0 flex-1 truncate whitespace-nowrap font-medium leading-snug text-white ${compact ? "text-[13px]" : "text-[14px]"}`}
-          title={`${rank}. ${name}`}
+          title={`${rank}. ${fullName ?? name}`}
         >
           <span className="mr-1 text-[#94a3b8]">{rank}.</span>
           {name}
@@ -422,6 +421,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
               <div className="hidden h-[280px] w-px bg-[#1e3a5f] lg:block" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+                {model.panelSubheading ? <p className="mt-1 text-[12px] leading-snug text-[#94a3b8]">{model.panelSubheading}</p> : null}
                 <div className={`mt-3 ${barGapClass}`}>
                   {model.resultBars.map((bar) => (
                     <VisualResultBar
@@ -430,6 +430,8 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                       name={bar.name}
                       color={bar.color}
                       statLine={bar.statLine}
+                      valueLabel={bar.valueLabel}
+                      fullName={bar.fullName}
                       barPct={bar.barPct}
                       resultsSharePct={bar.resultsSharePct}
                       compact={compactBars || barLayout.rowH < 72}
@@ -452,6 +454,8 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                     name={bar.name}
                     color={bar.color}
                     statLine={bar.statLine}
+                    valueLabel={bar.valueLabel}
+                    fullName={bar.fullName}
                     barPct={bar.barPct}
                     resultsSharePct={bar.resultsSharePct}
                     compact={compactBars || barLayout.rowH < 72}

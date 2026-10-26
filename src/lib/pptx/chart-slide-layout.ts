@@ -5,7 +5,7 @@ export const MTD_SLIDE_H = 540;
 const MTD_BLOCK = {
   titleH: 50,
   gapAfterTitle: 8,
-  panelH: 384,
+  panelH: 404,
   gapBeforeSummary: 12,
   summaryH: 36,
 } as const;
@@ -161,8 +161,10 @@ export function resultBarLayout(barCount: number, hasSubheading = true): ResultB
   const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
   const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
   const nameHFit = Math.max(nameH, Math.ceil(nameSizePt * 1.28));
+  // Poppins needs more line height than its point size in native Office shapes.
+  const metricsHFit = Math.max(metricsH, Math.ceil(metricsSizePt * 1.4) + 2);
 
-  const contentH = nameHFit + nameBarGap + barH + barFooterGap + metricsH;
+  const contentH = nameHFit + nameBarGap + barH + barFooterGap + metricsHFit;
   const rowHAdjusted = Math.max(rowH, contentH + Math.max(4, Math.round(MTD_VISUAL.barRowGap * scale * 0.5)));
 
   const blockH = barCount * rowHAdjusted;
@@ -172,7 +174,7 @@ export function resultBarLayout(barCount: number, hasSubheading = true): ResultB
     rowH: rowHAdjusted,
     startY,
     nameH: nameHFit,
-    metricsH,
+    metricsH: metricsHFit,
     barH,
     nameBarGap,
     barFooterGap,
@@ -199,26 +201,11 @@ export function groupedDonutLayout(segmentCount: number, panelTopY: number): Gro
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
 
-  let donutD: number = MTD_VISUAL.groupedDonutD;
-  let legendRowH: number = MTD_VISUAL.groupedDonutLegendRowH;
-  let legendRowGap: number = MTD_VISUAL.groupedDonutLegendRowGap;
-  let legendSizePt: number = MTD_VISUAL.groupedDonutLegendSizePt;
-
-  if (segmentCount >= 6) {
-    donutD = 158;
-    legendRowH = 18;
-    legendRowGap = 4;
-    legendSizePt = 13;
-  } else if (segmentCount >= 5) {
-    donutD = 168;
-    legendRowH = 20;
-    legendRowGap = 5;
-    legendSizePt = 14;
-  } else if (segmentCount >= 4) {
-    legendRowH = 22;
-    legendRowGap = 6;
-    legendSizePt = 16;
-  }
+  const donutD = segmentCount >= 6 ? 124 : segmentCount >= 5 ? 144 : segmentCount >= 4 ? 164 : MTD_VISUAL.groupedDonutD;
+  // Two readable lines per campaign: its identity, then spend/share.
+  const legendRowH = 28;
+  const legendRowGap = 4;
+  const legendSizePt = 12;
 
   const legendH = segmentCount * (legendRowH + legendRowGap) - legendRowGap;
   const blockH = donutD + 16 + legendH;

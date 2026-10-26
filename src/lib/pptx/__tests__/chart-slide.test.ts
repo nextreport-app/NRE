@@ -99,7 +99,7 @@ describe("buildDonutSegments", () => {
 describe("buildChartSlideBundle — MTD overview leaderboard", () => {
   it("slide XML uses native editable shapes with title text", async () => {
     const bundle = await buildChartSlideBundle(buildChart([campaign("A")]), "$", BACKGROUND);
-    expect(bundle.xml).toContain("Campaign Performance");
+    expect(bundle.xml).toContain("Last 30 Days");
     expect(bundle.xml).toContain("PURCHASES BY CAMPAIGN");
     expect((bundle.xml.match(/<p:pic>/g) || []).length).toBe(1);
   });
@@ -121,7 +121,7 @@ describe("buildChartSlideBundle — MTD overview leaderboard", () => {
       BACKGROUND,
     );
     expect(bundle.xml).toContain("PURCHASES BY CAMPAIGN");
-    expect(bundle.xml).toContain("SPEND BY OBJECTIVE");
+    expect(bundle.xml).toContain("SPEND BY CAMPAIGN");
     expect(bundle.xml).toContain('txBox="1"');
     const svg = buildMtdOverviewSvg(
       projectChartSlideToShareChart(
@@ -130,7 +130,7 @@ describe("buildChartSlideBundle — MTD overview leaderboard", () => {
       ),
     );
     expect(svg).toContain("PURCHASES BY CAMPAIGN");
-    expect(svg).toContain("purchases");
+    expect(svg).toContain("/ purchase");
   });
 
   it("buildMtdOverviewSvg renders colored result bars", () => {
@@ -143,7 +143,7 @@ describe("buildChartSlideBundle — MTD overview leaderboard", () => {
   it("buildMtdOverviewSvg renders result bars for each campaign", () => {
     const chart = buildChart([campaign("Only campaign", { spend: 500 })]);
     const svg = buildMtdOverviewSvg(projectChartSlideToShareChart(chart, "$"));
-    expect(svg).toContain("purchases");
+    expect(svg).toContain("10 purchases");
     expect(svg).toContain('<rect');
   });
 

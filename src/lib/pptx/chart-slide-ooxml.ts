@@ -88,7 +88,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
       leftX: MTD_VISUAL.leftX,
       leftW: MTD_VISUAL.leftW,
       isLight,
-      colors: { inkMuted: c.inkMuted, panelFill: c.panelFill },
+      colors: { ink: c.ink, inkMuted: c.inkMuted, panelFill: c.panelFill },
     });
   }
 
@@ -109,9 +109,9 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   if (hasSubheading) {
     shapes.push(
       textBox({
-        x: MTD_VISUAL.fullPanelX,
+        x: panelX,
         y: MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap,
-        w: MTD_VISUAL.fullPanelW,
+        w: panelW,
         h: MTD_VISUAL.panelSubheadingH,
         text: model.panelSubheading,
         sizePt: 12,
