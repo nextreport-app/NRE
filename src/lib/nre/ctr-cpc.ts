@@ -15,11 +15,14 @@ const SPEND_HEADER_CANDIDATES = ["amount spent", "amount spent (usd)"];
  * Used to blend CTR/CPC across many rows without averaging percentages.
  */
 export function impliedClicks(row: MetricRow, spend: number, impressions: number): number {
+  if (row._sourcePlatform === "GOOGLE" && String(row.link_clicks ?? "").trim() !== "") return parseCellNum(row.link_clicks);
   const clicksAll = Object.entries(row._raw ?? {}).find(([header]) => header.trim().toLowerCase() === "clicks (all)");
   if (clicksAll && clicksAll[1] !== "") return parseCellNum(clicksAll[1]);
   const ctr = parseCellNum(row.ctr);
   if (impressions > 0 && ctr > 0) return (ctr / 100) * impressions;
-  const cpc = parseCellNum(row.cpc);
+  const cpcHeaders = Object.keys(row._raw ?? {}).map(header => header.trim().toLowerCase());
+  const linkOnlyCpc = cpcHeaders.some(header => /cost per link click/.test(header)) && !cpcHeaders.some(header => /^(?:cpc \(all\)|cpc|avg\. cpc|average cpc)$/.test(header));
+  const cpc = linkOnlyCpc ? 0 : parseCellNum(row.cpc);
   if (cpc > 0 && spend > 0) return spend / cpc;
   return 0;
 }

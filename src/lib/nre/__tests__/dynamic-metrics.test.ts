@@ -193,12 +193,12 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     expect(result.cpc_all).toBe(100 / 25); // total spend / total clicks
   });
 
-  it("falls back to spend/clicks when the CPC column's own values are all zero", () => {
+  it("does not substitute link clicks when all-click CPC is zero and all-click counts are absent", () => {
     const rows = [
       row({ "Amount spent": "60", "CPC (all)": "0", "Link clicks": "30" }),
     ];
     const result = aggregateDynamicMetrics(rows, [cpcAll()], "meta");
-    expect(result.cpc_all).toBe(2); // 60 / 30, not "—"
+    expect(result.cpc_all).toBeNaN(); // Link clicks cannot establish all-click CPC.
   });
 
   it("still shows a dash only when spend or clicks are genuinely both absent", () => {

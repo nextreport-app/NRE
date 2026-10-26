@@ -1,3 +1,4 @@
+import type { MetricAggregation } from "./metric-aggregation";
 /**
  * Comprehensive Google Ads metric dictionary — the Google Ads counterpart of
  * meta-dictionary.ts, same additive/parallel relationship to
@@ -12,7 +13,7 @@ import type { MetricFormat } from "./meta-dictionary";
 
 export type GoogleDictMetricType = "dimension" | "metadata" | "primary" | "secondary" | "never";
 
-export interface GoogleMetricDefinition {
+export interface GoogleMetricDefinition extends MetricAggregation {
   /** Exact lowercase CSV column header this entry matches. */
   csvName: string;
   /** Internal identifier — shared across csvName variants of the same underlying metric. */
@@ -33,7 +34,7 @@ export interface GoogleMetricDefinition {
   perUnitScale?: number;
 }
 
-export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
+const BASE_GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
   // ── DIMENSIONS ─────────────────────────────────────────────────────────
   { csvName: "campaign", key: "campaign_name", type: "dimension" },
   { csvName: "campaign name", key: "campaign_name", type: "dimension" },
@@ -843,6 +844,25 @@ export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [
     explanation: "Total value of all results",
   },
 ];
+
+const AGGREGATION_RULES: Record<string, MetricAggregation> = {
+  ctr: { numeratorKey: "clicks", denominatorKey: "impressions", ratioScale: 100 },
+  value_per_conv: { numeratorKey: "conv_value", denominatorKey: "conversions" },
+  conv_value_per_click: { numeratorKey: "conv_value", denominatorKey: "clicks" },
+  value_per_all_conv: { numeratorKey: "all_conv_value", denominatorKey: "all_conversions" },
+  all_conv_value_per_cost: { numeratorKey: "all_conv_value", denominatorKey: "cost" },
+  avg_order_value: { numeratorKey: "revenue", denominatorKey: "orders" },
+  avg_cart_size: { numeratorKey: "units_sold", denominatorKey: "orders" },
+};
+const REFERENCE_METADATA = [
+  "bid strategy type", "campaign id", "campaign type", "campaign subtype", "bid strategy", "target cpa", "max cpc bid limit for target is", "impression pixel", "goals", "target impression share", "location goal for target is", "eu political ads", "target roas", "label", "feed types", "recommended budget", "account optimization headroom",
+];
+const referenceMetrics: GoogleMetricDefinition[] = [
+  // Configured Target CPA/ROAS are settings, not aliases for reported Avg. targets.
+  ...REFERENCE_METADATA.map(csvName => ({ csvName, key: `setting_${csvName.replace(/[^a-z0-9]+/g, "_")}`, type: "metadata" as const })),
+  { csvName: "all conv. value (by conv. time)", key: "all_conv_value_by_time", label: "ALL CONV. VALUE (BY TIME)", type: "secondary", format: "currency", objectives: ["search", "shopping"], priority: 60, explanation: "All conversion value on the conversion-date basis" },
+];
+export const GOOGLE_METRIC_DICTIONARY: GoogleMetricDefinition[] = [...BASE_GOOGLE_METRIC_DICTIONARY, ...referenceMetrics.filter(entry => !BASE_GOOGLE_METRIC_DICTIONARY.some(existing => existing.csvName === entry.csvName))].map(entry => ({ ...entry, ...AGGREGATION_RULES[entry.key] }));
 
 /** Case-insensitive exact match on csvName — first entry wins on duplicates (none of the dictionary's own entries collide). */
 export function findGoogleMetric(csvName: string): GoogleMetricDefinition | undefined {

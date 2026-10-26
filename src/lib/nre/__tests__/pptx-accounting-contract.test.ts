@@ -7,6 +7,8 @@ import { buildReportData } from "../report-data";
 import { renderPptx } from "../../pptx/render";
 
 const cases = [
+  { name: "ThruPlay with secondary video counts", columns: "ThruPlays,3-second video plays", values: "50,100", type: "ThruPlay", results: 2, label: "THRUPLAYS", rate: "$50.00" },
+  { name: "two-second video goal", columns: "2-second continuous video plays,ThruPlays", values: "50,100", type: "2-second continuous video plays", results: 2, label: "2-SECOND VIDEO VIEWS", rate: "$50.00" },
   { name: "checkout", columns: "Initiate checkout,Cost per initiate checkout", values: "2,50", type: "Initiate checkout", results: 2, label: "INITIATE CHECKOUT", rate: "$50.00" },
   { name: "purchases with secondary leads", columns: "Purchases,Website leads", values: "2,1", type: "Website purchases", results: 2, label: "PURCHASES", rate: "$50.00" },
   { name: "impressions CPM", columns: "Purchases,Website leads", values: "0,0", type: "Impressions", results: 10000, label: "IMPRESSIONS", rate: "$10.00" },

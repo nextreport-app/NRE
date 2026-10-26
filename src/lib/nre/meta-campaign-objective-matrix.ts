@@ -36,8 +36,8 @@ const PERFORMANCE_GOAL_TO_KEY: Readonly<Record<string, string>> = {
   "maximise reach of ads": "reach",
   "maximise number of impressions": "impressions",
   "maximise ad recall lift": "ad_recall_lift",
-  "maximise thruplay views": "video_views",
-  "maximise 2-second continuous video plays": "video_views",
+  "maximise thruplay views": "thruplays",
+  "maximise 2-second continuous video plays": "video_2s_plays",
   "maximise number of link clicks": "link_clicks",
   "maximize link clicks": "link_clicks",
   "maximise number of landing page views": "landing_page_views",
@@ -58,7 +58,7 @@ const PERFORMANCE_GOAL_TO_KEY: Readonly<Record<string, string>> = {
   "maximize number of conversions": "conversions",
   "maximise value of conversions": "conversions",
   "maximize value of conversions": "conversions",
-  "maximise video views (thruplays)": "video_views",
+  "maximise video views (thruplays)": "thruplays",
 };
 
 /** Conversion event label (sheet / Ads Manager) → engine objective key. */
@@ -69,9 +69,9 @@ const CONVERSION_EVENT_TO_KEY: Readonly<Record<string, string>> = {
   "view content": "content_views",
   "content view": "content_views",
   donate: "donate",
-  contact: "website_leads",
+  contact: "contacts",
   schedule: "appointment_leads",
-  "start trial": "subscriptions",
+  "start trial": "trials_started",
   "submit application": "applications",
   subscribe: "subscriptions",
   "add payment info": "payment_info",
@@ -84,21 +84,16 @@ const CONVERSION_EVENT_TO_KEY: Readonly<Record<string, string>> = {
 
 const INSTANT_FORM_LOCATIONS = new Set([
   "instant forms",
-  "instant forms and messenger",
-  "website and instant forms",
 ]);
 
 const WEBSITE_LEAD_LOCATIONS = new Set([
   "website",
-  "website and calls",
-  "website and instant forms",
 ]);
 
 const MESSAGING_LOCATIONS = new Set([
   "messenger",
   "message destinations",
   "whatsapp",
-  "instant forms and messenger",
 ]);
 
 export function objectiveKeyFromPerformanceGoal(performanceGoal: string): string | null {
@@ -116,7 +111,8 @@ export function objectiveKeyFromConversionEvent(
   const loc = norm(conversionLocation);
   if (INSTANT_FORM_LOCATIONS.has(loc)) return "meta_form_leads";
   if (WEBSITE_LEAD_LOCATIONS.has(loc)) return "website_leads";
-  if (MESSAGING_LOCATIONS.has(loc)) return "messaging";
+  // A completed lead in a chat is not the number of conversations started.
+  if (MESSAGING_LOCATIONS.has(loc)) return "leads";
   return "leads";
 }
 
@@ -135,7 +131,8 @@ export function objectiveKeyFromMatrixRow(row: MetaCampaignObjectiveMatrixRow): 
     if (fromPerf === "leads") {
       if (INSTANT_FORM_LOCATIONS.has(loc)) return "meta_form_leads";
       if (WEBSITE_LEAD_LOCATIONS.has(loc)) return "website_leads";
-      if (MESSAGING_LOCATIONS.has(loc)) return "messaging";
+      // A completed lead in a chat is not the number of conversations started.
+      if (MESSAGING_LOCATIONS.has(loc)) return "leads";
     }
     if (row.campaignObjective === "Catalogue sales") return "purchases";
   }

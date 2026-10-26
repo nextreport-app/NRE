@@ -57,7 +57,7 @@ describe("getResultLabels", () => {
     ["Website lead", "WEBSITE LEADS", "COST PER WEBSITE LEAD"],
     ["Web lead", "WEBSITE LEADS", "COST PER WEBSITE LEAD"],
     ["Lead (website)", "WEBSITE LEADS", "COST PER WEBSITE LEAD"],
-    ["Contact", "WEBSITE LEADS", "COST PER WEBSITE LEAD"],
+    ["Contact", "CONTACTS", "COST PER CONTACT"],
     ["Instant form", "META FORM LEADS", "COST PER LEAD"],
     ["Meta lead", "META FORM LEADS", "COST PER LEAD"],
     ["Lead form", "META FORM LEADS", "COST PER LEAD"],
@@ -119,7 +119,7 @@ describe("getResultLabels", () => {
     ["Event response", "EVENT RESPONSES", "COST PER RESPONSE"],
     ["Video view", "VIDEO VIEWS", "COST PER VIDEO VIEW"],
     ["Video play", "VIDEO VIEWS", "COST PER VIDEO VIEW"],
-    ["ThruPlay", "VIDEO VIEWS", "COST PER VIDEO VIEW"],
+    ["ThruPlay", "THRUPLAYS", "COST PER THRUPLAY"],
     ["Newsletter lead", "LEADS", "COST PER LEAD"], // unmatched lead type -> generic fallback
     ["Some Other Lead Type", "LEADS", "COST PER LEAD"],
     ["", "RESULTS", "COST PER RESULT"],

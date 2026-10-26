@@ -193,7 +193,7 @@ export function validateMtdDailyCsv(
 
   const normalizedHeaders = headers.map(header => header.trim().toLowerCase()).filter(Boolean);
   if (new Set(normalizedHeaders).size !== normalizedHeaders.length) errors.push({ field: "headers", message: "Duplicate CSV column names make values ambiguous. Export each metric once." });
-  for (const message of sourceNumericIssues(rows, colMap)) errors.push({ field: "numeric_value", message });
+  for (const message of sourceNumericIssues(rows, colMap, platform)) errors.push({ field: "numeric_value", message });
   const invalidDates = rows.filter(row => row.campaign_name?.trim() && (!getRowDate(row) || !parseDate(getRowDate(row))));
   if (invalidDates.length) errors.push({ field: "date", message: `${invalidDates.length} campaign record(s) have missing or invalid calendar dates. Correct these source records before generating a report.` });
   const idsByName = new Map<string, Set<string>>();

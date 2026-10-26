@@ -134,10 +134,10 @@ describe("resolveObjectiveFromResultType — exact + fuzzy result_type matching"
       expect(resolveObjectiveFromResultType("estimated_ad_recall_lift")?.resultLabel).toBe("AD RECALL LIFT");
       expect(resolveObjectiveFromResultType("ad_recall_lift")?.isReach).toBe(true);
     });
-    it("thruplay/thruplays/video_view/video_plays_at_least_2_secs -> VIDEO VIEWS, not flagged as reach", () => {
-      for (const rt of ["thruplay", "thruplays", "video_view", "video_plays_at_least_2_secs"]) {
+    it("preserves distinct video goal definitions, none flagged as reach", () => {
+      for (const [rt, label] of [["thruplay", "THRUPLAYS"], ["thruplays", "THRUPLAYS"], ["video_view", "VIDEO VIEWS"], ["video_plays_at_least_2_secs", "2-SECOND VIDEO VIEWS"]]) {
         const info = resolveObjectiveFromResultType(rt)!;
-        expect(info.resultLabel).toBe("VIDEO VIEWS");
+        expect(info.resultLabel).toBe(label);
         expect(info.isReach).toBe(false);
       }
     });

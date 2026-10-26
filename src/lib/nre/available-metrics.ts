@@ -508,7 +508,7 @@ function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvK
   // Reach cards: CPM / cost per 1K reached are spend ratios, not extra CSV columns.
   if (metric.key === "cpm" && hasSpend && csvKeys.has("impressions")) return true;
   if (metric.key === "cost_per_1k_reached" && hasSpend && csvKeys.has("reach")) return true;
-  const isVideo = upper === "VIDEO VIEWS" || upper === "THRUPLAYS";
+  const isVideo = upper === "VIDEO VIEWS" || upper === "THRUPLAYS" || upper === "2-SECOND VIDEO VIEWS";
   if (isVideo && metric.key === "video_views" && (csvKeys.has("video_views") || csvKeys.has("results"))) return true;
   if (isVideo && metric.key === "thruplays" && csvKeys.has("thruplays")) return true;
   if (isVideo && metric.key === "video_p100" && csvKeys.has("video_p100")) return true;
@@ -673,9 +673,10 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       break;
     case "VIDEO VIEWS":
     case "THRUPLAYS":
-      slot4 = byKey("META", "video_views")!;
-      slot5 = byKey("META", "cost_per_thruplay")!;
-      slot7 = byKey("META", "thruplays")!;
+    case "2-SECOND VIDEO VIEWS":
+      slot4 = byKey("META", upper === "THRUPLAYS" ? "thruplays" : upper === "2-SECOND VIDEO VIEWS" ? "video_2s_plays" : "video_views")!;
+      slot5 = byKey("META", upper === "2-SECOND VIDEO VIEWS" ? "cost_per_2s_video" : "cost_per_thruplay")!;
+      slot7 = byKey("META", upper === "THRUPLAYS" ? "video_views" : "thruplays")!;
       slot8 = byKey("META", "video_p100")!;
       break;
     case "MESSAGING LEADS":
@@ -789,9 +790,9 @@ export function objectiveMetricKeys(resultLabel: string): { resultKey: string; c
   if (upper === "LINK CLICKS") {
     return { resultKey: "link_clicks", costKey: "cpc_link_click", dedicated: true };
   }
-  if (upper === "VIDEO VIEWS" || upper === "THRUPLAYS") {
-    return { resultKey: "video_views", costKey: "cost_per_thruplay", dedicated: true };
-  }
+  if (upper === "THRUPLAYS") return { resultKey: "thruplays", costKey: "cost_per_thruplay", dedicated: true };
+  if (upper === "2-SECOND VIDEO VIEWS") return { resultKey: "video_2s_plays", costKey: "cost_per_2s_video", dedicated: true };
+  if (upper === "VIDEO VIEWS") return { resultKey: "video_views", costKey: "cost_per_thruplay", dedicated: true };
   const key = slugifyObjectiveKey(resultLabel);
   return { resultKey: key, costKey: `cost_per_${key}`, dedicated: false };
 }

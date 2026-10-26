@@ -78,8 +78,13 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
 export type ColumnMap = Partial<Record<NreMetricKey, string>>;
 
 function headerMatchesMetric(metric: NreMetricKey, headerLower: string, keywords: string[]): boolean {
-  if (["results", "purchases", "website_leads", "meta_leads", "leads", "landing_page_views", "reach", "impressions", "link_clicks"].includes(metric) && /\bcost\b|\brate\b|\broas\b|%/.test(headerLower)) return false;
+  if ((metric === "campaign_name" || metric === "ad_set_name") && !keywords.includes(headerLower)) return false;
+  if (metric === "spend" && !/^(?:(?:total|ad)\s+)?(?:amount\s+spent|spend|spent)(?:\s*\([a-z]{3}\))?$/.test(headerLower)) return false;
+  if (["results", "purchases", "website_leads", "meta_leads", "leads", "landing_page_views", "reach", "impressions", "link_clicks"].includes(metric) && /\bcost\b|\brate\b|\broas\b|\bvalue\b|\brevenue\b|\baverage\b|\bavg\b|%/.test(headerLower)) return false;
   if (metric === "results" && /\(\s*initial\s*\)/.test(headerLower)) return false;
+  if (metric === "ctr" && /unique|outbound|link/.test(headerLower)) return false;
+  if (metric === "link_clicks" && /unique|outbound/.test(headerLower)) return false;
+  if (metric === "impressions" && /gross|auto.?refresh|viewable|measurable/.test(headerLower)) return false;
   if (!keywords.some((kw) => headerLower.includes(kw))) return false;
   // Generic "leads" must not steal "Website leads" / "Meta leads" headers.
   if (metric === "leads" && (headerLower.includes("website") || headerLower.includes("meta"))) {
@@ -103,6 +108,15 @@ function isCpcLinkClickHeader(header: string): boolean {
 /** Port of buildColumnMap_ — first header (in order) to match a metric's keywords wins. */
 export function buildColumnMap(headers: string[]): ColumnMap {
   const map: ColumnMap = {};
+  // Exact fields win over derivative/scoped headers regardless of column order.
+  // CTR (all) needs an explicit priority because "CTR" is a broad keyword.
+  for (const [metric, keywords] of Object.entries(COLUMN_KEYWORDS) as [NreMetricKey, string[]][]) {
+    if (metric === "cpc") continue;
+    const exact = headers.find(header => keywords.includes(header.trim().toLowerCase()) && headerMatchesMetric(metric, header.trim().toLowerCase(), keywords));
+    if (exact) map[metric] = exact;
+  }
+  const ctrAll = headers.find(header => /^ctr\s*\(\s*all\s*\)$/i.test(header.trim()));
+  if (ctrAll) map.ctr = ctrAll;
   headers.forEach((header) => {
     if (!header) return;
     const h = String(header).toLowerCase().trim();
@@ -137,7 +151,7 @@ export function buildColumnMap(headers: string[]): ColumnMap {
   return map;
 }
 
-export type NreRow = Partial<Record<NreMetricKey, string>> & { _raw: Record<string, string>; _sourceError?: string };
+export type NreRow = Partial<Record<NreMetricKey, string>> & { _raw: Record<string, string>; _sourceError?: string; _sourcePlatform?: "GOOGLE" };
 
 /** Port of readTabWithAutoMap_, operating on parsed CSV headers + string rows. */
 export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {

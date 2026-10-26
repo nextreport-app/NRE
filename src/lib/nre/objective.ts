@@ -643,7 +643,7 @@ export function sumRawColumnByKeywords(raw: Record<string, string> | undefined, 
     // Callers read event quantities. A cost/rate header can contain the same
     // event name (e.g. "Cost per initiate checkout") but has different units.
     // Adding it to the count inflated 2 checkouts + $50 CPA into 52 checkouts.
-    if (/\b(?:cost|cpa|cpc|cpm|cpl|roas|rate|ratio)\b|%/.test(h)) continue;
+    if (/\b(?:cost|cpa|cpc|cpm|cpl|roas|rate|ratio|value|revenue|average|avg)\b|%/.test(h)) continue;
     if (keywords.some((k) => h.includes(k))) total += parseCellNum(value);
   }
   return total;

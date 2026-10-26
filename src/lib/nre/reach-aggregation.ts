@@ -90,7 +90,17 @@ export function needsPeriodReachEstimate(rows: MetricRow[]): boolean {
  * Estimate deduplicated period reach for a campaign (or ad set) row set.
  * Falls back to a straight sum when the data is already period-level.
  */
+function observedSourceRows(rows: readonly MetricRow[]): MetricRow[] {
+  return rows.flatMap(row => row.sourceRows?.length ? observedSourceRows(row.sourceRows) : [row]);
+}
+
 export function estimatePeriodReach(rows: MetricRow[], opts?: ReachAggregationOptions): number {
+  const observations = observedSourceRows(rows);
+  // Google tables display additive Clicks in this legacy field. Never apply
+  // Meta unique-audience estimation to that different measurement.
+  if (observations.length && observations.every(row => row._sourcePlatform === "GOOGLE")) {
+    return observations.reduce((sum, row) => sum + parseCellNum(row.link_clicks), 0);
+  }
   const apiReach = tryMetaCampaignPeriodReach(rows, opts);
   if (apiReach != null) return apiReach;
 

@@ -1709,7 +1709,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // to resolve via the normal raw-row lookup instead.
     if (campaignObjective) {
       const { resultKey, costKey, dedicated } = objectiveMetricKeys(campaignObjective.resultLabel);
-      if (!dedicated || campaignObjective.resultLabel === "LINK CLICKS" || campaignObjective.resultLabel === "VIDEO VIEWS") {
+      if (!dedicated || campaignObjective.resultLabel === "LINK CLICKS" || ["VIDEO VIEWS", "THRUPLAYS", "2-SECOND VIDEO VIEWS"].includes(campaignObjective.resultLabel)) {
         baselineValues[resultKey] = baseline.resultValue;
         baselineValues[costKey] = baseline.cprValue;
       }

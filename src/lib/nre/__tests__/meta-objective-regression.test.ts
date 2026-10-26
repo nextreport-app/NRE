@@ -61,7 +61,7 @@ describe("Meta objective regression fixtures", () => {
       "REACH",
       "LANDING PAGE VIEWS",
       "LINK CLICKS",
-      "VIDEO VIEWS",
+      "THRUPLAYS",
       "IMPRESSIONS",
       "AD RECALL LIFT",
       "EVENT RESPONSES",

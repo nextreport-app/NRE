@@ -438,11 +438,12 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
 
     case "VIDEO VIEWS":
     case "THRUPLAYS":
-      slot4 = slot("video_views", "VIDEO VIEWS", "number", baseline.resultValue);
-      slot5 = slot("cost_per_thruplay", "COST PER VIEW", "currency", baseline.cprValue);
+    case "2-SECOND VIDEO VIEWS":
+      slot4 = slot(resultLabel === "THRUPLAYS" ? "thruplays" : resultLabel === "2-SECOND VIDEO VIEWS" ? "video_2s_plays" : "video_views", resultLabel, "number", baseline.resultValue);
+      slot5 = slot(resultLabel === "2-SECOND VIDEO VIEWS" ? "cost_per_2s_video" : "cost_per_thruplay", baseline.costLabel, "currency", baseline.cprValue);
       // REDUNDANT_WITH already blocks VIDEO PLAYS from ever following
       // either VIDEO VIEWS (slot 4) or THRUPLAYS (slot 7) here.
-      slot7 = pickSlot([{ key: "thruplays", label: "THRUPLAYS", format: "number" }], usedKeys(slot4, slot5), v);
+      slot7 = pickSlot([{ key: resultLabel === "THRUPLAYS" ? "video_views" : "thruplays", label: resultLabel === "THRUPLAYS" ? "3-SECOND VIDEO VIEWS" : "THRUPLAYS", format: "number" }], usedKeys(slot4, slot5), v);
       slot8 = pickSlot([{ key: "video_p100", label: "VIDEO AT 100%", format: "number" }], usedKeys(slot4, slot5, slot7), v);
       break;
 
