@@ -6,7 +6,7 @@ export const CHART_CAMPAIGN_LABEL_MAX = 24;
 /** Full-width leaderboard rows — preserve the start of the name; truncate at the end only. */
 export const CHART_CAMPAIGN_DISPLAY_MAX = 44;
 
-const DELIMITERS = [" | ", " - ", " – ", " — ", " / ", ": ", " · "] as const;
+const DELIMITERS = [" | ", " - ", " – ", " — ", " / ", ": ", " · ", "_"] as const;
 
 function truncateLabel(label: string, max: number): string {
   const trimmed = label.trim();

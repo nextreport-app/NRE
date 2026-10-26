@@ -41,13 +41,13 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}">`,
     `<rect x="0" y="0" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}" fill="#0d1b2e"/>`,
-    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.titleY + 28}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
+    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.titleY + 28}" text-anchor="middle" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="24" font-weight="700">${escapeXml(model.title)}</text>`,
     `<rect x="${MTD_VISUAL.fullPanelX - 8}" y="${MTD_VISUAL.panelY - 8}" width="${MTD_VISUAL.fullPanelW + 16}" height="${MTD_VISUAL.panelH + 16}" rx="8" fill="${PANEL}" stroke="${SEP}"/>`,
   ];
 
   if (splitPanel) {
     parts.push(
-      `<text x="${MTD_VISUAL.leftX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(model.leftHeading.toUpperCase())}</text>`,
+      `<text x="${MTD_VISUAL.leftX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="700">${escapeXml(model.leftHeading.toUpperCase())}</text>`,
       splitPanelSeparatorSvg(),
       ...buildGroupedDonutSvg({
         segments: model.groupedDonut!,
@@ -61,12 +61,12 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   }
 
   parts.push(
-    `<text x="${panelX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins" font-size="16" font-weight="700">${escapeXml(heading.toUpperCase())}</text>`,
+    `<text x="${panelX}" y="${MTD_VISUAL.panelY + 18}" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="16" font-weight="700">${escapeXml(heading.toUpperCase())}</text>`,
   );
 
   if (hasSubheading) {
     parts.push(
-      `<text x="${MTD_VISUAL.fullPanelX}" y="${MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap + 12}" fill="${MUTED}" font-family="Poppins" font-size="12">${escapeXml(model.panelSubheading)}</text>`,
+      `<text x="${panelX}" y="${MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap + 12}" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="12">${escapeXml(model.panelSubheading)}</text>`,
     );
   }
 
@@ -94,19 +94,19 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
       parts.push(`<rect x="${cols.barX}" y="${barY}" width="${fillW}" height="${barLayout.barH}" rx="${barRx}" fill="#${bar.color}"/>`);
     }
     parts.push(
-      `<text x="${cols.barX}" y="${footerY}" fill="${MUTED}" font-family="Poppins" font-size="${barLayout.metricsSizePt}" font-weight="400">${escapeXml(bar.statLine)}</text>`,
-      `<text x="${cols.barX}" y="${nameBaselineY}" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rankedLine)}</text>`,
+      `<text x="${cols.barX}" y="${footerY}" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="${barLayout.metricsSizePt}" font-weight="400">${escapeXml(bar.statLine)}</text>`,
+      `<text x="${cols.barX}" y="${nameBaselineY}" fill="${INK}" font-family="Poppins, Arial, sans-serif" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rankedLine)}</text>`,
     );
     if (rightLabelW > 0) {
       parts.push(
-        `<text x="${cols.barX + cols.trackW}" y="${nameBaselineY}" text-anchor="end" fill="${INK}" font-family="Poppins" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
+        `<text x="${cols.barX + cols.trackW}" y="${nameBaselineY}" text-anchor="end" fill="${INK}" font-family="Poppins, Arial, sans-serif" font-size="${barLayout.nameSizePt}" font-weight="600">${escapeXml(rightLabel)}</text>`,
       );
     }
     rowY += barLayout.rowH;
   }
 
   parts.push(
-    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.summaryY + 20}" text-anchor="middle" fill="${MUTED}" font-family="Poppins" font-size="15">${escapeXml(model.summaryLine)}</text>`,
+    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.summaryY + 20}" text-anchor="middle" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="15">${escapeXml(model.summaryLine)}</text>`,
     "</svg>",
   );
   return parts.join("");

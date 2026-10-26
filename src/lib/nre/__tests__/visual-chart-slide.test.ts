@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildVisualChartSlideModel,
-  formatDonutObjectiveLabel,
   formatGroupedDonutLegendEntry,
 } from "../visual-chart-slide";
 import type { ChartCampaignData, ChartSlideData } from "../report-data";
@@ -62,7 +61,7 @@ describe("buildVisualChartSlideModel", () => {
         percentage: 28.5,
         spendLabel: "$602",
       }),
-    ).toBe("Alpha · 29% · $602");
+    ).toBe("Alpha · 28.5% of spend · $602");
 
     expect(
       formatGroupedDonutLegendEntry({
@@ -70,7 +69,7 @@ describe("buildVisualChartSlideModel", () => {
         percentage: 25.2,
         spendLabel: "$303.13",
       }),
-    ).toBe("Website Leads · 25% · $303");
+    ).toBe("Website Leads · 25.2% of spend · $303.13");
 
     expect(
       formatGroupedDonutLegendEntry({
@@ -78,7 +77,7 @@ describe("buildVisualChartSlideModel", () => {
         percentage: 24.7,
         spendLabel: "$303.51",
       }),
-    ).toBe("Website Leads · 25% · $304");
+    ).toBe("Website Leads · 24.7% of spend · $303.51");
 
     expect(
       formatGroupedDonutLegendEntry({
@@ -86,7 +85,7 @@ describe("buildVisualChartSlideModel", () => {
         percentage: 100,
         spendLabel: "C$1,164",
       }),
-    ).toBe("Website Leads · 100% · C$1,164");
+    ).toBe("Website Leads · 100.0% of spend · C$1,164");
   });
 
   it("truncates split-panel bar names that would wrap to a second line", () => {
@@ -135,19 +134,16 @@ describe("buildVisualChartSlideModel", () => {
 
   it("uses spend donut + results bars when two or more campaigns report", () => {
     const model = buildVisualChartSlideModel(chart(), "$");
-    expect(model.title).toBe("Last 30 Days Campaign Performance: Aug 1 - Aug 20, 2026");
+    expect(model.title).toBe("Last 30 Days · Aug 1 - Aug 20, 2026");
     expect(model.isMultiObjective).toBe(false);
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).not.toBeNull();
-    expect(model.leftHeading).toBe("Spend by Objective");
-    expect(model.groupedDonut!.map((s) => s.name)).toEqual([
-      formatDonutObjectiveLabel("PURCHASES"),
-      formatDonutObjectiveLabel("PURCHASES"),
-    ]);
+    expect(model.leftHeading).toBe("Spend by Campaign");
+    expect(model.groupedDonut!.map((s) => s.name)).toEqual(["1. Alpha", "2. Beta"]);
     expect(new Set(model.groupedDonut!.map((s) => s.color))).toEqual(new Set(model.resultBars.map((b) => b.color)));
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
-    expect(model.resultBars[0]!.statLine).not.toContain("spend");
+    expect(model.resultBars[0]!.statLine).toContain("spend");
     expect(model.resultBars[0]!.statLine).not.toContain("% of total");
     expect(model.resultBars[0]!.resultCount).toBeGreaterThanOrEqual(model.resultBars[1]!.resultCount);
     expect(model.summaryLine).toContain("Total Spend");
@@ -201,6 +197,10 @@ describe("buildVisualChartSlideModel", () => {
     const model = buildVisualChartSlideModel(
       chart({
         totalAllSpend: 3400,
+        campaigns: [
+          campaign("Alpha", { spend: 2824, results: 32, resLabel: "META FORM LEADS", cprLabel: "COST PER META FORM LEAD", cpr: 88.25 }),
+          campaign("Beta", { spend: 576, results: 0, resLabel: "WEBSITE LEADS", cprLabel: "COST PER WEBSITE LEAD", cpr: 0 }),
+        ],
         snapshot: {
           ...chart().snapshot,
           mode: "multi",
@@ -237,7 +237,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.groupedDonut).not.toBeNull();
     expect(model.resultBars).toHaveLength(2);
     expect(model.resultBars.map((b) => b.name)).toEqual(["Alpha", "Beta"]);
-    expect(model.summaryLine).toContain("|");
+    expect(model.panelSubheading).toContain("Bars show spend (different goals)");
     expect(model.summaryLine).not.toContain("Budget Used");
   });
 
@@ -399,19 +399,15 @@ describe("buildVisualChartSlideModel", () => {
     );
 
     expect(model.resultBars.map((b) => b.name)).toEqual([
-      "Tractor - DC - Traffic Campaign",
-      "Traffic - Tractor",
-      "Traffic - UTV",
-      "Traffic - CFMOTO",
-      "Tractor_Traffic_September",
+      "Traffic Campaign", "Tractor", "UTV", "CFMOTO", "September",
     ]);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);
     expect(model.resultBars[0]!.resultCount).toBe(2112);
     expect(model.useSplitPanel).toBe(true);
-    expect(model.resultBars[0]!.statLine).toContain("landing page views");
+    expect(model.resultBars[0]!.statLine).toContain("/ view");
     expect(model.resultBars[0]!.statLine).not.toContain("% of total");
-    expect(model.resultBars[0]!.statLine).not.toContain("spend");
+    expect(model.resultBars[0]!.statLine).toContain("spend");
   });
 
   it("single campaign uses spend donut + results bar — no share % on the bar", () => {
@@ -433,7 +429,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).toHaveLength(1);
     expect(model.groupedDonut![0]!.percentage).toBe(100);
-    expect(model.leftHeading).toBe("Spend by Objective");
+    expect(model.leftHeading).toBe("Spend by Campaign");
     expect(model.resultBars[0]!.statLine).toBe("4 website leads · C$182.50 CPL");
     expect(model.resultBars[0]!.statLine).not.toContain("% of total");
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
@@ -478,7 +474,7 @@ describe("buildVisualChartSlideModel", () => {
       }),
       "$",
     );
-    expect(model.summaryLine).toContain("Average Cost Per Link Clicks: $0.25");
+    expect(model.summaryLine).toContain("Cost Per Link Click: $0.25");
     expect(model.summaryLine).not.toContain("$0 ·");
     expect(model.summaryLine).not.toContain("Active Campaign");
   });
