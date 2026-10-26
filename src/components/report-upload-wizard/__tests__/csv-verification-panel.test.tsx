@@ -36,10 +36,11 @@ describe("verification presentation separates numeric mismatches from source cov
     expect(html).not.toContain("Amount spent");
   });
 
-  it("retains the concise successful window summary when there is no coverage concern", () => {
+  it("retains the successful section heading without the reporting-window list", () => {
     const html = render(matching);
     expect(html).toContain("nre-wizard-callout-success");
-    expect(html).toContain("Report week (Oct 19 - Oct 25)");
+    expect(html).toContain("Listed CSV checks passed");
+    expect(html).not.toContain("Report week (Oct 19 - Oct 25)");
     expect(html).not.toContain("CSV date coverage to review");
   });
 });

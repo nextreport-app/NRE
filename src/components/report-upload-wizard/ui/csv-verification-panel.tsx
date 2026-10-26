@@ -72,19 +72,20 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const coverageWarnings = verification.coverageWarnings ?? [];
 
   if (ok) {
-    const scopeList = [...new Set(verification.scopesVerified ?? [])];
     const tone = coverageWarnings.length ? "nre-wizard-callout-neutral" : "nre-wizard-callout-success";
     const textTone = coverageWarnings.length ? "nre-wizard-callout-neutral__body" : "nre-wizard-callout-success__detail";
     return (
       <div className="space-y-3">
         <DateCoverageNotice warnings={coverageWarnings} />
         <div className={`${tone} rounded-lg px-4 py-3 text-[13px] leading-relaxed`} role="status">
-          <p className={textTone}>{copy.csvVerifiedDetail()}</p>
-          {scopeList.length > 0 ? (
-            <ul className={`${textTone} mt-2 list-disc space-y-0.5 pl-4`}>
-              {scopeList.map((scope) => <li key={scope}>{scope}</li>)}
-            </ul>
-          ) : null}
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className={`${tone}__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] ${coverageWarnings.length ? "bg-slate-700/30 text-dash-ink" : "bg-emerald-900/50 text-emerald-200"}`} aria-hidden="true">✓</span>
+              <span className={`${tone}__title min-w-0 flex-1 text-[14px] font-medium`}>{copy.csvVerifiedTitle}</span>
+              <span className={`${textTone} shrink-0 transition-transform group-open:rotate-180`} aria-hidden="true">▾</span>
+            </summary>
+            <p className={`${textTone} mt-3 border-t border-dash-border/30 pt-3`}>{copy.csvVerifiedDetail()}</p>
+          </details>
         </div>
       </div>
     );
