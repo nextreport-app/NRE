@@ -32,7 +32,7 @@ const chipClass =
   "nre-wizard-success-secondary inline-flex items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
 
 const primaryActionClass =
-  "nre-wizard-success-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dash-accent/45 bg-dash-accent/12 px-4 py-3 text-[15px] font-semibold text-dash-ink transition-colors hover:bg-dash-accent/22 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
+  "nre-wizard-success-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dash-accent/45 px-4 py-3 text-[15px] font-semibold text-dash-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
 
 const secondaryExportClass =
   "nre-wizard-success-secondary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
