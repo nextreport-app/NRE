@@ -41,7 +41,7 @@ export function sendWelcomeTrialEmail(input: { to: string; name?: string | null;
     "",
     `Trial ends: ${endDate}`,
     "",
-    "Add a client, connect Meta or Google Ads, and generate your first report in minutes.",
+    "Add a client, connect Meta Ads, and generate your first report in minutes.",
     "",
     "https://nextreport.in/clients",
     "",
@@ -51,7 +51,7 @@ export function sendWelcomeTrialEmail(input: { to: string; name?: string | null;
 <p>Your <strong>NextReport</strong> account is ready. You have <strong>7 days of full access</strong> — no credit card required.</p>
 <p><strong>Trial ends:</strong> ${endDate}</p>
 <p><a href="https://nextreport.in/clients">Open your dashboard →</a></p>
-<p>Add a client, connect Meta or Google Ads, and generate your first report in minutes.</p>
+<p>Add a client, connect Meta Ads, and generate your first report in minutes.</p>
 <p style="color:#64748b;font-size:13px;">Questions? Reply to this email or use Support in the dashboard.</p>`;
 
   fireAndForget(sendUserEmail({ to: input.to, subject, text, html }), "welcome");

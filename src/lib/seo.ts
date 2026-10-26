@@ -11,16 +11,12 @@ export const OG_IMAGE = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "NextReport — Meta Ads reporting for agencies (Google, TikTok & GA4 launching soon)",
+  alt: "NextReport — Meta Ads reporting for agencies",
 } as const;
 
 /** High-intent and long-tail terms — used on homepage and key landing pages. */
 export const DEFAULT_KEYWORDS = [
   "meta ads reporting tool",
-  "google ads reporting tool",
-  "tiktok ads reporting tool",
-  "ga4 reporting tool",
-  "google analytics 4 reporting",
   "automated ad reporting software",
   "agency reporting software",
   "client reporting automation",
@@ -29,8 +25,6 @@ export const DEFAULT_KEYWORDS = [
   "csv to powerpoint",
   "csv to pptx",
   "meta marketing api reporting",
-  "google ads api sync",
-  "tiktok marketing api",
   "digital marketing reports India",
   "performance marketing report",
   "weekly ad performance report",
@@ -136,7 +130,7 @@ export const ROOT_METADATA: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok, GA4 & Meta API sync launching soon.",
+    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Meta API sync launching soon.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -158,7 +152,7 @@ export const ROOT_METADATA: Metadata = {
     locale: "en_IN",
     title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Google, TikTok, GA4 & Meta API sync launching soon.",
+      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Meta API sync launching soon.",
     images: ogImages(),
   },
   twitter: {
@@ -216,7 +210,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: SUPPORT_EMAIL,
       description:
-        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Google, TikTok, GA4, and Meta API sync launching soon.",
+        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Meta API sync launching soon.",
       contactPoint: {
         "@type": "ContactPoint",
         email: SUPPORT_EMAIL,
@@ -262,9 +256,6 @@ export const HOME_JSON_LD = {
       featureList: [
         "Meta Ads CSV import (live)",
         "Meta Marketing API sync (launching soon)",
-        "Google Ads CSV import (launching soon)",
-        "TikTok CSV import (launching soon)",
-        "Google Analytics 4 website reporting (launching soon)",
         "CSV to PowerPoint (.pptx)",
         "Live browser share link",
         "AI campaign summaries",
@@ -331,12 +322,12 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Google Ads, TikTok Ads, GA4 website reporting, and Meta API sync are launching soon.",
+      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Meta API sync is launching soon.",
   },
   {
     question: "What file formats can I upload?",
     answer:
-      "NextReport accepts CSV, Excel (XLSX, XLS), TSV, and TXT files exported from Meta Ads Manager, Google Ads, TikTok Ads, or GA4.",
+      "NextReport accepts CSV, Excel (XLSX, XLS), TSV, and TXT files exported from Meta Ads Manager.",
   },
   {
     question: "How long does it take to generate a report?",
@@ -351,7 +342,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional is unlimited. Google Ads, TikTok, GA4, and API sync are launching soon and included in your plan as they ship.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional is unlimited. Meta API sync is available for testing in the wizard.",
   },
   {
     question: "Can I white-label reports for my clients?",

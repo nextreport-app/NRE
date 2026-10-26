@@ -230,6 +230,7 @@ export function useReportUploadWizard({
   }
 
   function chooseWebsitePlatform() {
+    if (!isLaunchPlatformEnabled("GA4")) return;
     setWizardKind("website");
     rememberPlatformChoice("GA4");
     setMismatchWarning(false);
@@ -888,6 +889,8 @@ export function useReportUploadWizard({
         if (draft && isWizardServerDraftExpired(draft)) clearWizardDraft(clientId);
         return;
       }
+      // Preserve deferred-platform drafts without reopening their hidden wizard.
+      if (!isLaunchPlatformEnabled(draft.platform)) return;
       if (draft.step < 2 || !draft.uploadSessionId) return;
 
       setWizardDraftBootstrapping(true);
@@ -911,8 +914,7 @@ export function useReportUploadWizard({
         }
 
         setUploadSessionId(draft.uploadSessionId);
-        const platformChoice: WizardPlatformChoice =
-          draft.platform === "GOOGLE" || draft.platform === "TIKTOK" ? draft.platform : "META";
+        const platformChoice = coerceLaunchPlatform(draft.platform);
         setPlatform(platformChoice);
         setSelectedPlatformCard(platformChoice);
         setPlatformPickerExpanded(false);

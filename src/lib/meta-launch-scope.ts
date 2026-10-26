@@ -3,19 +3,19 @@
  * Update docs/META_LAUNCH_SCOPE.md when this changes.
  */
 
-export const META_LAUNCH_PHASE = "multi-platform" as const;
+export const META_LAUNCH_PHASE = "meta-v1" as const;
 
 /** Ad platforms selectable in the ads report wizard (GA4 uses the website wizard). */
-export const LAUNCH_ENABLED_PLATFORMS = ["META", "GOOGLE", "TIKTOK"] as const;
+export const LAUNCH_ENABLED_PLATFORMS = ["META"] as const;
 export type LaunchEnabledPlatform = (typeof LAUNCH_ENABLED_PLATFORMS)[number];
 
-const LIVE_PRODUCT_PLATFORMS = ["META", "GOOGLE", "TIKTOK", "GA4"] as const;
+const LIVE_PRODUCT_PLATFORMS = ["META"] as const;
 
-/** Legacy flag — all platforms are enabled via LAUNCH_ENABLED_PLATFORMS. */
+/** Deferred platform cards stay hidden during manual Meta acceptance. */
 export const SHOW_DEFERRED_PLATFORM_UI = false;
 
-/** Reserved for future staged rollouts (empty while all platforms are live). */
-export const DEFERRED_PLATFORMS = [] as const;
+/** Retained implementations awaiting owner testing before public rollout. */
+export const DEFERRED_PLATFORMS = ["GOOGLE", "TIKTOK", "GA4"] as const;
 
 /** Report types selectable in the generate step. */
 export const LAUNCH_ENABLED_REPORT_TYPES = [
@@ -95,13 +95,13 @@ export function coerceLaunchPlatform(platform: string): LaunchEnabledPlatform {
 export const META_LAUNCH_HERO_BADGE = "Meta Ads reporting for agencies";
 
 export const META_LAUNCH_HERO_SUBHEAD =
-  "Upload a day-wise Meta CSV from Ads Manager. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes. Google Ads, TikTok, GA4, and Meta API sync are launching soon.";
+  "Upload a day-wise Meta CSV from Ads Manager. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
 
 export const META_LAUNCH_FOOTER_BLURB =
-  "Automated Meta Ads reporting for digital agencies — client-ready decks in under two minutes. More platforms launching soon.";
+  "Automated Meta Ads reporting for digital agencies — client-ready decks in under two minutes.";
 
 /** Public site — do not call these “live” until launch scope expands. */
-export const LAUNCHING_SOON_PLATFORMS_LABEL = "Google Ads, TikTok Ads, GA4, and Meta API sync";
+export const LAUNCHING_SOON_PLATFORMS_LABEL = "Meta API sync";
 
 export const DEFERRED_PLATFORMS_SHORT = "";
 

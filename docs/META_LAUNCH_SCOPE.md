@@ -1,25 +1,23 @@
 # Product launch scope
 
-**Public messaging:** Only **Meta Ads CSV reporting** is **live**. **Meta Marketing API sync**, **Google Ads**, **TikTok Ads**, and **GA4** are **launching soon** (testing/finalization in progress).
+Updated 26 October 2026 for manual Meta acceptance after PR #588.
 
-**Engineering:** Platform pickers and account sections may remain visible when `LAUNCH_ENABLED_PLATFORMS` includes deferred platforms and/or `AD_PLATFORM_API_SYNC_ENABLED=true` for internal demos — that does not change customer-facing “live” claims.
+Only **Meta Ads** is selectable in the report wizard. Google Ads, TikTok Ads and GA4 are temporarily hidden from platform pickers, account connections, client settings and public marketing/SEO copy until the owner tests and approves them. Their implementations and existing report history remain intact. The direct GA4 creation page is unavailable while GA4 is hidden; saved non-Meta drafts are preserved without being restored into the active wizard.
 
-## Live in production (customer promise)
+**Meta API sync stays visible with its existing experimental notice and existing server configuration.** This visibility change does not change `AD_PLATFORM_API_SYNC_ENABLED`, API handlers, OAuth credentials or calculation logic. API correctness is still a separate acceptance task.
+
+## Visible functionality
 
 | Area | Included |
 |------|----------|
-| **Platform** | Meta Ads — CSV upload from Ads Manager |
-| **Report types** | Weekly, Monthly, Yesterday, Comparison, Historical, Day breakdown, Quarter, YTD, Creative (Meta CSV where supported) |
-| **Output** | Branded PPTX, share link, Google Slides, Google Drive, AI summaries |
+| Platform | Meta Ads — manual CSV and existing API testing controls |
+| Report types | Weekly, Monthly, Yesterday, Comparison, Historical, Day breakdown, Quarter, YTD, Creative (where supported) |
+| Output | Branded PPTX, share link, Google Slides, Google Drive, AI summaries |
 
-## Launching soon (not “live” in marketing)
+Google sign-in, Drive/Slides exports and the site's analytics tag remain available. Existing privacy disclosures for optional OAuth grants are retained because hiding a product entry point does not delete stored connections or historical data.
 
-- Meta Marketing API sync (`AD_PLATFORM_API_SYNC_ENABLED` — off by default)
-- Google Ads (CSV + API)
-- TikTok Ads (CSV + API)
-- GA4 website reporting wizard
+## Restore after testing
 
-## Code switches
-
-- `src/lib/meta-launch-scope.ts` — platform/report visibility + shared hero copy
-- `src/lib/ad-platform-api-sync.ts` — API import + Connect UI (default off)
+- `src/lib/meta-launch-scope.ts`: expand `LAUNCH_ENABLED_PLATFORMS` and `LIVE_PRODUCT_PLATFORMS` only for approved platforms; update deferred lists/phase to match. Existing picker, settings and GA4 page consume this shared visibility policy.
+- Update the public copy, pricing descriptions, translated taglines and SEO claims to describe the newly approved platform.
+- `src/lib/ad-platform-api-sync.ts`: existing API import configuration is independent of platform visibility.

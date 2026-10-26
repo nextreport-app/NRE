@@ -22,4 +22,4 @@ export function platformBetaCardNote(platform: PlatformBetaId): string | null {
 }
 
 /** Full notice for wizard and settings panels. */
-export const PLATFORM_BETA_NOTICE = `Meta Ads CSV reporting is live. ${LAUNCHING_SOON_PLATFORMS_LABEL} are in testing — connect and try flows if enabled on your account, but treat output as preview until we announce launch.`;
+export const PLATFORM_BETA_NOTICE = `Meta Ads CSV reporting is live. ${LAUNCHING_SOON_PLATFORMS_LABEL} is in testing — connect and try flows if enabled on your account, but treat output as preview until we announce launch.`;

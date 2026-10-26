@@ -11,16 +11,16 @@ import {
 } from "../meta-launch-scope";
 
 describe("meta launch scope", () => {
-  it("enables all ad and analytics platforms", () => {
-    expect(LAUNCH_ENABLED_PLATFORMS).toEqual(["META", "GOOGLE", "TIKTOK"]);
+  it("shows only Meta while other platforms await testing", () => {
+    expect(LAUNCH_ENABLED_PLATFORMS).toEqual(["META"]);
     expect(isLaunchPlatformEnabled("META")).toBe(true);
-    expect(isLaunchPlatformEnabled("GOOGLE")).toBe(true);
-    expect(isLaunchPlatformEnabled("TIKTOK")).toBe(true);
-    expect(isLaunchPlatformEnabled("GA4")).toBe(true);
-    expect(isClientPlatformConnectionVisible("googleAds")).toBe(true);
-    expect(isClientPlatformConnectionVisible("tiktok")).toBe(true);
-    expect(isClientPlatformConnectionVisible("ga4")).toBe(true);
-    expect(isWizardPlatformSwitchEnabled()).toBe(true);
+    expect(isLaunchPlatformEnabled("GOOGLE")).toBe(false);
+    expect(isLaunchPlatformEnabled("TIKTOK")).toBe(false);
+    expect(isLaunchPlatformEnabled("GA4")).toBe(false);
+    expect(isClientPlatformConnectionVisible("googleAds")).toBe(false);
+    expect(isClientPlatformConnectionVisible("tiktok")).toBe(false);
+    expect(isClientPlatformConnectionVisible("ga4")).toBe(false);
+    expect(isWizardPlatformSwitchEnabled()).toBe(false);
   });
 
   it("coerces unknown platforms to Meta", () => {

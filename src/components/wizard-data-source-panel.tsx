@@ -514,8 +514,8 @@ export function WizardDataSourceToggle({
                 className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiLaunchingSoon ? "text-dash-ink/80" : ""}`}
               >
                 {apiLaunchingSoon
-                  ? "Meta, Google, and TikTok API sync — preview in Account settings"
-                  : "Sync last 30 days from Meta, Google, or TikTok"}
+                  ? "Meta API sync — preview in Account settings"
+                  : "Sync last 30 days from Meta"}
               </span>
             </span>
           </button>

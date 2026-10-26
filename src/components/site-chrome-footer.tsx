@@ -69,8 +69,8 @@ export function SiteChromeFooter() {
           </div>
 
           <p className="mt-4 text-center text-[11px] leading-relaxed text-ink-muted/90 sm:text-left">
-            Meta, Google, TikTok, and Google Analytics are trademarks of their respective owners. NextReport is not
-            affiliated with Meta Platforms, Inc., Google LLC, or TikTok Inc.
+            Meta and Google are trademarks of their respective owners. NextReport is not
+            affiliated with Meta Platforms, Inc. or Google LLC.
           </p>
         </div>
       </footer>

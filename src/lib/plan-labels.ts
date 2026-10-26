@@ -17,11 +17,11 @@ export function getPlanDisplayName(planId: string): string {
 
 /** Short platform list for marketing headlines and feature bullets. */
 export const PLATFORM_LIST_SHORT =
-  "Meta Ads reporting today — Google Ads, TikTok Ads, and GA4 launching soon";
+  "Meta Ads reporting";
 
 /** API names for technical/how-it-works copy. */
 export const PLATFORM_LIST_API =
-  "Meta Marketing API (launching soon), Google Ads API, TikTok Marketing API, and GA4 Data API";
+  "Meta Marketing API (testing)";
 
 /** Agency (starter) plan — max client workspaces; enforced in lib/subscription.ts. */
 export const AGENCY_CLIENT_LIMIT = 10;
@@ -37,4 +37,4 @@ export { WHITE_LABEL_FEATURE } from "@/lib/report-branding";
 
 /** Short explainer for paywall / upgrade screens. */
 export const CLIENT_LIMIT_EXPLAINER =
-  "Each client is one brand workspace. Meta Ads CSV reporting uses one client slot today. Google Ads, TikTok, GA4, and API sync are launching soon — included in your plan as they ship.";
+  "Each client is one brand workspace. Meta Ads CSV reporting uses one client slot today. Meta API sync is available for testing in the wizard.";
