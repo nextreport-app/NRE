@@ -47,7 +47,7 @@ describe("marketing-videos", () => {
     expect(url.searchParams.get("autoplay")).toBeNull();
   });
 
-  it("points the homepage film at the uploaded walkthrough", () => {
+  it("points the demo-page film at the uploaded walkthrough", () => {
     expect(WORKFLOW_FILM_YOUTUBE_ID).toBe("M6vd8ZnuXfI");
     expect(new URL(youtubeEmbedUrl(WORKFLOW_FILM_YOUTUBE_ID, { autoplay: true })).searchParams.get("autoplay")).toBe(
       "1",

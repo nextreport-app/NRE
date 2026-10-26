@@ -1,11 +1,23 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { BookDemoForm } from "@/components/book-demo-form";
 import { MetaWalkthroughPromoSection } from "@/components/home/meta-walkthrough-promo-section";
 import { pageMetadata } from "@/lib/seo";
+
+const HomeWorkflowFilm = dynamic(
+  () => import("@/components/home/home-workflow-film").then((m) => m.HomeWorkflowFilm),
+  {
+    loading: () => (
+      <section className="border-t border-navy-border bg-navy px-6 py-16" aria-hidden="true">
+        <div className="mx-auto h-48 max-w-3xl animate-pulse rounded-lg bg-navy-border/30 sm:h-56" />
+      </section>
+    ),
+  },
+);
 
 export const metadata: Metadata = pageMetadata({
   title: "Book a Demo",
@@ -71,6 +83,7 @@ export default async function BookDemoPage() {
           lead="Same walkthrough we cover on live demos: export a day-wise Meta CSV, run the wizard, and deliver a branded deck."
           showFullGuideLink
         />
+        <HomeWorkflowFilm />
       </main>
     </>
   );
