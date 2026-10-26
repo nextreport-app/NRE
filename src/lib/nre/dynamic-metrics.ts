@@ -158,11 +158,12 @@ function aggregateCpc<T extends RawMetricRow>(
  * value column is present in this CSV, this returns NaN — callers render
  * NaN as "—" — rather than ever falling back to the wrong per-row column.
  */
-const ROAS_METRIC_KEYS = new Set(["results_roas", "roas"]);
+const ROAS_METRIC_KEYS = new Set(["results_roas", "roas", "app_purchase_roas"]);
 const ROAS_CONVERSION_VALUE_HEADER_CANDIDATES = ["purchases conversion value", "purchase conversion value", "conv. value", "conversion value"];
 
-function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number): number {
-  for (const candidate of ROAS_CONVERSION_VALUE_HEADER_CANDIDATES) {
+function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number, key: string): number {
+  const candidates = key === "app_purchase_roas" ? ["mobile app purchases conversion value", "mobile app purchase conversion value"] : ROAS_CONVERSION_VALUE_HEADER_CANDIDATES;
+  for (const candidate of candidates) {
     const header = headerMap.get(candidate);
     if (!header) continue;
     const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
@@ -216,6 +217,23 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   let totalSpend: number | null = null;
 
   for (const metric of metrics) {
+    if (metric.key === "frequency") {
+      const reachHeader = headerMap.get("reach"), impressionsHeader = headerMap.get("impressions");
+      if (reachHeader && impressionsHeader) {
+        const mapped = rows.map(row => ({ ...row, reach: row._raw[reachHeader], impressions: row._raw[impressionsHeader] }));
+        const reach = aggregateReach(mapped);
+        const impressions = rows.reduce((sum, row) => sum + parseCellNum(row._raw[impressionsHeader]), 0);
+        result[metric.key] = reach > 0 ? impressions / reach : NaN;
+      } else {
+        const header = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+        result[metric.key] = rows.length === 1 && header ? parseCellNum(rows[0]._raw[header]) : NaN;
+      }
+      continue;
+    }
+    if (metric.key === "ctr" && headerMap.has("impressions")) {
+      result[metric.key] = combinedCtrCpcFromRawRows(rows, headerMap).ctr;
+      continue;
+    }
     if (CPC_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
       result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
@@ -224,7 +242,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
 
     if (ROAS_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
-      result[metric.key] = aggregateRoas(rows, headerMap, totalSpend);
+      result[metric.key] = aggregateRoas(rows, headerMap, totalSpend, metric.key);
       continue;
     }
 
@@ -259,8 +277,10 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     if (metric.format === "currency" || metric.format === "number") {
       result[metric.key] = rawValues.reduce((sum, v) => sum + v, 0);
     } else {
-      const nonZero = rawValues.filter((v) => v > 0);
-      result[metric.key] = nonZero.length > 0 ? nonZero.reduce((sum, v) => sum + v, 0) / nonZero.length : 0;
+      // An exported daily rate/average lacks a valid period denominator.
+      // Preserve a single observation; do not invent a multi-row arithmetic mean.
+      const allObservedZero = rawValues.every(value => value === 0) && rows.every(row => String(row._raw[actualHeader] ?? "").trim() !== "");
+      result[metric.key] = rows.length === 1 ? rawValues[0] : allObservedZero ? 0 : NaN;
     }
   }
 

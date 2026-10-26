@@ -5,6 +5,8 @@
  * parseCellNum, which accepts number | string | null | undefined.
  */
 export interface MetricRow {
+  /** Retain observed facts through rollups; inference never replaces their values. */
+  sourceRows?: readonly MetricRow[];
   spend?: unknown;
   reach?: unknown;
   impressions?: unknown;

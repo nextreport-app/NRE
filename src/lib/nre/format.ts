@@ -58,6 +58,11 @@ export function fmtNumber(v: unknown): string {
   return Math.round(parseCellNum(v)).toLocaleString("en-US");
 }
 
+/** Conversion counts may be fractional (modelled attribution); do not change them into integers. */
+export function fmtResultCount(v: unknown): string {
+  return parseCellNum(v).toLocaleString("en-US", { maximumFractionDigits: 6 });
+}
+
 /** Port of fmtPercent_ */
 export function fmtPercent(v: unknown): string {
   return parseCellNum(v).toFixed(2) + "%";

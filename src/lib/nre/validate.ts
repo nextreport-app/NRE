@@ -10,7 +10,7 @@
  */
 
 import type { ColumnMap, NreRow } from "./columns";
-import { csvHasDailyGranularity, getRowDate, hasRealRowDate } from "./columns";
+import { csvHasDailyGranularity, getRowDate } from "./columns";
 import { parseDate } from "./dates";
 import type { Platform } from "./google-columns";
 import { adsManagerName } from "./platform-reporting";
@@ -20,6 +20,7 @@ import {
   noDeliveryWarningMessage,
 } from "./csv-spend-delivery";
 import { detectBlankCsvMetricLabels } from "./csv-zero-metric-guidance";
+import { sourceNumericIssues, duplicateDailyFacts } from "./source-contract";
 import {
   detectMetaCsvExportProfile,
   metaCsvExportImportHint,
@@ -188,6 +189,26 @@ export function validateMtdDailyCsv(
   if (rows.length === 0) {
     errors.push({ field: "rows", message: noDataRowsMessage(platform) });
     return { valid: false, errors, warnings, noCampaignData: true, metaCsvExportProfile };
+  }
+
+  const normalizedHeaders = headers.map(header => header.trim().toLowerCase()).filter(Boolean);
+  if (new Set(normalizedHeaders).size !== normalizedHeaders.length) errors.push({ field: "headers", message: "Duplicate CSV column names make values ambiguous. Export each metric once." });
+  for (const message of sourceNumericIssues(rows, colMap)) errors.push({ field: "numeric_value", message });
+  const invalidDates = rows.filter(row => row.campaign_name?.trim() && (!getRowDate(row) || !parseDate(getRowDate(row))));
+  if (invalidDates.length) errors.push({ field: "date", message: `${invalidDates.length} campaign record(s) have missing or invalid calendar dates. Correct these source records before generating a report.` });
+  const idsByName = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const raw = Object.fromEntries(Object.entries(row._raw).map(([key, value]) => [key.trim().toLowerCase(), value.trim()]));
+    for (const [name, id] of [[row.campaign_name, raw["campaign id"]], [`${row.campaign_name}/${row.ad_set_name}`, raw["ad set id"]]]) {
+      if (!name || !id) continue;
+      const key = name.trim().toLowerCase();
+      const ids = idsByName.get(key) ?? new Set<string>(); ids.add(id); idsByName.set(key, ids);
+    }
+  }
+  if ([...idsByName.values()].some(ids => ids.size > 1)) errors.push({ field: "entity_identity", message: "Different campaign/ad-set IDs share a name in this export. They cannot be safely merged by name; give those entities distinct names or export them separately." });
+  if (platform === "META" && csvHasDailyGranularity(rows)) {
+    const duplicates = duplicateDailyFacts(rows);
+    if (duplicates.length) errors.push({ field: "duplicate_rows", message: `Duplicate campaign/ad-set/ad/day records: ${duplicates.join("; ")}. Export one daily grain without overlapping totals or additional breakdowns.` });
   }
 
   // A row is usable once it has a campaign name and a resolvable date — that

@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { readRowsWithAutoMap, type ColumnMap, type NreRow } from "./columns";
+export class CsvInputError extends Error {}
 
 export interface ParsedCsv {
   colMap: ColumnMap;
@@ -89,6 +90,9 @@ export function parseCsvHeadersAndRows(csvText: string): { headers: string[]; da
     delimiter,
     skipEmptyLines: true,
   });
+  if (result.errors.some(error => error.type === "Quotes")) {
+    throw new CsvInputError("The CSV contains an unclosed or invalid quoted field. Export the file again before generating a report.");
+  }
 
   const data = result.data;
   if (!data || data.length === 0) return { headers: [], dataRows: [] };

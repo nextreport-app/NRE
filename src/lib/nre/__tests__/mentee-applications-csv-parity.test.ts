@@ -26,12 +26,12 @@ describe("Mentee weekly — applications objective CSV parity", () => {
   const rows = parseCsvText(readFileSync(FIXTURE, "utf8")).rows;
   const weeklyRange = { startIso: "2026-10-07", endIso: "2026-10-13" };
 
-  it("names Website Leads campaigns as WEBSITE LEADS by default", () => {
+  it("preserves the explicit applications event despite Website Leads campaign naming", () => {
     const map = buildCampaignObjectiveMap(rows);
-    expect(map.get(normalizeCampaignName(CAMPAIGN))?.resultLabel).toBe("WEBSITE LEADS");
+    expect(map.get(normalizeCampaignName(CAMPAIGN))?.resultLabel).toBe("WEBSITE SUBMIT APPLICATIONS");
   });
 
-  it("passes CSV verification with default WEBSITE LEADS detection", () => {
+  it("passes CSV verification with the source applications objective", () => {
     const report = buildReportData({
       accountName: "Mentee",
       currencySymbol: "$",

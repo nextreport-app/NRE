@@ -53,15 +53,14 @@ import {
   getMonthAbbrName,
   parseDate,
 } from "./dates";
-import { sumAllRowSpendInPeriod } from "./cpr-spend-basis";
-import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, parseCellNum } from "./format";
+import { REPORT_ENGINE_VERSION, type ReportCalculationContext } from "./calculation-context";
+import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtResultCount, fmtPercent, parseCellNum } from "./format";
 import { calculateAccountHealth } from "./health";
 import {
   buildCampaignObjectiveMap,
+  aggregateObjectiveRows,
   groupResultsByCampaignObjective,
-  shouldAttributeSpendForObjective,
   normalizeCampaignName,
-  resultValueForObjective,
   type ResultLabels,
 } from "./objective";
 import type { ResultCountingMode } from "./meta-csv-export-counting";
@@ -92,7 +91,6 @@ import {
   capRangeToData,
   computeActualDataRangeInWindow,
   computeCreativeRangeIso,
-  computeEffectiveYesterday,
   computeMtdRangeIso,
   resolveStandardChartRange,
   computeQuarterRangeIso,
@@ -269,6 +267,8 @@ export interface ResultColumnData {
 }
 
 export interface TableRowData {
+  /** Numeric snapshot kept separate from the presentation columns. */
+  accounting?: Record<string, { spendBasis: number; resultCount: number; rate: number | null }>;
   hasData: boolean;
   monthLabel: string;
   /** Same date range as monthLabel, but never compacted to the same-month short form — always "Month D - Month D" (e.g. "August 1 - August 5"), even when both ends share a month. Used only by the MTD chart slide's own sub-line (buildReportData's periodSubLabel), which has its own year-appended format independent of the Combined Total table's own row-label styling. */
@@ -347,6 +347,7 @@ export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE" | "QUARTER"
 export type Platform = "META" | "GOOGLE" | "TIKTOK";
 
 export interface ReportData {
+  calculationContext?: ReportCalculationContext;
   isPaused: boolean;
   platform: Platform;
   reportType: ReportType;
@@ -489,9 +490,7 @@ export interface BuildReportDataInput {
 
 // ─────────────────────────── Helpers ───────────────────────────────────────
 
-function average(values: number[]): number {
-  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-}
+
 
 export { impliedClicks } from "./ctr-cpc";
 import { combinedCtrCpcFromRows, impliedClicks } from "./ctr-cpc";
@@ -757,6 +756,7 @@ function computeTableRow(
     impressions: fmtNumber(totalImpr),
     ctr: combinedCtr > 0 ? fmtPercent(combinedCtr) : "—",
     cpc: combinedCpc > 0 ? fmtCurrency2dp(combinedCpc, currencySymbol) : "—",
+    accounting: Object.fromEntries(allGroups.map(g => [g.label, { spendBasis: g.totalSpend, resultCount: g.count, rate: g.count > 0 ? g.avgCpr : null }])),
     resultColumns: allGroups.map((g) => {
       // g.avgCpr is already this objective's own spend divided by its own
       // count (or, for an uncounted Reach objective — real Reach campaigns
@@ -784,7 +784,7 @@ function computeTableRow(
         // "COST PER SUBSCRIPTION") — the Combined Total table always shows
         // the actual objective's cost label, never an abbreviation.
         costLabel: g.costLabel,
-        value: fmtNumber(g.count),
+        value: fmtResultCount(g.count),
         cprValue,
       };
     }),
@@ -1002,7 +1002,7 @@ function buildLast30DaysChartSlide(params: {
     : undefined;
   const chartObjectiveMap = new Map(params.campaignObjectiveMap);
   const pinned = params.pinnedCampaignObjectiveKeys ?? new Set<string>();
-  buildCampaignObjectiveMap(chartRows).forEach((labels, name) => {
+  buildCampaignObjectiveMap(chartRawRows).forEach((labels, name) => {
     if (!pinned.has(name)) chartObjectiveMap.set(name, labels);
     else if (!chartObjectiveMap.has(name)) chartObjectiveMap.set(name, labels);
   });
@@ -1179,7 +1179,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   });
 
   const filteredPeriodRows = periodRows ?? [];
-  let weeklyRows: AggRow[] = split?.weeklyRows ?? [];
+  const weeklyRows: AggRow[] = split?.weeklyRows ?? [];
   let mtdRows: AggRow[] = split?.mtdRows ?? [];
   let primaryRows: AggRow[];
   let primaryRawRows: NreRow[];
@@ -1289,9 +1289,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // slide or table row is built, and reused by every consumer below —
   // computeTableRow's MTD row, every campaign/ad-set summary slide (Phase
   // A1/A2), and the Combined Total table's column grouping. Built from
-  // aggregated MTD + primary rows so the monthly overview and Combined Total
-  // table keep the same objective detection they had before chart-slide work.
-  const campaignObjectiveMap = buildCampaignObjectiveMap([...mtdRows, ...primaryRows]);
+  // original MTD + primary observations; rollups retain these rows too, so
+  // no secondary column can erase the source event before classification.
+  const objectiveSourceRows = [...new Set([...(split?.mtdRawRows ?? []), ...primaryRawRows])];
+  const campaignObjectiveMap = buildCampaignObjectiveMap(objectiveSourceRows);
   // Objective Confirmation wizard step — a user-reviewed/corrected
   // objective always wins over the engine's own detection, for every
   // consumer that reads campaignObjectiveMap below (campaign slides,
@@ -1533,6 +1534,13 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   }
   const tableHeaderLabels: TableHeaderLabels = { resultColumns: unionColumnHeaders };
   const combinedTotalStory = undefined;
+  const calculationContext: ReportCalculationContext = {
+    engineVersion: REPORT_ENGINE_VERSION, asOf: now.toISOString(), timezone,
+    primaryRange: isCalendarSpanReport ? mtdCalendarRange : effectiveWeeklyRange,
+    combinedRange: combinedTotalCurrentRange,
+    campaignObjectives: Object.fromEntries(campaignObjectiveMap),
+    periodObjectives: Object.fromEntries(previousMonthObjectiveMap),
+  };
 
   // ── Paused case: message slide instead of campaign/ad-set slides ────────
   // The last-30-days visual chart still renders when that window has spend,
@@ -1569,6 +1577,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       mtdRow,
       tableHeaderLabels,
       combinedTotalStory,
+      calculationContext,
       fileDateRange,
       objectiveWarnings: [],
       mtdSpendTotal,
@@ -1684,6 +1693,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
           cost_per_result: baseline.cprValue,
         };
     // Part 8 — a mixed-objective selection's own per-campaign pair uses a
+    baselineValues.frequency = parseCellNum(baseline.reach) > 0
+      ? `${(parseCellNum(baseline.impressions) / parseCellNum(baseline.reach)).toFixed(2)}x` : "—";
     // SYNTHETIC key (e.g. "website_leads"/"cost_per_website_leads", see
     // objectiveMetricKeys/buildMultiObjectiveSelection), not the generic
     // "results"/"cost_per_result" keys above. Without this, buildSlotsFromSelection's
@@ -1698,7 +1709,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     // to resolve via the normal raw-row lookup instead.
     if (campaignObjective) {
       const { resultKey, costKey, dedicated } = objectiveMetricKeys(campaignObjective.resultLabel);
-      if (!dedicated) {
+      if (!dedicated || campaignObjective.resultLabel === "LINK CLICKS" || campaignObjective.resultLabel === "VIDEO VIEWS") {
         baselineValues[resultKey] = baseline.resultValue;
         baselineValues[costKey] = baseline.cprValue;
       }
@@ -1719,8 +1730,19 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       // "Add from your CSV" pool.
       if (objectiveKeyFor(campaignObjective.resultLabel) === "meta_form_leads") {
         baselineValues["cost_per_lead"] = baseline.cprValue;
+        baselineValues["meta_form_leads"] = baseline.resultValue;
+        baselineValues["cost_per_meta_form_lead"] = baseline.cprValue;
       }
     }
+    if (campaignObjective?.resultLabel === "LANDING PAGE VIEWS") {
+      baselineValues.landing_page_views = baseline.resultValue;
+      baselineValues.cost_per_lpv = baseline.cprValue;
+    }
+    if (campaignObjective?.resultLabel.includes("MESSAGING") || campaignObjective?.resultLabel === "CONVERSATIONS") {
+      baselineValues.messaging_conversations_started = baseline.resultValue;
+      baselineValues.cost_per_conversation = baseline.cprValue;
+    }
+    if (campaignObjective?.resultLabel === "REACH") baselineValues.cost_per_1k_reached = baseline.cprValue;
     // Step 4 Section B — a user-edited campaign gets its own explicit metric
     // list as a HARD REPLACEMENT of the automatic per-objective narrowing
     // below, not an additional filter on top of it (see
@@ -1814,7 +1836,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     const googleKey = platformAdapter.googleKeyForCampaign(campaignName, googleContext);
     const campaignObjective = platformAdapter.slideObjective(campaignName, googleContext, campaignObjectiveMap);
     const campaignRaw = campaignRawGroups[campaignName] ?? [];
-    let { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.groupedResultDisplay(
+    const resultDisplay = platformAdapter.groupedResultDisplay(
       campRows,
       campaignRaw,
       campaignName,
@@ -1823,6 +1845,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       currencySymbol,
       { spend: totalSpend, conversions: totalConversions },
     );
+    const { resultLabel, costLabel } = resultDisplay;
+    let { resultValue, cprValue } = resultDisplay;
     if (resultLabel === "REACH" && totalReach > 0) {
       resultValue = fmtNumber(totalReach);
       cprValue =
@@ -2081,6 +2105,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     mtdRow,
     tableHeaderLabels,
     combinedTotalStory,
+    calculationContext,
     fileDateRange,
     objectiveWarnings,
     mtdSpendTotal,
@@ -2307,21 +2332,11 @@ function comparisonObjectiveTotals(
   resultCountingMode: ResultCountingMode = "standard",
   reachOpts?: ReachAggregationOptions,
 ): { count: number; cpr: number } {
-  let count = 0;
-  rows.forEach((row) => {
-    const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
-    count += value;
-  });
-  const periodSpend = sumAllRowSpendInPeriod(rows);
+  const totals = aggregateObjectiveRows(rows, objective.resultLabel, resultCountingMode);
+  let count = totals.results;
   const totalReach = rows.length > 0 ? aggregateReach(rows, reachOpts) : 0;
-  const isUncountedReach = objective.resultLabel === "REACH" && count === 0;
-  const cpr = isUncountedReach
-    ? totalReach > 0
-      ? (periodSpend * 1000) / totalReach
-      : 0
-    : count > 0
-      ? periodSpend / count
-      : 0;
+  if (objective.resultLabel === "REACH") count = totalReach;
+  const cpr = objective.resultLabel === "REACH" ? (count > 0 ? totals.spend * 1000 / count : 0) : totals.cpr ?? 0;
   return { count, cpr };
 }
 

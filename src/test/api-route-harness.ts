@@ -1,4 +1,10 @@
 import type { Session } from "next-auth";
+import { vi } from "vitest";
+
+/** Routes call auth() without middleware arguments; select that overload in mocks. */
+export function mockRouteAuth(auth: () => unknown) {
+  return vi.mocked(auth as () => Promise<Session | null>);
+}
 
 /** Parse a route handler JSON response in tests. */
 export async function jsonBody<T>(response: Response): Promise<T> {

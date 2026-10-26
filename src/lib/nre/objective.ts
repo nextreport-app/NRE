@@ -6,15 +6,19 @@
  * priority chain — see the comment above OBJECTIVE_CATALOG.
  */
 
-import { hasRealRowDate, rowHasDailyDate } from "./columns";
+import { rowHasDailyDate } from "./columns";
+import { preciseSum, aggregateNumericFacts } from "./numeric-accounting";
+import { impliedClicks } from "./ctr-cpc";
+import { objectiveRateScale } from "./objective-rate";
 import { sumAllRowSpendInPeriod } from "./cpr-spend-basis";
+import { objectiveRate } from "./objective-rate";
 import {
   metaCsvExportResultValue,
   metaFormLeadsFromMetaExportRow,
   websiteLeadsFromMetaExportRow,
   type ResultCountingMode,
 } from "./meta-csv-export-counting";
-import { parseCellNum, fmtNumber, fmtCurrency2dp } from "./format";
+import { parseCellNum, fmtNumber, fmtResultCount, fmtCurrency2dp } from "./format";
 import { aggregateReach, aggregateReachAcrossCampaigns, type ReachAggregationOptions } from "./reach-aggregation";
 import type { MetricRow } from "./types";
 import type { AggRow } from "./aggregate";
@@ -46,6 +50,18 @@ const { resultLabel: MESSAGING_LABEL, costLabel: MESSAGING_COST_LABEL } = MESSAG
 export interface ResultLabels {
   resultLabel: string;
   costLabel: string;
+}
+
+/** Expand retained observations without silently dropping source records. */
+export function observedRows(rows: readonly MetricRow[]): MetricRow[] {
+  return rows.flatMap(row => row.sourceRows ? observedRows(row.sourceRows) : [row]);
+}
+
+export function aggregateObjectiveRows(rows: readonly MetricRow[], label: string, mode: ResultCountingMode = "standard") {
+  return aggregateNumericFacts(observedRows(rows).map(row => {
+    const spend = parseCellNum(row.spend), impressions = parseCellNum(row.impressions);
+    return { spend, impressions, clicksAll: impliedClicks(row, spend, impressions), results: resultValueForObjective(row, label, mode) };
+  }), objectiveRateScale(label));
 }
 
 /**
@@ -601,14 +617,9 @@ interface ObjectiveBucket {
 function buildResultGroups(groups: Record<string, ObjectiveBucket>): ResultGroup[] {
   return Object.entries(groups)
     .map(([label, g]) => {
-      let adjCpr: number;
-      if (label === "REACH" && g.count === 0) {
-        adjCpr = g.totalReach > 0 ? (g.totalSpend * 1000) / g.totalReach : 0;
-      } else {
-        const rawCpr = g.count > 0 ? g.totalSpend / g.count : 0;
-        adjCpr = label === "REACH" ? rawCpr * 1000 : rawCpr;
-      }
-      return { label, costLabel: g.costLabel, count: g.count, avgCpr: adjCpr, totalSpend: g.totalSpend };
+      const count = g.count;
+      const denominator = label === "REACH" ? g.totalReach : count;
+      return { label, costLabel: g.costLabel, count, avgCpr: objectiveRate(g.totalSpend, denominator, label) ?? 0, totalSpend: g.totalSpend };
     })
     .sort((a, b) => b.count - a.count);
 }
@@ -629,6 +640,10 @@ export function sumRawColumnByKeywords(raw: Record<string, string> | undefined, 
   let total = 0;
   for (const [header, value] of Object.entries(raw)) {
     const h = header.toLowerCase();
+    // Callers read event quantities. A cost/rate header can contain the same
+    // event name (e.g. "Cost per initiate checkout") but has different units.
+    // Adding it to the count inflated 2 checkouts + $50 CPA into 52 checkouts.
+    if (/\b(?:cost|cpa|cpc|cpm|cpl|roas|rate|ratio)\b|%/.test(h)) continue;
     if (keywords.some((k) => h.includes(k))) total += parseCellNum(value);
   }
   return total;
@@ -1011,6 +1026,12 @@ function leadObjectiveFromCampaignNameOnly(
   }
   const scheduleFromResultType = scheduleObjectiveFromResultTypeRows(rows, customConversionResultTypes);
   if (scheduleFromResultType) return scheduleFromResultType;
+  // A named lead campaign can optimize a precise event such as applications.
+  // Preserve that event instead of relabeling its Results as generic leads.
+  const specific = resolveUniqueMappedObjectiveFromRows(rows, resolveObjectiveFromResultType);
+  if (specific && ["applications", "registrations", "subscriptions", "qualified_leads", "purchases", "initiate_checkout", "add_to_cart"].includes(specific.key)) {
+    return { resultLabel: specific.resultLabel, costLabel: specific.costLabel };
+  }
   if (isWebsiteLeadsCampaignName(rows)) {
     return { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" };
   }
@@ -1250,6 +1271,7 @@ function resolveCampaignObjectiveDetailed(
   rows: MetricRow[],
   customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
 ): ObjectiveConfidence {
+  rows = [...new Set(observedRows(rows))];
   const unanimousCsvResultType = resolveUniqueMappedObjectiveFromRows(
     rows.map((row) => ({
       result_type: resultTypeTextForObjectiveDetection(row, customConversionResultTypes) || null,
@@ -1479,6 +1501,7 @@ export function buildCampaignObjectiveMap(
   rows: MetricRow[],
   customConversionResultTypes?: MetaCustomConversionResultTypeLookup,
 ): Map<string, ResultLabels> {
+  rows = observedRows(rows);
   const map = new Map<string, ResultLabels>();
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
     map.set(name, resolveCampaignObjective(campRows, customConversionResultTypes));
@@ -1556,9 +1579,28 @@ export function websiteLeadsCountFromExportRow(row: Pick<MetricRow, "results" | 
 }
 
 export function resultValueForObjective(row: MetricRow, label: string, _mode: ResultCountingMode = "standard"): number {
+  if (row.sourceRows) return preciseSum(row.sourceRows.map(source => resultValueForObjective(source, label, _mode)));
   void _mode;
-  const rtLabel = getResultLabels(row.result_type).resultLabel;
-  if (rtLabel !== "RESULTS" && rtLabel !== label) return 0;
+  const rtLabel = (resolveObjectiveFromResultType(row.result_type ?? "") ?? getResultLabels(row.result_type)).resultLabel;
+  if (rtLabel !== "RESULTS" && rtLabel !== label) {
+    // Incidental traffic can coexist with a corrected conversion objective.
+    // A different explicit conversion event must not become its result.
+    if (!["REACH", "LINK CLICKS", "LANDING PAGE VIEWS"].includes(rtLabel)) return 0;
+    if (label === "WEBSITE LEADS") return parseCellNum(row.website_leads);
+    if (label === "META FORM LEADS") return parseCellNum(row.meta_leads) || parseCellNum(row.leads);
+    if (label === "PURCHASES") return parseCellNum(row.purchases);
+    if (label === "INITIATE CHECKOUT") return rowInitiateCheckout(row);
+    if (label === "ADD TO CART") return rowAddToCart(row);
+    if (label === "LINK CLICKS") return parseCellNum(row.link_clicks);
+    if (label === "LANDING PAGE VIEWS") return parseCellNum(row.landing_page_views);
+    return 0;
+  }
+  // A declared primary event's observed Results cell is authoritative. A
+  // secondary tracking column must not replace even an explicit zero.
+  if (rtLabel === label && ((typeof row.results === "string" && row.results.trim() !== "") || (typeof row.results === "number" && row.results > 0))) {
+    return parseCellNum(row.results);
+  }
+  if (label === "IMPRESSIONS") return parseCellNum(row.impressions) || parseCellNum(row.results);
 
   if (label === "INITIATE CHECKOUT") {
     const ic = rowInitiateCheckout(row);
@@ -1688,6 +1730,7 @@ export function groupResultsByCampaignObjective(
   resultCountingMode: ResultCountingMode = "standard",
   reachOpts?: ReachAggregationOptions,
 ): ResultGroup[] {
+  rows = observedRows(rows);
   const groups: Record<string, ObjectiveBucket> = {};
   Object.entries(groupRowsByCampaign(rows)).forEach(([name, campRows]) => {
     const objective = objectiveMap.get(name) ?? { resultLabel: "RESULTS", costLabel: "COST PER RESULT" };
@@ -1721,6 +1764,7 @@ export function groupResultsByCampaignObjective(
     }
   });
 
+  for (const [label, group] of Object.entries(groups)) if (label === "REACH") group.count = group.totalReach;
   return buildResultGroups(groups);
 }
 
@@ -1784,16 +1828,14 @@ export function getGroupedResultDisplayForObjective(
   // Checkout-leaning ad set inside an overall Purchases campaign), so a
   // campaign slide's shown count always matches what the Combined Total
   // table shows for that same campaign.
-  let count = 0;
-  const periodSpend = sumAllRowSpendInPeriod(campRows);
+  const totals = aggregateObjectiveRows(campRows, objective.resultLabel, resultCountingMode);
+  let count = totals.results;
+  const periodSpend = totals.spend;
   let totalReach = 0;
   if (campRows.length > 0) {
     totalReach = aggregateReach(campRows, reachOpts);
   }
-  campRows.forEach((row) => {
-    const value = resultValueForObjective(row, objective.resultLabel, resultCountingMode);
-    count += value;
-  });
+  if (objective.resultLabel === "REACH") count = totalReach;
 
   // Same uncounted-Reach special case as buildResultGroups: a real Reach
   // objective rarely populates a `results` count, so its cost is derived
@@ -1804,7 +1846,7 @@ export function getGroupedResultDisplayForObjective(
     const reachCpr = totalReach > 0 ? (periodSpend * 1000) / totalReach : 0;
     cprValue = reachCpr > 0 ? fmtCurrency2dp(reachCpr, currencySymbol) : "—";
   } else if (count > 0) {
-    cprValue = fmtCurrency2dp(periodSpend / count, currencySymbol);
+    cprValue = fmtCurrency2dp(objectiveRate(periodSpend, count, objective.resultLabel) ?? 0, currencySymbol);
   } else if (periodSpend > 0) {
     // Real spend, zero results — the cost is genuinely undefined, not "$0.00".
     cprValue = "N/A";
@@ -1815,7 +1857,7 @@ export function getGroupedResultDisplayForObjective(
   return {
     resultLabel: objective.resultLabel,
     costLabel: objective.costLabel,
-    resultValue: count > 0 ? fmtNumber(count) : "0",
+    resultValue: count > 0 ? fmtResultCount(count) : "0",
     cprValue,
   };
 }
@@ -1852,7 +1894,7 @@ export function getSingleRowResultDisplayForObjective(row: AggRow, objective: Re
     const reachCpr = reach > 0 ? (spend * 1000) / reach : 0;
     cprValue = reachCpr > 0 ? fmtCurrency2dp(reachCpr, currencySymbol) : "—";
   } else if (results > 0) {
-    cprValue = fmtCurrency2dp(spend / results, currencySymbol);
+    cprValue = fmtCurrency2dp(objectiveRate(spend, results, objective.resultLabel) ?? 0, currencySymbol);
   } else if (spend > 0) {
     cprValue = "N/A";
   } else {
@@ -1861,7 +1903,7 @@ export function getSingleRowResultDisplayForObjective(row: AggRow, objective: Re
   return {
     resultLabel: objective.resultLabel,
     costLabel: objective.costLabel,
-    resultValue: results > 0 ? fmtNumber(results) : "0",
+    resultValue: results > 0 ? fmtResultCount(results) : "0",
     cprValue,
   };
 }

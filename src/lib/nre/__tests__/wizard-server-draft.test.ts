@@ -37,7 +37,7 @@ describe("wizard-server-draft", () => {
       version: 1 as const,
       savedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       step: 2 as const,
-      visitedSteps: [1, 2] as const,
+      visitedSteps: [1, 2] as Array<1 | 2 | 3 | 4>,
       uploadSessionId: "abc",
       platform: "META" as const,
       reportType: "WEEKLY" as const,

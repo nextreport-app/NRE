@@ -1,3 +1,4 @@
+import { mockRouteAuth } from "@/test/api-route-harness";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonBody, mockSession } from "@/test/api-route-harness";
 
@@ -16,18 +17,18 @@ import { POST } from "../account/onboarding/route";
 
 describe("POST /api/account/onboarding", () => {
   beforeEach(() => {
-    vi.mocked(auth).mockReset();
+    mockRouteAuth(auth).mockReset();
     vi.mocked(prisma.user.update).mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockRouteAuth(auth).mockResolvedValue(null);
     const res = await POST();
     expect(res.status).toBe(401);
   });
 
   it("sets onboardingDismissedAt for the signed-in user", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("user_1"));
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.user.update).mockResolvedValue({} as never);
 
     const res = await POST();

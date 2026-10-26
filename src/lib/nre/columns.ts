@@ -78,6 +78,8 @@ export const COLUMN_KEYWORDS: Record<NreMetricKey, string[]> = {
 export type ColumnMap = Partial<Record<NreMetricKey, string>>;
 
 function headerMatchesMetric(metric: NreMetricKey, headerLower: string, keywords: string[]): boolean {
+  if (["results", "purchases", "website_leads", "meta_leads", "leads", "landing_page_views", "reach", "impressions", "link_clicks"].includes(metric) && /\bcost\b|\brate\b|\broas\b|%/.test(headerLower)) return false;
+  if (metric === "results" && /\(\s*initial\s*\)/.test(headerLower)) return false;
   if (!keywords.some((kw) => headerLower.includes(kw))) return false;
   // Generic "leads" must not steal "Website leads" / "Meta leads" headers.
   if (metric === "leads" && (headerLower.includes("website") || headerLower.includes("meta"))) {
@@ -135,7 +137,7 @@ export function buildColumnMap(headers: string[]): ColumnMap {
   return map;
 }
 
-export type NreRow = Partial<Record<NreMetricKey, string>> & { _raw: Record<string, string> };
+export type NreRow = Partial<Record<NreMetricKey, string>> & { _raw: Record<string, string>; _sourceError?: string };
 
 /** Port of readTabWithAutoMap_, operating on parsed CSV headers + string rows. */
 export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
@@ -152,6 +154,7 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
     .filter((row) => row.some((cell) => cell !== "" && cell !== null && cell !== undefined))
     .map((row) => {
       const obj: NreRow = { _raw: {} };
+      if (row.length !== headers.length) obj._sourceError = `Expected ${headers.length} columns but found ${row.length}. Check delimiters, quoting, and missing cells.`;
       headers.forEach((h, i) => {
         if (h) obj._raw[h] = row[i] ?? "";
       });

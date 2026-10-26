@@ -3,6 +3,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { REPORT_ENGINE_VERSION } from "./calculation-context";
 import type { Client } from "@/generated/prisma/client";
 import type { Platform } from "./google-columns";
 import {
@@ -35,12 +36,20 @@ function stableJson(value: unknown): string {
 
 export function computeWizardStandardReportFingerprint(input: {
   fileHash: string;
-  client: Pick<Client, "id" | "monthlyBudget" | "timezone" | "showBudgetPacingOnCover" | "campaignObjectiveCache">;
+  client: Pick<Client, "id" | "monthlyBudget" | "timezone" | "showBudgetPacingOnCover" | "campaignObjectiveCache"> & Partial<Pick<Client, "currency" | "accountName" | "previousMonthDataUrl" | "previousMonthDataUpdatedAt" | "previousMonthSelectedCampaigns">>;
   platform: Platform;
   formData: FormData | null;
+  now?: Date;
 }): string {
   const { formData, client, platform, fileHash } = input;
   const payload = {
+    engineVersion: REPORT_ENGINE_VERSION,
+    asOfDay: new Intl.DateTimeFormat("en-CA", { timeZone: client.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(input.now ?? new Date()),
+    accountName: client.accountName,
+    currency: client.currency,
+    previousMonthDataUrl: client.previousMonthDataUrl,
+    previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
+    previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
     fileHash,
     clientId: client.id,
     platform,

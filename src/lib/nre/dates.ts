@@ -40,20 +40,25 @@ export function getCalendarDateInTimezone(now: Date, timezone: string): ParsedDa
 }
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+function calendarDate(day: number, month: number, year: number): ParsedDate | null {
+  const instant = new Date(Date.UTC(year, month - 1, day));
+  return Number.isFinite(instant.getTime()) && instant.getUTCFullYear() === year && instant.getUTCMonth() === month - 1 && instant.getUTCDate() === day
+    ? { day, month, year } : null;
+}
 
 export function parseDate(rawValue: unknown): ParsedDate | null {
   if (rawValue === null || rawValue === undefined || rawValue === "") return null;
 
   if (rawValue instanceof Date) {
     const ist = new Date(rawValue.getTime() + IST_OFFSET_MS);
-    return { day: ist.getUTCDate(), month: ist.getUTCMonth() + 1, year: ist.getUTCFullYear() };
+    return calendarDate(ist.getUTCDate(), ist.getUTCMonth() + 1, ist.getUTCFullYear());
   }
 
   if (typeof rawValue === "number") {
     // Excel/Sheets serial date (days since 1899-12-30)
     const d = new Date(Math.round((rawValue - 25569) * 86400 * 1000));
     const ist = new Date(d.getTime() + IST_OFFSET_MS);
-    return { day: ist.getUTCDate(), month: ist.getUTCMonth() + 1, year: ist.getUTCFullYear() };
+    return calendarDate(ist.getUTCDate(), ist.getUTCMonth() + 1, ist.getUTCFullYear());
   }
 
   const nums = String(rawValue).match(/\d+/g);
@@ -64,13 +69,13 @@ export function parseDate(rawValue: unknown): ParsedDate | null {
 
   // ISO 8601 (YYYY-MM-DD, YYYY/MM/DD, ...) — year-first, unambiguous.
   if (nums[0].length === 4) {
-    return { day: n2, month: n1, year: n0 };
+    return calendarDate(n2, n1, n0);
   }
 
   if (n2 < 100) n2 += 2000;
-  if (n0 > 12) return { day: n0, month: n1, year: n2 };
-  if (n1 > 12) return { day: n1, month: n0, year: n2 };
-  return { day: n0, month: n1, year: n2 }; // assume Indian DD-MM-YY
+  if (n0 > 12) return calendarDate(n0, n1, n2);
+  if (n1 > 12) return calendarDate(n1, n0, n2);
+  return calendarDate(n0, n1, n2); // preserve Indian DD-MM-YY policy
 }
 
 export function formatDateUS(rawValue: unknown): string {

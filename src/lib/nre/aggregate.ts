@@ -43,6 +43,7 @@ function sumMetaFormLeadsFromRows(rows: MetricRow[]): number {
 }
 
 export interface AggRow {
+  sourceRows?: readonly NreRow[];
   campaign_name: string;
   ad_set_name: string;
   result_type: string;
@@ -69,6 +70,8 @@ export interface AggRow {
    * MetricRow's identically-named optional fields.
    */
   purchases: number;
+  /** Compatibility for numeric callers; raw observations remain authoritative. */
+  website_leads?: number;
   initiate_checkout: number;
   add_to_cart: number;
   /** Raw text, e.g. "Active"/"Not delivering"/"Paused" — see delivery-status.ts. Empty when the CSV has no delivery-status column, or no row for this group had one set. */
@@ -319,6 +322,7 @@ export function aggregateRows(rowsToAgg: NreRow[]): AggRow[] {
     }
 
     return {
+      sourceRows: g.sourceRows,
       campaign_name: g.campaign_name,
       ad_set_name: g.ad_set_name,
       result_type: actualResultType,

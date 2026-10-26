@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CsvInputError } from "./nre/parse-csv";
 
 /**
  * Builds a logged, diagnosable 500 response for an unhandled route error —
@@ -9,6 +10,7 @@ import { NextResponse } from "next/server";
  * generic "something went wrong" with no way to diagnose the real cause.
  */
 export function apiErrorResponse(err: unknown, context: string): NextResponse {
+  if (err instanceof CsvInputError) return NextResponse.json({ valid: false, error: err.message, errors: [{ field: "csv", message: err.message }], warnings: [] }, { status: 400 });
   console.error(`[api:${context}] failed:`, err);
   const message = err instanceof Error ? err.message : "Unexpected server error.";
   return NextResponse.json({ error: message }, { status: 500 });

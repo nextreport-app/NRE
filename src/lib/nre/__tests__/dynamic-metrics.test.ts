@@ -25,13 +25,12 @@ describe("aggregateDynamicMetrics", () => {
     expect(result.spend).toBe(350);
   });
 
-  it("averages non-zero values for percentage/ratio/duration metrics", () => {
+  it("does not average daily percentages without their period denominator", () => {
     const rows = [row({ CTR: "2" }), row({ CTR: "4" }), row({ CTR: "0" })];
     const m = metric({ key: "ctr", format: "percentage", csvName: "ctr" });
     const result = aggregateDynamicMetrics(rows, [m], "meta");
-    // Average of the two non-zero values (2, 4) = 3 — zero rows excluded,
-    // same treatment the existing fixed CTR/CPC pipeline already gives.
-    expect(result.ctr).toBe(3);
+    // Daily percentages cannot be combined without their impression counts.
+    expect(result.ctr).toBeNaN();
   });
 
   it("returns 0 for a percentage/ratio metric when every row's value is zero", () => {

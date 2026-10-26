@@ -102,6 +102,7 @@ describe("buildVisualChartSlideModel", () => {
         ],
         totalAllSpend: 993,
         snapshot: {
+          ...chart().snapshot,
           mode: "single",
           primaryResultsLabel: "QUOTE REQUESTS",
           primaryCprLabel: "COST PER QUOTE REQUEST",
@@ -158,6 +159,7 @@ describe("buildVisualChartSlideModel", () => {
         totalAllSpend: 135,
         campaigns: [campaign("Messaging", { spend: 135, resLabel: "MESSAGING / CONVERSATIONS", cprLabel: "COST PER CONVERSATION", results: 3, cpr: 44.92 })],
         snapshot: {
+          ...chart().snapshot,
           mode: "multi",
           mtdSpendFormatted: "$135",
           activeCampaignCount: 1,
@@ -200,6 +202,7 @@ describe("buildVisualChartSlideModel", () => {
       chart({
         totalAllSpend: 3400,
         snapshot: {
+          ...chart().snapshot,
           mode: "multi",
           mtdSpendFormatted: "$3,401",
           activeCampaignCount: 2,
@@ -253,6 +256,7 @@ describe("buildVisualChartSlideModel", () => {
         totalAllSpend: 1921,
         activeCampaignCount: 1,
         snapshot: {
+          ...chart().snapshot,
           mode: "multi",
           mtdSpendFormatted: "$1,921",
           activeCampaignCount: 3,
@@ -304,6 +308,7 @@ describe("buildVisualChartSlideModel", () => {
         totalAllSpend: 5780,
         activeCampaignCount: 1,
         snapshot: {
+          ...chart().snapshot,
           mode: "multi",
           mtdSpendFormatted: "$5,780",
           activeCampaignCount: 3,
@@ -369,6 +374,7 @@ describe("buildVisualChartSlideModel", () => {
           }),
         ),
         snapshot: {
+          ...chart().snapshot,
           mode: "single",
           mtdSpendFormatted: "$2,180",
           activeCampaignCount: 5,
@@ -449,6 +455,7 @@ describe("buildVisualChartSlideModel", () => {
           }),
         ],
         snapshot: {
+          ...chart().snapshot,
           mode: "single",
           mtdSpendFormatted: "$391",
           activeCampaignCount: 2,
