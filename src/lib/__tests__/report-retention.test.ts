@@ -68,7 +68,7 @@ describe("purgeExpiredReportsForUser", () => {
     const deleted = await purgeExpiredReportsForUser("user-1", new Date("2026-09-07T12:00:00Z"));
     expect(deleted).toBe(1);
 
-    const cutoff = findMany.mock.calls[0]![0]!.where!.createdAt!.lt as Date;
+    const cutoff = (findMany.mock.calls[0]![0]!.where!.createdAt as { lt: Date }).lt;
     const expected = new Date("2026-09-07T12:00:00Z");
     expected.setDate(expected.getDate() - 14);
     expect(cutoff.toISOString()).toBe(expected.toISOString());

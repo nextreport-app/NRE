@@ -10,15 +10,7 @@ import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import type { BillingInterval } from "@/lib/razorpay";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
-const ANNUAL_PRICES = {
-  starter: { inr: "₹7,670", usd: "$86" },
-  professional: { inr: "₹12,470", usd: "$144" },
-} as const;
-
-const MONTHLY_PRICES = {
-  starter: { inr: "₹799", usd: "$9" },
-  professional: { inr: "₹1,299", usd: "$15" },
-} as const;
+import { formattedPlanPrice } from "@/lib/plan-pricing";
 
 function CheckIcon() {
   return (
@@ -58,12 +50,12 @@ function PlanCard({
   const p = home.pricing;
   const planCopy = home.pricing.plans[planId];
   const name = getPlanDisplayName(planId);
-  const monthlyPrice = currency === "INR" ? MONTHLY_PRICES[planId].inr : MONTHLY_PRICES[planId].usd;
-  const annualPrice = currency === "INR" ? ANNUAL_PRICES[planId].inr : ANNUAL_PRICES[planId].usd;
+  const monthlyPrice = formattedPlanPrice(planId, currency);
+  const annualPrice = formattedPlanPrice(planId, currency, "annual");
   const displayPrice = interval === "annual" ? annualPrice : monthlyPrice;
   const ctaClassName = `mt-8 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
     highlighted
-      ? "bg-accent text-white hover:bg-accent-hover"
+      ? "bg-accent text-[#0d1b2e] hover:bg-accent-hover"
       : "border border-navy-border text-white hover:bg-navy"
   }`;
 
@@ -76,7 +68,7 @@ function PlanCard({
       }`}
     >
       {highlighted && (
-        <span className="absolute -top-3 left-8 rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+        <span className="absolute -top-3 left-8 rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0d1b2e]">
           {p.mostPopular}
         </span>
       )}

@@ -75,21 +75,21 @@ function csvObjectiveStatusLine(
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
+  const copy = useWizardCopy();
+  const { locale } = useSiteTheme();
   const stepActive = w.step === 2;
   const selectionKey = w.selectedCampaignsKey();
   const objectivesReady = w.metricsFetchedForSelection === selectionKey;
   const selectedCount = w.selectedCampaigns.size;
 
+  const ensureObjectives = w.ensureObjectivesForSelection;
   useEffect(() => {
     if (!stepActive || selectedCount === 0) return;
     if (objectivesReady) return;
-    void w.ensureObjectivesForSelection(selectionKey);
-  }, [stepActive, selectionKey, selectedCount, objectivesReady, w.ensureObjectivesForSelection]);
+    void ensureObjectives(selectionKey);
+  }, [stepActive, selectionKey, selectedCount, objectivesReady, ensureObjectives]);
 
   if (!stepActive) return null;
-
-  const copy = useWizardCopy();
-  const { locale } = useSiteTheme();
 
   const {
     ADSET_CHIP_CLASS,
@@ -109,17 +109,14 @@ export function WizardCampaignsStep() {
     currencySymbol,
     deselectAllAdSetsForCampaign,
     expandedCampaigns,
-    ensureObjectivesForSelection,
     handleCampaignsContinue,
     hasBlockingObjectives,
     lowSpendCampaigns,
-    metricsFetchedForSelection,
     metricsStatus,
     objectiveConfidenceBadge,
     selectAllAdSetsForCampaign,
     selectedAdSets,
     selectedCampaigns,
-    selectedCampaignsKey,
     setCampaignObjective,
     setCampaignSearch,
     setCsvDateGuidance,
@@ -150,6 +147,15 @@ export function WizardCampaignsStep() {
 
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
+      <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-3 text-sm text-dash-ink" role="status">
+        <p>{selectedCampaigns.size} of {campaigns.length} campaigns included · {campaigns.length - selectedCampaigns.size} excluded</p>
+        <p className="mt-1 text-dash-ink-secondary">
+          Uploaded-file spend: included {campaigns.filter(name => selectedCampaigns.has(name)).reduce((sum, name) => sum + (campaignSpend[name] ?? 0), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          {" · excluded "}{campaigns.filter(name => !selectedCampaigns.has(name)).reduce((sum, name) => sum + (campaignSpend[name] ?? 0), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          {" (account currency; the report applies its selected date windows)."}
+        </p>
+        <p className="mt-1 text-xs text-dash-ink-secondary">Ad-set selections control detail slides. Campaign and combined totals include all ad sets in each selected campaign.</p>
+      </div>
       {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
         <CsvDateGuidanceBanner
           guidance={csvDateGuidance}

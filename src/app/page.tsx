@@ -17,7 +17,6 @@ const MetaWalkthroughPromoSection = dynamic(
     ),
   },
 );
-import { PainPointSection } from "@/components/home/pain-point-section";
 import { FeaturesSection } from "@/components/home/features-section";
 import { TrustAndSocialProofStrip } from "@/components/home/trust-and-social-proof-strip";
 import { ReportPreviewSection } from "@/components/home/report-preview-section";
@@ -54,14 +53,13 @@ export default async function Home() {
       <PublicNav loggedIn={loggedIn} />
       <main className="flex-1">
         <HeroSection loggedIn={loggedIn} />
+        <SampleReportSection />
         <SpecialistTimeSavingsSection />
         <MetaWalkthroughPromoSection />
         <HowItWorksSection />
-        <PainPointSection />
         <FeaturesSection />
         <TrustAndSocialProofStrip initial={socialProofInitial} />
         <ReportPreviewSection />
-        <SampleReportSection />
         <TestimonialsSection />
         <LeadCaptureSection />
         <PricingTeaserStrip />

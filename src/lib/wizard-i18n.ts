@@ -17,10 +17,10 @@ const EN_UI = {
       ? "Deck preview differs from your CSV on 1 total"
       : `Deck preview differs from your CSV on ${count} totals`,
   csvMismatchBody:
-    "You can still generate and fix mismatches in the deck. Open a support ticket if this keeps happening for the same setup.",
-  csvVerifiedTitle: "Verified against your CSV",
+    "Review the differing metrics, date windows, and objective choices below. If you generate for internal review, do not share it with a client until these differences are resolved.",
+  csvVerifiedTitle: "Listed CSV checks passed",
   csvVerifiedDetail: (_scopesLabel: string) =>
-    "Spend, results, cost per result, CTR (all), and CPC (all) match your CSV for each period below. Week, MTD, and last 30 days are separate — don’t compare totals across them.",
+    "The comparisons listed below passed for their own reporting windows. This is a consistency check, not a guarantee that every source metric or inferred objective is correct.",
   csvSkippedTitle: "CSV cross-check not run",
   csvSkippedLead:
     "This is not a pass — deck totals were not compared to your CSV for this report setup.",

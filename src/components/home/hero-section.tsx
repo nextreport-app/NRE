@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import { useSiteCopy } from "@/hooks/use-site-copy";
+import { HERO_SAMPLE_VALUES } from "@/lib/marketing-report-sample";
 
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -94,12 +95,13 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           <CtaTrustBadges className="mt-4 lg:justify-start" />
         </div>
 
-        <div className="flex w-full justify-center lg:w-auto">
+        <div className="flex w-full flex-col items-center justify-center lg:w-auto">
           <SlideMockup
             campaign={home.heroMockCampaign}
             weekly={home.heroMockWeekly}
-            metrics={home.heroMetrics}
+            metrics={home.heroMetrics.map((metric, index) => ({ ...metric, value: HERO_SAMPLE_VALUES[index] ?? metric.value }))}
           />
+          <p className="mt-3 text-xs text-ink-muted">Illustrative example · rates calculated from the figures shown</p>
         </div>
       </div>
     </section>

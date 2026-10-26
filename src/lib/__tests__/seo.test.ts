@@ -22,12 +22,12 @@ describe("seo", () => {
       path: "/pricing",
     });
     expect(meta.alternates?.canonical).toBe("https://nextreport.in/pricing");
-    expect(meta.twitter?.card).toBe("summary_large_image");
+    expect((meta.twitter && "card" in meta.twitter ? meta.twitter.card : undefined)).toBe("summary_large_image");
     expect(meta.openGraph?.locale).toBe("en_IN");
   });
 
   it("does not include fake aggregate ratings in software schema", () => {
-    const graph = HOME_JSON_LD["@graph"] as Record<string, unknown>[];
+    const graph = HOME_JSON_LD["@graph"] as readonly Record<string, unknown>[];
     const software = graph.find((node) => node["@type"] === "SoftwareApplication");
     expect(software).toBeDefined();
     expect(software).not.toHaveProperty("aggregateRating");

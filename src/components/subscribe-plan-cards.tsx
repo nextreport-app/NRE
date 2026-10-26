@@ -9,15 +9,7 @@ import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 import type { PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
 
-const ANNUAL_PRICES: Record<BillablePlanId, Record<PricingCurrency, string>> = {
-  starter: { INR: "₹6,710", USD: "$77" },
-  professional: { INR: "₹16,310", USD: "$192" },
-};
-
-const MONTHLY_PRICES: Record<BillablePlanId, Record<PricingCurrency, string>> = {
-  starter: { INR: "₹799", USD: "$9" },
-  professional: { INR: "₹1,299", USD: "$15" },
-};
+import { formattedPlanPrice } from "@/lib/plan-pricing";
 
 const PLAN_OPTIONS: { id: BillablePlanId; highlighted?: boolean }[] = [
   { id: "starter" },
@@ -34,7 +26,7 @@ function PlanPrice({
   interval: BillingInterval;
 }) {
   const price =
-    interval === "annual" ? ANNUAL_PRICES[planId][currency] : MONTHLY_PRICES[planId][currency];
+    formattedPlanPrice(planId, currency, interval);
   return (
     <>
       <p className="mt-1 text-lg font-semibold text-dash-ink">
@@ -87,7 +79,7 @@ export function SubscribePlanCards({
               userName={userName}
               className={`mt-3 w-full rounded-md px-4 py-2 text-sm font-medium ${
                 plan.highlighted
-                  ? "bg-dash-accent text-white hover:bg-dash-accent-hover"
+                  ? "bg-dash-accent text-[#0d1b2e] hover:bg-dash-accent-hover"
                   : "border border-dash-border text-dash-ink hover:bg-dash-secondary/20"
               }`}
             />
@@ -127,7 +119,7 @@ export function SubscribeWithCheckoutOptions({
         label={label}
         className={
           className ??
-          "w-full rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-white hover:bg-dash-accent-hover"
+          "w-full rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-[#0d1b2e] hover:bg-dash-accent-hover"
         }
       />
     </div>

@@ -85,6 +85,10 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
           </summary>
           <div className="nre-wizard-callout-success__detail mt-2 border-t border-emerald-800/25 pt-2 pl-10 text-[13px] font-normal leading-snug">
             <p>{detailText}</p>
+            <p className="mt-2">Only the checks listed below passed. Unique period Reach may be estimated; unchecked metrics and API parity are not certified by this comparison.</p>
+            <ul className="mt-2 space-y-1 text-xs">
+              {verification.checks.map((check, index) => <li key={`${check.scope}-${check.metric}-${index}`}>{check.scope}: {check.metric} — {check.reportDisplay}{check.note ? ` · ${check.note}` : ""}</li>)}
+            </ul>
             {scopeList.length > 0 ? (
               <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[12px] text-emerald-100/90">
                 {scopeList.map((scope) => (

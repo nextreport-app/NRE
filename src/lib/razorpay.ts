@@ -18,31 +18,13 @@
 import Razorpay from "razorpay";
 import crypto from "node:crypto";
 import type { PricingCurrency } from "@/lib/currency";
-import { getPlanDisplayName } from "@/lib/plan-labels";
 
 export type PlanId = "starter" | "professional";
-export type BillingInterval = "monthly" | "annual";
+import type { BillingInterval } from "./plan-pricing";
 
-const ANNUAL_DISCOUNT = 0.8;
-
-export interface PlanDefinition {
-  name: string;
-  /** INR price, in paise (Razorpay's smallest INR unit). */
-  amountPaise: number;
-  /** USD price, in cents (Razorpay's smallest USD unit) — Razorpay's international-card support bills USD orders directly, no FX conversion from the INR price. */
-  amountUsdCents: number;
-}
-
-// ₹799 / $9 per month (Agency) and ₹1,299 / $15 per month (Professional) —
-// matches the /pricing page's displayed prices exactly in both currencies.
-// Prices exclude GST (18% on SaaS in India, added at checkout for INR).
-// Keeping the amount here (not trusted from the client) is what stops a
-// tampered frontend request from creating an order for less than the real
-// price, in either currency.
-export const PLANS: Record<PlanId, PlanDefinition> = {
-  starter: { name: getPlanDisplayName("starter"), amountPaise: 79_900, amountUsdCents: 900 },
-  professional: { name: getPlanDisplayName("professional"), amountPaise: 129_900, amountUsdCents: 1_500 },
-};
+import { amountForCurrency } from "./plan-pricing";
+export { PLANS, amountForCurrency } from "./plan-pricing";
+export type { BillingInterval } from "./plan-pricing";
 
 export function isPlanId(value: unknown): value is PlanId {
   return value === "starter" || value === "professional";
@@ -50,13 +32,6 @@ export function isPlanId(value: unknown): value is PlanId {
 
 export function isPricingCurrency(value: unknown): value is PricingCurrency {
   return value === "INR" || value === "USD";
-}
-
-/** The real, server-trusted charge amount for a plan in a given currency — see PLANS' file header for why the client never gets to supply this. */
-export function amountForCurrency(planId: PlanId, currency: PricingCurrency, interval: BillingInterval = "monthly"): number {
-  const base = currency === "INR" ? PLANS[planId].amountPaise : PLANS[planId].amountUsdCents;
-  if (interval === "monthly") return base;
-  return Math.round(base * 12 * ANNUAL_DISCOUNT);
 }
 
 export function isBillingInterval(value: unknown): value is BillingInterval {
