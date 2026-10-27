@@ -17,11 +17,13 @@ async function send(input: LifecycleRecipient, key: string, kind: string, conten
   await queueEmail({ key, kind, userId: input.userId, payload: { to: [input.to], ...content } });
   return deliverQueuedEmail(key);
 }
-export async function sendWelcomeTrialEmail(input: LifecycleRecipient & { trialEndsAt: Date }) {
+export async function sendWelcomeTrialEmail(input: LifecycleRecipient & { trialEndsAt: Date; requiresEmailVerification?: boolean }) {
   return send(input, `welcome:${identity(input)}:${input.trialEndsAt.toISOString()}`, "WELCOME", formatLifecycleEmail({ ...input,
     title: "Welcome to NextReport — your first client report starts here",
     lines: ["Your 7-day trial includes up to 3 active clients and 10 reports. No card is required.", `Trial ends: ${trialEndLabel(input.trialEndsAt)}.`,
-      "First, verify your email using the verification link in your inbox. Then add a client, upload a day-wise Meta Ads CSV, and generate your report.",
+      input.requiresEmailVerification === false
+        ? "Google has verified your email. Add a client, upload a day-wise Meta Ads CSV, and generate your report."
+        : "First, verify your email using the verification link in your inbox. Then add a client, upload a day-wise Meta Ads CSV, and generate your report.",
       "Account setup, ad-account connections and Google Drive are optional for your first CSV report. Review the slides before sharing with your client."],
     action: "Open your workspace", path: "/clients",
   }));

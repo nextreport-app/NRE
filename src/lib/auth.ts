@@ -101,7 +101,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           select: { email: true, name: true, trialEndsAt: true },
         });
         if (row) {
-          await sendWelcomeTrialEmail({ userId: user.id, to: row.email, name: row.name, trialEndsAt: row.trialEndsAt }).catch(err => console.error("[auth:welcome-queue]", err));
+          await sendWelcomeTrialEmail({ requiresEmailVerification: false, userId: user.id, to: row.email, name: row.name, trialEndsAt: row.trialEndsAt }).catch(err => console.error("[auth:welcome-queue]", err));
         }
       }
     },

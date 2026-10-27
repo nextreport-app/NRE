@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { messageForAuthSignInError } from "@/lib/auth-sign-in-errors";
+import { GoogleAuthNotice } from "@/components/auth/google-auth-notice";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { isGoogleSignInEnabled } from "@/lib/google-sign-in-enabled";
 import { AuthFieldLabel, AuthPageShell, authInputClassName } from "@/components/auth/auth-page-shell";
@@ -147,6 +148,7 @@ function LoginForm() {
         callbackUrl={callbackUrl}
         disabled={loading}
         loading={googleLoading}
+        onError={message => { setGoogleLoading(false); setFormError(message); }}
         onStart={() => {
           setFormError(null);
           setGoogleLoading(true);
@@ -154,9 +156,7 @@ function LoginForm() {
       />
 
       {isGoogleSignInEnabled() ? (
-        <p className="mt-4 text-center text-xs leading-relaxed text-ink-muted">
-          Use Google if you signed up that way — no separate password needed.
-        </p>
+        <GoogleAuthNotice />
       ) : null}
     </AuthPageShell>
   );
