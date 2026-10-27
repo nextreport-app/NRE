@@ -44,7 +44,7 @@ export const HOME_EN: HomeCopy = {
         "Export Last 30 days or Previous month with Day breakdown from Ads Manager — the supported way to build Meta reports today.",
     },
     {
-      title: "Previous month comparison",
+      title: "Previous-month totals",
       description:
         "Upload a prior-month CSV so Combined Total can show last month vs this period — optional panel on Step 1.",
     },

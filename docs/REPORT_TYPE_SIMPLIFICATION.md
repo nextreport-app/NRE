@@ -6,7 +6,7 @@
 
 Weekly is a recurring client update that already bundles the reporting week, month-to-date totals, a last-30-day chart and optional previous-month totals. These are separate date windows/presentations within one report, not four report types. Comparison answers a different question: how did the same campaigns perform in two chosen periods?
 
-The default import screen shows the selected type, a short coverage explanation and the CSV required. “Change report type” expands exactly two choices; selecting one closes the chooser. There is no “More report types” drawer, disabled placeholders or catalogue of untested options. Deck titles remain unchanged. The public How It Works page uses the same availability list.
+The default import screen shows the selected type, a short coverage explanation and the CSV required. “Change report type” expands exactly two choices; selecting one closes the chooser. The optional prior-month attachment is labelled “Previous-month totals” so it is not confused with the separate two-period report. There is no “More report types” drawer, disabled placeholders or catalogue of untested options. Deck titles remain unchanged. The public How It Works page uses the same availability list.
 
 | Hidden type | Potential future use | Release requirement |
 |---|---|---|

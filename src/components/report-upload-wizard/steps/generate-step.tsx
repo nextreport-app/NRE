@@ -328,7 +328,7 @@ export function WizardGenerateStep() {
           includePreviousMonthComparison &&
           !previousMonthComparisonReady ? (
             <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
-              <p className="font-semibold">Previous month comparison not set up</p>
+              <p className="font-semibold">Previous-month totals not set up</p>
               <p className="mt-1 text-dash-ink-secondary">
                 Combined Total won&apos;t include a previous-month row.{" "}
                 <Link href={`/clients/${clientId}#previous-month-data`} className="text-dash-accent hover:underline">
