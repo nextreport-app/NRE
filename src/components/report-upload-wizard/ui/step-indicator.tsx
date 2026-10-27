@@ -19,7 +19,7 @@ export function StepIndicator({
   const { locale } = useSiteTheme();
   const steps = getVisibleWizardSteps(flow);
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[14px]">
+    <nav aria-label="Report progress" className="flex flex-wrap items-center gap-2 text-[14px]">
       {steps.map((s, i) => {
         const isCompleted = s < step && visitedSteps.has(s);
         return (
@@ -35,6 +35,7 @@ export function StepIndicator({
               </button>
             ) : (
               <span
+                aria-current={s === step ? "step" : undefined}
                 className={
                   s === step
                     ? "rounded-full bg-dash-accent px-3 py-1 font-medium text-dash-ink"
@@ -48,7 +49,7 @@ export function StepIndicator({
           </div>
         );
       })}
-    </div>
+    </nav>
   );
 }
 

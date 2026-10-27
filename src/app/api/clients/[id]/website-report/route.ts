@@ -1,3 +1,4 @@
+import { completeReportGeneration } from "@/lib/report-generation-events";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { createReportWithinCapacity, failReportGeneration } from "@/lib/report-capacity";
 import { NextResponse } from "next/server";
@@ -147,7 +148,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       accountName: client.accountName,
     });
 
-    await prisma.report.update({
+    await completeReportGeneration({
       where: { id: report.id },
       data: {
         status: "COMPLETE",

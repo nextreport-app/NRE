@@ -91,10 +91,13 @@ export default async function AccountSettingsPage({
   const retentionDays = normalizeReportRetentionDays(user.reportRetentionDays, status.planId);
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto max-w-3xl">
       <h1 className="mb-8 text-[24px] font-bold text-dash-ink">Account settings</h1>
 
-      <section className="mb-10">
+      <p className="-mt-5 mb-5 text-[14px] leading-relaxed text-dash-ink-secondary">Agency-wide settings apply to every client. Client currency, timezone, budget and logo live in each client’s settings.</p>
+      <nav aria-label="Account sections" className="mb-6 flex flex-wrap gap-2 text-[12px] text-dash-ink-secondary">{[["branding","Branding"],["retention","Storage"],["google-drive","Connections"],["automations","Automations"],["account-billing","Billing"]].map(([id,label]) => <a key={id} href={`#${id}`} className="rounded-full border border-dash-border px-3 py-1.5 hover:text-dash-ink">{label}</a>)}</nav>
+      <section className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-dash-border bg-dash-card p-5"><div><h2 className="text-[14px] font-semibold text-dash-ink">Your account</h2><p className="mt-1 break-all text-[13px] text-dash-ink-secondary">{user.email}</p><p className={`mt-1 text-xs ${user.emailVerified ? "text-emerald-400" : "text-dash-accent"}`}>{user.emailVerified ? "✓ Email verified" : "Email verification needed"}</p></div><Link href={`/forgot-password?email=${encodeURIComponent(user.email)}`} className="text-[13px] font-medium text-dash-accent hover:underline">Password &amp; account access →</Link></section>
+      <section id="branding" className="mb-10 scroll-mt-6">
         <SectionHeading>Agency &amp; white-label branding</SectionHeading>
         <AccountSettingsForm
           initialAgencyName={user.agencyName}
@@ -103,7 +106,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10">
+      <section id="retention" className="mb-10 scroll-mt-6">
         <SectionHeading>Report retention</SectionHeading>
         <ReportRetentionSettings
           initialRetentionDays={retentionDays}
@@ -112,6 +115,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
+      <p className="mb-6 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] leading-relaxed text-dash-ink-secondary">Connections are optional for manual CSV reporting. Connect Google Drive when you want to save a finished report. Ad-platform connections remain available below for testing and setup.</p>
       <section id="google-drive" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings
@@ -132,7 +136,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section id="google-ads" className="mb-10 scroll-mt-6">
+      <section className="mb-10 scroll-mt-6">
         <SectionHeading>Google Ads</SectionHeading>
         <GoogleAdsSettings
           initialConnectedEmail={user.googleAdsConnectedEmail}
@@ -143,7 +147,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section id="ga4" className="mb-10 scroll-mt-6">
+      <section className="mb-10 scroll-mt-6">
         <SectionHeading>Google Analytics (GA4)</SectionHeading>
         <Ga4Settings
           initialConnectedEmail={user.ga4ConnectedEmail}
@@ -154,7 +158,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section id="tiktok-ads" className="mb-10 scroll-mt-6">
+      <section className="mb-10 scroll-mt-6">
         <SectionHeading>TikTok Ads</SectionHeading>
         <TikTokAdsSettings
           initialConnectedName={user.tiktokConnectedName}
@@ -165,14 +169,14 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10">
+      <section id="automations" className="mb-10 scroll-mt-6">
         <IntegrationSettings
           initialSlackWebhookUrl={user.slackWebhookUrl}
           initialAutomationWebhookUrl={user.automationWebhookUrl}
         />
       </section>
 
-      <section>
+      <section id="account-billing" className="scroll-mt-6">
         <SectionHeading>Billing</SectionHeading>
         <div className="flex items-center justify-between rounded-lg border border-dash-border bg-dash-card p-5">
           <div>

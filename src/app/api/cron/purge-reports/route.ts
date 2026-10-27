@@ -20,6 +20,9 @@ export async function GET(request: Request) {
   await prisma.verificationToken.deleteMany({ where: { expires: { lt: new Date() } } });
   await prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await prisma.usageBucket.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  await prisma.reportGenerationEvent.deleteMany({ where: { occurredAt: { lt: new Date(Date.now()-90*86400000) } } });
+  // Keep deduplication tombstones, but remove accepted email bodies after 30 days.
+  await prisma.emailDelivery.updateMany({ where: { status: "ACCEPTED", payloadJson: { not: "{}" }, acceptedAt: { lt: new Date(Date.now()-30*86400000) } }, data: { payloadJson: "{}" } });
   const url = new URL(request.url);
   const wizardPurge = url.searchParams.get("wizardPurge");
 

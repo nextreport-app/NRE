@@ -14,6 +14,7 @@
     "meta:tier-qualification": "node scripts/meta-tier-qualification.js",
     "blob:purge-ephemeral": "tsx scripts/purge-vercel-blob-ephemeral.ts",
     "postinstall": "prisma generate",
+    "test:lifecycle": "vitest run src/lib/__tests__/lifecycle-delivery.postgres.test.ts src/lib/__tests__/lifecycle-email-copy.test.ts src/lib/__tests__/admin-report-digest.test.ts",
     "test:launch-safety": "vitest run src/lib/__tests__/launch-security.test.ts src/lib/__tests__/launch-guards.postgres.test.ts src/lib/__tests__/blob-deletion-outbox.test.ts src/lib/__tests__/subscription.test.ts src/lib/__tests__/razorpay.test.ts src/lib/__tests__/report-retention.test.ts src/lib/__tests__/auth-google-sign-in.test.ts src/lib/__tests__/auth-sign-in-errors.test.ts src/lib/__tests__/account-login-hint.test.ts src/lib/__tests__/plan-pricing.test.ts src/app/api/__tests__/payments-subscription.route.integration.test.ts src/app/api/__tests__/clients.route.integration.test.ts"
   },
   "dependencies": {

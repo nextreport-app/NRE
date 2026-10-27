@@ -146,7 +146,7 @@ export function WizardCampaignsStep() {
   }).length;
 
   return (
-    <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
+    <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
       <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-3 text-sm text-dash-ink" role="status">
         <p>{selectedCampaigns.size} of {campaigns.length} campaigns included · {campaigns.length - selectedCampaigns.size} excluded</p>
 

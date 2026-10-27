@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     await sendVerificationEmail(user.id).catch(err => console.error("[signup:verification]", err));
     notifyAdminNewSignup({ email, name, provider: "credentials" });
-    sendWelcomeTrialEmail({ to: user.email, name: user.name, trialEndsAt: user.trialEndsAt });
+    await sendWelcomeTrialEmail({ userId: user.id, to: user.email, name: user.name, trialEndsAt: user.trialEndsAt }).catch(err => console.error("[signup:welcome-queue]", err));
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -110,8 +110,8 @@ export function WizardImportStep() {
   const setupPlatform = selectedPlatformCard ?? "META";
 
   return (
-    <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-      {hasSavedPlatformPreference && selectedPlatformCard ? (
+    <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm">
+      {selectedPlatformCard && (hasSavedPlatformPreference || !platformSwitchEnabled) ? (
         <>
           <WizardPlatformCompactBar
             icon={

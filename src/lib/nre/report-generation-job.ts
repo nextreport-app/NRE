@@ -1,3 +1,4 @@
+import { completeReportGeneration } from "@/lib/report-generation-events";
 import { claimReportGeneration, failReportGeneration } from "@/lib/report-capacity";
 /**
  * Async report generation worker — AI, render, persist run outside the
@@ -148,7 +149,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         shareReportExtrasFromUser(user, currencySymbol),
       );
 
-      await prisma.report.update({
+      await completeReportGeneration({
         where: { id: reportId },
         data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareData), jobPayload: null },
       });
@@ -187,7 +188,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       const brandingExtras = shareReportExtrasFromUser(user);
       const shareData = buildShareComparisonReportData(job.comparisonData, job.platform, brandingExtras);
 
-      await prisma.report.update({
+      await completeReportGeneration({
         where: { id: reportId },
         data: {
           status: "COMPLETE",
@@ -253,7 +254,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         },
       };
 
-      await prisma.report.update({
+      await completeReportGeneration({
         where: { id: reportId },
         data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive), jobPayload: null },
       });
@@ -306,7 +307,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         },
       };
 
-      await prisma.report.update({
+      await completeReportGeneration({
         where: { id: reportId },
         data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive), jobPayload: null },
       });
@@ -376,7 +377,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       },
     };
 
-    await prisma.report.update({
+    await completeReportGeneration({
       where: { id: reportId },
       data: { status: "COMPLETE", filePath, summaryJson: JSON.stringify(shareWithArchive), jobPayload: null },
     });

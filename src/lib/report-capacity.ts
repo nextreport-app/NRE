@@ -1,3 +1,4 @@
+import { recordGenerationOutcome } from "./report-generation-events";
 import { assertReportComplexity } from "./report-complexity";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
@@ -44,6 +45,7 @@ export async function failReportGeneration(reportId: string, message: string) {
     const refunded = await tx.report.updateMany({ where: { id: reportId, trialCreditReserved: true, status: { not: "COMPLETE" } }, data: { trialCreditReserved: false } });
     if (refunded.count) await tx.user.updateMany({ where: { id: report.client.userId, trialReportsUsed: { gt: 0 } }, data: { trialReportsUsed: { decrement: 1 } } });
     await tx.report.update({ where: { id: reportId }, data: { status: "FAILED", errorMessage: message, jobPayload: null } });
+    await recordGenerationOutcome(tx, reportId, "FAILED");
   });
 }
 

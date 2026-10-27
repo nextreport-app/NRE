@@ -8,7 +8,6 @@ import { WizardStepHelp } from "../ui/wizard-step-help";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { wizardStepLabel } from "@/lib/wizard-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
-import { readClientWizardPreferences } from "../client-wizard-preferences";
 
 export function WizardMetricsStep() {
   const w = useWizardContext();
@@ -21,10 +20,7 @@ export function WizardMetricsStep() {
     return w.campaigns.filter((name) => w.selectedCampaigns.has(name));
   }, [stepActive, w.campaigns, w.selectedCampaigns]);
 
-  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(() => {
-    const prefs = readClientWizardPreferences(w.clientId);
-    return !(prefs?.metricsStepConfirmed ?? false);
-  });
+  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(false);
 
   if (!stepActive) return null;
 
@@ -50,10 +46,11 @@ export function WizardMetricsStep() {
     setStep,
   } = w;
 
-  const defaultPreviewCount = activeCampaigns.length >= 5 ? 1 : Math.min(2, activeCampaigns.length);
+  const defaultPreviewCount = 1;
+  const hasSelectionWarning = !!perCampaignMinWarning || activeCampaigns.some(name => { const metrics = perCampaignMetrics.get(normalizeCampaignName(name)) ?? []; return metrics.length < MIN_SELECTED_METRICS; });
 
   const visibleCampaigns =
-    activeCampaigns.length <= 1 || showAllCampaignMetrics
+    activeCampaigns.length <= 1 || showAllCampaignMetrics || hasSelectionWarning
       ? activeCampaigns
       : activeCampaigns.slice(0, defaultPreviewCount);
 
@@ -83,8 +80,8 @@ export function WizardMetricsStep() {
           </span>
           {objective && (
             <span
-              className={`flex-shrink-0 rounded-[20px] text-[14px] font-medium uppercase ${accent.badgeClassName}`}
-              style={{ padding: "6px 10px" }}
+              className={`flex-shrink-0 rounded-[20px] text-[11px] font-medium uppercase ${accent.badgeClassName}`}
+              style={{ padding: "4px 8px" }}
             >
               {objective.resultLabel}
             </span>
@@ -104,7 +101,7 @@ export function WizardMetricsStep() {
               className="flex items-center gap-2 rounded-md border border-dash-border bg-dash-card nre-dash-surface"
               style={{ padding: "8px 12px" }}
             >
-              <span className="text-[14px] uppercase text-dash-ink" style={{ letterSpacing: "0.5px" }}>
+              <span className="text-[12px] uppercase text-dash-ink" style={{ letterSpacing: "0.5px" }}>
                 {m.label}
               </span>
               <button
@@ -123,7 +120,7 @@ export function WizardMetricsStep() {
           <p className="nre-wizard-confidence--warn mt-2 text-[14px]">{perCampaignMinWarning}</p>
         )}
 
-        <div className="my-3 border-t border-dash-border" />
+        <details className="mt-4 border-t border-dash-border pt-3"><summary className="cursor-pointer text-[13px] font-medium text-dash-accent">Add more metrics · optional</summary><div className="mt-3">
         <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.addFromCsv}</p>
         <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{copy.addFromCsvHint}</p>
         {availableForCampaign.length === 0 ? (
@@ -157,18 +154,20 @@ export function WizardMetricsStep() {
             )}
           </>
         )}
+        </div></details>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
+    <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
       {metricsStatus === "error" && (
         <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3 text-[14px] text-amber-200">
           Couldn&apos;t load the full metric list — continuing with the engine&apos;s automatic selection.
         </div>
       )}
 
+      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your CSV. Review the first campaign below, or expand the list to customize others.</p>
       {activeCampaigns.length > 1 ? (
         <p className="text-[14px] text-dash-ink-secondary">
           {activeCampaigns.length} campaigns · {totalMetricChips} metric{totalMetricChips === 1 ? "" : "s"} selected from

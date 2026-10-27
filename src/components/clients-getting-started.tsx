@@ -1,89 +1,18 @@
 "use client";
-
 import Link from "next/link";
-import { MetaWalkthroughVideoCompact } from "@/components/meta-walkthrough-video";
+import { MetaWalkthroughVideoCompact } from "./meta-walkthrough-video";
 import { useSiteCopy } from "@/hooks/use-site-copy";
-
-/** First visit with no clients — short path, no checklist or progress UI. */
-export function ClientsGettingStarted() {
+export function ClientsGettingStarted({ emailVerified = true }: { emailVerified?: boolean }) {
   const { dashboard: d } = useSiteCopy();
-
-  const steps = [
-    { href: "/clients/new", title: d.gettingStartedStep1Title, body: d.gettingStartedStep1Body },
-    { href: "/help/download", title: d.gettingStartedStep2Title, body: d.gettingStartedStep2Body },
-    { href: "/how-it-works", title: d.gettingStartedStep3Title, body: d.gettingStartedStep3Body },
-  ] as const;
-
-  return (
-    <div className="rounded-xl border border-dash-border bg-dash-card">
-      <div className="border-b border-dash-border px-6 py-8 sm:px-8">
-        <h2 className="text-[20px] font-bold tracking-tight text-dash-ink sm:text-[22px]">{d.gettingStartedTitle}</h2>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-dash-ink-secondary">{d.gettingStartedLead}</p>
-        <Link
-          href="/clients/new"
-          className="mt-6 inline-flex rounded-lg bg-dash-accent px-6 py-2.5 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-        >
-          {d.emptyAddClientCta}
-        </Link>
-        <div className="mt-8 max-w-xl">
-          <p className="text-[13px] font-semibold text-dash-ink">Video walkthrough</p>
-          <p className="mt-1 text-[13px] text-dash-ink-secondary">
-            Meta CSV export walkthrough — same wizard flow for other platforms.
-          </p>
-          <div className="mt-3 [&_.text-ink-muted]:text-dash-ink-secondary [&_a.text-accent-orange]:text-dash-accent">
-            <MetaWalkthroughVideoCompact id="clients-getting-started-video" />
-          </div>
-        </div>
-      </div>
-
-      <ol className="divide-y divide-dash-border px-4 py-2 sm:px-6">
-        {steps.map((step, index) => (
-          <li key={step.href}>
-            <Link
-              href={step.href}
-              className="group flex gap-4 rounded-lg px-3 py-4 transition-colors hover:bg-dash-bg/80 sm:px-4"
-            >
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dash-bg text-[13px] font-bold text-dash-ink"
-                aria-hidden="true"
-              >
-                {index + 1}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="text-[15px] font-semibold text-dash-ink group-hover:underline">{step.title}</span>
-                <span className="mt-1 block text-[14px] leading-relaxed text-dash-ink-secondary">{step.body}</span>
-              </span>
-              <span
-                className="mt-1 shrink-0 text-dash-ink-secondary opacity-0 transition-opacity group-hover:opacity-100"
-                aria-hidden="true"
-              >
-                →
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ol>
-
-      <div className="border-t border-dash-border px-6 py-5 sm:px-8">
-        <p className="text-[12px] font-semibold uppercase tracking-wide text-dash-ink-secondary">{d.gettingStartedAlsoTitle}</p>
-        <ul className="mt-3 flex flex-col gap-2 text-[14px] sm:flex-row sm:flex-wrap sm:gap-x-6">
-          <li>
-            <Link href="/account" className="font-medium text-dash-accent hover:text-dash-accent-hover hover:underline">
-              {d.gettingStartedAccountLink}
-            </Link>
-          </li>
-          <li>
-            <Link href="/how-it-works" className="font-medium text-dash-accent hover:text-dash-accent-hover hover:underline">
-              {d.gettingStartedHowItWorksLink}
-            </Link>
-          </li>
-          <li>
-            <Link href="/help/download" className="font-medium text-dash-accent hover:text-dash-accent-hover hover:underline">
-              {d.helpCsvGuide}
-            </Link>
-          </li>
-        </ul>
-      </div>
+  return <section className="overflow-hidden rounded-2xl border border-dash-border bg-dash-card">
+    <div className="nre-onboarding-intro px-6 py-7 sm:px-8">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-dash-accent">Your first client report</p>
+      <h2 className="mt-2 text-[22px] font-bold text-dash-ink">{d.gettingStartedTitle}</h2>
+      <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-dash-ink-secondary">Add a client, upload their Meta Ads CSV, then review and share the report. No ad-account connection is needed.</p>
+      <ol className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-dash-ink-secondary" aria-label="First report journey"><li>1 · Add client</li><li>2 · Upload CSV</li><li>3 · Review &amp; share</li></ol>
+      <Link href={emailVerified ? "/clients/new" : "#verify-email"} className="mt-6 inline-flex rounded-lg bg-dash-accent px-5 py-3 text-[14px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover">{emailVerified ? d.emptyAddClientCta : "Verify email to get started"} →</Link>
+      <p className="mt-3 text-[12px] text-dash-ink-secondary">Branding, Google Drive and additional connections can wait until after your first report.</p>
     </div>
-  );
+    <details className="group border-t border-dash-border px-6 py-4 sm:px-8"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] font-medium text-dash-ink [&::-webkit-details-marker]:hidden">Need help exporting your CSV?<span aria-hidden className="group-open:rotate-180">▾</span></summary><div className="mt-4 max-w-xl"><MetaWalkthroughVideoCompact id="clients-getting-started-video" /><Link href="/help/download" className="mt-3 inline-block text-[13px] text-dash-accent hover:underline">{d.helpCsvGuide} →</Link></div></details>
+  </section>;
 }

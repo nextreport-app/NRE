@@ -1,3 +1,4 @@
+import { SettingsDisclosure } from "@/components/settings-disclosure";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -142,12 +143,23 @@ export default async function ClientDetailPage({
           ← Back to Clients
         </Link>
         <h1 className="mt-2 truncate text-[24px] font-bold text-dash-ink">{client.accountName}</h1>
-        <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{client.currency}</p>
+        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{client.currency} · {client.timezone}</p>
       </div>
 
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
+        <Card accent id="generate-report">
+          <CardHeading hint="Upload a day-wise Meta CSV on Import — see the CSV export guide if you need help.">
+            Generate report
+          </CardHeading>
+          <Link
+            href={`/clients/${client.id}/reports/new`}
+            className="block w-full rounded-md bg-[#f6ad55] px-6 py-3 text-center text-[15px] font-semibold text-[#0d1b2e] shadow-sm hover:bg-[#fbd38d]"
+          >
+            Generate Report
+          </Link>
+        </Card>
         {isClientPlatformConnectionsSectionVisible() ? (
           <Card id="platform-connections">
             <CardHeading hint="Account-level connections used by every client in the report wizard.">
@@ -178,10 +190,7 @@ export default async function ClientDetailPage({
           </Card>
         ) : null}
 
-        <Card id="previous-month-data">
-          <CardHeading hint="Optional — adds a previous-month comparison row on Monthly overview slides.">
-            Previous month data
-          </CardHeading>
+        <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
           <PreviousMonthDataUpload
             clientId={client.id}
             initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
@@ -191,7 +200,7 @@ export default async function ClientDetailPage({
             initialCampaignSpend={previousMonthCampaignSpend}
             currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
           />
-        </Card>
+        </SettingsDisclosure>
 
         {isClientPlatformConnectionVisible("ga4") ? (
           <Card id="website-analytics">
@@ -207,8 +216,7 @@ export default async function ClientDetailPage({
           </Card>
         ) : null}
 
-        <Card>
-          <CardHeading>Client settings</CardHeading>
+        <SettingsDisclosure id="client-settings" title="Client settings" hint="This brand’s currency, timezone, template, budget, logo and notes.">
           <ClientForm
             clientId={client.id}
             initial={{
@@ -232,7 +240,7 @@ export default async function ClientDetailPage({
             </span>
             <DeleteClientButton clientId={client.id} />
           </div>
-        </Card>
+        </SettingsDisclosure>
 
         {reportCount > 0 ? (
           <Card>
@@ -259,17 +267,7 @@ export default async function ClientDetailPage({
           </Card>
         ) : null}
 
-        <Card accent id="generate-report">
-          <CardHeading hint="Upload a day-wise Meta CSV on Import — see the CSV export guide if you need help.">
-            Generate report
-          </CardHeading>
-          <Link
-            href={`/clients/${client.id}/reports/new`}
-            className="block w-full rounded-md bg-[#f6ad55] px-6 py-3 text-center text-[15px] font-semibold text-[#0d1b2e] shadow-sm hover:bg-[#fbd38d]"
-          >
-            Generate Report
-          </Link>
-        </Card>
+
       </div>
     </div>
   );

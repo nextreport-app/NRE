@@ -25,7 +25,7 @@ export default async function PrivacyPage() {
       </Link>
 
       <h1 className="mt-6 text-3xl font-semibold text-white">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-ink-muted">Effective date: October 25, 2026</p>
+      <p className="mt-2 text-sm text-ink-muted">Effective date: October 27, 2026</p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-ink-secondary">
         <p>
@@ -35,6 +35,8 @@ export default async function PrivacyPage() {
           explains what information we collect, how we use it, and the choices you
           have.
         </p>
+
+        <p className="mt-4 text-sm leading-relaxed text-ink-secondary">We retain minimal report-generation metadata for up to 90 days to measure completed reports and failures, without storing CSV contents or client names in those receipts. Transactional email bodies are retained in our delivery queue for up to 30 days after provider acceptance; unresolved messages remain queued for investigation, and minimal delivery and deduplication records remain for reliability. Operational summaries are sent only to configured NextReport administrators. Deleting a report does not immediately erase these operational records.</p>
 
         <section>
           <h2 className="mb-2 text-lg font-medium text-white">1. Information we collect</h2>

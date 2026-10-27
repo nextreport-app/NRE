@@ -86,6 +86,7 @@ export function ClientForm({
   const { showToast } = useToast();
   const [baseline, setBaseline] = useState(() => formSnapshot(defaultFormValues(initial)));
   const [values, setValues] = useState<ClientFormValues>(() => defaultFormValues(initial));
+  const [createdClientId, setCreatedClientId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -158,8 +159,10 @@ export function ClientForm({
     setError(null);
     setLoading(true);
 
-    const url = clientId ? `/api/clients/${clientId}` : "/api/clients";
-    const method = clientId ? "PATCH" : "POST";
+    try {
+    const effectiveClientId = clientId ?? createdClientId;
+    const url = effectiveClientId ? `/api/clients/${effectiveClientId}` : "/api/clients";
+    const method = effectiveClientId ? "PATCH" : "POST";
 
     const budgetNum = values.monthlyBudget.trim() ? Number(values.monthlyBudget) : null;
     const payload = {
@@ -187,6 +190,7 @@ export function ClientForm({
     }
 
     const savedClientId: string = data.client.id;
+    if (!clientId) setCreatedClientId(savedClientId);
 
     if (logoFile) {
       const logoFormData = new FormData();
@@ -201,7 +205,8 @@ export function ClientForm({
         return;
       }
     } else if (removeLogo) {
-      await fetch(`/api/clients/${savedClientId}/logo`, { method: "DELETE" });
+      const removal = await fetch(`/api/clients/${savedClientId}/logo`, { method: "DELETE" });
+      if (!removal.ok) { const message = "Settings saved, but the logo could not be removed. Please retry."; setError(message); showToast(message, "error"); return; }
     }
 
     setLoading(false);
@@ -215,28 +220,32 @@ export function ClientForm({
       router.refresh();
       return;
     }
-    router.push(`/clients/${savedClientId}`);
+    router.push(clientId ? `/clients/${savedClientId}` : `/clients/${savedClientId}/reports/new`);
     router.refresh();
+    } catch {
+      const message = "Could not save your client. Check your connection and retry; a client already created in this form will be reused.";
+      setError(message); showToast(message, "error");
+    } finally { setLoading(false); }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Account name</label>
+        <label htmlFor="client-account-name" className="mb-1 block text-sm text-dash-ink-secondary">Account name</label>
         <input
           required
-          value={values.accountName}
+          id="client-account-name" value={values.accountName}
           onChange={(e) => set("accountName", e.target.value)}
           placeholder="e.g. Acme Retail — Meta Ads"
           className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm text-dash-ink-secondary">Currency</label>
+          <label htmlFor="client-currency" className="mb-1 block text-sm text-dash-ink-secondary">Currency</label>
           <select
-            value={values.currency}
+            id="client-currency" value={values.currency}
             onChange={(e) => set("currency", e.target.value as ClientFormValues["currency"])}
             className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
           >
@@ -248,9 +257,9 @@ export function ClientForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm text-dash-ink-secondary">Timezone</label>
+          <label htmlFor="client-timezone" className="mb-1 block text-sm text-dash-ink-secondary">Timezone</label>
           <select
-            value={values.timezone}
+            id="client-timezone" value={values.timezone}
             onChange={(e) => set("timezone", e.target.value)}
             className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
           >
@@ -267,8 +276,12 @@ export function ClientForm({
         </div>
       </div>
 
+      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">Match the currency and timezone used in the ad account. These control report formatting and date windows.</p>
+      <details open={!!clientId} className="group/client-options rounded-lg border border-dash-border">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-dash-ink [&::-webkit-details-marker]:hidden">Branding, budget &amp; notes <span className="text-xs text-dash-ink-secondary">Optional ▾</span></summary>
+        <div className="space-y-5 border-t border-dash-border p-4">
       <div id={CLIENT_MONTHLY_BUDGET_HASH} className="scroll-mt-24">
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Monthly ad budget — optional</label>
+        <label htmlFor="client-monthly-budget-input" className="mb-1 block text-sm text-dash-ink-secondary">Monthly ad budget — optional</label>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dash-ink-secondary">
             {CURRENCY_SYMBOL[values.currency]}
@@ -277,7 +290,7 @@ export function ClientForm({
             type="number"
             min={0}
             step="any"
-            value={values.monthlyBudget}
+            id="client-monthly-budget-input" value={values.monthlyBudget}
             onChange={(e) => set("monthlyBudget", e.target.value)}
             placeholder="e.g. 50000"
             className="w-full rounded-md border border-dash-border bg-dash-card py-2 pl-8 pr-3 text-sm text-dash-ink outline-none focus:border-dash-accent"
@@ -290,9 +303,9 @@ export function ClientForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
+        <label htmlFor="client-template" className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
         <select
-          value={values.template}
+          id="client-template" value={values.template}
           onChange={(e) => set("template", e.target.value as ClientFormValues["template"])}
           className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         >
@@ -305,10 +318,10 @@ export function ClientForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>
+        <label htmlFor="client-logo-upload" className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>
         <div className="flex items-center gap-3">
           <input
-            type="file"
+            id="client-logo-upload" type="file"
             accept={ACCEPTED_LOGO_TYPES}
             onChange={handleLogoChange}
             className="flex-1 text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-2 file:text-sm file:text-dash-ink hover:file:bg-dash-card"
@@ -337,10 +350,10 @@ export function ClientForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm text-dash-ink-secondary">Client Notes</label>
+        <label htmlFor="client-notes" className="mb-1 block text-sm text-dash-ink-secondary">Client Notes</label>
         {notesEditing ? (
           <>
-            <textarea
+            <textarea id="client-notes"
               rows={4}
               maxLength={NOTES_MAX_LENGTH}
               value={values.notes}
@@ -378,6 +391,8 @@ export function ClientForm({
         )}
       </div>
 
+        </div>
+      </details>
       {error && <p className="text-sm text-dash-error">{error}</p>}
 
       {saveMutedUntilDirty && !isDirty && !loading ? (
@@ -397,7 +412,7 @@ export function ClientForm({
             : `rounded-md bg-dash-accent px-5 py-2.5 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60 ${submitFullWidth ? "w-full" : ""}`
         }
       >
-        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : "Create client")}
+        {loading ? "Saving…" : submitLabel ?? (clientId ? "Save changes" : createdClientId ? "Continue to report" : "Create client & start report")}
       </button>
     </form>
   );
