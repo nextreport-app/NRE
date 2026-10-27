@@ -513,6 +513,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-trial-banner--expired a {
 /* Wizard — status badges & callouts (dark defaults; light overrides below). */
 .nre-wizard-badge-recommended {
   border-radius: 9999px;
+  box-shadow: 0 8px 28px rgb(16 185 129 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.14);
   background-color: rgb(16 185 129 / 0.2);
   padding: 0.125rem 0.5rem;
   font-size: 10px;
@@ -715,7 +716,8 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
 }
 
 .nre-wizard-generate-success__header {
-  background: linear-gradient(120deg, rgb(6 78 59 / 0.4), rgb(2 44 34 / 0.16) 65%, rgb(251 191 36 / 0.08));
+  background: radial-gradient(ellipse at 95% 0%, rgb(246 173 85 / 0.22), transparent 52%), radial-gradient(ellipse at 0% 100%, rgb(16 185 129 / 0.22), transparent 65%), linear-gradient(125deg, #103d40, #10283b 62%, #292d3d);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09);
 }
 
 .nre-wizard-generate-success__check {
@@ -960,4 +962,17 @@ body:has(#light-preview-page) .whatsapp-float {
   .wizard-card-selected {
     animation: none;
   }
+}
+
+/* A distinct sharing workspace after the report is ready. */
+.nre-wizard-success-share {
+  border-color: rgb(246 173 85 / 0.24);
+  background: radial-gradient(ellipse at 100% 0%, rgb(246 173 85 / 0.09), transparent 60%), linear-gradient(135deg, #152a40, #142235);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
+}
+.nre-wizard-success-share__icon { background: rgb(246 173 85 / 0.12); color: var(--nre-dash-accent); }
+html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
+  background: radial-gradient(ellipse at 100% 0%, #fff3d9, transparent 70%), #ffffff;
+  border-color: #e9cc9c;
+  box-shadow: 0 6px 24px rgb(148 116 58 / 0.07);
 }

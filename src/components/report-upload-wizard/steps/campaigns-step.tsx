@@ -427,15 +427,23 @@ export function WizardCampaignsStep() {
                     campaignRequiresConfirmation.get(normalized) === true &&
                     !touchedObjectiveCampaigns.has(normalized);
                   return (
-                    <li key={name} className={`px-4 py-3 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="truncate text-[14px] text-dash-ink" title={name}>
+                    <li key={name} className={`px-3 py-2 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
+                      <details key={`${normalized}-${csvAlign}-${isBlocking}`} open={csvAlign !== true || isBlocking} className="group/objective">
+                        <summary className={`flex cursor-pointer list-none items-center gap-3 rounded-md border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-dash-accent [&::-webkit-details-marker]:hidden ${csvAlign === true && !isBlocking ? "border-emerald-500/25 bg-emerald-500/5" : "border-dash-border"}`}>
+                          <span aria-hidden className={csvAlign === true && !isBlocking ? "text-emerald-400" : "text-dash-accent"}>{csvAlign === true && !isBlocking ? "✓" : "!"}</span>
+                          <span className="min-w-0 flex-1"><span className="block truncate font-medium text-dash-ink" title={name}>{name}</span><span className="text-xs text-dash-ink-secondary">{detectedLabel}{csvAlign === true && !isBlocking ? " · Matches CSV" : " · Review objective"}</span></span>
+                          <span aria-hidden className="text-dash-ink-secondary transition-transform group-open/objective:rotate-180">▾</span>
+                        </summary>
+                        <div className="border-t border-dash-border px-2 py-3">
+                      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                        <span className="min-w-0 break-words text-[14px] text-dash-ink" title={name}>
                           {name}
                         </span>
                         <select
+                          aria-label={`Objective for ${name}`}
                           value={currentKey}
                           onChange={(e) => setCampaignObjective(name, e.target.value)}
-                          className={`rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
+                          className={`max-w-full rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
                             isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
                           } bg-dash-bg`}
                         >
@@ -486,6 +494,8 @@ export function WizardCampaignsStep() {
                           <span>{badge.text}</span>
                         </div>
                       ) : null}
+                        </div>
+                      </details>
                     </li>
                   );
                 })}

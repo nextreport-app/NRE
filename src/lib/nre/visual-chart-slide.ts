@@ -404,14 +404,16 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       (mixedCampaignObjectives ? b.spend - a.spend || b.results - a.results : b.results - a.results || b.spend - a.spend)
       || a.name.localeCompare(b.name),
     );
-    const colors = new Map(ordered.map((c, index) => [c.name, VISUAL_CHART_PALETTE[index % VISUAL_CHART_PALETTE.length]!]));
+    const groupedDonut = buildObjectiveSpendDonut(reportingCampaigns, chart.totalAllSpend, currencySymbol);
+    const colors = new Map(ordered.map(c => [c.name,
+      groupedDonut.find(segment => segment.name === toTitleCaseChartLabel(c.resLabel.trim().toUpperCase()))?.color ?? "64748b",
+    ]));
     const labels = buildCampaignShortLabels(ordered.map(c => c.name), 28);
     const shown = ordered.slice(0, MAX_ROWS);
-    const groupedDonut = buildObjectiveSpendDonut(reportingCampaigns, chart.totalAllSpend, currencySymbol);
     const primaryResLabel = ordered[0]!.resLabel;
     const resultLabel = toTitleCaseChartLabel(primaryResLabel);
     const rightHeading = mixedCampaignObjectives ? "Campaign performance" : `${resultLabel} by Campaign`;
-    const panelSubheading = `${ordered.length > MAX_ROWS ? `Top ${MAX_ROWS} of ${ordered.length} · ` : ""}${mixedCampaignObjectives ? "Bars show spend (different goals)" : `Shared count scale: 0–${Math.max(...ordered.map(c => c.results)).toLocaleString("en-US")}`}`;
+    const panelSubheading = `${ordered.length > MAX_ROWS ? `Top ${MAX_ROWS} of ${ordered.length} · ` : ""}${mixedCampaignObjectives ? "Bars show spend (different goals)" : ""}`.replace(/ · $/, "");
     const nameLayout = splitPanelCampaignNameLayout(shown.length, true);
     const resultBars = buildResultBars(ordered.map(c => ({
       name: c.name, color: colors.get(c.name)!, spend: c.spend, results: c.results,

@@ -320,11 +320,11 @@ function VisualSpendDonut({
           <div><span className="block">{centerLabel}</span><span className="mt-1 block text-[9px] font-medium tracking-wide text-[#94a3b8]">TOTAL SPEND</span></div>
         </div>
       </div>
-      <ul className="mt-4 w-full space-y-2 text-[15px] text-[#94a3b8]">
+      <ul className="mt-4 w-full space-y-3 text-center text-[15px] text-[#94a3b8]">
         {segments.map((seg, i) => (
-          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex min-w-0 items-start gap-2">
+          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="relative mx-auto flex w-fit max-w-full min-w-0 items-start justify-center gap-2">
             <span
-              className="mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+              className="absolute -left-4 top-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: `#${seg.color}` }}
               aria-hidden="true"
             />
