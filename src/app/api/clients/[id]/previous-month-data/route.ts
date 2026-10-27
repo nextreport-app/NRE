@@ -1,3 +1,5 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -25,11 +27,16 @@ async function getOwnedClient(userId: string, id: string) {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireActiveSubscription(session.user.id);
+  if (access) return access;
+  const throttle = await enforceWizardLimits(session.user.id, "upload");
+  if (throttle) return throttle;
 
   const { id } = await params;
   const client = await getOwnedClient(session.user.id, id);
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  try {
   const formData = await req.formData().catch(() => null);
   const file = formData ? await fileEntryFromFormData(formData, "file") : null;
   if (!file || file.buffer.length === 0) {
@@ -72,7 +79,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     previousAllCampaigns,
   );
 
-  try {
     const previousUrl = client.previousMonthDataUrl;
     const previousMonthDataUrl = await savePreviousMonthDataFile(
       client.id,

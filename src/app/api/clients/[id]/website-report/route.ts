@@ -1,3 +1,5 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { createReportWithinCapacity, failReportGeneration } from "@/lib/report-capacity";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +25,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const guard = await requireActiveSubscription(session.user.id);
   if (guard) return guard;
+  const throttle = await enforceWizardLimits(session.user.id);
+  if (throttle) return throttle;
 
   const { id } = await params;
 
@@ -96,7 +100,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let report;
   try {
-    report = await prisma.report.create({
+    report = await createReportWithinCapacity(session.user.id, {
       data: {
         clientId: client.id,
         status: "GENERATING",
@@ -174,10 +178,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
   } catch (err) {
     console.error("[api:website-report:generate]", err);
-    await prisma.report.update({
-      where: { id: report.id },
-      data: { status: "FAILED" },
-    });
+    await failReportGeneration(report.id, "Website report generation failed. Please try again.");
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Report generation failed" },
       { status: 500 },

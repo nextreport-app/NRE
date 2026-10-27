@@ -91,7 +91,7 @@ export default async function ClientAllReportsPage({
     }),
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { reportRetentionDays: true, planId: true, trialEndsAt: true, email: true },
+      select: { reportRetentionDays: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true, email: true },
     }),
   ]);
 

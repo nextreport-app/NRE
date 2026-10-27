@@ -5,7 +5,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const NON_ADMIN_EMAIL = "user@example.com";
 
 describe("getSubscriptionStatus", () => {
-  it("treats an active trial as trialing, not blocked, unlimited clients", () => {
+  it("treats an active trial as trialing, not blocked, with three clients", () => {
     const status = getSubscriptionStatus({
       email: NON_ADMIN_EMAIL,
       planId: "trial",
@@ -16,7 +16,7 @@ describe("getSubscriptionStatus", () => {
     expect(status.isSubscribed).toBe(false);
     expect(status.isTrialExpired).toBe(false);
     expect(status.isBlocked).toBe(false);
-    expect(status.clientLimit).toBeNull();
+    expect(status.clientLimit).toBe(3);
     expect(status.isAdminOverride).toBe(false);
   });
 
@@ -59,23 +59,24 @@ describe("getSubscriptionStatus", () => {
     expect(status.isBlocked).toBe(true);
   });
 
-  it("never blocks a starter subscriber, and caps clients at 10", () => {
-    const status = getSubscriptionStatus({ email: NON_ADMIN_EMAIL, planId: "starter", trialEndsAt: new Date(Date.now() - 30 * DAY) });
+  it("allows a paid-up starter subscriber, and caps clients at 10", () => {
+    const status = getSubscriptionStatus({ email: NON_ADMIN_EMAIL, planId: "starter", paidThrough: new Date(Date.now() + DAY), trialEndsAt: new Date(Date.now() - 30 * DAY) });
     expect(status.isSubscribed).toBe(true);
     expect(status.isTrialing).toBe(false);
     expect(status.isBlocked).toBe(false);
     expect(status.clientLimit).toBe(10);
   });
 
-  it("never blocks a professional subscriber, and has no client limit", () => {
+  it("never blocks a professional subscriber, and caps clients at fifty", () => {
     const status = getSubscriptionStatus({
       email: NON_ADMIN_EMAIL,
       planId: "professional",
+      paidThrough: new Date(Date.now() + DAY),
       trialEndsAt: new Date(Date.now() - 30 * DAY),
     });
     expect(status.isSubscribed).toBe(true);
     expect(status.isBlocked).toBe(false);
-    expect(status.clientLimit).toBeNull();
+    expect(status.clientLimit).toBe(50);
   });
 
   it("always blocks a cancelled subscription, regardless of trialEndsAt", () => {
@@ -128,7 +129,7 @@ describe("admin override (ADMIN_EMAILS)", () => {
   it("grants full Professional access to an admin email regardless of their real planId/trialEndsAt", () => {
     vi.stubEnv("ADMIN_EMAILS", "owner@example.com");
     const status = getSubscriptionStatus({
-      email: "owner@example.com",
+      email: "owner@example.com", emailVerified: new Date(),
       planId: "cancelled", // would otherwise be blocked
       trialEndsAt: new Date(Date.now() - 30 * DAY), // would otherwise read as long-expired
     });
@@ -144,7 +145,7 @@ describe("admin override (ADMIN_EMAILS)", () => {
   it("matches an admin email case-insensitively through getSubscriptionStatus too", () => {
     vi.stubEnv("ADMIN_EMAILS", "owner@example.com");
     const status = getSubscriptionStatus({
-      email: "Owner@Example.com",
+      email: "Owner@Example.com", emailVerified: new Date(),
       planId: "trial",
       trialEndsAt: new Date(Date.now() - DAY),
     });

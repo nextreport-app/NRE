@@ -5,6 +5,8 @@ import { jsonBody, mockSession, mockTrialUser } from "@/test/api-route-harness";
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $queryRaw: vi.fn(),
+    $transaction: vi.fn(),
     client: {
       findMany: vi.fn(),
       create: vi.fn(),
@@ -12,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     user: {
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       update: vi.fn(),
     },
   },
@@ -55,6 +58,8 @@ describe("POST /api/clients", () => {
     vi.mocked(prisma.client.count).mockReset();
     vi.mocked(prisma.client.create).mockReset();
     vi.mocked(prisma.user.update).mockReset();
+    vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: typeof prisma) => unknown) => fn(prisma)) as never);
+    vi.mocked(prisma.user.findUniqueOrThrow).mockResolvedValue(mockTrialUser() as never);
   });
 
   it("returns 401 when unauthenticated", async () => {

@@ -1,3 +1,6 @@
+import { assertReportComplexity } from "@/lib/report-complexity";
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +18,6 @@ import {
 import { verifyStandardWizardReportAgainstCsv } from "@/lib/nre/wizard-csv-verification";
 import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
-import { computeDailyRangeIso } from "@/lib/nre/date-range";
 import { validateHistoricalReportInput } from "@/lib/nre/historical-report-data";
 import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-data";
 import { adsManagerName } from "@/lib/nre/platform-reporting";
@@ -33,7 +35,6 @@ import {
   dateSelectionSchema,
   historicalMonthCountSchema,
   parseJsonFormField,
-  platformSchema,
   reportTypeSchema,
   resolveIncludePreviousMonthComparison,
   selectedCampaignsSchema,
@@ -43,6 +44,10 @@ import {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const subscriptionGuard = await requireActiveSubscription(session.user.id);
+  if (subscriptionGuard) return subscriptionGuard;
+  const throttle = await enforceWizardLimits(session.user.id, "work");
+  if (throttle) return throttle;
 
   const { id } = await params;
   let client;
@@ -324,6 +329,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
+  try { assertReportComplexity(built.data); } catch (err) { return apiErrorResponse(err, "reports:preview:complexity"); }
   const reportType = built.data.reportType;
   const previewNow = new Date();
   const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);

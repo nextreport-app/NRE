@@ -27,6 +27,8 @@ export function mockSession(userId: string, email = "test@example.com"): Session
 export function mockTrialUser(overrides: Record<string, unknown> = {}) {
   return {
     email: "trial@example.com",
+    emailVerified: new Date(),
+    paidThrough: new Date(Date.now() + 30 * 86_400_000),
     planId: "trial",
     trialEndsAt: new Date(Date.now() + 7 * 86_400_000),
     ...overrides,

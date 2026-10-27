@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { clientSchema } from "@/lib/validators/client";
 import { apiErrorResponse } from "@/lib/api-error";
-import { recordClientCreated } from "@/lib/client-capacity";
+import { createClientWithinCapacity } from "@/lib/atomic-client-create";
 import { requireClientCapacity } from "@/lib/subscription-guard";
 
 export async function GET() {
@@ -38,10 +38,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const client = await prisma.client.create({
-      data: { ...parsed.data, userId: session.user.id },
-    });
-    await recordClientCreated(session.user.id);
+    const client = await createClientWithinCapacity(session.user.id, parsed.data);
     return NextResponse.json({ client }, { status: 201 });
   } catch (err) {
     return apiErrorResponse(err, "clients:create");

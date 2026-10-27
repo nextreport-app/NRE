@@ -1,3 +1,5 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -34,7 +36,12 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireActiveSubscription(session.user.id);
+  if (access) return access;
+  const throttle = await enforceWizardLimits(session.user.id, "work");
+  if (throttle) return throttle;
 
+  try {
   const formData = await req.formData().catch(() => null);
   const buffer = formData ? await fileFromFormData(formData, "logo") : null;
   if (!buffer || buffer.length === 0) {
@@ -46,7 +53,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: processed.error }, { status: 400 });
   }
 
-  try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { agencyLogoUrl: true },

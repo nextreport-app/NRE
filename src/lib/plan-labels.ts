@@ -24,14 +24,14 @@ export const PLATFORM_LIST_API =
   "Meta Marketing API (testing)";
 
 /** Agency (starter) plan — max client workspaces; enforced in lib/subscription.ts. */
-export const AGENCY_CLIENT_LIMIT = 10;
+export { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT } from "./launch-limits";
 
 /** Pricing feature bullets — one client workspace = one brand; all platforms included in that slot. */
 export const AGENCY_CLIENT_LIMIT_FEATURE =
   "Up to 10 client workspaces — Meta Ads reporting live today";
 
 export const PROFESSIONAL_CLIENT_LIMIT_FEATURE =
-  "Unlimited client workspaces — Meta Ads reporting live today";
+  "Up to 50 client workspaces — Meta Ads reporting live today";
 
 export { WHITE_LABEL_FEATURE } from "@/lib/report-branding";
 

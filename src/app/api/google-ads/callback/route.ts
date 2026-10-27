@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
 
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(GOOGLE_ADS_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
+    res.cookies.set(`${GOOGLE_ADS_OAUTH_STATE_COOKIE}_pkce`, "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -34,6 +35,10 @@ export async function GET(req: NextRequest) {
     return clearStateCookie(redirectToAccount(req, "?google_ads_error=invalid_state"));
   }
 
+  const pkce = req.cookies.get(`${GOOGLE_ADS_OAUTH_STATE_COOKIE}_pkce`)?.value;
+  const verifier = pkce?.startsWith(`${session.user.id}:`) ? pkce.slice(session.user.id.length + 1) : null;
+  if (!verifier) return clearStateCookie(redirectToAccount(req, "?google_ads_error=invalid_state"));
+
   const code = url.searchParams.get("code");
   if (!code) {
     return clearStateCookie(redirectToAccount(req, "?google_ads_error=missing_code"));
@@ -41,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const redirectUri = new URL("/api/google-ads/callback", req.url).toString();
-    const tokens = await exchangeGoogleAdsAuthCode(code, redirectUri);
+    const tokens = await exchangeGoogleAdsAuthCode(code, redirectUri, verifier);
 
     if (!tokens.refresh_token) {
       return clearStateCookie(redirectToAccount(req, "?google_ads_error=no_refresh_token"));

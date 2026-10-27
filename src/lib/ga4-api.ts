@@ -49,7 +49,7 @@ export function isGa4OAuthConfigured(): boolean {
   return hasDedicated || hasFallback;
 }
 
-export function buildGa4ConnectUrl(redirectUri: string, state: string): string {
+export function buildGa4ConnectUrl(redirectUri: string, state: string, codeChallenge?: string): string {
   const url = new URL(GOOGLE_AUTH_URL);
   url.searchParams.set("client_id", ga4ClientId());
   url.searchParams.set("redirect_uri", redirectUri);
@@ -58,10 +58,11 @@ export function buildGa4ConnectUrl(redirectUri: string, state: string): string {
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent select_account");
   url.searchParams.set("state", state);
+  if (codeChallenge) { url.searchParams.set("code_challenge", codeChallenge); url.searchParams.set("code_challenge_method", "S256"); }
   return url.toString();
 }
 
-export async function exchangeGa4AuthCode(code: string, redirectUri: string): Promise<Ga4TokenResponse> {
+export async function exchangeGa4AuthCode(code: string, redirectUri: string, codeVerifier?: string): Promise<Ga4TokenResponse> {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -71,6 +72,7 @@ export async function exchangeGa4AuthCode(code: string, redirectUri: string): Pr
       code,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
+      ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
     }),
   });
   if (!res.ok) {

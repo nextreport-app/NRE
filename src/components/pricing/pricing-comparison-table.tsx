@@ -1,6 +1,6 @@
 "use client";
 
-import { AGENCY_CLIENT_LIMIT } from "@/lib/plan-labels";
+import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT } from "@/lib/plan-labels";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
 function Cell({ children, header }: { children: React.ReactNode; header?: boolean }) {
@@ -35,12 +35,12 @@ export function PricingComparisonTable() {
           <tr>
             <Cell header>{rows.clientWorkspaces}</Cell>
             <Cell>{rows.agencyClients.replace("{n}", String(AGENCY_CLIENT_LIMIT))}</Cell>
-            <Cell>{rows.unlimitedClients}</Cell>
+            <Cell>{`Up to ${PROFESSIONAL_CLIENT_LIMIT} brands`}</Cell>
           </tr>
           <tr>
             <Cell header>{rows.reportGeneration}</Cell>
-            <Cell>{rows.unlimitedReports}</Cell>
-            <Cell>{rows.unlimitedReports}</Cell>
+            <Cell>Unlimited, with fair-use safeguards</Cell>
+            <Cell>Unlimited, with fair-use safeguards</Cell>
           </tr>
           <tr>
             <Cell header>{rows.metaReporting}</Cell>

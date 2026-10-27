@@ -1,3 +1,4 @@
+vi.mock("@/lib/usage-rate-limit", () => ({ enforceRateLimit: vi.fn().mockResolvedValue(null), requestAddress: () => "test" }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/find-user-by-email", () => ({

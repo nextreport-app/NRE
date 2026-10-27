@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { deleteReportFile } from "@/lib/storage";
+import { queueBlobDeletions } from "./blob-deletion-outbox";
 import type { PlanId } from "@/lib/subscription";
 
 /** Default and legacy constant — existing imports keep working. */
@@ -55,13 +55,10 @@ async function purgeReportBatch(where: Prisma.ReportWhereInput): Promise<number>
     });
     if (batch.length === 0) break;
 
-    await Promise.all(
-      batch.map(async (report) => {
-        if (report.filePath) await deleteReportFile(report.filePath).catch(() => undefined);
-        if (report.pdfPath) await deleteReportFile(report.pdfPath).catch(() => undefined);
-      }),
-    );
-    await prisma.report.deleteMany({ where: { id: { in: batch.map((r) => r.id) } } });
+    await prisma.$transaction(async tx => {
+      await queueBlobDeletions(tx, batch.flatMap(report => [report.filePath, report.pdfPath]));
+      await tx.report.deleteMany({ where: { id: { in: batch.map(report => report.id) } } });
+    });
     total += batch.length;
     if (batch.length < BATCH_SIZE) break;
   }

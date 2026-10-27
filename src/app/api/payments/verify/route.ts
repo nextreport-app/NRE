@@ -1,6 +1,7 @@
+import { enforceRateLimit } from "@/lib/usage-rate-limit";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { applyCapturedPayment } from "@/lib/billing-entitlements";
 import { isPlanId, verifyPaymentSignature, verifySubscriptionPaymentSignature } from "@/lib/razorpay";
 import { apiErrorResponse } from "@/lib/api-error";
 import { sendSubscriptionConfirmedEmail } from "@/lib/billing-user-emails";
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const throttle = await enforceRateLimit("payment-verification", session.user.id, 20, 60);
+  if (throttle) return throttle;
   const body = await req.json().catch(() => null);
   const {
     razorpay_payment_id,
@@ -66,24 +69,19 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        planId,
-        subscribedAt: new Date(),
-        ...(isSubscriptionFlow ? { razorpaySubscriptionId: razorpay_subscription_id } : {}),
-      },
-    });
+    const entitlement = await applyCapturedPayment(razorpay_payment_id,
+      isSubscriptionFlow ? razorpay_subscription_id : razorpay_order_id, session.user.id);
+    if (!entitlement.newlyApplied) return NextResponse.json({ success: true });
 
     const email = session.user.email ?? "unknown";
     notifyBillingNewSubscription({
       email,
       name: session.user.name,
-      planId,
+      planId: entitlement.planId,
       paymentId: razorpay_payment_id,
     });
     if (email !== "unknown") {
-      sendSubscriptionConfirmedEmail({ to: email, name: session.user.name, planId });
+      sendSubscriptionConfirmedEmail({ to: email, name: session.user.name, planId: entitlement.planId });
     }
 
     return NextResponse.json({ success: true });

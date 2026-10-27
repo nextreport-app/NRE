@@ -13,7 +13,7 @@ import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional unlimited clients from ₹1,299/mo ($15). 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional up to 50 clients from ₹1,299/mo ($15). 7-day free trial.",
   path: "/pricing",
 });
 
@@ -48,7 +48,7 @@ export default async function PricingPage() {
         <PricingCurrencyBanner />
 
         <p className="mt-8 text-center text-xs text-ink-muted">
-          ✓ 7-day free trial · ✓ White-label client reports · ✓ No credit card required · ✓ Cancel anytime · ✓
+          ✓ 7-day trial: 3 clients, 10 reports · ✓ White-label client reports · ✓ No credit card required · ✓ Cancel anytime · ✓
           INR or USD billing
         </p>
 
@@ -61,7 +61,7 @@ export default async function PricingPage() {
           <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
             Email us
           </a>{" "}
-          for custom billing or onboarding — no separate Enterprise tier required to get started.
+          for more than 50 clients, high-volume reporting, or custom onboarding.
         </p>
 
         <div className="mt-20">

@@ -1,0 +1,57 @@
+{
+  "reviewDate": "2026-10-27",
+  "command": "npm audit --omit=dev --json",
+  "before": {
+    "info": 0,
+    "low": 0,
+    "moderate": 3,
+    "high": 24,
+    "critical": 1,
+    "total": 28
+  },
+  "after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 4,
+    "critical": 0,
+    "total": 4
+  },
+  "remaining": {
+    "@vercel/blob": {
+      "severity": "high",
+      "via": [
+        "@vercel/oidc"
+      ]
+    },
+    "@vercel/cli-config": {
+      "severity": "high",
+      "via": [
+        "zod"
+      ]
+    },
+    "@vercel/oidc": {
+      "severity": "high",
+      "via": [
+        "@vercel/cli-config"
+      ]
+    },
+    "zod": {
+      "severity": "high",
+      "via": [
+        {
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "range": "<4.6.6"
+        }
+      ]
+    }
+  },
+  "spreadsheetPackage": {
+    "alias": "npm:@e965/xlsx@0.20.3",
+    "publisherSource": "https://github.com/e965/sheetjs-npm-publisher",
+    "upstreamPackageDownloadBlocked": true,
+    "provenance": "Published npm attestation and republisher source inspected; upstream tarball could not be independently downloaded for byte comparison."
+  },
+  "remainingExposure": "Nested Zod in Vercel CLI/OIDC configuration path, not the application request validators. Retain explicit Blob token configuration; track upstream fix. Audit is not zero."
+}

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
-import { recordClientCreated } from "@/lib/client-capacity";
+import { createClientWithinCapacity } from "@/lib/atomic-client-create";
 import { requireClientCapacity } from "@/lib/subscription-guard";
 
 const duplicateSchema = z.object({
@@ -44,18 +44,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const client = await prisma.client.create({
-      data: {
-        userId: session.user.id,
+    const client = await createClientWithinCapacity(session.user.id, {
         accountName: parsed.data.accountName,
         currency: source.currency,
         timezone: source.timezone,
         monthlyBudget: source.monthlyBudget,
         showBudgetPacingOnCover: source.showBudgetPacingOnCover,
         template: source.template,
-      },
     });
-    await recordClientCreated(session.user.id);
     return NextResponse.json({ client }, { status: 201 });
   } catch (err) {
     return apiErrorResponse(err, "clients:duplicate");

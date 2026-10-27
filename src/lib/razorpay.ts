@@ -40,6 +40,7 @@ export function isBillingInterval(value: unknown): value is BillingInterval {
 
 /** Reverse of PLANS: which plan (if any) costs exactly this much, in this currency — used by the payments webhook to derive planId from the amount actually captured rather than trusting a client- or notes-supplied planId. */
 export function planIdForAmount(amount: number, currency: string): PlanId | null {
+  if (!isPricingCurrency(currency)) return null;
   for (const planId of ["starter", "professional"] as const) {
     if (amount === amountForCurrency(planId, currency as PricingCurrency, "monthly")) return planId;
     if (amount === amountForCurrency(planId, currency as PricingCurrency, "annual")) return planId;
@@ -119,7 +120,9 @@ export function getRazorpayPlanId(
 }
 
 export function isRazorpaySubscriptionsConfigured(): boolean {
-  return getRazorpayPlanId("starter", "INR", "monthly") !== null;
+  return (["starter", "professional"] as const).some(plan =>
+    (["INR", "USD"] as const).some(currency =>
+      (["monthly", "annual"] as const).some(interval => getRazorpayPlanId(plan, currency, interval) !== null)));
 }
 
 /** Reverse lookup from a Razorpay plan id back to our planId — used by webhooks. */

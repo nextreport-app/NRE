@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       trialEndingEmailSentAt: null,
       trialEndsAt: { gte: windowStart, lt: windowEnd },
     },
-    select: { id: true, email: true, name: true, trialEndsAt: true },
+    select: { id: true, email: true, name: true, trialEndsAt: true, paidThrough: true, emailVerified: true },
     take: 200,
   });
 

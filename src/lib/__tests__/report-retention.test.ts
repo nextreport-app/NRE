@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: vi.fn(),
+    blobDeletion: { createMany: vi.fn() },
     user: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -52,6 +54,7 @@ describe("report retention options", () => {
 
 describe("purgeExpiredReportsForUser", () => {
   beforeEach(() => {
+    vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: typeof prisma) => unknown) => fn(prisma)) as never);
     vi.clearAllMocks();
   });
 
@@ -78,6 +81,7 @@ describe("purgeExpiredReportsForUser", () => {
 
 describe("purgeExpiredReports", () => {
   beforeEach(() => {
+    vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: typeof prisma) => unknown) => fn(prisma)) as never);
     vi.clearAllMocks();
   });
 

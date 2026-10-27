@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { getPlanDisplayName } from "@/lib/plan-labels";
-import { SubscribePlanCards, SubscribeWithCheckoutOptions } from "@/components/subscribe-plan-cards";
+import { SubscribePlanCards } from "@/components/subscribe-plan-cards";
 import { CancelSubscriptionButton } from "@/components/cancel-subscription-button";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -39,8 +39,9 @@ export default async function BillingPage() {
       name: true,
       email: true,
       planId: true,
-      trialEndsAt: true,
+      trialEndsAt: true, paidThrough: true, emailVerified: true,
       subscribedAt: true,
+      trialReportsUsed: true,
       razorpaySubscriptionId: true,
     },
   });
@@ -84,7 +85,7 @@ export default async function BillingPage() {
           <p className="mt-3 text-[15px] text-dash-ink-secondary">
             {user.razorpaySubscriptionId
               ? "Recurring subscription — renews automatically each billing period until you cancel below."
-              : "Paid via one-time checkout — no automatic renewal. Access stays active until you cancel below."}
+              : "No automatic renewal. Access lasts until the paid-through date below."}
             {user.subscribedAt ? (
               <>
                 {" "}
@@ -94,30 +95,23 @@ export default async function BillingPage() {
           </p>
         )}
 
+        {user.paidThrough && <p className="mt-2 text-sm text-dash-ink-secondary">Paid through {formatDate(user.paidThrough)}.</p>}
+        {status.isTrialing && <p className="mt-2 text-sm text-dash-ink-secondary">{Math.min(user.trialReportsUsed, 10)} of 10 trial reports used · up to 3 active clients.</p>}
         {status.planId === "cancelled" && (
           <p className="mt-3 text-[15px] text-dash-ink-secondary">
             Your subscription was cancelled. Resubscribe any time to regain access.
           </p>
         )}
 
-        {(status.isTrialing || status.planId === "cancelled") && (
+        {(status.isTrialing || status.isBlocked) && (
           <div className="mt-6">
             <SubscribePlanCards userEmail={user.email} userName={user.name} />
           </div>
         )}
 
-        {status.planId === "starter" && (
-          <div className="mt-6">
-            <SubscribeWithCheckoutOptions
-              planId="professional"
-              label="Upgrade to Professional"
-              userEmail={user.email}
-              userName={user.name}
-            />
-          </div>
-        )}
+        {status.isSubscribed && !status.isAdminOverride && <p className="mt-6 text-sm text-dash-ink-secondary">Need a different plan? <a href="mailto:hello@nextreport.in" className="text-dash-accent underline">Contact support</a> to avoid overlapping subscriptions.</p>}
 
-        {!status.isAdminOverride && status.isSubscribed && (
+        {!status.isAdminOverride && user.razorpaySubscriptionId && (
           <div className="mt-6">
             <CancelSubscriptionButton />
           </div>

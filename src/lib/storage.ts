@@ -24,6 +24,7 @@ import { contentTypeForLogoFormat, extensionForLogoFormat, type LogoFormat } fro
 
 export async function saveReportFile(reportId: string, buffer: Buffer): Promise<string> {
   const blob = await put(`reports/${reportId}.pptx`, buffer, {
+    allowOverwrite: true,
     access: "private",
     addRandomSuffix: false,
     contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",

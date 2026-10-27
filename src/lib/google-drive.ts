@@ -72,7 +72,7 @@ export async function getFreshGoogleAccessToken(refreshToken: string): Promise<s
  * here since a user might reconnect the same or a different account later
  * to switch which Drive gets used.
  */
-export function buildGoogleDriveConnectUrl(redirectUri: string, state: string): string {
+export function buildGoogleDriveConnectUrl(redirectUri: string, state: string, codeChallenge?: string): string {
   const url = new URL(GOOGLE_AUTH_URL);
   url.searchParams.set("client_id", process.env.AUTH_GOOGLE_ID ?? "");
   url.searchParams.set("redirect_uri", redirectUri);
@@ -81,6 +81,7 @@ export function buildGoogleDriveConnectUrl(redirectUri: string, state: string): 
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent select_account");
   url.searchParams.set("state", state);
+  if (codeChallenge) { url.searchParams.set("code_challenge", codeChallenge); url.searchParams.set("code_challenge_method", "S256"); }
   return url.toString();
 }
 
@@ -93,7 +94,7 @@ export interface GoogleTokenResponse {
 }
 
 /** Exchanges the connect flow's authorization code for tokens — the one-time step right after the user approves on Google's consent screen. */
-export async function exchangeGoogleAuthCode(code: string, redirectUri: string): Promise<GoogleTokenResponse> {
+export async function exchangeGoogleAuthCode(code: string, redirectUri: string, codeVerifier?: string): Promise<GoogleTokenResponse> {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -103,6 +104,7 @@ export async function exchangeGoogleAuthCode(code: string, redirectUri: string):
       code,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
+      ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
     }),
   });
   if (!res.ok) {

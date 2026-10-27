@@ -47,7 +47,7 @@ export default auth((req) => {
 
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
-    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/auth") || pathname === "/verify-email" ||
     // Public read-only report share pages (/r/[shareToken]) — see
     // app/r/[token]/page.tsx. Anyone with the unguessable token can open
     // these without logging in; the page itself does its own

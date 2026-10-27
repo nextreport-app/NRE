@@ -1,3 +1,4 @@
+import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, TRIAL_CLIENT_LIMIT } from "./launch-limits";
 /**
  * Single source of truth for what a user's subscription plan allows —
  * every page/route that needs to know "can this user do X" computes it
@@ -42,11 +43,10 @@ function normalizePlanId(planId: string): PlanId {
   return (KNOWN_PLAN_IDS as readonly string[]).includes(planId) ? (planId as PlanId) : "trial";
 }
 
-// Starter caps client accounts at 10; Professional and an active trial are
-// unlimited (trial is time-gated instead — see isBlocked). "cancelled"
+// Launch limits apply to active client rows, with the trial additionally time-gated. "cancelled"
 // has no meaningful limit of its own since isBlocked already blocks the
 // actions a limit would otherwise apply to.
-const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: 10 };
+const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: AGENCY_CLIENT_LIMIT, professional: PROFESSIONAL_CLIENT_LIMIT, trial: TRIAL_CLIENT_LIMIT };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -61,6 +61,8 @@ export interface SubscriptionUser {
   email: string;
   planId: string;
   trialEndsAt: Date;
+  paidThrough?: Date | null;
+  emailVerified?: Date | null;
 }
 
 export interface SubscriptionStatus {
@@ -92,11 +94,12 @@ const ADMIN_OVERRIDE_STATUS: SubscriptionStatus = {
 };
 
 export function getSubscriptionStatus(user: SubscriptionUser): SubscriptionStatus {
-  if (isAdminEmail(user.email)) return ADMIN_OVERRIDE_STATUS;
+  if (isAdminEmail(user.email) && user.emailVerified) return ADMIN_OVERRIDE_STATUS;
 
   const planId = normalizePlanId(user.planId);
   const isTrialing = planId === "trial";
-  const isSubscribed = planId === "starter" || planId === "professional";
+  const paidPlan = planId === "starter" || planId === "professional";
+  const isSubscribed = paidPlan && !!user.paidThrough && user.paidThrough.getTime() > Date.now();
 
   const now = new Date();
   const msLeft = user.trialEndsAt.getTime() - now.getTime();
@@ -108,7 +111,7 @@ export function getSubscriptionStatus(user: SubscriptionUser): SubscriptionStatu
   }
   const isTrialExpired = isTrialing && msLeft <= 0;
 
-  const isBlocked = (isTrialing && isTrialExpired) || planId === "cancelled";
+  const isBlocked = (isTrialing && isTrialExpired) || planId === "cancelled" || (paidPlan && !isSubscribed);
   const clientLimit = CLIENT_LIMITS[planId] ?? null;
 
   return { planId, isSubscribed, isTrialing, trialDaysLeft, isTrialExpired, isBlocked, clientLimit, isAdminOverride: false };

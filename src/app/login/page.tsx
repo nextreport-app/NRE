@@ -1,4 +1,5 @@
 "use client";
+import { safeAuthRedirect } from "@/lib/safe-auth-redirect";
 
 import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
@@ -14,7 +15,7 @@ import { normalizeAuthEmail } from "@/lib/normalize-auth-email";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const callbackUrl = params.get("callbackUrl") || "/clients";
+  const callbackUrl = safeAuthRedirect(params.get("callbackUrl"));
   const authErrorCode = params.get("error");
   const authErrorCodeDetail = params.get("code");
   const passwordResetOk = params.get("reset") === "1";
@@ -33,6 +34,7 @@ function LoginForm() {
     e.preventDefault();
     setFormError(null);
     setLoading(true);
+    try {
     const normalizedEmail = normalizeAuthEmail(email);
     const res = await signIn("credentials", {
       email: normalizedEmail,
@@ -63,6 +65,9 @@ function LoginForm() {
       return;
     }
     router.push(callbackUrl);
+    } catch {
+      setFormError("Could not reach the server. Please try again.");
+    } finally { setLoading(false); }
   }
 
   const forgotHref =

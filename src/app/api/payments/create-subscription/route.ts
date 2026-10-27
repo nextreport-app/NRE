@@ -1,12 +1,16 @@
+import { enforceRateLimit } from "@/lib/usage-rate-limit";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { apiErrorResponse } from "@/lib/api-error";
-import { isBillingInterval, isPlanId, isPricingCurrency } from "@/lib/razorpay";
+import { getRazorpayPlanId, isBillingInterval, isPlanId, isPricingCurrency } from "@/lib/razorpay";
 import { createRazorpaySubscription, isRazorpaySubscriptionsConfigured } from "@/lib/razorpay-subscriptions";
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const throttle = await enforceRateLimit("billing-checkout", session.user.id, 5, 600);
+  if (throttle) return throttle;
 
   if (!isRazorpaySubscriptionsConfigured()) {
     return NextResponse.json(
@@ -23,6 +27,7 @@ export async function POST(req: Request) {
 
   const currency = isPricingCurrency(body?.currency) ? body.currency : "INR";
   const interval = isBillingInterval(body?.interval) ? body.interval : "monthly";
+  if (!getRazorpayPlanId(planId, currency, interval)) return NextResponse.json({ error: "Recurring checkout is unavailable for this option. Use a one-time payment.", useOrders: true }, { status: 503 });
   const email = session.user.email;
   if (!email) {
     return NextResponse.json({ error: "Account email is required for billing." }, { status: 400 });

@@ -72,7 +72,7 @@ export default async function AccountSettingsPage({
         slackWebhookUrl: true,
         automationWebhookUrl: true,
         planId: true,
-        trialEndsAt: true,
+        trialEndsAt: true, paidThrough: true, emailVerified: true,
         reportRetentionDays: true,
       },
     }),

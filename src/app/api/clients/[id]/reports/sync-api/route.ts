@@ -1,3 +1,5 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -84,6 +86,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const subscriptionGuard = await requireActiveSubscription(session.user.id);
+  if (subscriptionGuard) return subscriptionGuard;
+  const throttle = await enforceWizardLimits(session.user.id, "upload");
+  if (throttle) return throttle;
 
   try {
     const { id } = await params;

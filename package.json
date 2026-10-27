@@ -13,20 +13,21 @@
     "test:api-routes": "vitest run src/app/api/__tests__",
     "meta:tier-qualification": "node scripts/meta-tier-qualification.js",
     "blob:purge-ephemeral": "tsx scripts/purge-vercel-blob-ephemeral.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:launch-safety": "vitest run src/lib/__tests__/launch-security.test.ts src/lib/__tests__/launch-guards.postgres.test.ts src/lib/__tests__/blob-deletion-outbox.test.ts src/lib/__tests__/subscription.test.ts src/lib/__tests__/razorpay.test.ts src/lib/__tests__/report-retention.test.ts src/lib/__tests__/auth-google-sign-in.test.ts src/lib/__tests__/auth-sign-in-errors.test.ts src/lib/__tests__/account-login-hint.test.ts src/lib/__tests__/plan-pricing.test.ts src/app/api/__tests__/payments-subscription.route.integration.test.ts src/app/api/__tests__/clients.route.integration.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
     "@resvg/resvg-wasm": "^2.6.2",
-    "@vercel/blob": "^2.6.1",
+    "@vercel/blob": "^2.8.2",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.10.1",
     "image-size": "^2.0.2",
     "jszip": "^3.10.1",
-    "next": "16.2.11",
+    "next": "16.4.3",
     "next-auth": "^5.0.0-beta.32",
     "papaparse": "^5.5.4",
     "pg": "^8.22.0",
@@ -35,8 +36,8 @@
     "react-dom": "19.2.4",
     "resend": "^6.18.1",
     "server-only": "^0.0.1",
-    "xlsx": "^0.18.5",
-    "zod": "^4.4.3"
+    "xlsx": "npm:@e965/xlsx@0.20.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -46,7 +47,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.4.3",
     "prisma": "^7.9.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",

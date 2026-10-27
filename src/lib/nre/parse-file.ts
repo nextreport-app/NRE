@@ -1,3 +1,4 @@
+import { assertWorkbookUploadBudget } from "./workbook-upload-budget";
 /**
  * Universal file-upload entry point — accepts whatever format a user
  * downloads from Meta Ads Manager or Google Ads (.csv, .tsv, .txt, .xlsx,
@@ -79,6 +80,7 @@ export function pickSheetName(workbook: XLSX.WorkBook, preferredSheetName?: stri
 
 /** Converts a workbook sheet to the same CSV text every other format is parsed through — see parseUploadedFileHeadersAndRows's own doc comment for why. Returns null if the workbook has no usable sheet. */
 function excelBufferToCsvText(buffer: Buffer, preferredSheetName?: string): string | null {
+  assertWorkbookUploadBudget(buffer);
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheetName = pickSheetName(workbook, preferredSheetName);
   if (!sheetName) return null;

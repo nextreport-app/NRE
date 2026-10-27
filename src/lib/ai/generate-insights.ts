@@ -1,3 +1,5 @@
+import { forEachConcurrent } from "@/lib/for-each-concurrent";
+import { assertReportComplexity } from "@/lib/report-complexity";
 /**
  * Orchestrates AI-written copy for every campaign/ad-set slide in a report.
  * One summary + one insights call per slide (matching writeInsights_, which
@@ -150,12 +152,12 @@ function promptBuildersFor(platform: Platform): { summary: typeof buildSummaryPr
 }
 
 export async function generateInsights(data: ReportData, keys: AiKeys): Promise<Map<string, AiCopy>> {
+  assertReportComplexity(data);
   const slides = [...data.campaignSlides, ...data.adSetSlides];
   const results = new Map<string, AiCopy>();
   const { summary: buildSummaryPromptFor, insight: buildInsightPromptFor } = promptBuildersFor(data.platform);
 
-  await Promise.all(
-    slides.map(async (slide) => {
+  await forEachConcurrent(slides, 2, async (slide) => {
       const name = slide.campaignName;
 
       // Fix 4 — paused/inactive (or effectively zero-spend) with no results
@@ -259,8 +261,7 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
       }
 
       results.set(slideAiKey(slide), { summary, insights });
-    }),
-  );
+    });
 
   return results;
 }

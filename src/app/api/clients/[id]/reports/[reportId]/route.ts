@@ -1,10 +1,13 @@
+import { enforceRateLimit } from "@/lib/usage-rate-limit";
+import { after } from "next/server";
+import { queueBlobDeletions, drainBlobDeletionQueue } from "@/lib/blob-deletion-outbox";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { deleteReportFile, saveReportFile, readLogoFile } from "@/lib/storage";
+import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
-import type { ShareReportData, ShareVisibility } from "@/lib/nre/share-report";
+import type { ShareVisibility } from "@/lib/nre/share-report";
 import { defaultShareVisibility } from "@/lib/nre/share-report";
 import { regeneratePptxFromShare, type ShareReportWithArchive } from "@/lib/nre/regenerate-report";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
@@ -278,10 +281,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       let filePath = report.filePath;
       if (parsed.data.publish && share._renderArchive) {
+        const throttle = await enforceRateLimit("report-publish", session.user.id, 3, 60);
+        if (throttle) return throttle;
         const templateBuffer = await loadTemplateBufferForPlatform(report.platform, report.client.template);
         const clientLogo = await loadLogoAsset(report.client.logoUrl);
         const pptxBuffer = await regeneratePptxFromShare(share, templateBuffer, clientLogo);
-        if (filePath) await deleteReportFile(filePath).catch(() => undefined);
         filePath = await saveReportFile(reportId, pptxBuffer);
       }
 
@@ -348,10 +352,13 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (report.filePath) await deleteReportFile(report.filePath);
-    if (report.pdfPath) await deleteReportFile(report.pdfPath);
-
-    await prisma.report.delete({ where: { id: reportId } });
+    const activeJob = await prisma.report.count({ where: { id: reportId, status: "GENERATING", OR: [{ createdAt: { gt: new Date(Date.now() - 600000) } }, { processingStartedAt: { gt: new Date(Date.now() - 600000) } }] } });
+    if (activeJob) return NextResponse.json({ error: "Wait for report generation to finish before deleting." }, { status: 409 });
+    await prisma.$transaction(async tx => {
+      await queueBlobDeletions(tx, [report.filePath, report.pdfPath]);
+      await tx.report.delete({ where: { id: reportId } });
+    });
+    after(async () => { await drainBlobDeletionQueue(); });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return apiErrorResponse(err, "reports:delete");

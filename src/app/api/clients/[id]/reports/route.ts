@@ -1,3 +1,5 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { createReportWithinCapacity } from "@/lib/report-capacity";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -98,6 +100,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const guardResponse = await requireActiveSubscription(session.user.id);
   if (guardResponse) return guardResponse;
+  const throttle = await enforceWizardLimits(session.user.id);
+  if (throttle) return throttle;
 
   const formData = await req.formData().catch(() => null);
   const reportTitle = formData ? parseJsonFormField(formData, "reportTitle", reportTitleSchema) : undefined;
@@ -158,7 +162,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         shareToken,
       };
 
-      summaryReport = await prisma.report.create({
+      summaryReport = await createReportWithinCapacity(session.user.id, {
         data: {
           clientId: client.id,
           status: "GENERATING",
@@ -246,7 +250,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         comparisonData,
       };
 
-      comparisonReport = await prisma.report.create({
+      comparisonReport = await createReportWithinCapacity(session.user.id, {
         data: {
           clientId: client.id,
           status: "GENERATING",
@@ -323,7 +327,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         shareToken,
       };
 
-      historicalReport = await prisma.report.create({
+      historicalReport = await createReportWithinCapacity(session.user.id, {
         data: {
           clientId: client.id,
           status: "GENERATING",
@@ -394,7 +398,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         shareToken,
       };
 
-      dayBreakdownReport = await prisma.report.create({
+      dayBreakdownReport = await createReportWithinCapacity(session.user.id, {
         data: {
           clientId: client.id,
           status: "GENERATING",
@@ -466,7 +470,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         : {}),
     };
 
-    report = await prisma.report.create({
+    report = await createReportWithinCapacity(session.user.id, {
       data: {
         clientId: client.id,
         status: "GENERATING",

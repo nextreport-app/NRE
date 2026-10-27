@@ -30,7 +30,7 @@ export function TrialBanner({ status }: { status: SubscriptionStatus }) {
 
   return (
     <div className="nre-trial-banner--expired border-b border-red-900 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">
-      {d.trialEnded}{" "}
+      {status.isTrialing ? d.trialEnded : "Your paid access has ended."}{" "}
       <Link href="/pricing" className="font-medium underline">
         {d.trialSubscribeContinue}
       </Link>

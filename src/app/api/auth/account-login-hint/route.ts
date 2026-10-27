@@ -1,3 +1,4 @@
+import { enforceRateLimit, requestAddress } from "@/lib/usage-rate-limit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { findUserByEmail } from "@/lib/find-user-by-email";
@@ -12,6 +13,8 @@ const bodySchema = z.object({
  * Does not reveal whether the email exists when a password is already set.
  */
 export async function POST(req: Request) {
+  const throttle = await enforceRateLimit("account-login-hint", requestAddress(req), 10, 900);
+  if (throttle) return throttle;
   try {
     const json = await req.json().catch(() => null);
     const parsed = bodySchema.safeParse(json);

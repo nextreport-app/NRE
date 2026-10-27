@@ -167,7 +167,7 @@ export function SubscribeButton({
       // the value into Vercel's env var UI — see lib/razorpay.ts.
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() ?? "",
       name: "NextReport",
-      description: `${PLAN_NAMES[planId]} plan — ${interval === "annual" ? "annual" : "monthly"} billing`,
+      description: `${PLAN_NAMES[planId]} — ${interval === "annual" ? "1 year" : "1 month"}${checkoutData.mode === "order" ? ", one-time payment; no auto-renewal" : ", auto-renews until cancelled"}`,
       prefill: { name: userName ?? undefined, email: userEmail ?? undefined },
       theme: { color: "#4a90d9" },
       handler: async (response) => {

@@ -1,3 +1,4 @@
+import { createPkce } from "@/lib/oauth-pkce";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -13,9 +14,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/account?ga4_error=not_configured", req.url));
   }
 
+  const pkce = createPkce();
   const state = randomBytes(24).toString("hex");
   const redirectUri = new URL("/api/ga4/callback", req.url).toString();
-  const res = NextResponse.redirect(buildGa4ConnectUrl(redirectUri, state));
+  const res = NextResponse.redirect(buildGa4ConnectUrl(redirectUri, state, pkce.challenge));
   res.cookies.set(GA4_OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -23,5 +25,6 @@ export async function GET(req: NextRequest) {
     maxAge: STATE_COOKIE_MAX_AGE_SECONDS,
     path: "/",
   });
+  res.cookies.set(`${GA4_OAUTH_STATE_COOKIE}_pkce`, `${session.user.id}:${pkce.verifier}`, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 600, path: "/" });
   return res;
 }

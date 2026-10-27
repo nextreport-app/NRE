@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { queueBlobDeletions, drainBlobDeletionQueue } from "@/lib/blob-deletion-outbox";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -59,7 +61,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const existing = await getOwnedClient(session.user.id, id);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    await prisma.client.delete({ where: { id } });
+    const activeJob = await prisma.report.count({ where: { clientId: id, status: "GENERATING", OR: [{ createdAt: { gt: new Date(Date.now() - 600000) } }, { processingStartedAt: { gt: new Date(Date.now() - 600000) } }] } });
+    if (activeJob) return NextResponse.json({ error: "Wait for report generation to finish before deleting." }, { status: 409 });
+    await prisma.$transaction(async tx => {
+      const reports = await tx.report.findMany({ where: { clientId: id }, select: { filePath: true, pdfPath: true } });
+      await queueBlobDeletions(tx, [existing.logoUrl, existing.previousMonthDataUrl, ...reports.flatMap(report => [report.filePath, report.pdfPath])]);
+      await tx.client.delete({ where: { id } });
+    });
+    after(async () => { await drainBlobDeletionQueue(); });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return apiErrorResponse(err, "clients:delete");
