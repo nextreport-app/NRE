@@ -1,15 +1,15 @@
 # Client-readable performance charts
 
-Updated 27 October 2026 (IST). The visual model is shared by native editable PPT shapes, SVG preview and browser reports. This change preserves campaign selection, reporting windows and source result totals. Engine v5 invalidates older chart semantics in new snapshots; existing generated reports are not rewritten.
+Updated 27 October 2026 (IST). The visual model is shared by native editable PPT shapes, SVG preview and browser reports. This change preserves campaign selection, reporting windows and source result totals. Engine v6 invalidates older chart semantics in new snapshots; existing generated reports are not rewritten.
 
 ## Meaning and identity
 
-- A multi-campaign donut shows **Spend by Campaign**, with one campaign per slice. It does not label multiple slices with the same result objective.
-- Both panels use the same displayed campaigns, ranks, short names, colors and order. Short labels retain distinguishing tails, including underscore-delimited names. Original campaign names remain in the model and browser tooltips; campaign summary slides keep their full names.
+- The left donut shows **Spend by Objective**, aggregating all campaigns with the same resolved result objective before building slices. One goal produces one 100% segment; mixed goals produce separate segments with goal names, spend shares and exact spend. Website and instant-form leads remain distinct. Campaign names are not repeated in this legend.
+- The right campaign bars retain their ranks, short names, colors, ordering, counts, spend and cost labels. Donut colors identify objectives independently, not individual campaigns. Short labels retain distinguishing tails, including underscore-delimited names. Original campaign names remain in the model and browser tooltips.
 - When all campaigns report the same event type, bars rank and scale by that result count. The scale starts at zero and ends at the largest shown count. Actual counts appear at the right; spend and cost per result sit below the bar.
 - Mixed result types use spend for ranking and bar length, with an explicit scale description. Different result units are not added into a fictitious aggregate Results count or compared as if equivalent.
 - Resolved source event labels are authoritative. A campaign name cannot relabel a lead count as Reach or Link clicks in the renderer.
-- Up to five campaign rows are shown. Additional campaign spend stays in an explicit Other campaigns slice, and the top-five limit is stated. A fallback Unassigned spend label exposes inconsistent supplied totals instead of inventing another campaign.
+- Up to five campaign bars are shown; their top-five limit is stated. The donut includes spend from every campaign, including those outside the bars. Up to five objectives are listed individually, with remaining objective spend grouped as Other objectives. Unassigned spend exposes inconsistent supplied totals.
 
 ## Numbers and display
 
@@ -19,7 +19,7 @@ A single 100% SVG donut uses a visible full-circle primitive; a start=end arc ca
 
 ## Verification
 
-Anonymous contract tests cover repeated-goal campaigns, matched identity/color/order, exact counts and weighted costs, mixed-goal spend scales, authoritative event identity, omitted campaigns, fractional counts, per-1,000 costs, full-circle rendering, and native text-box geometry. Existing chart/date/layout tests continue to cover the shared renderers. Private client CSVs and deck previews stay outside Git.
+Anonymous contract tests cover repeated-goal campaigns, objective aggregation independent of campaign bars, exact counts and weighted costs, mixed-goal spend scales, authoritative event identity, omitted campaigns, fractional counts, per-1,000 costs, full-circle rendering, and native text-box geometry. Existing chart/date/layout tests continue to cover the shared renderers. Private client CSVs and deck previews stay outside Git.
 
 Visual checks should include native dark/light PPT export, browser desktop/mobile, and long/shared-prefix campaign names. Rendering via LibreOffice is an interoperability check; PowerPoint and Google Slides can use different font substitutions.
 

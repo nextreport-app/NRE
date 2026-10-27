@@ -30,15 +30,15 @@ const rows = [
 const background = { blipXml: '<a:blip r:embed="rId1"/>', srcRectXml: "", offX: 0, offY: 0, extCx: 12192000, extCy: 6858000, mediaTarget: "../media/background.png" };
 
 describe("client-readable chart identity and metric contracts", () => {
-  it("maps every donut slice to its same ranked campaign, color and bar instead of repeating the objective", () => {
+  it("aggregates repeated objectives into one slice while preserving campaign bars", () => {
     const model = buildVisualChartSlideModel(chart(rows), "$");
-    expect(model.leftHeading).toBe("Spend by Campaign");
+    expect(model.leftHeading).toBe("Spend by Objective");
     expect(model.resultBars.map(bar => bar.name)).toEqual(["September", "Alpha", "Gamma", "Beta", "Delta"]);
-    for (const [i, bar] of model.resultBars.entries()) {
-      expect(model.groupedDonut?.[i]).toMatchObject({ name: `${bar.rank}. ${bar.name}`, color: bar.color });
+    for (const bar of model.resultBars) {
       expect(rows.map(row => row.name)).toContain(bar.fullName);
     }
     expect(model.groupedDonut!.reduce((sum, seg) => sum + seg.percentage, 0)).toBeCloseTo(100);
+    expect(model.groupedDonut).toEqual([{ name: "Landing Page Views", color: model.groupedDonut![0].color, percentage: 100, spendLabel: "$2,700.00" }]);
     expect(model.groupedDonutCenterLabel).toBe("$2,700.00");
     expect(model.resultBars[0]).toMatchObject({ valueLabel: "2,200", barPct: 100, statLine: "$600.00 spend · $0.27 / view" });
     expect(model.resultBars[1].barPct).toBe(40);
@@ -49,12 +49,12 @@ describe("client-readable chart identity and metric contracts", () => {
   it("keeps campaign identity and counts aligned across native dark/light PPT shapes and SVG", () => {
     const data = projectChartSlideToShareChart(chart(rows), "$");
     for (const output of [buildMtdOverviewSlideXml(data, background, false), buildMtdOverviewSlideXml(data, background, true), buildMtdOverviewSvg(data)]) {
-      expect(output).toContain("SPEND BY CAMPAIGN");
+      expect(output).toContain("SPEND BY OBJECTIVE");
       expect(output).toContain("1. September");
       expect(output).toContain("5. Delta");
       expect(output).toContain("2,200");
       expect(output).toContain("$2,700.00");
-      expect(output).not.toContain("SPEND BY OBJECTIVE");
+      expect(output).not.toContain("SPEND BY CAMPAIGN");
     }
   });
 
@@ -81,12 +81,47 @@ describe("client-readable chart identity and metric contracts", () => {
     expect(model.resultBars.reduce((sum, bar) => sum + bar.resultCount, 0)).toBe(15);
   });
 
-  it("shows omitted-campaign spend explicitly and never loses it when limiting to five rows", () => {
+  it("includes campaigns outside the five bars in their objective total", () => {
     const model = buildVisualChartSlideModel(chart([...rows, campaign("Small A", 20, 2), campaign("Small B", 30, 3)]), "$");
     expect(model.resultBars).toHaveLength(5);
     expect(model.panelSubheading).toContain("Top 5 of 7");
-    expect(model.groupedDonut?.at(-1)).toMatchObject({ name: "Other campaigns (2)", spendLabel: "$50.00" });
+    expect(model.groupedDonut).toHaveLength(1);
+    expect(model.groupedDonut?.[0]).toMatchObject({ name: "Landing Page Views", spendLabel: "$2,750.00", percentage: 100 });
     expect(model.groupedDonut!.reduce((sum, seg) => sum + seg.percentage, 0)).toBeCloseTo(100);
+  });
+
+  it("combines repeated goals across all campaigns into three distinct spend slices", () => {
+    const model = buildVisualChartSlideModel(chart([
+      campaign("Form A", 100, 10, "META FORM LEADS"),
+      campaign("Form B", 50, 2, "META FORM LEADS"),
+      campaign("Web", 100, 3, "WEBSITE LEADS"),
+      campaign("Buy", 50, 1, "PURCHASES"),
+    ]), "$");
+    expect(model.groupedDonut?.map(s => [s.name, s.percentage, s.spendLabel])).toEqual([
+      ["Meta Form Leads", 50, "$150.00"],
+      ["Website Leads", 100 / 300 * 100, "$100.00"],
+      ["Purchases", 50 / 300 * 100, "$50.00"],
+    ]);
+  });
+
+  it("keeps distinct event types and zero-result spend in the objective mix", () => {
+    const model = buildVisualChartSlideModel(chart([
+      campaign("No leads", 100, 0, "WEBSITE LEADS"),
+      campaign("Form", 100, 5, "META FORM LEADS"),
+      campaign("Video", 100, 20, "THRUPLAY"),
+      campaign("Short video", 100, 200, "2 SECOND VIDEO VIEWS"),
+    ]), "$");
+    expect(model.groupedDonut).toHaveLength(4);
+    expect(model.groupedDonut?.every(s => s.percentage === 25)).toBe(true);
+    expect(model.groupedDonut?.map(s => s.name)).toContain("Website Leads");
+  });
+
+  it("groups excess objectives rather than losing their spend", () => {
+    const model = buildVisualChartSlideModel(chart(Array.from({length: 7}, (_, i) =>
+      campaign(`Campaign ${i}`, 10, 1, `GOAL ${i}`))), "$");
+    expect(model.groupedDonut).toHaveLength(6);
+    expect(model.groupedDonut?.at(-1)).toMatchObject({ name: "Other objectives (2)", spendLabel: "$20.00" });
+    expect(model.groupedDonut!.reduce((sum, s) => sum + s.percentage, 0)).toBeCloseTo(100);
   });
 
   it("preserves fractional result counts and per-1,000 objective cost units", () => {
