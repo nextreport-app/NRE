@@ -11,7 +11,7 @@ For **OAuth verification demo video**, see [google-oauth-verification-demo.md](.
 
 ## Error: “Access blocked — has not completed the Google verification process” (403)
 
-Your OAuth consent screen is in **Testing** (development) mode. Only **Test users** listed in Google Cloud can approve the consent screen.
+If the OAuth consent screen is in **Testing** mode, only listed test users can approve access. This error alone does not establish that the project is in Testing: also inspect the exact error details, requested scopes, user quota and verification status. Keep the project In production when the verification team instructs you to do so.
 
 ### Fix (for a new tester like `ayuhherbs@gmail.com`)
 
@@ -50,7 +50,7 @@ Confirm redirect URIs on the **Ads/GA4 OAuth client** (not necessarily the Drive
 
 ## Already signed up with Google (founder / early accounts)
 
-While the app keeps **Continue with Google** disabled (`NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED` is not `true`), Google-only accounts have **no password** — logging in with email and a guessed password will fail.
+**Continue with Google is enabled on login and signup.** The former `NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED` gate is retired; stale environment values no longer disable the button or omit the NextAuth provider. Google-only accounts have no password until they set one — a guessed password will fail.
 
 **Recommended (no Google approval needed):**
 
@@ -59,13 +59,13 @@ While the app keeps **Continue with Google** disabled (`NEXT_PUBLIC_GOOGLE_SIGNI
 3. Open the reset link and **set a password** (this updates your existing user — same clients, reports, and admin access).
 4. Log in with **email + password**.
 
-**Alternative (use Google again):**
+**Use Google again:**
 
-1. Set `NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED=true` on Vercel (re-enables the Google button).
-2. Keep your Gmail on **OAuth consent screen → Test users**.
-3. Use **Continue with Google** — only test users pass Google’s screen until the app is published.
+1. Deploy the restored Google sign-in change.
+2. Confirm `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` and the exact `/api/auth/callback/google` redirect URI match the Cloud client.
+3. Use **Continue with Google** on login or signup and capture the exact error if Google rejects the request. In Testing projects, the account must be a listed test user.
 
-Avoid turning the flag on for public launch until verification is complete, or visitors will hit Google’s “app not verified” error.
+Login uses basic identity permissions. Ads, Analytics and Drive have separate connection flows; enabling login does not add their scopes or prove that those integrations are verified.
 
 ### Production (all users)
 
@@ -74,4 +74,4 @@ When you are ready for any Google user to connect without being listed as a test
 1. OAuth consent screen → **Publish app** (move to **In production**).
 2. Complete Google’s verification if you use sensitive/restricted scopes beyond what you already use (`drive.file` is a non-sensitive scope for verification purposes, but publishing still requires a completed consent screen configuration).
 
-Until then, every new tester email must be added under **Test users**.
+For a project actually in Testing, add each test account under **Test users**. For an In production project under review, follow the verification team’s staging instructions and diagnose the specific error rather than switching publishing modes.

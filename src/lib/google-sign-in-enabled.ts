@@ -1,7 +1,8 @@
 /**
- * Public Google login (Continue with Google on /login and /signup).
- * Set NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED=true after Google OAuth app verification.
+ * Google login/signup is enabled independently of Ads/Analytics verification.
+ * Keep the shared policy for the UI and NextAuth provider in sync. The former
+ * NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED gate is retired, including stale false values.
  */
 export function isGoogleSignInEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED === "true";
+  return true;
 }

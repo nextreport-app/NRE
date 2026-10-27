@@ -6,14 +6,14 @@ describe("isGoogleSignInEnabled", () => {
     vi.unstubAllEnvs();
   });
 
-  it("is false when unset or not true", () => {
+  it("stays enabled with empty or stale disabled environment settings", () => {
     vi.stubEnv("NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED", "");
-    expect(isGoogleSignInEnabled()).toBe(false);
+    expect(isGoogleSignInEnabled()).toBe(true);
     vi.stubEnv("NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED", "false");
-    expect(isGoogleSignInEnabled()).toBe(false);
+    expect(isGoogleSignInEnabled()).toBe(true);
   });
 
-  it("is true only when env is exactly true", () => {
+  it("remains enabled with the previous enabled environment setting", () => {
     vi.stubEnv("NEXT_PUBLIC_GOOGLE_SIGNIN_ENABLED", "true");
     expect(isGoogleSignInEnabled()).toBe(true);
   });
