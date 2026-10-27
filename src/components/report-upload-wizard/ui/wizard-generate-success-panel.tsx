@@ -166,31 +166,26 @@ export function WizardGenerateSuccessPanel({
     "nre-wizard-success-secondary inline-flex min-h-[44px] shrink-0 overflow-hidden rounded-lg border border-dash-border bg-dash-sidebar/60";
 
   return (
-    <div className="nre-wizard-generate-success overflow-hidden rounded-2xl border bg-dash-card shadow-lg nre-dash-surface">
+    <div className="nre-wizard-generate-success overflow-hidden rounded-xl border bg-dash-card shadow-sm nre-dash-surface">
       {/* Section A — success header */}
-      <div className="nre-wizard-generate-success__header relative isolate overflow-hidden border-b border-dash-border px-5 py-6 sm:px-7 sm:py-7" role="status">
-        <div className="pointer-events-none absolute -top-12 -right-8 -z-10 h-48 w-48 rounded-full bg-dash-accent/10 blur-3xl" aria-hidden />
-        <svg className="pointer-events-none absolute top-5 right-6 hidden h-14 w-14 text-dash-accent/65 sm:block" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
-          <path d="m30 4 4 13 13 4-13 4-4 13-4-13-13-4 13-4zM51 36l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM10 40l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" />
-        </svg>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
-          <div className="nre-wizard-generate-success__check mx-auto flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl ring-1 ring-emerald-400/30 sm:mx-0" aria-hidden>
-            ✓
+      <div className="nre-wizard-generate-success__header border-b border-dash-border px-4 py-5 sm:px-6" role="status">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="nre-wizard-generate-success__check flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" aria-hidden="true">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg>
           </div>
-          <div className="min-w-0 flex-1 text-center sm:text-left">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-dash-accent">Ready to review</p>
-            <h2 className="nre-wizard-generate-success__title text-[22px] font-bold leading-tight sm:pr-12 sm:text-[26px]">
+          <div className="min-w-0 flex-1 text-left">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-ink-secondary">Ready to review</p>
+            <h2 className="nre-wizard-generate-success__title text-[19px] font-semibold leading-tight sm:text-[22px]">
               Report generated successfully!
             </h2>
-            <p className="nre-wizard-generate-success__meta mt-2 text-sm">One less report on your to-do list.</p>
-            <p className="mt-4 text-[16px] font-semibold text-dash-ink">{clientName}</p>
-            <dl className="nre-wizard-generate-success__meta mt-2 space-y-0.5 text-[13px] leading-snug sm:text-[14px]">
-              <div className="flex flex-wrap justify-center sm:justify-start">
+            <p className="mt-3 text-[14px] font-semibold text-dash-ink">{clientName}</p>
+            <dl className="nre-wizard-generate-success__meta mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] leading-snug sm:text-[13px]">
+              <div className="w-full">
                 <dt className="sr-only">Report title</dt>
                 <dd className="font-medium text-dash-ink">{reportTitle}</dd>
               </div>
               {reportingPeriodLine ? (
-                <div>
+                <div className="w-full">
                   <dt className="sr-only">Reporting period</dt>
                   <dd>{reportingPeriodLine}</dd>
                 </div>
@@ -198,7 +193,7 @@ export function WizardGenerateSuccessPanel({
               {slideCount > 0 ? (
                 <div>
                   <dt className="sr-only">Slides</dt>
-                  <dd className="inline-flex rounded-full border border-dash-border bg-dash-card/60 px-2.5 py-1 text-xs font-medium text-dash-ink">
+                  <dd className="inline-flex rounded-full border border-dash-border bg-dash-card/60 px-2 py-0.5 text-xs font-medium text-dash-ink">
                     {slideCount} slide{slideCount === 1 ? "" : "s"}
                   </dd>
                 </div>
