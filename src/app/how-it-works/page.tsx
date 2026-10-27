@@ -280,7 +280,7 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">Report types in the wizard</h2>
             <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
-              Start with Weekly for recurring client updates, or Compare two periods for a focused before-and-after report.
+              Choose a weekly overview, one month, one day, or month-by-month performance. Comparison and daily tables are available for more detailed reporting.
             </p>
             <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {REPORT_TYPE_ORDER.map((type) => (

@@ -1,41 +1,43 @@
-# Report choices during Meta CSV acceptance
+# Flexible Meta CSV reports
 
-27 October 2026. Keep the wizard focused on **Weekly report** (default) and **Compare two periods**. Hide seven untested types without deleting their implementations, metadata, templates, translations or saved reports. Retain the four wizard steps.
+Updated 27 October 2026. Supersedes PR 601's two-type restriction. Four main choices, with two detailed workflows under a collapsed section:
 
-## Why two choices
+| Choice | Dates / content |
+| --- | --- |
+| Weekly overview (default) | Existing week + MTD + last-30-day chart, optional previous-month totals |
+| Monthly report | Selected full calendar month or current MTD through yesterday; monthly campaign slides, total and chart, no weekly slides |
+| Daily report | Yesterday or selected completed day; only that day's campaign performance, total and chart |
+| Month-by-month report | 2–12 calendar months, 3/6-month shortcuts, ending month; per-month campaign slides/totals and overview table |
+| Compare two periods | Existing two-period comparison; under “Compare or view detailed data” |
+| Daily breakdown | Existing one-row-per-day table over selected dates; under details |
 
-Weekly is a recurring client update that already bundles the reporting week, month-to-date totals, a last-30-day chart and optional previous-month totals. These are separate date windows/presentations within one report, not four report types. Comparison answers a different question: how did the same campaigns perform in two chosen periods?
+Quarterly, Year-to-date and Creative remain hidden. Report history/implementations remain intact. Meta manual CSV remains the only wizard source/platform. API sync and other platforms remain hidden. Google signup/login and connections outside the wizard are unchanged.
 
-The default import screen shows the selected type, a short coverage explanation and the CSV required. “Change report type” expands exactly two choices; selecting one closes the chooser. The optional prior-month attachment is labelled “Previous-month totals” so it is not confused with the separate two-period report. There is no “More report types” drawer, disabled placeholders or catalogue of untested options. Deck titles remain unchanged. The public How It Works page uses the same availability list.
+## Dates and source data
 
-| Hidden type | Potential future use | Release requirement |
-|---|---|---|
-| Monthly | A standalone month-end client update | Validate completed-month and month-to-date boundaries; distinguish these clearly |
-| Yesterday | Daily operational monitoring | Test single-day exports, timezone and zero-delivery days |
-| Multi-month history | Longer-term trend analysis | Validate continuous source coverage, month boundaries and objective changes |
-| Day-by-day table | Operational detail or diagnostics | Validate daily totals and table pagination; consider a view/export rather than a top-level deck |
-| Quarterly | Longer reporting cadence | Test full source coverage and calendar boundaries; consider a date preset |
-| Year to date | Longer reporting cadence | Test full source coverage and year boundaries; consider a date preset |
-| Creative | Comparing individual ads/creatives | Requires ad-level source rows; campaign/ad-set CSV cannot reconstruct creative performance |
+Monthly defaults to current MTD, except the first day of a month defaults to the month just closed. Daily defaults to calendar yesterday in the client's timezone. Selected months/days are preserved through CSV analysis, preview and generation. Non-weekly dates do not overwrite the server's remembered weekly date selection. Previous-month attachment controls appear only for Weekly.
 
-**Concrete deferred-type gap:** Quarter and YTD currently share a month-to-date export hint in `wizard-report-csv-requirement.ts`, even though their calculation windows can span several months. That guidance must be corrected and tested before either type is restored. Hiding those choices now avoids advertising an untested path with misleading upload instructions.
+Month-by-month defaults to three completed months; the current partial month is off by default. Selecting it labels that month MTD. The ending month can be moved back for older client requests. The first-day-of-month historical bug (skipping the month just closed) and UTC+14 monthly anchor bug are corrected.
 
-Longer term, consolidate time-based choices into one Performance report with validated date presets, keeping Compare periods and Creative analysis as distinct workflows. Do not rebuild the working aggregation/renderers merely to make this menu smaller.
+The CSV needs daily rows covering the requested period. Server-side preview and generation reject truncated boundary coverage; historical reports also reject months with no rows. CSV bounds cannot prove that absent interior days are genuine zero delivery: we do not invent missing rows. A legitimate export omitting inactive boundary days may require a wider export to establish coverage. A complete zero-delivery day without source rows cannot be assumed to be zero.
 
-## Preserve work safely
+Monthly/daily preview and verification share the selected window; monthly filters the source rows and uses a matching calendar anchor. Preview cache engine version is bumped to avoid reusing prior period semantics.
 
-A preference-hydration race also let initial Weekly defaults overwrite a saved Comparison selection on reload. Persistence now waits until the restore effect has committed; browser reload tests confirm the chosen available type is retained.
+## Acceptance testing before promotion
 
-Old hidden-type preferences open a fresh Weekly configuration with the default date mode; old dates/baselines are not silently applied to that different report. Hidden-type server/session drafts are not reopened as active wizard work. Existing completed reports retain their original metadata and remain in report history; returning to the wizard from a hidden-type report routes to history rather than relabelling that deck as Weekly. This UI rollout does not disable the retained internal engine/API implementations or alter the optional previous-month attachment flow.
+Owner should generate and inspect all six workflows after deployment. Suggested files: continuous six-month daily Meta CSV, a month-to-date CSV, and a one-day CSV.
 
-## Date and accuracy limits
+- Weekly: unchanged default, MTD/chart and optional separate previous-month totals.
+- Monthly: September 1–30 and October MTD; no weekly or prior-month attachment totals.
+- Daily: yesterday and a different day; no monthly totals.
+- Month-by-month: last 3 / 6 completed months, an older ending month, optional current MTD clearly labelled; inspect each month's totals and overview.
+- Comparison: existing period A/B flow.
+- Daily breakdown: custom range, one row per day.
+- Negative cases: short CSV for six months, truncated boundary month, missing entire middle month, future day, multiple days submitted as Daily, partial closed month submitted as Monthly.
+- First-day-of-month, leap February, UTC+14 and negative timezone boundaries.
 
-The default Weekly range is the last seven days ending **calendar yesterday in the client timezone**, not automatically the last completed Monday–Sunday week. The existing date selector can choose another supported/custom range. MTD and the last-30-day chart have their own windows; do not describe every slide as the same selected weekly period. Previous-month totals require their separate source file. Missing coverage must remain visible through existing validation; this change does not invent rows or change date/aggregation formulas.
+Automated tests cover calendar rules, selected-window engine output/reconciliation, six distinct monthly totals, report visibility/preferences, historical and daily-table output. Browser smoke checks cover selection, controls, persistence and responsive layout. These do not replace the owner's real-file deck acceptance.
 
-**Remaining strict-CSV accuracy issue:** `src/lib/nre/reach-aggregation.ts` currently uses a Sainsbury period-reach estimate and an empirical ad-set overlap correction when exact period reach is unavailable. Daily reach is non-additive; neither summing it nor estimating overlap can guarantee Meta's unique reach for a week/month/account. Exact unique period reach requires matching-grain, matching-window source evidence. The owner's “no assumed numbers” requirement therefore needs a separate Reach change: use explicit source totals or clearly mark the value unavailable; also check Reach-based objectives/costs. This report-menu PR does not change that formula and must not be presented as closing all accuracy risks.
+## Existing accuracy limitation
 
-CTR/CPC/CPM and objective results/CPR must remain based on matching source fields and reporting windows, with ratios derived from aggregate numerators/denominators rather than averages of displayed daily rates. Existing accuracy/reconciliation tests remain regression evidence, not a guarantee for every export format or attribution setting.
-
-## Rollout order
-
-Manual Meta CSV acceptance → Meta API investigation and owner acceptance → TikTok testing → Google Ads testing → GA4 testing. Connections remain visible outside the wizard. Meta API and the other platforms remain hidden in report creation. Reintroduce individual report types only with coverage/date/objective/source-grain fixtures and owner acceptance; do not restore all nine at once.
+`reach-aggregation.ts` still uses a Sainsbury period-Reach estimate and empirical overlap adjustment when exact period Reach is absent. Daily/campaign Reach is non-additive: deduplicated monthly/account Reach cannot be reconstructed exactly from daily counts. Strict CSV-only accuracy requires matching-grain, matching-window exported Reach totals or an unavailable state. This PR does not change Reach formulas or certify them as exact; audit Reach-derived cost metrics separately. Quarterly/YTD still need their own CSV guidance and validation before restoration; Creative requires ad-level source data.

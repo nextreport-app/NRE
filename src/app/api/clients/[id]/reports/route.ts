@@ -289,7 +289,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const monthCount =
       formData ? parseJsonFormField(formData, "historicalMonthCount", historicalMonthCountSchema) : undefined;
     const resolvedMonthCount = monthCount ?? 4;
-    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, new Date(), client.timezone);
+    const historicalSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, new Date(), client.timezone, historicalSelection);
     if (!coverage.valid) {
       return NextResponse.json({ error: coverage.error ?? "CSV does not cover the selected months." }, { status: 400 });
     }
@@ -307,6 +308,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignMetricOverrides,
       objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
       monthCount: resolvedMonthCount,
+      dateSelection: historicalSelection,
       platform,
     });
 

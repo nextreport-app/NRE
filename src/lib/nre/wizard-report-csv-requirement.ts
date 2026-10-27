@@ -35,6 +35,8 @@ export function wizardCsvRequirementForReportType(input: {
       };
 
     case "MONTHLY":
+      return { shortNote: "Selected month · Day-wise CSV", detail: `Export the selected full month, or current month from the 1st through yesterday. No weekly data is required. ${DAY_WISE}`, dayWiseRequired: true };
+
     case "QUARTER":
     case "YTD":
       if (cal.isFirstDayOfMonth) {
@@ -52,8 +54,8 @@ export function wizardCsvRequirementForReportType(input: {
 
     case "DAILY":
       return {
-        shortNote: "Last 7 days · Day-wise CSV",
-        detail: `Only yesterday is used in the deck; a short day-level export is enough. ${DAY_WISE}`,
+        shortNote: "Selected day · Day-wise CSV",
+        detail: `Only the selected day is used; yesterday is the default. ${DAY_WISE}`,
         dayWiseRequired: true,
       };
 
@@ -74,7 +76,7 @@ export function wizardCsvRequirementForReportType(input: {
     case "HISTORICAL":
       return {
         shortNote: "Multi-month custom range · Day-wise CSV",
-        detail: `One continuous export with daily rows for each month in the deck — not a single Last 30 days file. ${DAY_WISE}`,
+        detail: `One continuous export covering all selected months (including MTD only when explicitly selected) — not a single Last 30 days file. ${DAY_WISE}`,
         dayWiseRequired: true,
       };
 

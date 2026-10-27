@@ -1,3 +1,5 @@
+import { historicalPeriods, reportPeriodAnchor, reportCalendarYesterday } from "./report-period-selection";
+import type { DateSelection } from "@/lib/validators/report-wizard";
 /**
  * Multi-Month Historical reports — one campaign slide per calendar month,
  * a month-total slide after each month's campaigns, and a final comparison
@@ -9,7 +11,6 @@ import { filterRowsByCampaigns, LOW_SPEND_CAMPAIGN_THRESHOLD } from "./campaigns
 import {
   computeHistoricalMonthRanges,
   filterNreRowsByDateRange,
-  historicalMonthNowAnchor,
   type HistoricalMonthRange,
   validateHistoricalCsvCoverage,
   computeCsvDateBounds,
@@ -44,6 +45,7 @@ export interface HistoricalReportData {
   /** e.g. "May - August 2025" */
   monthsLabel: string;
   monthCount: number;
+  dateSelection?: DateSelection;
   monthRanges: HistoricalMonthRange[];
   /** Ordered: each month's campaigns, then that month's total, then next month… */
   slides: CampaignSlideData[];
@@ -65,6 +67,7 @@ export interface BuildHistoricalReportDataInput {
   campaignMetricOverrides?: Record<string, string[]>;
   objectiveCache?: Record<string, { resultLabel: string; costLabel: string; key: string }>;
   monthCount: number;
+  dateSelection?: DateSelection;
   now?: Date;
   platform?: Platform;
 }
@@ -81,16 +84,24 @@ export function validateHistoricalReportInput(
   monthCount: number,
   now: Date = new Date(),
   timezone = "UTC",
+  dateSelection?: DateSelection,
 ): HistoricalValidationResult {
   const bounds = computeCsvDateBounds(mtdDailyRows);
   if (!bounds) {
     return { valid: false, error: "Could not read any dates from the uploaded CSV." };
   }
-  const monthRanges = computeHistoricalMonthRanges(monthCount, now, timezone);
+  let monthRanges;
+  try { monthRanges = historicalPeriods(monthCount, dateSelection?.customEnd?.slice(0, 7), dateSelection?.mode === "custom" && dateSelection.customEnd === reportCalendarYesterday(now, timezone), now, timezone); }
+  catch (error) { return { valid: false, error: (error as Error).message }; }
+  if (dateSelection?.mode === "custom" && (dateSelection.customStart !== monthRanges[0].startIso || dateSelection.customEnd !== monthRanges[monthRanges.length - 1].endIso)) {
+    return { valid: false, error: "Selected dates must match the requested calendar months (current MTD ends yesterday).", monthRanges };
+  }
   const coverage = validateHistoricalCsvCoverage(bounds, monthRanges);
   if (!coverage.valid) {
     return { valid: false, error: coverage.error, monthRanges };
   }
+  const missing = monthRanges.filter(range => filterNreRowsByDateRange(mtdDailyRows, range).length === 0);
+  if (missing.length) return { valid: false, error: `CSV has no rows for ${missing.map(r => r.fullMonthLabel).join(", ")}. Upload the selected months; missing months cannot be inferred.`, monthRanges };
   return { valid: true, monthRanges };
 }
 
@@ -100,7 +111,7 @@ function formatMonthsLabel(ranges: HistoricalMonthRange[]): string {
   const first = ranges[0];
   const last = ranges[ranges.length - 1];
   if (first.year === last.year) {
-    return `${first.monthName} - ${last.monthName} ${last.year}`;
+    return `${first.monthName} - ${last.monthName} ${last.year}${last.fullMonthLabel.endsWith("(MTD)") ? " (final month MTD)" : ""}`;
   }
   return `${first.fullMonthLabel} - ${last.fullMonthLabel}`;
 }
@@ -231,12 +242,14 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
     campaignMetricOverrides,
     objectiveCache,
     monthCount,
+    dateSelection,
     now = new Date(),
     platform = "META",
   } = input;
 
-  const validation = validateHistoricalReportInput(mtdDailyRows, monthCount, now, timezone);
+  const validation = validateHistoricalReportInput(mtdDailyRows, monthCount, now, timezone, dateSelection);
   const monthRanges = validation.monthRanges ?? computeHistoricalMonthRanges(monthCount, now, timezone);
+  if (!validation.valid) throw new Error(validation.error);
   const campaignFilteredRows = filterRowsByCampaigns(mtdDailyRows, selectedCampaigns ?? null);
 
   const slides: CampaignSlideData[] = [];
@@ -247,7 +260,7 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
     const monthRows = filterNreRowsByDateRange(campaignFilteredRows, monthRange);
     if (monthRows.length === 0) continue;
 
-    const nowForMonth = historicalMonthNowAnchor(monthRange.endIso);
+    const nowForMonth = reportPeriodAnchor(monthRange.endIso, timezone);
     const monthData = buildReportData({
       accountName,
       currencySymbol,

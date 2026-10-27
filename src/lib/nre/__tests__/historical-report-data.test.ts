@@ -41,7 +41,7 @@ describe("buildHistoricalReportData", () => {
     for (const month of [5, 6, 7, 8]) {
       fullRows.push(dailyRow(`2026-${String(month).padStart(2, "0")}-01`, "Shoes", "10"));
       fullRows.push(dailyRow(`2026-${String(month).padStart(2, "0")}-15`, "Shoes", "10"));
-      fullRows.push(dailyRow(`2026-${String(month).padStart(2, "0")}-28`, "Shoes", "10"));
+      fullRows.push(dailyRow(`2026-${String(month).padStart(2, "0")}-${new Date(2026, month, 0).getDate()}`, "Shoes", "10"));
     }
 
     const now = new Date("2026-09-07T12:00:00Z");
@@ -82,7 +82,7 @@ describe("buildHistoricalReportData", () => {
   it("excludes campaigns under $10 spend for that month", () => {
     const rows: NreRow[] = [
       dailyRow("2026-05-01", "Tiny", "0.50"),
-      dailyRow("2026-05-15", "Big", "15"),
+      dailyRow("2026-05-31", "Big", "15"),
     ];
     const data = buildHistoricalReportData({
       accountName: "Acme",

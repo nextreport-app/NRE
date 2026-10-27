@@ -34,6 +34,7 @@ function metaExportLines(reportType: ReportTypeValue, now: Date, timezone: strin
       return metaWeeklyExportLines(now, timezone);
 
     case "MONTHLY":
+      return ["Export your selected calendar month with Day breakdown, or the current month from the 1st through yesterday.", "Only that month appears in this report; weekly data is not required."];
     case "QUARTER":
     case "YTD":
       if (cal.isFirstDayOfMonth) {
@@ -63,16 +64,7 @@ function metaExportLines(reportType: ReportTypeValue, now: Date, timezone: strin
       ];
 
     case "DAILY":
-      if (cal.isFirstDayOfMonth) {
-        return [
-          "Export with Day breakdown and include yesterday (that is the last day of the previous month).",
-          "Last 7 Days is enough — you do not need Last 30 Days for this report.",
-        ];
-      }
-      return [
-        "Export with Day breakdown and include yesterday (Last 7 Days is enough).",
-        "This deck is for one day only — not a multi-day table report.",
-      ];
+      return ["Export the selected day with Day breakdown. Yesterday is the default.", "Only that day's performance appears; monthly data is not required."];
 
     case "DAY_BREAKDOWN":
       return [
@@ -97,7 +89,7 @@ function metaExportLines(reportType: ReportTypeValue, now: Date, timezone: strin
 
     case "HISTORICAL":
       return [
-        "Export every complete month you want in the deck, with Day breakdown.",
+        "Export every selected month with Day breakdown. Include current month through yesterday only when MTD is selected.",
         "Use one continuous custom range in Ads Manager — add earlier months until nothing is missing.",
         cal.isFirstDayOfMonth
           ? "On the 1st, the latest full month is usually the one that just ended (Previous Month export)."

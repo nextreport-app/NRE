@@ -360,9 +360,9 @@ export function computeHistoricalMonthRanges(
 ): HistoricalMonthRange[] {
   if (monthCount < 1) return [];
 
-  const calendarYesterday = getCalendarYesterday(now, timezone);
-  let year = calendarYesterday.year;
-  let month = calendarYesterday.month;
+  const today = getCalendarDateInTimezone(now, timezone);
+  let year = today.year;
+  let month = today.month;
 
   const ranges: HistoricalMonthRange[] = [];
   for (let i = 0; i < monthCount; i++) {
@@ -404,7 +404,7 @@ export function validateHistoricalCsvCoverage(
   for (const range of monthRanges) {
     const startTs = Date.parse(range.startIso + "T00:00:00Z");
     const endTs = Date.parse(range.endIso + "T00:00:00Z");
-    const overlaps = minTs <= endTs && maxTs >= startTs;
+    const overlaps = minTs <= startTs && maxTs >= endTs;
     if (!overlaps) {
       missing.push(range.fullMonthLabel);
     }

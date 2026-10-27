@@ -7,7 +7,8 @@ import type { Platform } from "./google-columns";
 import type { NreRow } from "./columns";
 import type { ReportData } from "./report-data";
 import { CURRENCY_SYMBOLS } from "./format";
-import { computeDailyRangeIso } from "./date-range";
+import { filterNreRowsByDateRange } from "./date-range";
+import { selectedSinglePeriod, reportPeriodAnchor } from "./report-period-selection";
 import { resolveDateSelection } from "./resolve-date-selection";
 import { resolveCsvAlignResults } from "@/lib/validators/report-wizard";
 import {
@@ -28,7 +29,8 @@ export function verifyStandardWizardReportAgainstCsv(input: {
   periodRows?: NreRow[] | null;
 }): CsvVerificationResult {
   const { client, mtdRows, report, reportType, formData, platform } = input;
-  const now = input.now ?? new Date();
+  let now = input.now ?? new Date();
+  let sourceRows = mtdRows;
   const csvAlign = resolveCsvAlignResults(formData);
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
   const campaignObjectives = formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined;
@@ -36,15 +38,21 @@ export function verifyStandardWizardReportAgainstCsv(input: {
 
   let weeklyRange: { startIso: string; endIso: string } | undefined;
   if (reportType === "DAILY") {
-    weeklyRange = computeDailyRangeIso(mtdRows, now, client.timezone) ?? undefined;
+    weeklyRange = selectedSinglePeriod(reportType, dateSelection, now, client.timezone);
   } else if (reportType === "WEEKLY") {
     const dateResolution = resolveDateSelection(mtdRows, dateSelection, now, client.timezone);
     weeklyRange = dateResolution.ok ? dateResolution.weeklyRange : undefined;
   }
 
+  if (reportType === "MONTHLY") {
+    const range = selectedSinglePeriod(reportType, dateSelection, now, client.timezone)!;
+    sourceRows = filterNreRowsByDateRange(mtdRows, range);
+    now = reportPeriodAnchor(range.endIso, client.timezone);
+  }
+
   return reconcileStandardReportWithCsv({
     report,
-    mtdDailyRows: mtdRows,
+    mtdDailyRows: sourceRows,
     selectedCampaigns: selectedCampaigns ?? null,
     weeklyRange,
     reportType,

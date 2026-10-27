@@ -7,7 +7,7 @@ import { wizardReportTypeCopyForLocale } from "@/lib/wizard-i18n";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
-import { LAUNCH_ENABLED_REPORT_TYPES } from "@/lib/meta-launch-scope";
+import { LAUNCH_PRIMARY_REPORT_TYPES, LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
 import { wizardCsvRequirementForReportType } from "@/lib/nre/wizard-report-csv-requirement";
 
 export function WizardReportSetupPanel({
@@ -32,6 +32,12 @@ export function WizardReportSetupPanel({
   const selectedCopy = wizardReportTypeCopyForLocale(locale, reportType) ?? WIZARD_REPORT_TYPE_COPY[reportType];
   const requirement = wizardCsvRequirementForReportType({ reportType, clientTimezone });
 
+  function renderChoice(type: (typeof LAUNCH_PRIMARY_REPORT_TYPES)[number]) {
+    const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
+    const icons: Record<string, string> = { WEEKLY: "📊", MONTHLY: "🗓️", DAILY: "☀️", HISTORICAL: "📈", COMPARISON: "🔀", DAY_BREAKDOWN: "📋" };
+    return <ReportTypeCard key={type} icon={icons[type]} heading={copy.cardHeading} description={copy.cardOneLiner} selected={reportType === type} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
+  }
+
   if (variant === "summary") {
     return <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -48,11 +54,15 @@ export function WizardReportSetupPanel({
     </div>
     <p className="max-w-2xl text-[13px] leading-relaxed text-dash-ink-secondary">{selectedCopy.cardYouGet}</p>
     <p className="text-[12px] text-dash-ink-secondary"><span className="font-medium text-dash-ink">CSV needed:</span> {requirement.shortNote}</p>
-    {setupOpen && <div id={choicesId} role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {LAUNCH_ENABLED_REPORT_TYPES.map(type => {
-        const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
-        return <ReportTypeCard key={type} icon={type === "COMPARISON" ? "🔀" : "📊"} heading={copy.cardHeading} description={copy.cardOneLiner} selected={reportType === type} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
-      })}
+    {setupOpen && <div id={choicesId} className="space-y-3">
+      <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
+      <div role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {LAUNCH_PRIMARY_REPORT_TYPES.map(renderChoice)}
+      </div>
+      <details className="rounded-lg border border-dash-border p-3" open={LAUNCH_SECONDARY_REPORT_TYPES.some(type => type === reportType) || undefined}>
+        <summary className="cursor-pointer text-[13px] font-medium text-dash-ink">Compare or view detailed data</summary>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{LAUNCH_SECONDARY_REPORT_TYPES.map(renderChoice)}</div>
+      </details>
     </div>}
   </section>;
 }

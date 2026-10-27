@@ -27,9 +27,9 @@ describe("meta launch scope", () => {
     expect(coerceLaunchPlatform("UNKNOWN")).toBe("META");
   });
 
-  it("offers only the two tested report workflows", () => {
-    expect(LAUNCH_ENABLED_REPORT_TYPES).toEqual(["WEEKLY", "COMPARISON"]);
-    for (const rt of ["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN", "QUARTER", "YTD", "CREATIVE"]) {
+  it("offers six focused report workflows", () => {
+    expect(LAUNCH_ENABLED_REPORT_TYPES).toEqual(["WEEKLY", "MONTHLY", "DAILY", "HISTORICAL", "COMPARISON", "DAY_BREAKDOWN"]);
+    for (const rt of ["QUARTER", "YTD", "CREATIVE"]) {
       expect(isLaunchReportTypeEnabled(rt)).toBe(false);
       expect(coerceLaunchReportType(rt)).toBe("WEEKLY");
     }

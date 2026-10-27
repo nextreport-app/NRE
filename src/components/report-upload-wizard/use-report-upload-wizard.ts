@@ -1,4 +1,5 @@
 "use client";
+import { historicalPeriods, selectedSinglePeriod } from "@/lib/nre/report-period-selection";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +9,6 @@ import {
   saveWizardGenerateSnapshot,
   type WizardGenerateSnapshot,
 } from "@/lib/nre/wizard-generate-snapshot";
-import { computeHistoricalMonthRanges } from "@/lib/nre/date-range";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import {
   evaluateAddMetric,
@@ -420,7 +420,7 @@ export function useReportUploadWizard({
   const [comparisonPreset, setComparisonPreset] = useState<ComparisonPreset>("thisWeek");
   const [comparisonPeriodA, setComparisonPeriodA] = useState<DateRangeIso | null>(null);
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
-  const [historicalMonthCount, setHistoricalMonthCount] = useState(4);
+  const [historicalMonthCount, setHistoricalMonthCount] = useState(3);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
   const [monthComparisonCoverage, setMonthComparisonCoverage] = useState<{
     valid: boolean;
@@ -579,9 +579,12 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
+    setDateMode("last7");
+    setCustomStart("");
+    setCustomEnd("");
     if (next === "DAY_BREAKDOWN" && isLaunchReportTypeEnabled(next)) {
       setDateMode("custom");
-      if (weeklyOptions && !customStart && !customEnd) {
+      if (weeklyOptions) {
         setCustomStart(weeklyOptions.last7.startIso);
         setCustomEnd(weeklyOptions.last7.endIso);
       }
@@ -1159,11 +1162,13 @@ export function useReportUploadWizard({
     setMonthComparisonCoverage(json.monthComparisonCoverage || null);
     setDailyRange(json.dailyRange || null);
     setHasAdLevelCsv(!!json.hasAdLevelCsv);
+    if (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") {
     const savedSelection: DateSelection = json.dateSelection || { mode: "last7" };
     const normalizedSelection = normalizeSavedDateSelection(savedSelection, json.weeklyOptions || null);
     setDateMode(normalizedSelection.mode);
     setCustomStart(normalizedSelection.customStart || savedSelection.customStart || "");
     setCustomEnd(normalizedSelection.customEnd || savedSelection.customEnd || "");
+    }
     setLongRangeConfirmed(false);
     setComparisonPreset("thisWeek");
     setComparisonPeriodB(json.weeklyOptions?.prev7 || null);
@@ -2065,11 +2070,9 @@ export function useReportUploadWizard({
     }
 
     const dateSelection =
-      reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN" ? currentDateSelection() : undefined;
-    // Only persist a weekly preference when one was actually made — a
-    // Monthly/Comparison run shouldn't overwrite the client's remembered
-    // weekly date-mode with nothing.
-    if (dateSelection) await saveSelection({ dateSelection });
+      ["WEEKLY", "DAY_BREAKDOWN", "MONTHLY", "DAILY", "HISTORICAL"].includes(reportType) ? currentDateSelection() : undefined;
+    // Shared server preference is weekly-only; other periods live in type-specific wizard state.
+    if (dateSelection && (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN")) await saveSelection({ dateSelection });
 
     const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
     if (!hasExistingPreview) {
@@ -2270,7 +2273,7 @@ export function useReportUploadWizard({
           // report actually generates. Only sent here, never on preview.
           confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
           dateSelection:
-            reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN" ? currentDateSelection() : undefined,
+            ["WEEKLY", "DAY_BREAKDOWN", "MONTHLY", "DAILY", "HISTORICAL"].includes(reportType) ? currentDateSelection() : undefined,
           reportTitle: defaultReportTitleFor(reportType),
           reportType,
           platform,
@@ -2659,11 +2662,11 @@ export function useReportUploadWizard({
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
       return `Your day-by-day report will cover ${dayBreakdownData.rangeLabel}.`;
     }
-    if (reportType === "MONTHLY" && mtdRange) {
-      return `Your monthly report will cover ${formatIsoRange(mtdRange)}.`;
-    }
-    if (reportType === "DAILY" && dailyRange) {
-      return `Your daily report will cover ${formatIsoRange(dailyRange)}.`;
+    if (reportType === "MONTHLY" || reportType === "DAILY") {
+      try {
+        const range = selectedSinglePeriod(reportType, currentDateSelection(), new Date(), clientTimezone)!;
+        return `Your ${reportType === "MONTHLY" ? "monthly" : "daily"} report will cover ${formatIsoRange(range)}.`;
+      } catch { return "Choose a valid report period."; }
     }
     if (reportType === "DAY_BREAKDOWN" && weeklyRangeIso) {
       return `Your day breakdown will cover ${formatIsoRange(weeklyRangeIso)}.`;
@@ -2720,8 +2723,8 @@ export function useReportUploadWizard({
   ]);
 
   const historicalMonthLabels = useMemo(
-    () => computeHistoricalMonthRanges(historicalMonthCount, new Date(), clientTimezone).map((m) => m.fullMonthLabel),
-    [historicalMonthCount, clientTimezone],
+    () => { try { return historicalPeriods(historicalMonthCount, dateMode === "custom" ? customEnd.slice(0, 7) : undefined, dateMode === "custom", new Date(), clientTimezone).map(m => m.fullMonthLabel); } catch { return []; } },
+    [historicalMonthCount, clientTimezone, dateMode, customEnd],
   );
 
   const coverBudgetPacingWarning = useMemo(() => {
@@ -2816,6 +2819,10 @@ export function useReportUploadWizard({
     if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
     if (previewKind === "dayBreakdown" && dayBreakdownData) return dayBreakdownData.rangeLabel;
     if ((reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") && weeklyRangeIso) return formatIsoRange(weeklyRangeIso);
+    if (reportType === "MONTHLY" || reportType === "DAILY") {
+      try { return formatIsoRange(selectedSinglePeriod(reportType, currentDateSelection(), new Date(), clientTimezone)!); }
+      catch { return ""; }
+    }
     if (mtdRange) return formatIsoRange(mtdRange);
     return "";
   }

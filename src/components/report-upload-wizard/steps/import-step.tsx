@@ -1,4 +1,5 @@
 "use client";
+import { ReportPeriodControls } from "../ui/report-period-controls";
 
 import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
@@ -166,6 +167,7 @@ export function WizardImportStep() {
         clientTimezone={clientTimezone}
         onReportTypeChange={handleReportTypeChange}
       />
+      <ReportPeriodControls />
 
       {selectedPlatformCard && isPlatformBeta(selectedPlatformCard) ? (
         <PlatformBetaNotice platform={selectedPlatformCard} />
@@ -402,7 +404,7 @@ export function WizardImportStep() {
             </>
           )}
 
-          {showCompactPreviousMonth ? (
+          {reportType === "WEEKLY" && (showCompactPreviousMonth ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3">
               <p className="text-[14px] text-dash-ink-secondary">
                 <span className="font-medium text-emerald-400">{previousMonthInfo.expectedMonthName} on file ✓</span>
@@ -459,7 +461,7 @@ export function WizardImportStep() {
                 setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
               }}
             />
-          )}
+          ))}
         </div>
       )}
 
