@@ -16,7 +16,7 @@ import {
 } from "@/lib/seo";
 import { MARKETING_TRY_CTA_HEADLINE } from "@/lib/product-positioning";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
-import { META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
+import { LAUNCH_ENABLED_REPORT_TYPES, META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
 import type { LaunchEnabledReportType } from "@/lib/meta-launch-scope";
 
 export const metadata: Metadata = pageMetadata({
@@ -44,14 +44,7 @@ const QUICK_LINKS_LOGGED_IN = [
   { href: "/clients", label: "My Clients", hint: "Open a report wizard" },
 ] as const;
 
-const REPORT_TYPE_ORDER: LaunchEnabledReportType[] = [
-  "WEEKLY",
-  "MONTHLY",
-  "DAILY",
-  "COMPARISON",
-  "HISTORICAL",
-  "DAY_BREAKDOWN",
-];
+const REPORT_TYPE_ORDER = LAUNCH_ENABLED_REPORT_TYPES;
 
 interface Step {
   title: string;
@@ -287,7 +280,7 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">Report types in the wizard</h2>
             <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
-              Six Meta report types — names and slide layouts match what you select on Import.
+              Start with Weekly for recurring client updates, or Compare two periods for a focused before-and-after report.
             </p>
             <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {REPORT_TYPE_ORDER.map((type) => (

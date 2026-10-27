@@ -3,7 +3,6 @@
  */
 
 import type { ReportTypeValue } from "@/components/report-upload-wizard/types";
-import type { LaunchEnabledReportType } from "@/lib/meta-launch-scope";
 
 export interface WizardReportTypeCopy {
   /** Short name in pickers (“More report types · …”). */
@@ -16,12 +15,12 @@ export interface WizardReportTypeCopy {
   defaultDeckTitle: string;
 }
 
-export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardReportTypeCopy> = {
+export const WIZARD_REPORT_TYPE_COPY: Record<ReportTypeValue, WizardReportTypeCopy> = {
   WEEKLY: {
-    pickerLabel: "Weekly Performance Report",
-    cardHeading: "Weekly Performance Report",
-    cardOneLiner: "Last week, MTD, and last-30-day chart.",
-    cardYouGet: "Last week (7-days), MTD (month till date), last 30-day chart, optional previous month row.",
+    pickerLabel: "Weekly report",
+    cardHeading: "Weekly report",
+    cardOneLiner: "Week + MTD totals + last-30-day chart.",
+    cardYouGet: "Default: last 7 days ending yesterday, month-to-date totals and a last-30-day chart. Previous-month totals appear when the separate CSV is included.",
     defaultDeckTitle: "Weekly Performance Report",
   },
   MONTHLY: {
@@ -39,10 +38,10 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
     defaultDeckTitle: "Yesterday Performance Report",
   },
   COMPARISON: {
-    pickerLabel: "Comparison Report",
-    cardHeading: "Comparison Report",
-    cardOneLiner: "Period A vs B.",
-    cardYouGet: "Period A vs Period B per campaign + summary table.",
+    pickerLabel: "Compare two periods",
+    cardHeading: "Compare two periods",
+    cardOneLiner: "Compare the same campaigns across two date ranges.",
+    cardYouGet: "Choose Period A and Period B to compare campaign metrics side by side, with a summary table.",
     defaultDeckTitle: "Comparison Performance Report",
   },
   HISTORICAL: {
@@ -84,7 +83,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<LaunchEnabledReportType, WizardRepo
 
 export function wizardReportTypeCopy(reportType: ReportTypeValue): WizardReportTypeCopy | null {
   if (reportType in WIZARD_REPORT_TYPE_COPY) {
-    return WIZARD_REPORT_TYPE_COPY[reportType as LaunchEnabledReportType];
+    return WIZARD_REPORT_TYPE_COPY[reportType as ReportTypeValue];
   }
   return null;
 }

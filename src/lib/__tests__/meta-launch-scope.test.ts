@@ -27,21 +27,12 @@ describe("meta launch scope", () => {
     expect(coerceLaunchPlatform("UNKNOWN")).toBe("META");
   });
 
-  it("enables standard and extended report types", () => {
-    expect(LAUNCH_ENABLED_REPORT_TYPES).toEqual([
-      "WEEKLY",
-      "MONTHLY",
-      "DAILY",
-      "COMPARISON",
-      "HISTORICAL",
-      "DAY_BREAKDOWN",
-      "QUARTER",
-      "YTD",
-      "CREATIVE",
-    ]);
-    for (const rt of ["QUARTER", "YTD", "CREATIVE"] as const) {
-      expect(isLaunchReportTypeEnabled(rt)).toBe(true);
-      expect(coerceLaunchReportType(rt)).toBe(rt);
+  it("offers only the two tested report workflows", () => {
+    expect(LAUNCH_ENABLED_REPORT_TYPES).toEqual(["WEEKLY", "COMPARISON"]);
+    for (const rt of ["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN", "QUARTER", "YTD", "CREATIVE"]) {
+      expect(isLaunchReportTypeEnabled(rt)).toBe(false);
+      expect(coerceLaunchReportType(rt)).toBe("WEEKLY");
     }
+    expect(coerceLaunchReportType("COMPARISON")).toBe("COMPARISON");
   });
 });

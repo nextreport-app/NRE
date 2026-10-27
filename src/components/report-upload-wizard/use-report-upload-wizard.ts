@@ -483,7 +483,7 @@ export function useReportUploadWizard({
     if (typeof window === "undefined") return false;
     const draft = loadWizardDraft(clientId);
     return Boolean(
-      draft && draft.step >= 2 && draft.uploadSessionId && !isWizardServerDraftExpired(draft),
+      draft && isLaunchReportTypeEnabled(draft.reportType) && draft.step >= 2 && draft.uploadSessionId && !isWizardServerDraftExpired(draft),
     );
   });
   const draftRestoringRef = useRef(false);
@@ -545,7 +545,11 @@ export function useReportUploadWizard({
       }
       if (prefs.dataSourceMode) setDataSourceMode(prefs.dataSourceMode);
     }
-    clientPrefsHydratedRef.current = true;
+    // Do not persist the initial defaults before restored state has committed.
+    // This also keeps Strict Mode's second effect pass from overwriting the saved choice.
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) clientPrefsHydratedRef.current = true; });
+    return () => { cancelled = true; clientPrefsHydratedRef.current = false; };
   }, [clientId]);
 
   useEffect(() => {
@@ -575,7 +579,7 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
-    if (reportTypeChoice === "DAY_BREAKDOWN") {
+    if (next === "DAY_BREAKDOWN" && isLaunchReportTypeEnabled(next)) {
       setDateMode("custom");
       if (weeklyOptions && !customStart && !customEnd) {
         setCustomStart(weeklyOptions.last7.startIso);
@@ -890,7 +894,7 @@ export function useReportUploadWizard({
         return;
       }
       // Preserve deferred-platform drafts without reopening their hidden wizard.
-      if (!isLaunchPlatformEnabled(draft.platform)) return;
+      if (!isLaunchPlatformEnabled(draft.platform) || !isLaunchReportTypeEnabled(draft.reportType)) return;
       if (draft.step < 2 || !draft.uploadSessionId) return;
 
       setWizardDraftBootstrapping(true);

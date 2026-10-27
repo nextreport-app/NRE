@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { isLaunchReportTypeEnabled } from "@/lib/meta-launch-scope";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -15,7 +17,7 @@ import {
 } from "@/lib/nre/previous-month-data";
 import { normalizeReportBrandingMode } from "@/lib/report-branding";
 
-export default async function NewReportPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NewReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ resumeReport?: string }> }) {
   const { id } = await params;
   const session = await auth();
   if (!session?.user) notFound();
@@ -45,6 +47,13 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
   ]);
   if (!client || client.userId !== session.user.id) notFound();
   if (!user) notFound();
+
+  // Existing decks keep their original type; never relabel a hidden type as Weekly.
+  const { resumeReport } = await searchParams;
+  if (resumeReport) {
+    const previousReport = await prisma.report.findFirst({ where: { id: resumeReport, clientId: id }, select: { reportType: true } });
+    if (previousReport && !isLaunchReportTypeEnabled(previousReport.reportType)) redirect(`/clients/${id}/reports`);
+  }
 
   const status = getSubscriptionStatus(user);
   const showTikTokOption = await shouldShowTikTokForCurrentVisitor();

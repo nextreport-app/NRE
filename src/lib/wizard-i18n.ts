@@ -1,6 +1,5 @@
 import type { SiteLocaleId } from "./site-theme";
 import type { Platform } from "./nre/google-columns";
-import type { LaunchEnabledReportType } from "./meta-launch-scope";
 import {
   WIZARD_REPORT_TYPE_COPY,
   type WizardReportTypeCopy,
@@ -244,7 +243,7 @@ const LOCALE_STEPS: Partial<Record<SiteLocaleId, Partial<typeof EN_STEPS>>> = {
 };
 
 /** Report-type card copy — Spanish full set; others fall back to English fields. */
-const REPORT_TYPE_ES: Partial<Record<LaunchEnabledReportType, Partial<WizardReportTypeCopy>>> = {
+const REPORT_TYPE_ES: Partial<Record<ReportTypeValue, Partial<WizardReportTypeCopy>>> = {
   WEEKLY: {
     cardHeading: "Informe semanal",
     cardOneLiner: "Semana, MTD y gráfico de 30 días.",
@@ -278,7 +277,7 @@ const REPORT_TYPE_ES: Partial<Record<LaunchEnabledReportType, Partial<WizardRepo
 };
 
 const REPORT_TYPE_LOCALE: Partial<
-  Record<SiteLocaleId, Partial<Record<LaunchEnabledReportType, Partial<WizardReportTypeCopy>>>>
+  Record<SiteLocaleId, Partial<Record<ReportTypeValue, Partial<WizardReportTypeCopy>>>>
 > = {
   es: REPORT_TYPE_ES,
 };
@@ -330,8 +329,8 @@ export function wizardReportTypeCopyForLocale(
   reportType: ReportTypeValue,
 ): WizardReportTypeCopy | null {
   if (!(reportType in WIZARD_REPORT_TYPE_COPY)) return null;
-  const base = WIZARD_REPORT_TYPE_COPY[reportType as LaunchEnabledReportType];
-  const patch = REPORT_TYPE_LOCALE[locale]?.[reportType as LaunchEnabledReportType];
+  const base = WIZARD_REPORT_TYPE_COPY[reportType as ReportTypeValue];
+  const patch = REPORT_TYPE_LOCALE[locale]?.[reportType as ReportTypeValue];
   return patch ? { ...base, ...patch } : base;
 }
 
