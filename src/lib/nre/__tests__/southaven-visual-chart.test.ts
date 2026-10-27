@@ -35,9 +35,9 @@ describe("Southaven weekly CSV — visual chart slide", () => {
 
     expect(model.useSplitPanel).toBe(true);
     expect(model.rightHeading).toBe("Campaign performance");
-    expect(model.leftHeading).toBe("Spend by Campaign");
+    expect(model.leftHeading).toBe("Spend by Objective");
     expect(model.resultBars).toHaveLength(3);
-    expect(model.groupedDonut!.map((s) => s.name)).toEqual(model.resultBars.map(bar => `${bar.rank}. ${bar.name}`));
+    expect(new Set(model.groupedDonut!.map(s => s.name)).size).toBe(3);
     expect(model.panelSubheading).toContain("Bars show spend");
 
     const leadBar = model.resultBars.find((b) => b.fullName?.includes("LeadGen"))!;

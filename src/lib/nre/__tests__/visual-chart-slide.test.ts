@@ -138,9 +138,9 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.isMultiObjective).toBe(false);
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).not.toBeNull();
-    expect(model.leftHeading).toBe("Spend by Campaign");
-    expect(model.groupedDonut!.map((s) => s.name)).toEqual(["1. Alpha", "2. Beta"]);
-    expect(new Set(model.groupedDonut!.map((s) => s.color))).toEqual(new Set(model.resultBars.map((b) => b.color)));
+    expect(model.leftHeading).toBe("Spend by Objective");
+    expect(model.groupedDonut!.map((s) => s.name)).toEqual(["Purchases"]);
+    expect(model.groupedDonut![0].percentage).toBe(100);
     expect(model.rightHeading).toContain("Purchases");
     expect(model.resultBars.length).toBe(2);
     expect(model.resultBars[0]!.statLine).toContain("spend");
@@ -429,7 +429,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).toHaveLength(1);
     expect(model.groupedDonut![0]!.percentage).toBe(100);
-    expect(model.leftHeading).toBe("Spend by Campaign");
+    expect(model.leftHeading).toBe("Spend by Objective");
     expect(model.resultBars[0]!.statLine).toBe("4 website leads · C$182.50 CPL");
     expect(model.resultBars[0]!.statLine).not.toContain("% of total");
     expect(model.resultBars[0]!.statLine).not.toContain("spend");
