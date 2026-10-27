@@ -8,7 +8,7 @@ import { buildHistoricalReportData } from "../historical-report-data";
 
 const client = { id: "test", userId: "test", accountName: "Test", currency: "USD", timezone: "UTC", monthlyBudget: null, campaignObjectiveCache: null, showBudgetPacingOnCover: false } as Client;
 function row(iso: string, spend: number): NreRow {
-  return { campaign_name: "Traffic", ad_set_name: "Set", spend: String(spend), impressions: "1000", reach: "100", results: "20", result_type: "Landing page views", link_clicks: "30", clicks: "40", ctr: "4", cpc: String(spend / 40), date_start: iso, date_end: iso, _raw: { Day: iso, "Result type": "Landing page views" } };
+  return { campaign_name: "Traffic", ad_set_name: "Set", spend: String(spend), impressions: "1000", reach: "100", results: "20", result_type: "Landing page views", link_clicks: "30", ctr: "4", cpc: String(spend / 40), date_start: iso, date_end: iso, _raw: { Day: iso, "Result type": "Landing page views" } };
 }
 function rowsForMonth(month: number) {
   return Array.from({ length: new Date(2026, month, 0).getDate() }, (_, d) => row(`2026-${String(month).padStart(2, "0")}-${String(d + 1).padStart(2, "0")}`, month));

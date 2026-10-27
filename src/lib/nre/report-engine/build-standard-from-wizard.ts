@@ -138,7 +138,7 @@ export async function buildStandardReportForWizard(
     sourceRows = filterNreRowsByDateRange(sourceRows, range);
     if (reportType === "MONTHLY") now = reportPeriodAnchor(range.endIso, client.timezone);
     else weeklyRange = range;
-  } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
+  } else if (reportType !== "CREATIVE" && reportType !== "QUARTER" && reportType !== "YTD") {
     const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, now, client.timezone);
     if (!dateResolution.ok) {
       return { error: dateResolution.error || "Invalid date selection." };
