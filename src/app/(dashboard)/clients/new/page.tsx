@@ -14,7 +14,7 @@ export default async function NewClientPage() {
   const [user, capacity] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true, planId: true, trialEndsAt: true },
+      select: { name: true, email: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true },
     }),
     getClientCapacityUsage(session.user.id),
   ]);
@@ -25,7 +25,7 @@ export default async function NewClientPage() {
   if (status.isBlocked) {
     return (
       <PaywallScreen
-        message="Your free trial has ended. Choose a plan to keep adding clients and generating reports."
+        message="Your trial or paid access has ended. Choose a plan to continue."
         userEmail={user.email}
         userName={user.name}
       />

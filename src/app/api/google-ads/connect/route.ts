@@ -1,3 +1,4 @@
+import { createPkce } from "@/lib/oauth-pkce";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -14,9 +15,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/account?google_ads_error=not_configured", req.url));
   }
 
+  const pkce = createPkce();
   const state = randomBytes(24).toString("hex");
   const redirectUri = new URL("/api/google-ads/callback", req.url).toString();
-  const authUrl = buildGoogleAdsConnectUrl(redirectUri, state);
+  const authUrl = buildGoogleAdsConnectUrl(redirectUri, state, pkce.challenge);
 
   const res = NextResponse.redirect(authUrl);
   res.cookies.set(GOOGLE_ADS_OAUTH_STATE_COOKIE, state, {
@@ -26,5 +28,6 @@ export async function GET(req: NextRequest) {
     maxAge: STATE_COOKIE_MAX_AGE_SECONDS,
     path: "/",
   });
+  res.cookies.set(`${GOOGLE_ADS_OAUTH_STATE_COOKIE}_pkce`, `${session.user.id}:${pkce.verifier}`, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 600, path: "/" });
   return res;
 }

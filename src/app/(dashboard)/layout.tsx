@@ -1,3 +1,4 @@
+import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { Nav } from "@/components/nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { ToastProvider } from "@/components/toast";
@@ -9,13 +10,14 @@ import { APP_SHELL_CLASS } from "@/lib/site-theme";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const user = session?.user
-    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, planId: true, trialEndsAt: true } })
+    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true } })
     : null;
   const status = user ? getSubscriptionStatus(user) : null;
   return (
     <ToastProvider>
       <div className={`${APP_SHELL_CLASS} flex min-h-screen flex-1 flex-col`}>
         <Nav />
+        {user && !user.emailVerified && <EmailVerificationBanner />}
         {status && <TrialBanner status={status} />}
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
       </div>

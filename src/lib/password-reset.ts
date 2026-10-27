@@ -66,16 +66,22 @@ export async function resetPasswordWithToken(
   const passwordHash = await bcrypt.hash(newPassword, 12);
   const canonicalEmail = normalizeAuthEmail(row.user.email);
 
-  await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
+    const consumed = await tx.passwordResetToken.deleteMany({ where: { id: row.id, expiresAt: { gt: new Date() } } });
+    if (!consumed.count) return false;
     await tx.user.update({
       where: { id: row.userId },
       data: {
         passwordHash,
+        authVersion: { increment: 1 },
+        emailVerified: new Date(),
         ...(row.user.email !== canonicalEmail ? { email: canonicalEmail } : {}),
       },
     });
     await tx.passwordResetToken.deleteMany({ where: { userId: row.userId } });
+    return true;
   });
+  if (!updated) return { ok: false, error: "Reset link is invalid or expired." };
 
   return { ok: true, email: canonicalEmail };
 }

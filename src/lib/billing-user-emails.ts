@@ -37,7 +37,7 @@ export function sendWelcomeTrialEmail(input: { to: string; name?: string | null;
   const text = [
     greeting,
     "",
-    "Your NextReport account is ready. You have 7 days of full access — no credit card required.",
+    "Your NextReport account is ready. You have 7 days to try up to 3 clients and 10 reports — no credit card required.",
     "",
     `Trial ends: ${endDate}`,
     "",
@@ -48,7 +48,7 @@ export function sendWelcomeTrialEmail(input: { to: string; name?: string | null;
     "Questions? Reply to this email or use Support in the dashboard.",
   ].join("\n");
   const html = `<p>${greeting}</p>
-<p>Your <strong>NextReport</strong> account is ready. You have <strong>7 days of full access</strong> — no credit card required.</p>
+<p>Your <strong>NextReport</strong> account is ready. You have <strong>7 days to try up to 3 clients and 10 reports</strong> — no credit card required.</p>
 <p><strong>Trial ends:</strong> ${endDate}</p>
 <p><a href="https://nextreport.in/clients">Open your dashboard →</a></p>
 <p>Add a client, connect Meta Ads, and generate your first report in minutes.</p>

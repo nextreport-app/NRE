@@ -5,7 +5,7 @@ import { BillingIntervalToggle } from "@/components/billing-interval-toggle";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
-import { AGENCY_CLIENT_LIMIT, getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
+import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import type { BillingInterval } from "@/lib/razorpay";
 import { useSiteCopy } from "@/hooks/use-site-copy";
@@ -76,7 +76,7 @@ function PlanCard({
       <h3 className="text-lg font-semibold text-white">{name}</h3>
       <p className="mt-1 text-sm text-ink-muted">{planCopy.bestFor}</p>
       <p className="mt-3 text-base font-semibold text-accent-orange">
-        {planId === "starter" ? `Up to ${AGENCY_CLIENT_LIMIT} client workspaces` : "Unlimited client workspaces"}
+        {planId === "starter" ? `Up to ${AGENCY_CLIENT_LIMIT} client workspaces` : `Up to ${PROFESSIONAL_CLIENT_LIMIT} client workspaces`}
       </p>
 
       <div className="mt-5 flex items-baseline gap-1">

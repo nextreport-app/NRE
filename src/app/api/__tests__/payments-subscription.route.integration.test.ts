@@ -1,3 +1,4 @@
+vi.mock("@/lib/usage-rate-limit", () => ({ enforceRateLimit: vi.fn().mockResolvedValue(null), requestAddress: () => "test" }));
 import { mockRouteAuth } from "@/test/api-route-harness";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonBody, mockSession } from "@/test/api-route-harness";
@@ -25,6 +26,7 @@ describe("GET /api/payments/config", () => {
 
 describe("POST /api/payments/create-subscription", () => {
   beforeEach(() => {
+    vi.stubEnv("RAZORPAY_PLAN_STARTER_INR_MONTHLY", "plan_local");
     mockRouteAuth(auth).mockReset();
     vi.mocked(isRazorpaySubscriptionsConfigured).mockReset();
     vi.mocked(createRazorpaySubscription).mockReset();

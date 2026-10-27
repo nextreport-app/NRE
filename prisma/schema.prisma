@@ -20,6 +20,7 @@ model User {
   image         String?
   // bcrypt hash — null for OAuth-only accounts
   passwordHash  String?
+  authVersion   Int @default(0)
 
   // Subscription / billing (Razorpay) — drives feature gating across the
   // app (see lib/subscription.ts's getSubscriptionStatus, the single source
@@ -41,10 +42,11 @@ model User {
   planId                 String    @default("trial")
   trialEndsAt            DateTime  @default(dbgenerated("(now() + interval '7 days')"))
   subscribedAt           DateTime?
+  paidThrough            DateTime?
+  trialReportsUsed       Int       @default(0)
   razorpayCustomerId     String?
   razorpaySubscriptionId String?
-  // Lifetime client slots consumed on Agency plan — incremented on create,
-  // never decremented on delete (prevents delete-and-recreate loophole).
+  // Analytics only. Active rows, not this lifetime counter, enforce client capacity.
   clientsCreatedCount    Int       @default(0)
   // Set when the "trial ending tomorrow" email is sent (daily cron).
   trialEndingEmailSentAt DateTime?
@@ -457,6 +459,8 @@ model Report {
   // Serialized wizard payload for async generate worker — cleared after
   // status reaches COMPLETE or FAILED (see lib/nre/report-generation-job.ts).
   jobPayload   String? @db.Text
+  processingStartedAt DateTime?
+  trialCreditReserved Boolean @default(false)
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
@@ -546,4 +550,41 @@ model SupportTicket {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+// Server-created checkout metadata binds provider proofs to owner, tier and price.
+model BillingCheckout {
+  id String @id
+  userId String
+  kind String
+  planId String
+  currency String
+  interval String
+  amount Int
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+// Captured payments are applied once across browser verification and webhook retries.
+model BillingPayment {
+  id String @id
+  userId String
+  checkoutId String
+  paidThrough DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+// Shared across serverless instances; keys contain hashes rather than raw email/IP.
+model UsageBucket {
+  key String @id
+  hits Int @default(1)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+// Persist storage cleanup intent before removing client/report database rows.
+model BlobDeletion {
+  url String @id
+  createdAt DateTime @default(now())
 }

@@ -1,128 +1,36 @@
 "use client";
-
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
-
+import { AuthFieldLabel, AuthPageShell, authInputClassName } from "@/components/auth/auth-page-shell";
+import { PasswordInput } from "@/components/auth/password-input";
 export default function SignupPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(false);
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setLoading(false);
-      setError(data.error || "Something went wrong.");
-      return;
-    }
-
-    const signInRes = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
-    if (signInRes?.error) {
-      setError("Account created — please log in.");
-      router.push("/login");
-      return;
-    }
-    router.push("/clients");
+    e.preventDefault(); setError(null); setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, password }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || "Could not create your account."); return; }
+      const result = await signIn("credentials", { email, password, redirect: false });
+      router.push(result?.error ? "/login" : "/clients");
+    } catch { setError("Could not reach the server. Try again; if your account was created, log in instead."); }
+    finally { setLoading(false); }
   }
-
-  return (
-    <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-4">
-      <div className="mb-8 text-center">
-        <Link href="/" className="inline-flex items-center justify-center gap-2">
-          <img src="/logo.png" alt="NextReport logo" style={{ height: "36px", width: "36px", display: "block" }} />
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: "22px",
-              color: "white",
-              letterSpacing: "-0.3px",
-              fontFamily: "var(--font-inter), sans-serif",
-            }}
-          >
-            NextReport
-          </span>
-        </Link>
-        <p className="mt-2 text-sm text-ink-muted">Create your agency workspace</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm text-ink-secondary">Name</label>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
-            placeholder="Your name"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-ink-secondary">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
-            placeholder="you@agency.com"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-ink-secondary">Password</label>
-          <input
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm text-white outline-none focus:border-accent"
-            placeholder="At least 8 characters"
-          />
-        </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
-        >
-          {loading ? "Creating account…" : "Create account"}
-        </button>
-      </form>
-
-      <div className="my-4 flex items-center gap-3 text-xs text-ink-muted">
-        <div className="h-px flex-1 bg-navy-border" />
-        or
-        <div className="h-px flex-1 bg-navy-border" />
-      </div>
-
-      <GoogleSignInButton
-        callbackUrl="/clients"
-        className="w-full rounded-md border border-navy-border bg-navy-panel px-3 py-2 text-sm font-medium text-white hover:bg-navy-border disabled:opacity-60"
-      />
-
-      <p className="mt-6 text-center text-sm text-ink-muted">
-        Already have an account?{" "}
-        <Link href="/login" className="text-accent hover:underline">
-          Log in
-        </Link>
-      </p>
-    </div>
-  );
+  return <AuthPageShell title="Create your workspace" subtitle="Try NextReport for 7 days: 3 clients and 10 reports. No card required." footer={<p>Already have an account? <Link href="/login" className="text-accent hover:underline">Log in</Link></p>}>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div><AuthFieldLabel htmlFor="signup-name">Name</AuthFieldLabel><input id="signup-name" autoComplete="name" required maxLength={100} value={name} onChange={e => setName(e.target.value)} className={authInputClassName} placeholder="Your name" /></div>
+      <div><AuthFieldLabel htmlFor="signup-email">Email</AuthFieldLabel><input id="signup-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className={authInputClassName} placeholder="you@agency.com" /></div>
+      <div><AuthFieldLabel htmlFor="signup-password">Password</AuthFieldLabel><PasswordInput id="signup-password" autoComplete="new-password" required minLength={8} maxLength={72} value={password} onChange={setPassword} placeholder="At least 8 characters" /></div>
+      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+      <p className="text-xs leading-relaxed text-ink-muted">By creating an account, you agree to our <Link href="/terms" className="text-accent underline">Terms</Link> and <Link href="/privacy" className="text-accent underline">Privacy Policy</Link>. We’ll email you a verification link.</p>
+      <button type="submit" disabled={loading} className="w-full rounded-md bg-accent px-4 py-3 font-medium text-[#0d1b2e] disabled:opacity-60">{loading ? "Creating account…" : "Start free trial"}</button>
+    </form>
+    <div className="my-5 flex items-center gap-3 text-xs text-ink-muted"><span className="h-px flex-1 bg-navy-border" />or<span className="h-px flex-1 bg-navy-border" /></div>
+    <GoogleSignInButton callbackUrl="/clients" />
+  </AuthPageShell>;
 }

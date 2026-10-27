@@ -25,7 +25,7 @@ export async function GET() {
         googleConnectedEmail: true,
         reportRetentionDays: true,
         planId: true,
-        trialEndsAt: true,
+        trialEndsAt: true, paidThrough: true, emailVerified: true,
         email: true,
       },
     });
@@ -73,7 +73,7 @@ export async function PATCH(req: Request) {
   if (parsed.data.reportRetentionDays !== undefined) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { planId: true, trialEndsAt: true, email: true },
+      select: { planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true, email: true },
     });
     if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

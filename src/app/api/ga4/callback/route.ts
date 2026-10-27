@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
 
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(GA4_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
+    res.cookies.set(`${GA4_OAUTH_STATE_COOKIE}_pkce`, "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -33,6 +34,10 @@ export async function GET(req: NextRequest) {
     return clearStateCookie(redirectToAccount(req, "?ga4_error=invalid_state"));
   }
 
+  const pkce = req.cookies.get(`${GA4_OAUTH_STATE_COOKIE}_pkce`)?.value;
+  const verifier = pkce?.startsWith(`${session.user.id}:`) ? pkce.slice(session.user.id.length + 1) : null;
+  if (!verifier) return clearStateCookie(redirectToAccount(req, "?ga4_error=invalid_state"));
+
   const code = url.searchParams.get("code");
   if (!code) {
     return clearStateCookie(redirectToAccount(req, "?ga4_error=missing_code"));
@@ -40,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const redirectUri = new URL("/api/ga4/callback", req.url).toString();
-    const tokens = await exchangeGa4AuthCode(code, redirectUri);
+    const tokens = await exchangeGa4AuthCode(code, redirectUri, verifier);
 
     if (!tokens.refresh_token) {
       return clearStateCookie(redirectToAccount(req, "?ga4_error=no_refresh_token"));

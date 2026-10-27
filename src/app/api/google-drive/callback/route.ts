@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
   // it's only ever valid for a single round trip.
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(GOOGLE_DRIVE_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
+    res.cookies.set(`${GOOGLE_DRIVE_OAUTH_STATE_COOKIE}_pkce`, "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -36,6 +37,10 @@ export async function GET(req: NextRequest) {
     return clearStateCookie(redirectToAccount(req, "?google_drive_error=invalid_state"));
   }
 
+  const pkce = req.cookies.get(`${GOOGLE_DRIVE_OAUTH_STATE_COOKIE}_pkce`)?.value;
+  const verifier = pkce?.startsWith(`${session.user.id}:`) ? pkce.slice(session.user.id.length + 1) : null;
+  if (!verifier) return clearStateCookie(redirectToAccount(req, "?google_drive_error=invalid_state"));
+
   const code = url.searchParams.get("code");
   if (!code) {
     return clearStateCookie(redirectToAccount(req, "?google_drive_error=missing_code"));
@@ -43,7 +48,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const redirectUri = new URL("/api/google-drive/callback", req.url).toString();
-    const tokens = await exchangeGoogleAuthCode(code, redirectUri);
+    const tokens = await exchangeGoogleAuthCode(code, redirectUri, verifier);
 
     // access_type=offline + prompt=consent (see buildGoogleDriveConnectUrl)
     // guarantee a refresh_token on every connect — if it's still somehow

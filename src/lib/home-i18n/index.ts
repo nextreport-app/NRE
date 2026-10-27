@@ -21,5 +21,12 @@ const PATCHES: Partial<Record<SiteLocaleId, Parameters<typeof mergeHomeCopy>[1]>
 export function homeCopy(locale: SiteLocaleId): HomeCopy {
   const patch = PATCHES[locale];
   if (!patch) return HOME_EN;
-  return mergeHomeCopy(HOME_EN, patch);
+  const copy = mergeHomeCopy(HOME_EN, patch);
+  // Commercial promises must not retain obsolete limits/tax/automation claims in old translations.
+  copy.pricing.plans.starter.features = HOME_EN.pricing.plans.starter.features;
+  copy.pricing.plans.professional.features = HOME_EN.pricing.plans.professional.features;
+  copy.pricing.mostPopular = HOME_EN.pricing.mostPopular;
+  copy.pricing.exclGst = HOME_EN.pricing.exclGst;
+  copy.pricing.exclTax = HOME_EN.pricing.exclTax;
+  return copy;
 }

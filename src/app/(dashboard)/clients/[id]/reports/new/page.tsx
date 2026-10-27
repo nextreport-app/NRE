@@ -28,7 +28,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ id: 
         name: true,
         email: true,
         planId: true,
-        trialEndsAt: true,
+        trialEndsAt: true, paidThrough: true, emailVerified: true,
         googleRefreshToken: true,
         metaConnectedName: true,
         metaAccessToken: true,

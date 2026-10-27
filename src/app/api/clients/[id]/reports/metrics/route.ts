@@ -1,3 +1,5 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +14,6 @@ import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import {
   googleObjectiveKeyFromHeaders,
   googleSlideObjectiveLabels,
-  usesMetaObjectiveEngine,
 } from "@/lib/nre/platform-reporting";
 import { buildCampaignMetricBundle } from "@/lib/nre/wizard-campaign-metrics";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -33,6 +34,10 @@ import { parseJsonFormField, selectedCampaignsSchema } from "@/lib/validators/re
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const subscriptionGuard = await requireActiveSubscription(session.user.id);
+  if (subscriptionGuard) return subscriptionGuard;
+  const throttle = await enforceWizardLimits(session.user.id, "work");
+  if (throttle) return throttle;
 
   try {
     const { id } = await params;

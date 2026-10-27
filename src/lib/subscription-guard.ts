@@ -14,14 +14,16 @@ import { prisma } from "@/lib/prisma";
 import { CLIENT_LIMIT_EXPLAINER, getPlanDisplayName } from "@/lib/plan-labels";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
-const TRIAL_ENDED_MESSAGE = "Your free trial has ended. Subscribe to continue using NextReport.";
+const TRIAL_ENDED_MESSAGE = "Your trial or paid access has ended. Visit Billing to continue using NextReport.";
 
 /** Returns a 403 response if this user's trial has expired (or their subscription was cancelled) and they haven't subscribed — null means "allowed, proceed." */
 export async function requireActiveSubscription(userId: string): Promise<NextResponse | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, planId: true, trialEndsAt: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true, trialReportsUsed: true } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  if (!user.emailVerified) return NextResponse.json({ error: "Verify your email from your workspace before continuing." }, { status: 403 });
   const status = getSubscriptionStatus(user);
+  if (status.isTrialing && user.trialReportsUsed >= 10) return NextResponse.json({ error: "You have used your 10 trial reports. Visit Billing to continue." }, { status: 403 });
   if (status.isBlocked) {
     return NextResponse.json({ error: TRIAL_ENDED_MESSAGE }, { status: 403 });
   }
@@ -32,10 +34,11 @@ export async function requireActiveSubscription(userId: string): Promise<NextRes
 export async function requireClientCapacity(userId: string): Promise<NextResponse | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, planId: true, trialEndsAt: true },
+    select: { email: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true, trialReportsUsed: true },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  if (!user.emailVerified) return NextResponse.json({ error: "Verify your email from your workspace before continuing." }, { status: 403 });
   const status = getSubscriptionStatus(user);
   if (status.isBlocked) {
     return NextResponse.json({ error: TRIAL_ENDED_MESSAGE }, { status: 403 });
@@ -48,7 +51,7 @@ export async function requireClientCapacity(userId: string): Promise<NextRespons
     if (activeClientCount >= status.clientLimit) {
       return NextResponse.json(
         {
-          error: `The ${getPlanDisplayName("starter")} plan is limited to ${status.clientLimit} client workspaces (one brand each — Meta, Google, TikTok, and GA4 included). ${CLIENT_LIMIT_EXPLAINER} Delete an unused client or upgrade to Professional for unlimited clients.`,
+          error: `The ${getPlanDisplayName(status.planId)} plan is limited to ${status.clientLimit} client workspaces (one brand each — Meta, Google, TikTok, and GA4 included). ${CLIENT_LIMIT_EXPLAINER} Delete an unused client or visit Billing to review your plan.`,
         },
         { status: 403 },
       );

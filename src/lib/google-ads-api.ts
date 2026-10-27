@@ -60,7 +60,7 @@ function googleAdsRequestHeaders(accessToken: string, loginCustomerId?: string):
 }
 
 /** Starts account-settings "Connect Google Ads" OAuth — offline refresh token. */
-export function buildGoogleAdsConnectUrl(redirectUri: string, state: string): string {
+export function buildGoogleAdsConnectUrl(redirectUri: string, state: string, codeChallenge?: string): string {
   const url = new URL(GOOGLE_AUTH_URL);
   url.searchParams.set("client_id", requireGoogleAdsClientId());
   url.searchParams.set("redirect_uri", redirectUri);
@@ -69,6 +69,7 @@ export function buildGoogleAdsConnectUrl(redirectUri: string, state: string): st
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent select_account");
   url.searchParams.set("state", state);
+  if (codeChallenge) { url.searchParams.set("code_challenge", codeChallenge); url.searchParams.set("code_challenge_method", "S256"); }
   return url.toString();
 }
 
@@ -83,6 +84,7 @@ export interface GoogleAdsTokenResponse {
 export async function exchangeGoogleAdsAuthCode(
   code: string,
   redirectUri: string,
+  codeVerifier?: string,
 ): Promise<GoogleAdsTokenResponse> {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
@@ -93,6 +95,7 @@ export async function exchangeGoogleAdsAuthCode(
       code,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
+      ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
     }),
   });
   if (!res.ok) {

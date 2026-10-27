@@ -1,4 +1,4 @@
-/** Client-safe price catalogue. Amounts are minor units, before tax. */
+/** Client-safe price catalogue. Amounts are minor-unit checkout totals. Tax treatment must match provider/invoicing configuration. */
 import type { PricingCurrency } from "./currency";
 import { getPlanDisplayName, type BillablePlanId } from "./plan-labels";
 

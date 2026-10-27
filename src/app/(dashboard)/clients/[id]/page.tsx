@@ -96,7 +96,7 @@ export default async function ClientDetailPage({
         tiktokRefreshToken: true,
         reportRetentionDays: true,
         planId: true,
-        trialEndsAt: true,
+        trialEndsAt: true, paidThrough: true, emailVerified: true,
         email: true,
         tiktokAdsEnabled: true,
         tiktokConnectedName: true,

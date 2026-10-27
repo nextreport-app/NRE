@@ -337,7 +337,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Is there a free trial?",
     answer:
-      "Yes. NextReport offers a 7-day free trial with full access. No credit card is required to start.",
+      "Yes. NextReport offers a 7-day free trial with up to 3 clients and 10 reports. No credit card is required to start.",
   },
   {
     question: "Can I use NextReport for multiple clients?",

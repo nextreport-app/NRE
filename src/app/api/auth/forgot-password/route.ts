@@ -1,3 +1,4 @@
+import { enforceRateLimit, requestAddress } from "@/lib/usage-rate-limit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requestPasswordReset } from "@/lib/password-reset";
@@ -12,6 +13,8 @@ const GENERIC_OK = {
 };
 
 export async function POST(req: Request) {
+  const throttle = await enforceRateLimit("forgot-password", requestAddress(req), 10, 900);
+  if (throttle) return throttle;
   try {
     const json = await req.json().catch(() => null);
     const parsed = bodySchema.safeParse(json);

@@ -9,7 +9,7 @@ export function CancelSubscriptionButton() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCancel() {
-    if (!confirm("Cancel your subscription? You will lose access to paid features immediately.")) return;
+    if (!confirm("Stop automatic renewal? Your access continues until the end of your paid period.")) return;
 
     setError(null);
     setLoading(true);

@@ -1,3 +1,4 @@
+import { takeRateLimit, requestAddress } from "./usage-rate-limit";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
@@ -14,6 +15,7 @@ import { findUserByEmail } from "@/lib/find-user-by-email";
 import { OAuthOnlyAccountSignin } from "@/lib/auth-oauth-only-signin";
 
 const googleProvider = Google({
+  checks: ["pkce", "state"],
   clientId: process.env.AUTH_GOOGLE_ID,
   clientSecret: process.env.AUTH_GOOGLE_SECRET,
   // Same email may exist from email/password signup — link Google instead of OAuthAccountNotLinked.
@@ -33,15 +35,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const emailRaw = credentials?.email;
         const password = credentials?.password;
         if (typeof emailRaw !== "string" || typeof password !== "string") return null;
 
         const email = normalizeAuthEmail(emailRaw);
-        if (!email || !password) return null;
+        if (!email || !password || password.length > 1024) return null;
 
         try {
+          if (!(await takeRateLimit("login-email", email, 10, 900)) || !(await takeRateLimit("login-ip", requestAddress(request), 50, 900))) return null;
           const user = await findUserByEmail(emailRaw, {
             id: true,
             email: true,
@@ -68,8 +71,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
+    async signIn({ account, profile }) {
+      return account?.provider !== "google" || (profile as { email_verified?: boolean } | undefined)?.email_verified === true;
+    },
     async jwt({ token, user }) {
       if (user) token.id = user.id;
+      if (typeof token.id !== "string") return null;
+      const current = await prisma.user.findUnique({ where: { id: token.id }, select: { authVersion: true } });
+      if (!current) return null;
+      if (user) token.authVersion = current.authVersion;
+      else if ((token.authVersion ?? 0) !== current.authVersion) return null;
       return token;
     },
     async session({ session, token }) {
@@ -102,6 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Account row current every time.
     async signIn({ user, account }) {
       if (!account || account.provider !== "google" || !user.id) return;
+      await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } });
       const tokens = {
         access_token: account.access_token,
         refresh_token: account.refresh_token,

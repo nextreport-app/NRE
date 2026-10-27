@@ -10,6 +10,7 @@ export function PasswordInput({
   placeholder,
   autoComplete,
   minLength,
+  maxLength,
   required = true,
 }: {
   id: string;
@@ -18,6 +19,7 @@ export function PasswordInput({
   placeholder?: string;
   autoComplete?: string;
   minLength?: number;
+  maxLength?: number;
   required?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
@@ -29,6 +31,7 @@ export function PasswordInput({
         type={visible ? "text" : "password"}
         required={required}
         minLength={minLength}
+        maxLength={maxLength}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}

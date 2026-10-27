@@ -1,7 +1,8 @@
+import { enforceWizardLimits } from "@/lib/usage-rate-limit";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseUploadedFile } from "@/lib/nre/parse-file";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelectionWithLowSpend, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
@@ -48,6 +49,10 @@ const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const subscriptionGuard = await requireActiveSubscription(session.user.id);
+  if (subscriptionGuard) return subscriptionGuard;
+  const throttle = await enforceWizardLimits(session.user.id, "upload");
+  if (throttle) return throttle;
 
   try {
     const { id } = await params;
@@ -65,7 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    const { headers, dataRows } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
+    const { headers } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
     const platformOverride = formData ? parseJsonFormField(formData, "platform", platformSchema) : undefined;
     const detectedPlatform = detectPlatform(headers);
     const platform = platformOverride ?? detectedPlatform;

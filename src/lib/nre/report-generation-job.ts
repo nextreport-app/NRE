@@ -1,3 +1,4 @@
+import { claimReportGeneration, failReportGeneration } from "@/lib/report-capacity";
 /**
  * Async report generation worker — AI, render, persist run outside the
  * wizard POST so the client can poll status instead of blocking.
@@ -8,10 +9,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
-import type { ReportData } from "@/lib/nre/report-data";
 import {
   parseReportGenerationJob,
-  type ReportGenerationJobPayload,
 } from "@/lib/nre/report-generation-job-payload";
 import { buildShareReportData, buildDayBreakdownShareReportData, buildHistoricalShareReportData } from "@/lib/nre/share-report";
 import {
@@ -99,12 +98,7 @@ async function cleanupUploadSession(userId: string, clientId: string, sessionId:
   }
 }
 
-async function markReportFailed(reportId: string, message: string) {
-  await prisma.report.update({
-    where: { id: reportId },
-    data: { status: "FAILED", errorMessage: message, jobPayload: null },
-  });
-}
+const markReportFailed = failReportGeneration;
 
 export async function processReportGeneration(reportId: string): Promise<void> {
   const report = await prisma.report.findUnique({
@@ -112,6 +106,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     include: { client: true },
   });
   if (!report || report.status !== "GENERATING") return;
+  if (!(await claimReportGeneration(reportId))) return;
 
   const job = parseReportGenerationJob(report.jobPayload);
   if (!job) {
@@ -119,6 +114,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     return;
   }
 
+  if (job.userId !== report.client.userId || job.clientId !== report.clientId) { await markReportFailed(reportId, "Report ownership could not be verified."); return; }
   const client = report.client;
   const userIntegrations = await prisma.user.findUnique({
     where: { id: job.userId },

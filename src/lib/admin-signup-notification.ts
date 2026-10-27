@@ -23,7 +23,7 @@ export function notifyAdminNewSignup(input: NewSignupNotificationInput): void {
     `Name: ${name}`,
     `How they signed up: ${providerLabel}`,
     "",
-    "They get 7 days of full access automatically — no payment required yet.",
+    "They get 7 trial days with up to 3 clients and 10 reports — no payment required yet.",
   ].join("\n");
   const html = `<p>A new user started a <strong>free trial</strong> on NextReport.</p>
 <ul>
@@ -31,7 +31,7 @@ export function notifyAdminNewSignup(input: NewSignupNotificationInput): void {
 <li><strong>Name:</strong> ${name}</li>
 <li><strong>Sign-up method:</strong> ${providerLabel}</li>
 </ul>
-<p>They receive 7 days of full access automatically — no payment required yet.</p>`;
+<p>They receive 7 trial days with up to 3 clients and 10 reports — no payment required yet.</p>`;
 
   notifyInboundFireAndForget({
     channel: "billing",

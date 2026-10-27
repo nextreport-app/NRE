@@ -94,6 +94,8 @@ export function scheduleWizardPreviewAiWarm(input: {
   fingerprint: string;
   reportData: ReportData;
 }): void {
+  // Preview must not spend AI credits before a metered generation is admitted.
+  if (process.env.ENABLE_PREVIEW_AI_WARM !== "true") return;
   void (async () => {
     const keys = aiKeysFromEnv();
     if (!keys.anthropicApiKey && !keys.groqApiKey && !keys.geminiApiKey) return;

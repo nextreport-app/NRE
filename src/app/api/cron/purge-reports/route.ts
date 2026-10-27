@@ -1,3 +1,5 @@
+import { drainBlobDeletionQueue } from "@/lib/blob-deletion-outbox";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { purgeExpiredReports } from "@/lib/report-retention";
 import { retryStuckReportGenerations } from "@/lib/nre/retry-stuck-report-generations";
@@ -15,6 +17,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  await prisma.verificationToken.deleteMany({ where: { expires: { lt: new Date() } } });
+  await prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  await prisma.usageBucket.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   const url = new URL(request.url);
   const wizardPurge = url.searchParams.get("wizardPurge");
 
@@ -25,8 +30,10 @@ export async function GET(request: Request) {
       ? purgeAllEphemeralWizardBlobs()
       : purgeStaleWizardBlobs(),
   ]);
+  const deletedBlobs = await drainBlobDeletionQueue(500);
   return NextResponse.json({
     ok: true,
+    deletedBlobs,
     deleted,
     retriedStuck,
     wizardBlobs,

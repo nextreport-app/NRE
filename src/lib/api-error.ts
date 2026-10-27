@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ServiceError } from "./service-error";
 import { CsvInputError } from "./nre/parse-csv";
 
 /**
@@ -10,8 +11,9 @@ import { CsvInputError } from "./nre/parse-csv";
  * generic "something went wrong" with no way to diagnose the real cause.
  */
 export function apiErrorResponse(err: unknown, context: string): NextResponse {
+  if (err instanceof ServiceError) return NextResponse.json({ error: err.message }, { status: err.status, headers: err.retryAfter ? { "Retry-After": String(err.retryAfter) } : undefined });
   if (err instanceof CsvInputError) return NextResponse.json({ valid: false, error: err.message, errors: [{ field: "csv", message: err.message }], warnings: [] }, { status: 400 });
   console.error(`[api:${context}] failed:`, err);
-  const message = err instanceof Error ? err.message : "Unexpected server error.";
+  const message = "Something went wrong. Please try again or contact support.";
   return NextResponse.json({ error: message }, { status: 500 });
 }

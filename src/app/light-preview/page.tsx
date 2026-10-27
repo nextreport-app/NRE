@@ -56,10 +56,10 @@ const PLANS = [
     bestFor: "Growing agencies managing multiple clients",
     highlighted: true,
     features: [
-      "Unlimited clients — Meta Ads reporting",
+      "Up to 50 clients — Meta Ads reporting",
       "Meta Ads reporting",
       "AI-written campaign summaries",
-      "Google Drive auto-save",
+      "Save to Google Drive",
       "Priority email support",
     ],
   },
