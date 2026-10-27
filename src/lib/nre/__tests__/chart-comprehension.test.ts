@@ -4,7 +4,7 @@ import { buildVisualChartSlideModel } from "../visual-chart-slide";
 import { projectChartSlideToShareChart } from "../share-chart-projection";
 import { buildMtdOverviewSlideXml } from "../../pptx/chart-slide-ooxml";
 import { buildMtdOverviewSvg } from "../../pptx/chart-overview-svg";
-import { resultBarLayout, MTD_VISUAL } from "../../pptx/chart-slide-layout";
+import { resultBarLayout, groupedDonutLayout, MTD_VISUAL } from "../../pptx/chart-slide-layout";
 import { buildGroupedDonutSvg } from "../../pptx/chart-grouped-donut-render";
 
 function campaign(name: string, spend: number, results: number, resLabel = "LANDING PAGE VIEWS", cprLabel = "COST PER LANDING PAGE VIEW"): ChartCampaignData {
@@ -42,6 +42,8 @@ describe("client-readable chart identity and metric contracts", () => {
     expect(model.groupedDonutCenterLabel).toBe("$2,700.00");
     expect(model.resultBars[0]).toMatchObject({ valueLabel: "2,200", barPct: 100, statLine: "$600.00 spend · $0.27 / view" });
     expect(model.resultBars[1].barPct).toBe(40);
+    expect(new Set(model.resultBars.map(bar => bar.color))).toEqual(new Set([model.groupedDonut![0].color]));
+    expect(model.panelSubheading).toBe("");
     expect(model.summaryLine).toContain("5,500");
     expect(model.summaryLine).toContain("$0.49"); // 2,700 / 5,500, not an average of campaign costs.
   });
@@ -64,6 +66,9 @@ describe("client-readable chart identity and metric contracts", () => {
       campaign("Traffic", 100, 1000, "LINK CLICKS", "COST PER LINK CLICK"),
     ]), "$");
     expect(model.isMultiObjective).toBe(true);
+    for (const bar of model.resultBars) {
+      expect(bar.color).toBe(model.groupedDonut!.find(segment => segment.name === bar.name || segment.name === "Link Clicks")?.color);
+    }
     expect(model.panelSubheading).toContain("spend (different goals)");
     expect(model.resultBars[0]).toMatchObject({ name: "Purchases", valueLabel: "$200", barPct: 100 });
     expect(model.resultBars[1].barPct).toBe(50);
@@ -132,6 +137,14 @@ describe("client-readable chart identity and metric contracts", () => {
     expect(reach.summaryLine).toContain("$16.00");
     const singleReach = buildVisualChartSlideModel(chart([campaign("Only reach", 20, 2000, "REACH", "COST PER 1K REACH")]), "$");
     expect(singleReach.summaryLine).toContain("$10.00");
+  });
+
+  it("fits six objective legend rows and the donut within the panel", () => {
+    for (let count = 1; count <= 6; count++) {
+      const layout = groupedDonutLayout(count, MTD_VISUAL.panelY);
+      const bottom = layout.blockTopY + layout.donutD + 16 + count * (layout.legendRowH + layout.legendRowGap) - layout.legendRowGap;
+      expect(bottom).toBeLessThanOrEqual(MTD_VISUAL.panelY + MTD_VISUAL.panelH);
+    }
   });
 
   it("reserves readable metric line height while keeping five bars inside the native slide panel", () => {

@@ -286,10 +286,10 @@ export function WizardGenerateSuccessPanel({
 
         {/* Section C — share with client */}
         {shareToken && reportUrl && shareInput ? (
-          <section aria-labelledby="success-share-heading" className="space-y-3">
-            <h3 id="success-share-heading" className={sectionTitleClass}>
+          <section aria-labelledby="success-share-heading" className="nre-wizard-success-share space-y-4 rounded-2xl border p-4 sm:p-5">
+            <div className="flex items-center gap-3"><span aria-hidden className="nre-wizard-success-share__icon flex h-10 w-10 items-center justify-center rounded-xl"><LinkIcon /></span><div><p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-dash-accent">The final touch</p><h3 id="success-share-heading" className={sectionTitleClass}>
               Share with client
-            </h3>
+            </h3></div></div>
             <p className="text-[13px] text-dash-ink-secondary">Anyone with this link can view the report. Review it before sending.</p>
             <label className="sr-only" htmlFor="wizard-live-report-url">
               Live report URL
