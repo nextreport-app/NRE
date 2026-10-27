@@ -1,3 +1,5 @@
+import { notifyBillingNewSubscription } from "@/lib/inbound-notifications";
+import { sendSubscriptionConfirmedEmail } from "@/lib/billing-user-emails";
 import { ServiceError } from "@/lib/service-error";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -26,7 +28,16 @@ export async function POST(req: Request) {
       if (!checkoutId) throw new Error("Captured payment has no resolvable checkout.");
       // Ignore unrelated payments in a shared Razorpay account, but log for reconciliation.
       const checkout = await prisma.billingCheckout.findUnique({ where: { id: checkoutId } });
-      if (checkout) await applyCapturedPayment(paymentId, checkoutId);
+      if (checkout) {
+        const entitlement = await applyCapturedPayment(paymentId, checkoutId);
+        if (entitlement.newlyApplied) {
+          const user = await prisma.user.findUnique({ where: { id: checkout.userId }, select: { email: true, name: true } });
+          if (user) {
+            notifyBillingNewSubscription({ email: user.email, name: user.name, planId: entitlement.planId, paymentId });
+            sendSubscriptionConfirmedEmail({ to: user.email, name: user.name, planId: entitlement.planId });
+          }
+        }
+      }
       else throw new ServiceError("Checkout metadata is not available yet; retry or reconcile this payment.", 503);
     }
     if (["subscription.cancelled", "subscription.completed", "subscription.halted"].includes(body.event) && typeof subscriptionId === "string") {
