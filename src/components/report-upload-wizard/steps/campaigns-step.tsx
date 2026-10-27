@@ -402,7 +402,7 @@ export function WizardCampaignsStep() {
           {objectivesLoading ? (
             <p className="text-[14px] text-dash-ink-secondary">Loading objectives…</p>
           ) : (
-            <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
+            <ul className="space-y-2">
               {campaigns
                 .filter((name) => selectedCampaigns.has(name))
                 .map((name) => {
@@ -427,23 +427,19 @@ export function WizardCampaignsStep() {
                     campaignRequiresConfirmation.get(normalized) === true &&
                     !touchedObjectiveCampaigns.has(normalized);
                   return (
-                    <li key={name} className={`px-3 py-2 ${isBlocking ? "border-2 border-[#fc8181] bg-red-950/10" : ""}`}>
-                      <details key={`${normalized}-${csvAlign}-${isBlocking}`} open={csvAlign !== true || isBlocking} className="group/objective">
-                        <summary className={`flex cursor-pointer list-none items-center gap-3 rounded-md border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-dash-accent [&::-webkit-details-marker]:hidden ${csvAlign === true && !isBlocking ? "border-emerald-500/25 bg-emerald-500/5" : "border-dash-border"}`}>
+                    <li key={name}>
+                      <details key={`${normalized}-${csvAlign}-${isBlocking}`} open={csvAlign !== true || isBlocking} className={`group/objective overflow-hidden rounded-lg border ${isBlocking ? "border-[#fc8181] bg-red-950/10" : csvAlign === true ? "border-emerald-500/25 bg-emerald-500/5" : "border-dash-border"}`}>
+                        <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm focus-visible:outline-2 focus-visible:outline-dash-accent [&::-webkit-details-marker]:hidden">
                           <span aria-hidden className={csvAlign === true && !isBlocking ? "text-emerald-400" : "text-dash-accent"}>{csvAlign === true && !isBlocking ? "✓" : "!"}</span>
-                          <span className="min-w-0 flex-1"><span className="block truncate font-medium text-dash-ink" title={name}>{name}</span><span className="text-xs text-dash-ink-secondary">{detectedLabel}{csvAlign === true && !isBlocking ? " · Matches CSV" : " · Review objective"}</span></span>
+                          <span className="min-w-0 flex-1"><span className="block break-words font-medium text-dash-ink" title={name}>{name}</span><span className="text-xs text-dash-ink-secondary">{detectedLabel}{csvAlign === true && !isBlocking ? " · Matches CSV" : " · Review objective"}</span></span>
                           <span aria-hidden className="text-dash-ink-secondary transition-transform group-open/objective:rotate-180">▾</span>
                         </summary>
-                        <div className="border-t border-dash-border px-2 py-3">
-                      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                        <span className="min-w-0 break-words text-[14px] text-dash-ink" title={name}>
-                          {name}
-                        </span>
+                        <div className="space-y-2 border-t border-dash-border px-4 py-3">
                         <select
                           aria-label={`Objective for ${name}`}
                           value={currentKey}
                           onChange={(e) => setCampaignObjective(name, e.target.value)}
-                          className={`max-w-full rounded-md border px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
+                          className={`w-full rounded-md border px-3 py-2 sm:max-w-sm text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
                             isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
                           } bg-dash-bg`}
                         >
@@ -453,8 +449,7 @@ export function WizardCampaignsStep() {
                             </option>
                           ))}
                         </select>
-                      </div>
-                      {showCsvObjectivePanel && csvSummary ? (
+                      {showCsvObjectivePanel && csvSummary && (csvAlign === false || csvSummary.distinct.length > 1) ? (
                         <div
                           className={`mt-2 rounded-md border px-3 py-1.5 text-[13px] leading-snug ${
                             csvAlign === false
@@ -479,7 +474,7 @@ export function WizardCampaignsStep() {
                         </div>
                       ) : null}
                       {badge && badge.pill ? (
-                        <div className="mt-2 flex justify-end">
+                        <div className="flex">
                           <span
                             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[14px] font-semibold ${badge.className}`}
                           >
@@ -489,7 +484,7 @@ export function WizardCampaignsStep() {
                         </div>
                       ) : null}
                       {badge && !badge.pill ? (
-                        <div className={`mt-1 flex items-center justify-end gap-1 text-[14px] font-medium ${badge.className}`}>
+                        <div className={`flex items-center gap-1 text-[14px] font-medium ${badge.className}`}>
                           <span aria-hidden="true">{badge.icon}</span>
                           <span>{badge.text}</span>
                         </div>
