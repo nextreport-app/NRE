@@ -20,10 +20,12 @@ describe("ad platform API sync visibility", () => {
 
   it("enables functional API sync when env flag is true", async () => {
     process.env.AD_PLATFORM_API_SYNC_ENABLED = "true";
-    const { isAdPlatformApiSyncEnabled, isClientPlatformConnectionsSectionVisible } = await import(
+    const { isAdPlatformApiSyncEnabled, isClientPlatformConnectionsSectionVisible, isWizardApiSyncVisible, isWizardApiSyncEnabled } = await import(
       "../ad-platform-api-sync"
     );
     expect(isAdPlatformApiSyncEnabled()).toBe(true);
+    expect(isWizardApiSyncVisible()).toBe(false);
+    expect(isWizardApiSyncEnabled()).toBe(false);
     expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });
 });

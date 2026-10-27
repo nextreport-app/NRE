@@ -61,18 +61,8 @@ export function isWizardPlatformSwitchEnabled(): boolean {
 }
 
 export function isClientPlatformConnectionVisible(key: ClientPlatformConnectionKey): boolean {
-  switch (key) {
-    case "meta":
-      return isLaunchPlatformEnabled("META");
-    case "googleAds":
-      return isLaunchPlatformEnabled("GOOGLE");
-    case "tiktok":
-      return isLaunchPlatformEnabled("TIKTOK");
-    case "ga4":
-      return isLaunchPlatformEnabled("GA4");
-    default:
-      return false;
-  }
+  // Connection management is independent of report-wizard rollout.
+  return (["meta", "googleAds", "tiktok", "ga4"] as readonly string[]).includes(key);
 }
 
 export function isLaunchReportTypeEnabled(reportType: string): reportType is LaunchEnabledReportType {
