@@ -712,21 +712,20 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
 
 /* Wizard — post-generate success card */
 .nre-wizard-generate-success {
-  border-color: rgb(6 78 59 / 0.45);
+  border-color: var(--nre-dash-border);
 }
 
 .nre-wizard-generate-success__header {
-  background: radial-gradient(ellipse at 95% 0%, rgb(246 173 85 / 0.22), transparent 52%), radial-gradient(ellipse at 0% 100%, rgb(16 185 129 / 0.22), transparent 65%), linear-gradient(125deg, #103d40, #10283b 62%, #292d3d);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09);
+  background: #122035;
 }
 
 .nre-wizard-generate-success__check {
-  background-color: rgb(16 185 129 / 0.2);
-  color: #6ee7b7;
+  background-color: #2563eb;
+  color: #ffffff;
 }
 
 .nre-wizard-generate-success__title {
-  color: #6ee7b7;
+  color: var(--nre-dash-ink);
 }
 
 .nre-wizard-generate-success__meta {
@@ -764,20 +763,20 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-secondary:hover
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success {
-  border-color: #6ee7b7;
+  border-color: var(--nre-dash-border);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__header {
-  background: linear-gradient(120deg, #ecfdf5, #f0fdf4 65%, #fffbeb);
+  background: #f1f5f9;
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__check {
-  background-color: #d1fae5;
-  color: #047857;
+  background-color: #2563eb;
+  color: #ffffff;
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__title {
-  color: #047857;
+  color: #0f172a;
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__meta {
@@ -805,7 +804,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-drive-save-success {
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-drive-save-success__title {
-  color: #047857;
+  color: #0f172a;
 }
 
 .nre-wizard-objective-pill {
