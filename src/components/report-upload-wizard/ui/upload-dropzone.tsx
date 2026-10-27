@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DataSourceBadge } from "@/components/wizard-data-source-panel";
 import { ACCEPTED_FILE_TYPES } from "../constants";
 
 export function UploadDropzone({ file, onFileSelected }: { file: File | null; onFileSelected: (f: File | null) => void }) {
@@ -28,7 +29,8 @@ export function UploadDropzone({ file, onFileSelected }: { file: File | null; on
         onChange={(e) => onFileSelected(e.target.files?.[0] ?? null)}
         className="hidden"
       />
-      <span className="text-[14px] font-medium text-dash-ink">
+      <span className="mb-2"><DataSourceBadge label="CSV" /></span>
+      <span className="max-w-full break-all text-[14px] font-medium text-dash-ink">
         {file ? file.name : "Drop your CSV here or click to browse"}
       </span>
       {!file && <span className="text-[14px] text-dash-ink-secondary">CSV, Excel, TSV, TXT</span>}

@@ -48,7 +48,7 @@ interface TikTokAdvertiserOption {
 export function DataSourceBadge({ label }: { label: "CSV" | "API" }) {
   return (
     <span
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-black text-[9px] font-bold leading-none tracking-tight text-dash-ink"
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-black text-[9px] font-bold leading-none tracking-tight text-white"
       aria-hidden="true"
     >
       {label}

@@ -7,7 +7,7 @@ import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-i
 import Link from "next/link";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { isWizardApiSyncEnabled, isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
-import { DataSourceBadge, WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
+import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import {
@@ -175,11 +175,11 @@ export function WizardImportStep() {
 
       {selectedPlatformCard && (
         <div className="space-y-3">
-          {isWizardApiSyncVisible() ? <WizardDataSourceToggle
+          {isWizardApiSyncVisible() && <WizardDataSourceToggle
             value={dataSourceMode}
             onChange={handleDataSourceModeChange}
             apiLaunchingSoon={!isWizardApiSyncEnabled()}
-          /> : <div className="flex items-center gap-3"><DataSourceBadge label="CSV" /><div><h3 className="text-[15px] font-semibold text-dash-ink">Import data</h3><p className="text-[13px] text-dash-ink-secondary">Manual CSV upload</p></div></div>}
+          />}
           {isWizardApiSyncVisible() && !isWizardApiSyncEnabled() && dataSourceMode === "api" ? (
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100/90">
               <span className="font-semibold text-amber-300">Launching soon.</span> Sync from API is not enabled on
