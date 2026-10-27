@@ -162,7 +162,7 @@ export default async function ClientDetailPage({
         </Card>
         {isClientPlatformConnectionsSectionVisible() ? (
           <Card id="platform-connections">
-            <CardHeading hint="Account-level connections used by every client in the report wizard.">
+            <CardHeading hint="Manage account-level connections. The report wizard currently supports manual Meta CSV only.">
               Platform connections
             </CardHeading>
             <ClientPlatformConnections
@@ -204,7 +204,7 @@ export default async function ClientDetailPage({
 
         {isClientPlatformConnectionVisible("ga4") ? (
           <Card id="website-analytics">
-            <CardHeading hint="Pick one GA4 property for Website Traffic reports.">
+            <CardHeading hint="Link a GA4 property now. Website reporting will be enabled after testing.">
               Google Analytics property
             </CardHeading>
             <Ga4PropertyPicker

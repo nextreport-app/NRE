@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
+import { isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Meta authorisation was cancelled — your ad account was not connected.",
@@ -83,10 +83,9 @@ export function MetaAdsSettings({
 
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-      {!isAdPlatformApiSyncEnabled() ? (
+      {!isWizardApiSyncVisible() ? (
         <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] leading-relaxed text-amber-100/90">
-          <span className="font-semibold text-amber-300">Launching soon:</span> Marketing API sync in the wizard.
-          Meta CSV reporting is live today — connect below for preview and OAuth verification.
+          <span className="font-semibold text-amber-300">API import is in testing.</span> It is hidden from the report wizard while manual Meta CSV testing continues. Connections remain available below.
         </p>
       ) : null}
       {!metaConfigured && (

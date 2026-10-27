@@ -5,8 +5,8 @@ import { useWizardContext } from "../wizard-context";
 import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-instructions";
 import Link from "next/link";
 import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
-import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
-import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
+import { isWizardApiSyncEnabled, isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
+import { DataSourceBadge, WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import {
@@ -173,19 +173,19 @@ export function WizardImportStep() {
 
       {selectedPlatformCard && (
         <div className="space-y-3">
-          <WizardDataSourceToggle
+          {isWizardApiSyncVisible() ? <WizardDataSourceToggle
             value={dataSourceMode}
             onChange={handleDataSourceModeChange}
-            apiLaunchingSoon={!isAdPlatformApiSyncEnabled()}
-          />
-          {!isAdPlatformApiSyncEnabled() && dataSourceMode === "api" ? (
+            apiLaunchingSoon={!isWizardApiSyncEnabled()}
+          /> : <div className="flex items-center gap-3"><DataSourceBadge label="CSV" /><div><h3 className="text-[15px] font-semibold text-dash-ink">Import data</h3><p className="text-[13px] text-dash-ink-secondary">Manual CSV upload</p></div></div>}
+          {isWizardApiSyncVisible() && !isWizardApiSyncEnabled() && dataSourceMode === "api" ? (
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100/90">
               <span className="font-semibold text-amber-300">Launching soon.</span> Sync from API is not enabled on
               this deployment yet — use Manual CSV upload for Meta reports today.
             </p>
           ) : null}
 
-          {isAdPlatformApiSyncEnabled() && importPipelineLabel ? (
+          {isWizardApiSyncEnabled() && importPipelineLabel ? (
             <p className="rounded-md border border-dash-border nre-wizard-panel px-3 py-2 text-[14px] text-dash-ink-secondary">
               {importPipelineLabel}
             </p>
@@ -198,14 +198,14 @@ export function WizardImportStep() {
             clientTimezone={clientTimezone}
           />
 
-          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
+          {isWizardApiSyncEnabled() && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-dash-ink-secondary">
               <strong className="font-semibold text-dash-ink">Experimental API import.</strong>{" "}
               Compare Results and cost per result with an Ads Manager export before sharing. Manual CSV is recommended while API accuracy is being validated.
             </p>
           ) : null}
 
-          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" ? (
+          {isWizardApiSyncEnabled() && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
               clientId={clientId}
               platform={selectedPlatformCard}
@@ -232,7 +232,7 @@ export function WizardImportStep() {
             />
           ) : null}
 
-          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
+          {isWizardApiSyncEnabled() && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
             <div className="space-y-2 rounded-lg border border-dash-border nre-wizard-panel px-4 py-3">
               <p className="text-[14px] font-medium text-dash-ink">Optional: Ads Manager reference CSV</p>
               <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
@@ -247,7 +247,7 @@ export function WizardImportStep() {
             </div>
           ) : null}
 
-          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && metaSyncDiagnostics ? (
+          {isWizardApiSyncEnabled() && dataSourceMode === "api" && metaSyncDiagnostics ? (
             <div className="rounded-lg border border-dash-border nre-wizard-panel px-4 py-3">
               <button
                 type="button"
@@ -363,7 +363,7 @@ export function WizardImportStep() {
             </div>
           ) : null}
 
-          {isAdPlatformApiSyncEnabled() && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
+          {isWizardApiSyncEnabled() && dataSourceMode === "api" && mtdFile && isApiSyncArtifact(mtdFile) ? (
             <div className="rounded-lg border border-emerald-500/35 nre-wizard-panel px-4 py-3">
               <p className="text-[14px] font-medium text-dash-ink">API sync complete</p>
               <button
@@ -376,7 +376,7 @@ export function WizardImportStep() {
             </div>
           ) : null}
 
-          {(!isAdPlatformApiSyncEnabled() || dataSourceMode === "csv") && (
+          {(!isWizardApiSyncEnabled() || dataSourceMode === "csv") && (
             <>
               <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
 

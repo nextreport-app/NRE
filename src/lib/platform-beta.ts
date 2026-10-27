@@ -18,8 +18,8 @@ export function isPlatformBeta(platform: PlatformBetaId): boolean {
 /** Short line for cards and compact UI. */
 export function platformBetaCardNote(platform: PlatformBetaId): string | null {
   if (!isPlatformBeta(platform)) return null;
-  return "Read-only connect works for testing and OAuth verification. Customer-facing report generation for this platform is launching soon.";
+  return "Connection management is available for testing. Report generation remains hidden until platform testing is complete.";
 }
 
 /** Full notice for wizard and settings panels. */
-export const PLATFORM_BETA_NOTICE = `Meta Ads CSV reporting is live. ${LAUNCHING_SOON_PLATFORMS_LABEL} is in testing — connect and try flows if enabled on your account, but treat output as preview until we announce launch.`;
+export const PLATFORM_BETA_NOTICE = `Meta Ads CSV reporting is live. ${LAUNCHING_SOON_PLATFORMS_LABEL} is in testing — connections remain available in Account Settings, while report-wizard API import is hidden until testing is complete.`;

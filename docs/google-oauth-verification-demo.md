@@ -13,7 +13,7 @@ Updated 27 October 2026. Google signup/login is public and requests only `openid
 
 ## Before recording another scope-review video
 
-The current launch scope remains Meta-only. Account Settings shows Ads/GA4 connections, but Google Ads wizard selection and the GA4 report page remain hidden. There is no full public Ads/GA4 recording journey today. The owner requested **only signup/login improvements for now**. This change does not unhide those integrations or implement a review environment.
+The current report-wizard scope remains manual Meta CSV only, with Meta API import hidden as well. Account Settings and client connection management expose Meta, Google Ads, GA4 and TikTok; clients can link GA4 properties. Google Ads wizard selection and the GA4 report page remain hidden until testing is complete. There is no full public Ads/GA4 report-generation recording journey today, and a review environment has not been implemented.
 
 Prepare a stable, access-controlled review/staging environment with the complete integrations before recording their report-generation sections. This needs a separate implementation and live-provider test. Do not change the global production platform list or enable production API sync just to record. Login can remain public independently.
 

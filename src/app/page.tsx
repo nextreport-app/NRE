@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
@@ -57,6 +58,12 @@ export default async function Home() {
         <SpecialistTimeSavingsSection />
         <MetaWalkthroughPromoSection />
         <HowItWorksSection />
+        <section aria-label="Platform connections" className="border-y border-navy-border bg-navy-panel/30 px-6 py-6">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
+            <div><h2 className="text-base font-semibold text-ink">Platform connections</h2><p className="mt-1 text-sm text-ink-secondary">Meta Ads · Google Ads · Google Analytics (GA4) · TikTok Ads</p><p className="mt-1 text-xs text-ink-muted">Manage connections in Account Settings. Report generation currently supports manual Meta CSV; other platforms and API imports are awaiting testing.</p></div>
+            <Link href="/account" className="text-sm font-semibold text-accent hover:underline">Manage connections →</Link>
+          </div>
+        </section>
         <FeaturesSection />
         <TrustAndSocialProofStrip initial={socialProofInitial} />
         <ReportPreviewSection />
