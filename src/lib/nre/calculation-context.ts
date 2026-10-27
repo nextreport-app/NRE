@@ -2,7 +2,7 @@ import type { DateRangeIso } from "./date-range";
 import type { ResultLabels } from "./objective";
 
 /** Bump when numeric/event, verification or chart metric semantics change; old preview snapshots must not survive a release. */
-export const REPORT_ENGINE_VERSION = "nre-accounting-2026-10-27-v8";
+export const REPORT_ENGINE_VERSION = "nre-accounting-2026-10-28-v9";
 export interface ReportCalculationContext {
   engineVersion: string;
   asOf: string;

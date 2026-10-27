@@ -528,7 +528,7 @@ describe("buildMultiObjectiveSelection — mixed-objective accounts, capped at 8
     const headers = [...WITH_SECONDARIES, "CPC (cost per link click)"];
     const selected = buildMultiObjectiveSelection([videoViews, linkClicksObjective], headers);
     expect(selected[3].label).toBe("LINK CLICKS");
-    expect(selected[4].label).toBe("COST PER CLICK");
+    expect(selected[4].label).toBe("COST PER LINK CLICK");
   });
 
   it("priority 5 — VIDEO VIEWS wins slots 4-5 when nothing higher-priority is detected", () => {

@@ -250,7 +250,7 @@ const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   {
     csvName: "cpc (cost per link click)",
     key: "cpc_link_click",
-    label: "COST PER CLICK",
+    label: "COST PER LINK CLICK",
     type: "secondary",
     format: "currency",
     objectives: ["traffic", "leads", "sales", "link_clicks"],
