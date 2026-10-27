@@ -5,7 +5,7 @@ vi.mock("server-only", () => ({}));
 const provider = vi.hoisted(() => ({ plans: { fetch: vi.fn() }, customers: { create: vi.fn() }, payments: { fetch: vi.fn() }, orders: { fetch: vi.fn() }, invoices: { fetch: vi.fn() }, subscriptions: { fetch: vi.fn(), create: vi.fn(), cancel: vi.fn() } }));
 vi.mock("@/lib/razorpay", async original => ({ ...await original<typeof import("../razorpay")>(), razorpayClient: () => provider }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/billing-user-emails", () => ({ sendSubscriptionConfirmedEmail: vi.fn() }));
+vi.mock("@/lib/billing-user-emails", () => ({ sendSubscriptionConfirmedEmail: vi.fn().mockResolvedValue({ accepted: true }) }));
 vi.mock("@/lib/inbound-notifications", () => ({ notifyBillingNewSubscription: vi.fn() }));
 import { prisma } from "../prisma";
 import { createClientWithinCapacity } from "../atomic-client-create";
@@ -35,6 +35,8 @@ describe.skipIf(!enabled)("launch guards with real PostgreSQL", () => {
   });
   afterEach(() => { vi.unstubAllEnvs(); });
   afterAll(async () => {
+    await prisma.reportGenerationEvent.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.emailDelivery.deleteMany({ where: { userId: { in: ids } } });
     await prisma.billingPayment.deleteMany({ where: { userId: { in: ids } } });
     await prisma.billingCheckout.deleteMany({ where: { userId: { in: ids } } });
     await prisma.verificationToken.deleteMany({ where: { identifier: { in: ids.map(id => `verify-email:${id}`) } } });

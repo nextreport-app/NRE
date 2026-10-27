@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       paymentId: razorpay_payment_id,
     });
     if (email !== "unknown") {
-      sendSubscriptionConfirmedEmail({ to: email, name: session.user.name, planId: entitlement.planId });
+      await sendSubscriptionConfirmedEmail({ userId: session.user.id, paymentId: razorpay_payment_id, to: email, name: session.user.name, planId: entitlement.planId }).catch(err => console.error("[billing:confirmation-queue]", err));
     }
 
     return NextResponse.json({ success: true });

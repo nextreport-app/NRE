@@ -23,7 +23,7 @@ export function WizardMetaCsvImportTooltip() {
       <div
         id={tooltipId}
         role="tooltip"
-        className={`pointer-events-none absolute left-1/2 top-[calc(100%+6px)] z-30 w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-dash-border bg-dash-popover nre-dash-surface px-3 py-2.5 text-left shadow-xl transition-opacity duration-150 ${
+        className={`pointer-events-none absolute left-0 sm:left-1/2 top-[calc(100%+6px)] z-30 w-[min(240px,calc(100vw-4rem))] sm:w-[320px] sm:-translate-x-1/2 rounded-lg border border-dash-border bg-dash-popover nre-dash-surface px-3 py-2.5 text-left shadow-xl transition-opacity duration-150 ${
           open
             ? "pointer-events-auto opacity-100"
             : "opacity-0 [@media(hover:hover)]:group-hover/meta-tip:opacity-100"

@@ -7,6 +7,7 @@ import { ClientsPageHeader, ClientsPageSupportLine } from "@/components/clients-
 export default async function ClientsPage() {
   const session = await auth();
   const userId = session?.user?.id;
+  const owner = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { emailVerified: true } }) : null;
   const clients = userId
     ? await prisma.client.findMany({
         where: { userId },
@@ -41,7 +42,7 @@ export default async function ClientsPage() {
     <div className="mx-auto max-w-5xl">
       <ClientsPageHeader isEmpty={isEmpty} clientCount={clientCards.length} />
 
-      {isEmpty ? <ClientsGettingStarted /> : <ClientList clients={clientCards} totalCount={clientCards.length} />}
+      {isEmpty ? <ClientsGettingStarted emailVerified={!!owner?.emailVerified} /> : <ClientList clients={clientCards} totalCount={clientCards.length} />}
 
       <ClientsPageSupportLine />
     </div>

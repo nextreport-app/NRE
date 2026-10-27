@@ -56,9 +56,9 @@ export function WizardImportDownloadInstructions({
 
   useEffect(() => {
     if (importDownloadInstructionsCollapsedLocally(clientId)) {
-      setOpen(false);
-      setResolved(true);
-      return;
+      let cancelled = false;
+      queueMicrotask(() => { if (!cancelled) { setOpen(false); setResolved(true); } });
+      return () => { cancelled = true; };
     }
 
     let cancelled = false;
@@ -117,6 +117,8 @@ export function WizardImportDownloadInstructions({
   return (
     <section className="text-[13px] leading-relaxed text-dash-ink-secondary" aria-labelledby="wizard-download-instructions-heading">
       <div className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3">
+        <div className="flex items-center gap-2">
+        {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
         <button
           type="button"
           id="wizard-download-instructions-heading"
@@ -127,12 +129,12 @@ export function WizardImportDownloadInstructions({
         >
           <span className="flex min-w-0 flex-wrap items-center text-[14px] font-semibold text-dash-ink">
             CSV Download instructions
-            {platform === "META" ? <WizardMetaCsvImportTooltip /> : null}
           </span>
           <ChevronDownIcon
             className={`h-4 w-4 shrink-0 text-dash-ink-secondary transition-transform ${showExpandedBody ? "rotate-180" : ""}`}
           />
         </button>
+        </div>
 
         {showExpandedBody ? (
           <div id={panelId} className="mt-2 space-y-2">

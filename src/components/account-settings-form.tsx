@@ -54,6 +54,7 @@ export function AccountSettingsForm({
 
     setLoading(true);
 
+    try {
     const showAgencyNameOnCover =
       reportCreditName({ reportBrandingMode, agencyName: trimmedAgencyName }) !== null;
 
@@ -88,11 +89,16 @@ export function AccountSettingsForm({
         return;
       }
     } else if (removeLogo) {
-      await fetch("/api/account/logo", { method: "DELETE" });
+      const removal = await fetch("/api/account/logo", { method: "DELETE" });
+      if (!removal.ok) { const message = "Settings saved, but the logo could not be removed. Please retry."; setError(message); showToast(message, "error"); return; }
     }
 
     showToast("Agency details saved.");
     router.refresh();
+    } catch {
+      const message = "Could not save your settings. Check your connection and try again.";
+      setError(message); showToast(message, "error");
+    } finally { setLoading(false); }
   }
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {

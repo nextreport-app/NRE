@@ -1,5 +1,7 @@
+import { apiErrorResponse } from "@/lib/api-error";
 import { NextResponse } from "next/server";
 import { sendAdminDailyReportDigest } from "@/lib/admin-report-digest";
+export const maxDuration = 300;
 
 /**
  * Daily cron — one team email summarizing reports generated yesterday (IST).
@@ -17,8 +19,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { sent, skipped, error, recipients, stats } = await sendAdminDailyReportDigest();
+  try {
+  const { sent, skipped, error, recipients, stats, pending, alreadySent } = await sendAdminDailyReportDigest();
 
+  if (pending) return NextResponse.json({ ok: true, pending: true, day: stats.dayLabel }, { status: 202 });
   if (!sent) {
     return NextResponse.json(
       {
@@ -38,9 +42,11 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     sent,
+    alreadySent,
     recipients,
     day: stats.dayLabel,
     total: stats.total,
     activeUsers: stats.activeUsers,
   });
+  } catch (err) { return apiErrorResponse(err, "cron:report-daily-digest"); }
 }

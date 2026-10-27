@@ -34,7 +34,7 @@ export async function POST(req: Request) {
           const user = await prisma.user.findUnique({ where: { id: checkout.userId }, select: { email: true, name: true } });
           if (user) {
             notifyBillingNewSubscription({ email: user.email, name: user.name, planId: entitlement.planId, paymentId });
-            sendSubscriptionConfirmedEmail({ to: user.email, name: user.name, planId: entitlement.planId });
+            await sendSubscriptionConfirmedEmail({ userId: checkout.userId, paymentId, to: user.email, name: user.name, planId: entitlement.planId }).catch(err => console.error("[billing:confirmation-queue]", err));
           }
         }
       }

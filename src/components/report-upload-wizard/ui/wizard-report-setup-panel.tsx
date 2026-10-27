@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import { useSiteTheme } from "@/components/site-theme-provider";
-import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { wizardReportTypeCopyForLocale } from "@/lib/wizard-i18n";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
@@ -181,7 +180,7 @@ export function WizardReportSetupPanel({
   const [moreOpen, setMoreOpen] = useState(() =>
     LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
   );
-  const copy = useWizardCopy();
+  const [setupOpen, setSetupOpen] = useState(false);
 
   if (variant === "summary") {
     return (
@@ -207,18 +206,12 @@ export function WizardReportSetupPanel({
 
   return (
     <section className="space-y-4 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
-      <div>
-        <h3 className="text-[16px] font-semibold text-dash-ink">{copy.whatReportBuilding}</h3>
-        <p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.reportTypeHint}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-1 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">{csvNote(reportType, clientTimezone)}</p></div>
+        <button type="button" onClick={() => setSetupOpen(open => !open)} aria-expanded={setupOpen} className="text-[13px] font-medium text-dash-accent hover:underline">{setupOpen ? "Close choices" : "Change report type"}</button>
       </div>
+      {setupOpen && <WizardReportTypePickerGrid reportType={reportType} clientTimezone={clientTimezone} onReportTypeChange={onReportTypeChange} moreOpen={moreOpen} setMoreOpen={setMoreOpen} onAfterSelect={() => setSetupOpen(false)} />}
 
-      <WizardReportTypePickerGrid
-        reportType={reportType}
-        clientTimezone={clientTimezone}
-        onReportTypeChange={onReportTypeChange}
-        moreOpen={moreOpen}
-        setMoreOpen={setMoreOpen}
-      />
     </section>
   );
 }

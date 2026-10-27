@@ -50,6 +50,7 @@ model User {
   clientsCreatedCount    Int       @default(0)
   // Set when the "trial ending tomorrow" email is sent (daily cron).
   trialEndingEmailSentAt DateTime?
+  trialExpiredEmailSentAt DateTime?
 
   // Agency branding (account settings) — appears on every report this user
   // generates for any of their clients: agencyName as the cover slide's
@@ -459,6 +460,7 @@ model Report {
   // Serialized wizard payload for async generate worker — cleared after
   // status reaches COMPLETE or FAILED (see lib/nre/report-generation-job.ts).
   jobPayload   String? @db.Text
+  completedAt DateTime?
   processingStartedAt DateTime?
   trialCreditReserved Boolean @default(false)
 
@@ -587,4 +589,37 @@ model UsageBucket {
 model BlobDeletion {
   url String @id
   createdAt DateTime @default(now())
+}
+
+// Minimal immutable generation metadata; no CSV contents, emails or client names.
+model ReportGenerationEvent {
+  id String @id
+  reportId String
+  userId String
+  clientId String
+  platform String
+  reportType String
+  planId String
+  outcome String
+  occurredAt DateTime @default(now())
+  legacy Boolean @default(false)
+  @@unique([reportId, outcome])
+  @@index([occurredAt, outcome])
+}
+
+// Durable email intent, provider acknowledgement and recovery lease.
+model EmailDelivery {
+  key String @id
+  kind String
+  userId String?
+  payloadJson String @db.Text
+  status String @default("PENDING")
+  attempts Int @default(0)
+  leaseUntil DateTime?
+  lastAttemptAt DateTime?
+  acceptedAt DateTime?
+  providerId String?
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([status, createdAt])
 }
