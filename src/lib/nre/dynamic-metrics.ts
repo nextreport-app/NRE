@@ -82,8 +82,6 @@ function resolveActualHeader(key: string, platform: "meta" | "google", headerMap
 
 /** All-click and link-click CPC retain distinct denominators. */
 const CPC_METRIC_KEYS = new Set(["cpc_all", "cpc_link_click"]);
-const CPC_ALL_VALUE_HEADER_CANDIDATES = ["cpc (all)", "avg. cpc", "average cpc"];
-const CPC_LINK_VALUE_HEADER_CANDIDATES = ["cpc (cost per link click)"];
 /** All-click CPC cannot use a link-click denominator. */
 const CPC_ALL_CLICKS_HEADER_CANDIDATES = ["clicks (all)", "clicks"];
 const CPC_LINK_CLICKS_HEADER_CANDIDATES = ["link clicks"];
@@ -185,6 +183,13 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     const definition = dictionary.find(entry => entry.key === metric.key && entry.csvName === (metric.csvName ?? "").toLowerCase()) ?? dictionary.find(entry => entry.key === metric.key);
     const numeratorKey = metric.numeratorKey ?? definition?.numeratorKey;
     const denominatorKey = metric.denominatorKey ?? definition?.denominatorKey;
+    // CPC can be reconstructed from exported per-row rates when its count
+    // column is omitted. Do not let the generic ratio guard discard it first.
+    if (CPC_METRIC_KEYS.has(metric.key)) {
+      if (totalSpend === null) totalSpend = sumByKey(spendKey);
+      result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
+      continue;
+    }
     if (numeratorKey && denominatorKey) {
       // Both components must exist. Missing input is not an observed zero.
       const numeratorHeader = resolveActualHeader(numeratorKey, platform, headerMap);
@@ -217,11 +222,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       result[metric.key] = combinedCtrCpcFromRawRows(rows, headerMap).ctr;
       continue;
     }
-    if (CPC_METRIC_KEYS.has(metric.key)) {
-      if (totalSpend === null) totalSpend = sumByKey(spendKey);
-      result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
-      continue;
-    }
+
 
     if (ROAS_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);

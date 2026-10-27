@@ -184,6 +184,16 @@ describe("aggregateDynamicMetrics — CPC (All)/Cost per Link Click never shows 
     expect(aggregateDynamicMetrics(rowsFallback, [cpcLinkClick()], "meta").cpc_link_click).toBe(25);
   });
 
+  it("blends exported link-CPC rates when link-count column is absent", () => {
+    const rows = [row({ "Amount spent (USD)": "12", "CPC (cost per link click)": "0.60" }), row({ "Amount spent (USD)": "18", "CPC (cost per link click)": "0.90" })];
+    expect(aggregateDynamicMetrics(rows, [cpcLinkClick()], "meta").cpc_link_click).toBeCloseTo(0.75);
+  });
+  it("does not fill unknown link-CPC denominators or replace explicit zero clicks", () => {
+    expect(aggregateDynamicMetrics([row({ "Amount spent": "12", "CPC (cost per link click)": "0.60", "Link clicks": "0" })], [cpcLinkClick()], "meta").cpc_link_click).toBeNaN();
+    const rows = [row({ "Amount spent": "12", "CPC (cost per link click)": "0.60" }), row({ "Amount spent": "18", "CPC (cost per link click)": "" })];
+    expect(aggregateDynamicMetrics(rows, [cpcLinkClick()], "meta").cpc_link_click).toBeNaN();
+  });
+
   it("falls back to spend/clicks when the CPC column is missing, using whichever 'clicks' column variant is present", () => {
     const rows = [
       row({ "Amount spent": "50", "Clicks (all)": "20" }),

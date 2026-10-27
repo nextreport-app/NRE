@@ -46,13 +46,15 @@ export function sumLinkClicksFromRows(rows: MetricRow[]): number {
  * Matches Ads Manager when blending daily export rows — never average daily CPC cells.
  */
 export function blendedCostPerLinkClickFromRows(rows: MetricRow[]): number {
-  let totalSpend = 0;
-  let totalLinkClicks = 0;
-  for (const row of rows) {
-    totalSpend += parseCellNum(row.spend);
-    totalLinkClicks += parseCellNum(row.link_clicks);
+  // Mapped counts (including explicit zeros) remain authoritative.
+  if (rows.some(row => row.link_clicks !== undefined && String(row.link_clicks).trim() !== "")) {
+    const totalSpend = rows.reduce((sum, row) => sum + parseCellNum(row.spend), 0);
+    const clicks = sumLinkClicksFromRows(rows);
+    return clicks > 0 ? totalSpend / clicks : 0;
   }
-  return totalLinkClicks > 0 ? totalSpend / totalLinkClicks : 0;
+  const headers = new Map<string, string>();
+  for (const row of rows) for (const header of Object.keys(row._raw ?? {})) headers.set(header.trim().toLowerCase(), header);
+  return blendedCostPerLinkClickFromRawRows(rows.map(row => ({ _raw: row._raw ?? {} })), headers);
 }
 
 function resolveRawHeader(headerMap: Map<string, string>, candidates: string[]): string | undefined {
@@ -82,16 +84,26 @@ export function combinedCtrCpcFromRawRows(rows: CtrCpcRawRow[], headerMap: Map<s
   })));
 }
 
-/** Cost per link click from raw CSV: sum spend ÷ sum Link clicks. */
+/** Prefer exported Link clicks; otherwise blend exported link-CPC rates via spend / CPC. */
 export function blendedCostPerLinkClickFromRawRows(rows: CtrCpcRawRow[], headerMap: Map<string, string>): number {
   const spendHeader = resolveRawHeader(headerMap, SPEND_HEADER_CANDIDATES);
   const linkHeader = headerMap.get("link clicks");
+  const cpcHeader = headerMap.get("cpc (cost per link click)");
   let totalSpend = 0;
   let totalLinkClicks = 0;
   for (const row of rows) {
     const raw = row._raw ?? {};
-    if (spendHeader) totalSpend += parseCellNum(raw[spendHeader]);
-    if (linkHeader) totalLinkClicks += parseCellNum(raw[linkHeader]);
+    const spend = spendHeader ? parseCellNum(raw[spendHeader]) : 0;
+    totalSpend += spend;
+    if (linkHeader) {
+      totalLinkClicks += parseCellNum(raw[linkHeader]);
+    } else if (spend > 0) {
+      const cpc = cpcHeader ? parseCellNum(raw[cpcHeader]) : 0;
+      // Without a count column, invert each exported rate before blending.
+      // A missing/zero rate on a spending row cannot establish its denominator.
+      if (!(cpc > 0)) return NaN;
+      totalLinkClicks += spend / cpc;
+    }
   }
   return totalLinkClicks > 0 ? totalSpend / totalLinkClicks : 0;
 }
