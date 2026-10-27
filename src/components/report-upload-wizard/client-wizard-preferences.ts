@@ -1,3 +1,4 @@
+import { isLaunchReportTypeEnabled } from "@/lib/meta-launch-scope";
 import { isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
 import type { DateMode, ReportTypeValue } from "./types";
 import type { WizardGenerateBaseline } from "@/lib/nre/wizard-generate-baseline";
@@ -29,6 +30,9 @@ export function readClientWizardPreferences(clientId: string): ClientWizardPrefe
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ClientWizardPreferences;
     if (!parsed || typeof parsed !== "object") return null;
+    if (parsed.reportType && !isLaunchReportTypeEnabled(parsed.reportType)) {
+      return { ...parsed, reportType: "WEEKLY", dateMode: "last7", customStart: undefined, customEnd: undefined, generateBaseline: undefined, dataSourceMode: "csv" };
+    }
     // A saved API choice must not reopen controls hidden during CSV testing.
     if (parsed.dataSourceMode === "api" && !isWizardApiSyncVisible()) return { ...parsed, dataSourceMode: "csv" };
     return parsed;

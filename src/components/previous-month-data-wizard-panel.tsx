@@ -154,7 +154,7 @@ export function PreviousMonthDataWizardPanel({
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <CalendarIcon />
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold text-white">Previous month comparison</p>
+            <p className="text-[14px] font-semibold text-white">Previous-month totals</p>
             <p className="mt-0.5 text-[12px] leading-relaxed text-dash-ink-secondary">
               {includeInReport
                 ? info.status === "current"

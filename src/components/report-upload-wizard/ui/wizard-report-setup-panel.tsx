@@ -1,164 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import { useSiteTheme } from "@/components/site-theme-provider";
 import { wizardReportTypeCopyForLocale } from "@/lib/wizard-i18n";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
 import { ReportTypeCard } from "./report-type-card";
-import { LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
+import { LAUNCH_ENABLED_REPORT_TYPES } from "@/lib/meta-launch-scope";
 import { wizardCsvRequirementForReportType } from "@/lib/nre/wizard-report-csv-requirement";
-
-function csvNote(reportType: ReportTypeValue, clientTimezone: string): string {
-  return wizardCsvRequirementForReportType({ reportType, clientTimezone }).shortNote;
-}
-
-function WizardReportTypePickerGrid({
-  reportType,
-  clientTimezone,
-  onReportTypeChange,
-  moreOpen,
-  setMoreOpen,
-  onAfterSelect,
-}: {
-  reportType: ReportTypeValue;
-  clientTimezone: string;
-  onReportTypeChange: (next: ReportTypeValue) => void;
-  moreOpen: boolean;
-  setMoreOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
-  onAfterSelect?: () => void;
-}) {
-  const { locale } = useSiteTheme();
-  const weekly = wizardReportTypeCopyForLocale(locale, "WEEKLY") ?? WIZARD_REPORT_TYPE_COPY.WEEKLY;
-  const monthly = wizardReportTypeCopyForLocale(locale, "MONTHLY") ?? WIZARD_REPORT_TYPE_COPY.MONTHLY;
-  const daily = wizardReportTypeCopyForLocale(locale, "DAILY") ?? WIZARD_REPORT_TYPE_COPY.DAILY;
-  const comparison = wizardReportTypeCopyForLocale(locale, "COMPARISON") ?? WIZARD_REPORT_TYPE_COPY.COMPARISON;
-  const historical = wizardReportTypeCopyForLocale(locale, "HISTORICAL") ?? WIZARD_REPORT_TYPE_COPY.HISTORICAL;
-  const dayTable = wizardReportTypeCopyForLocale(locale, "DAY_BREAKDOWN") ?? WIZARD_REPORT_TYPE_COPY.DAY_BREAKDOWN;
-  const quarter = wizardReportTypeCopyForLocale(locale, "QUARTER") ?? WIZARD_REPORT_TYPE_COPY.QUARTER;
-  const ytd = wizardReportTypeCopyForLocale(locale, "YTD") ?? WIZARD_REPORT_TYPE_COPY.YTD;
-  const creative = wizardReportTypeCopyForLocale(locale, "CREATIVE") ?? WIZARD_REPORT_TYPE_COPY.CREATIVE;
-
-  function select(next: ReportTypeValue) {
-    onReportTypeChange(next);
-    onAfterSelect?.();
-  }
-
-  return (
-    <>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <ReportTypeCard
-          icon="📊"
-          heading={weekly.cardHeading}
-          description={weekly.cardOneLiner}
-          detailTooltip={weekly.cardYouGet}
-          csvRequiredNote={csvNote("WEEKLY", clientTimezone)}
-          selected={reportType === "WEEKLY"}
-          onSelect={() => select("WEEKLY")}
-          layout="compact"
-          recommended
-        />
-        <ReportTypeCard
-          icon="📅"
-          heading={monthly.cardHeading}
-          description={monthly.cardOneLiner}
-          detailTooltip={monthly.cardYouGet}
-          csvRequiredNote={csvNote("MONTHLY", clientTimezone)}
-          selected={reportType === "MONTHLY"}
-          onSelect={() => select("MONTHLY")}
-          layout="compact"
-        />
-        <ReportTypeCard
-          icon="☀️"
-          heading={daily.cardHeading}
-          description={daily.cardOneLiner}
-          detailTooltip={daily.cardYouGet}
-          csvRequiredNote={csvNote("DAILY", clientTimezone)}
-          selected={reportType === "DAILY"}
-          onSelect={() => select("DAILY")}
-          layout="compact"
-        />
-      </div>
-
-      <div>
-        <button
-          type="button"
-          onClick={() => setMoreOpen((open) => !open)}
-          className="flex w-full items-center justify-between rounded-md border border-dash-border nre-wizard-panel px-3 py-2.5 text-left text-[14px] font-medium text-dash-ink hover:bg-dash-border/40"
-          aria-expanded={moreOpen}
-        >
-          <span>More report types</span>
-          <span className="text-dash-ink-secondary">{moreOpen ? "▲" : "▼"}</span>
-        </button>
-        {moreOpen ? (
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <ReportTypeCard
-              icon="🔀"
-              heading={comparison.cardHeading}
-              description={comparison.cardOneLiner}
-              detailTooltip={comparison.cardYouGet}
-              csvRequiredNote={csvNote("COMPARISON", clientTimezone)}
-              selected={reportType === "COMPARISON"}
-              onSelect={() => select("COMPARISON")}
-              layout="compact"
-            />
-            <ReportTypeCard
-              icon="📆"
-              heading={historical.cardHeading}
-              description={historical.cardOneLiner}
-              detailTooltip={historical.cardYouGet}
-              csvRequiredNote={csvNote("HISTORICAL", clientTimezone)}
-              selected={reportType === "HISTORICAL"}
-              onSelect={() => select("HISTORICAL")}
-              layout="compact"
-            />
-            <ReportTypeCard
-              icon="📋"
-              heading={dayTable.cardHeading}
-              description={dayTable.cardOneLiner}
-              detailTooltip={dayTable.cardYouGet}
-              csvRequiredNote={csvNote("DAY_BREAKDOWN", clientTimezone)}
-              selected={reportType === "DAY_BREAKDOWN"}
-              onSelect={() => select("DAY_BREAKDOWN")}
-              layout="compact"
-            />
-            <ReportTypeCard
-              icon="📈"
-              heading={quarter.cardHeading}
-              description={quarter.cardOneLiner}
-              detailTooltip={quarter.cardYouGet}
-              csvRequiredNote={csvNote("QUARTER", clientTimezone)}
-              selected={reportType === "QUARTER"}
-              onSelect={() => select("QUARTER")}
-              layout="compact"
-            />
-            <ReportTypeCard
-              icon="🗓️"
-              heading={ytd.cardHeading}
-              description={ytd.cardOneLiner}
-              detailTooltip={ytd.cardYouGet}
-              csvRequiredNote={csvNote("YTD", clientTimezone)}
-              selected={reportType === "YTD"}
-              onSelect={() => select("YTD")}
-              layout="compact"
-            />
-            <ReportTypeCard
-              icon="🎨"
-              heading={creative.cardHeading}
-              description={creative.cardOneLiner}
-              detailTooltip={creative.cardYouGet}
-              csvRequiredNote={csvNote("CREATIVE", clientTimezone)}
-              selected={reportType === "CREATIVE"}
-              onSelect={() => select("CREATIVE")}
-              layout="compact"
-            />
-          </div>
-        ) : null}
-      </div>
-    </>
-  );
-}
 
 export function WizardReportSetupPanel({
   reportType,
@@ -174,44 +24,35 @@ export function WizardReportSetupPanel({
   clientTimezone: string;
   onReportTypeChange: (next: ReportTypeValue) => void;
   variant?: "full" | "summary";
-  /** Generate step: jump back to Import to change report type (no duplicate picker). */
   onEditSetup?: () => void;
 }) {
-  const [moreOpen, setMoreOpen] = useState(() =>
-    LAUNCH_SECONDARY_REPORT_TYPES.includes(reportType as (typeof LAUNCH_SECONDARY_REPORT_TYPES)[number]),
-  );
+  const { locale } = useSiteTheme();
+  const choicesId = useId();
   const [setupOpen, setSetupOpen] = useState(false);
+  const selectedCopy = wizardReportTypeCopyForLocale(locale, reportType) ?? WIZARD_REPORT_TYPE_COPY[reportType];
+  const requirement = wizardCsvRequirementForReportType({ reportType, clientTimezone });
 
   if (variant === "summary") {
-    return (
-      <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px] text-dash-ink-secondary">Report setup</p>
-            <p className="text-[15px] font-semibold text-dash-ink">{reportTypeLabel}</p>
-          </div>
-          {onEditSetup ? (
-            <button
-              type="button"
-              onClick={onEditSetup}
-              className="text-[14px] font-medium text-dash-accent hover:underline"
-            >
-              Change on Import →
-            </button>
-          ) : null}
-        </div>
+    return <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><p className="text-[13px] text-dash-ink-secondary">Report setup</p><p className="text-[15px] font-semibold text-dash-ink">{reportTypeLabel}</p></div>
+        {onEditSetup && <button type="button" onClick={onEditSetup} className="text-[14px] font-medium text-dash-accent hover:underline">Change on Import →</button>}
       </div>
-    );
+    </div>;
   }
 
-  return (
-    <section className="space-y-4 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-1 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">{csvNote(reportType, clientTimezone)}</p></div>
-        <button type="button" onClick={() => setSetupOpen(open => !open)} aria-expanded={setupOpen} className="text-[13px] font-medium text-dash-accent hover:underline">{setupOpen ? "Close choices" : "Change report type"}</button>
-      </div>
-      {setupOpen && <WizardReportTypePickerGrid reportType={reportType} clientTimezone={clientTimezone} onReportTypeChange={onReportTypeChange} moreOpen={moreOpen} setMoreOpen={setMoreOpen} onAfterSelect={() => setSetupOpen(false)} />}
-
-    </section>
-  );
+  return <section className="space-y-3 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 sm:p-5">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-1 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3></div>
+      <button type="button" onClick={() => setSetupOpen(open => !open)} aria-expanded={setupOpen} aria-controls={choicesId} className="text-[13px] font-medium text-dash-accent hover:underline">{setupOpen ? "Close choices" : "Change report type"}</button>
+    </div>
+    <p className="max-w-2xl text-[13px] leading-relaxed text-dash-ink-secondary">{selectedCopy.cardYouGet}</p>
+    <p className="text-[12px] text-dash-ink-secondary"><span className="font-medium text-dash-ink">CSV needed:</span> {requirement.shortNote}</p>
+    {setupOpen && <div id={choicesId} role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {LAUNCH_ENABLED_REPORT_TYPES.map(type => {
+        const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
+        return <ReportTypeCard key={type} icon={type === "COMPARISON" ? "🔀" : "📊"} heading={copy.cardHeading} description={copy.cardOneLiner} selected={reportType === type} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
+      })}
+    </div>}
+  </section>;
 }

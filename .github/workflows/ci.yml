@@ -30,6 +30,9 @@ jobs:
       - name: Check source accounting and rendered deck cells
         run: npm run test:reporting-accuracy
 
+      - name: Check report choice rollout and saved preferences
+        run: npm run test:report-choices
+
   api-routes:
     name: API route integration tests
     runs-on: ubuntu-latest
