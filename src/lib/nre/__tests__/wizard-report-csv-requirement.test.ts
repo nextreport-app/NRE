@@ -25,6 +25,6 @@ describe("wizardCsvRequirementForReportType", () => {
       reportType: "DAILY",
       clientTimezone: "UTC",
     });
-    expect(req.shortNote).toMatch(/Last 7 days/i);
+    expect(req.shortNote).toMatch(/Selected day/i);
   });
 });

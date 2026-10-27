@@ -1,4 +1,5 @@
 "use client";
+import { ReportPeriodControls } from "../ui/report-period-controls";
 
 import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
@@ -51,7 +52,6 @@ export function WizardGenerateStep() {
     customEnd,
     customRangeError,
     customStart,
-    dailyRange,
     data,
     dateBounds,
     dateMode,
@@ -87,8 +87,6 @@ export function WizardGenerateStep() {
     hasGoogleDriveConnected,
     dayBreakdownData,
     historicalData,
-    historicalMonthCount,
-    historicalMonthLabels,
     includePreviousMonthComparison,
     needsLongRangeConfirm,
     persistGenerateSnapshot,
@@ -124,7 +122,6 @@ export function WizardGenerateStep() {
     setDriveSaveUrl,
     setDriveView,
     setHistoricalMonthCount,
-    editHistoricalMonthCount,
     setLongRangeConfirmed,
     setStep,
     shareToken,
@@ -322,9 +319,7 @@ export function WizardGenerateStep() {
             </div>
           ) : null}
 
-          {reportType !== "COMPARISON" &&
-          reportType !== "HISTORICAL" &&
-          reportType !== "DAY_BREAKDOWN" &&
+          {reportType === "WEEKLY" &&
           includePreviousMonthComparison &&
           !previousMonthComparisonReady ? (
             <div className="rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 text-[14px] text-dash-ink">
@@ -347,40 +342,7 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-            {reportType === "HISTORICAL" && (
-              <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-                <h4 className="text-[15px] font-semibold text-dash-ink">Historical months</h4>
-                <div className="mt-3 space-y-3">
-                  <label className="block text-[14px] text-dash-ink-secondary">
-                    How many complete prior months?
-                    <select
-                      value={historicalMonthCount}
-                      onChange={(e) => editHistoricalMonthCount(Number(e.target.value))}
-                      className="mt-2 block w-full max-w-xs rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-dash-ink"
-                    >
-                      {[2, 3, 4, 5, 6, 8, 12].map((n) => (
-                        <option key={n} value={n}>
-                          Last {n} months
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <p className="text-[14px] text-dash-ink-secondary">
-                    Months: <span className="text-dash-ink">{historicalMonthLabels.join(" · ")}</span>
-                  </p>
-                  {dateBounds && (
-                    <p className="text-[14px] text-dash-ink-muted">
-                      CSV must cover {formatIso(dateBounds.minIso)} – {formatIso(dateBounds.maxIso)}.
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
-            {reportType === "DAILY" && dailyRange && (
-              <p className="text-[14px] text-dash-ink-secondary">
-                Reporting on <span className="text-dash-ink">{formatIsoRange(dailyRange)}</span>.
-              </p>
-            )}
+            <ReportPeriodControls />
 
           {showWeeklyPeriodEditor ? (
             <section className="rounded-lg border border-dash-border bg-dash-card p-4">

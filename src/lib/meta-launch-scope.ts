@@ -17,13 +17,13 @@ export const SHOW_DEFERRED_PLATFORM_UI = false;
 /** Retained implementations awaiting owner testing before public rollout. */
 export const DEFERRED_PLATFORMS = ["GOOGLE", "TIKTOK", "GA4"] as const;
 
-/** Customer-facing report choices validated by the owner. Engine types remain intact. */
-export const LAUNCH_ENABLED_REPORT_TYPES = ["WEEKLY", "COMPARISON"] as const;
+/** Customer-facing Meta CSV reports. Each restored workflow needs owner acceptance testing. */
+export const LAUNCH_ENABLED_REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "HISTORICAL", "COMPARISON", "DAY_BREAKDOWN"] as const;
 export type LaunchEnabledReportType = (typeof LAUNCH_ENABLED_REPORT_TYPES)[number];
 
-export const DEFERRED_REPORT_TYPES = ["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN", "QUARTER", "YTD", "CREATIVE"] as const;
-export const LAUNCH_PRIMARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = LAUNCH_ENABLED_REPORT_TYPES;
-export const LAUNCH_SECONDARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = [];
+export const DEFERRED_REPORT_TYPES = ["QUARTER", "YTD", "CREATIVE"] as const;
+export const LAUNCH_PRIMARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = ["WEEKLY", "MONTHLY", "DAILY", "HISTORICAL"];
+export const LAUNCH_SECONDARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = ["COMPARISON", "DAY_BREAKDOWN"];
 
 export function isLaunchPlatformEnabled(
   platform: string,

@@ -11,7 +11,8 @@ import { adsManagerName } from "../platform-reporting";
 import { resolveDateSelection } from "../resolve-date-selection";
 import { loadPreviousMonthDataRows } from "../previous-month-data";
 import { detectAdNameColumn, hasAdLevelData } from "../ad-level";
-import { computeDailyRangeIso } from "../date-range";
+import { filterNreRowsByDateRange, computeCsvDateBounds } from "../date-range";
+import { selectedSinglePeriod, reportPeriodAnchor } from "../report-period-selection";
 import { parseObjectiveCache } from "../objective-cache";
 import {
   campaignMetricOverridesSchema,
@@ -94,7 +95,7 @@ export async function resolveStandardReportForGenerate(
 export async function buildStandardReportForWizard(
   input: BuildStandardReportWizardInput,
 ): Promise<BuildStandardReportWizardResult> {
-  const now = new Date();
+  let now = new Date();
   const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
     input;
   const engine = createReportEngine(platform);
@@ -107,6 +108,8 @@ export async function buildStandardReportForWizard(
     ? parseJsonFormField(formData, "campaignMetricOverrides", campaignMetricOverridesSchema)
     : undefined;
   const dateSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+
+  if (formData?.has("dateSelection") && !dateSelection) return { error: "Invalid report period. Choose the dates again." };
 
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
   const adNameColumn = detectAdNameColumn(mtdParsed.headers);
@@ -125,10 +128,16 @@ export async function buildStandardReportForWizard(
   }
 
   let weeklyRange: { startIso: string; endIso: string } | undefined;
-  if (reportType === "DAILY") {
-    const daily = computeDailyRangeIso(mtdParsed.rows, now, client.timezone);
-    if (!daily) return { error: "Could not determine yesterday's date from the CSV." };
-    weeklyRange = daily;
+  let sourceRows = mtdParsed.rows;
+  if (reportType === "DAILY" || reportType === "MONTHLY") {
+    let range;
+    try { range = selectedSinglePeriod(reportType, dateSelection, now, client.timezone)!; }
+    catch (error) { return { error: (error as Error).message }; }
+    const bounds = computeCsvDateBounds(sourceRows);
+    if (!bounds || bounds.minIso > range.startIso || bounds.maxIso < range.endIso) return { error: `CSV must cover ${range.startIso} through ${range.endIso}. Export the full selected period, including zero-delivery days where available.` };
+    sourceRows = filterNreRowsByDateRange(sourceRows, range);
+    if (reportType === "MONTHLY") now = reportPeriodAnchor(range.endIso, client.timezone);
+    else weeklyRange = range;
   } else if (reportType !== "CREATIVE" && reportType !== "MONTHLY" && reportType !== "QUARTER" && reportType !== "YTD") {
     const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, now, client.timezone);
     if (!dateResolution.ok) {
@@ -137,7 +146,7 @@ export async function buildStandardReportForWizard(
     weeklyRange = dateResolution.weeklyRange;
   }
 
-  const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
+  const includePreviousMonthComparison = reportType === "WEEKLY" && resolveIncludePreviousMonthComparison(formData);
   const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
 
   let metaAccessToken: string | null = null;
@@ -182,7 +191,7 @@ export async function buildStandardReportForWizard(
     monthlyBudget: client.monthlyBudget,
     showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
     alignResultsWithCsvExport: resolveCsvAlignResults(formData),
-    mtdDailyRows: mtdParsed.rows,
+    mtdDailyRows: sourceRows,
     periodRows,
     selectedCampaigns: selectedCampaigns ?? null,
     selectedAdSets: selectedAdSets ?? null,

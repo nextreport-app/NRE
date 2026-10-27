@@ -7,8 +7,8 @@ import {
 
 describe("wizard report type copy", () => {
   it("uses distinct titles for Yesterday vs Day-by-Day table", () => {
-    expect(wizardReportTypePickerLabel("DAILY")).toBe("Yesterday Performance Report");
-    expect(wizardReportTypePickerLabel("DAY_BREAKDOWN")).toBe("Day-by-Day Table Report");
+    expect(wizardReportTypePickerLabel("DAILY")).toBe("Daily report");
+    expect(wizardReportTypePickerLabel("DAY_BREAKDOWN")).toBe("Daily breakdown");
     expect(defaultDeckTitleForReportType("DAILY")).not.toBe(defaultDeckTitleForReportType("DAY_BREAKDOWN"));
   });
 

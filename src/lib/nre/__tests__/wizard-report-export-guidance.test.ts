@@ -16,16 +16,16 @@ describe("wizardExportGuidanceForReportType", () => {
     expect(g.lines).toHaveLength(2);
   });
 
-  it("monthly Meta on the 1st forbids MTD-style export", () => {
+  it("monthly supports a selected month even on the first", () => {
     const g = wizardExportGuidanceForReportType({
       reportType: "MONTHLY",
       platform: "META",
       clientTimezone: "UTC",
       now: new Date("2026-10-01T12:00:00Z"),
     });
-    expect(g.lines.some((b) => /no month-to-date yet/i.test(b))).toBe(true);
-    expect(g.lines.some((b) => /Previous Month/i.test(b))).toBe(true);
-    expect(g.context).toMatch(/Monthly Performance Report/i);
+    expect(g.lines.some((b) => /selected calendar month/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /weekly data is not required/i.test(b))).toBe(true);
+    expect(g.context).toMatch(/Monthly report/i);
   });
 
   it("monthly Meta mid-month asks for 1st through yesterday", () => {
@@ -35,17 +35,17 @@ describe("wizardExportGuidanceForReportType", () => {
       clientTimezone: "UTC",
       now: new Date("2026-10-08T12:00:00Z"),
     });
-    expect(g.lines[0]).toMatch(/1st of this month/i);
+    expect(g.lines[0]).toMatch(/1st through yesterday/i);
   });
 
-  it("yesterday on the 1st mentions previous-month last day", () => {
+  it("daily guidance describes one selected day", () => {
     const g = wizardExportGuidanceForReportType({
       reportType: "DAILY",
       platform: "META",
       clientTimezone: "UTC",
       now: new Date("2026-10-01T12:00:00Z"),
     });
-    expect(g.lines[0]).toMatch(/last day of the previous month/i);
+    expect(g.lines[0]).toMatch(/selected day/i);
   });
 
   it("monthly Meta on the last day clarifies through-yesterday vs closed month", () => {
@@ -55,7 +55,7 @@ describe("wizardExportGuidanceForReportType", () => {
       clientTimezone: "UTC",
       now: new Date("2026-10-31T12:00:00Z"),
     });
-    expect(g.lines.some((b) => /last calendar day/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /through yesterday/i.test(b))).toBe(true);
   });
 
   it("day-by-day table uses distinct download context label", () => {
@@ -64,6 +64,6 @@ describe("wizardExportGuidanceForReportType", () => {
       platform: "META",
       clientTimezone: "UTC",
     });
-    expect(g.context).toMatch(/Day-by-Day Table Report/i);
+    expect(g.context).toMatch(/Daily breakdown/i);
   });
 });
