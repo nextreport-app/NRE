@@ -197,6 +197,9 @@ function buildMonthTotalSlide(
     avgFreq: 0,
     statusIndicator: null,
     dynamicMetrics,
+    additionalMetricsSlide: selectedMetrics && selectedMetrics.length > 8
+      ? buildSlotsFromSelection(selectedMetrics.slice(8, 16), baseline, monthRows, "meta", currencySymbol)
+      : undefined,
     performanceHeader: monthRange.performanceHeader.replace("PERFORMANCE REPORT", "MONTH TOTAL"),
     ai: {
       ctx: `${monthRange.fullMonthLabel} — All Campaigns`,

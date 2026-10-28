@@ -199,7 +199,7 @@ export function presentedToTopY(hasAgencyName: boolean): number {
   return hasAgencyName ? PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU : PRESENTED_TO_Y;
 }
 
-const DEFAULT_DAILY_REPORT_TITLE = "Yesterday Performance Report";
+const DEFAULT_DAILY_REPORT_TITLE = "Single-Day Performance Report";
 const DEFAULT_CREATIVE_REPORT_TITLE = "Creative Performance Report";
 
 const DEFAULT_COMPARISON_REPORT_TITLE = "Comparison Performance Report";
@@ -451,7 +451,7 @@ function slideReportHeader(reportType: ReportType | "WEBSITE" = "WEEKLY"): strin
   if (reportType === "MONTHLY") return "YOUR MONTHLY PERFORMANCE REPORT";
   if (reportType === "QUARTER") return "YOUR QUARTERLY PERFORMANCE REPORT";
   if (reportType === "YTD") return "YOUR YEAR-TO-DATE PERFORMANCE REPORT";
-  if (reportType === "DAILY") return "YOUR YESTERDAY PERFORMANCE REPORT";
+  if (reportType === "DAILY") return "YOUR SINGLE-DAY PERFORMANCE REPORT";
   if (reportType === "CREATIVE") return "YOUR CREATIVE PERFORMANCE REPORT";
   if (reportType === "WEBSITE") return "YOUR WEBSITE TRAFFIC REPORT";
   return "YOUR WEEKLY PERFORMANCE REPORT";
@@ -710,9 +710,9 @@ export function buildPausedSlideXml(
   const summaryText = truncateToSentence(pausedMessage, CAMPAIGN_SUMMARY_MAX_CHARS);
   const insightsText = truncateToSentence(
     reportType === "MONTHLY"
-      ? "No delivery was recorded for the selected month. Other slides may still show previous-month or last-30-days context."
+      ? "No delivery was recorded for the selected month. This report contains only the selected month."
       : reportType === "DAILY"
-        ? "No delivery was recorded for the selected day(s). Other slides may still show previous-month or last-30-days context."
+        ? "No delivery was recorded for the selected date range. This report contains only that range."
         : "No delivery was recorded for the selected week. Other slides may still show previous-month or last-30-days context.",
     KEY_INSIGHTS_MAX_CHARS,
   );
@@ -811,6 +811,7 @@ export function buildDayBreakdownTableSlideXml(
   slideCount = 1,
 ): string {
   const grid = buildHistoricalComparisonTableGrid(rows, headers);
+  grid[0][0] = "Date";
   const xml = fillCombinedTotalTable(template.xml, grid, {
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
@@ -854,6 +855,7 @@ export function buildTableSlideXml(
     platform === "GOOGLE"
       ? buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, tableOptions)
       : buildCombinedTotalTableGrid(periodRow, mtdRow, headers, tableOptions);
+  if (reportType === "DAILY") grid[0][0] = "Date";
   const periodHighlightRowIndex =
     stacked && !hidePeriodRow && !hideMtdRow ? 2 : stacked || hidePeriodRow || hideMtdRow ? undefined : 1;
   const xml = fillCombinedTotalTable(template.xml, grid, {
@@ -868,6 +870,9 @@ export function buildTableSlideXml(
     sizePt: REPORT_HEADER_SIZE_PT,
     color: headerColor,
   });
+  if (reportType === "DAILY") {
+    out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", "SINGLE-DAY PERFORMANCE TOTALS");
+  }
   if (combinedTotalStory.trim()) {
     out = insertShapeBeforeSpTreeClose(
       out,

@@ -233,12 +233,12 @@ export type { ChartSnapshotKpis, ChartSnapshotObjective } from "./chart-snapshot
 export { buildChartSnapshotKpis, CHART_SNAPSHOT_OBJECTIVE_CAP } from "./chart-snapshot-kpis";
 
 export interface ChartSlideData {
-  /** @deprecated Kept for share-edit compatibility — chart data is always last-30-days now. */
+  /** @deprecated Kept for share-edit compatibility — use reportType and periodSubLabel for the actual chart window. */
   periodLabel: "MTD" | "Weekly" | "Last30";
   campaigns: ChartCampaignData[];
   totalAllSpend: number;
   activeCampaignCount: number;
-  /** Option A account snapshot tiles — always MTD, never weekly or previous-month figures. */
+  /** Account snapshot tiles use the same selected window as the chart campaigns. */
   snapshot: ChartSnapshotKpis;
   /** Drives the chart slide's title — see mtdMonthName. */
   reportType: ReportType;
@@ -952,13 +952,13 @@ export function buildPausedAccountMessage(accountName: string, reportType: Repor
             : "weekly";
   const windowLabel =
     reportType === "MONTHLY"
-      ? "this month"
+      ? "in the selected month"
       : reportType === "QUARTER"
         ? "this quarter"
         : reportType === "YTD"
           ? "year to date"
           : reportType === "DAILY"
-            ? "on the selected day(s)"
+            ? "on the selected day"
             : "in the last week";
   return (
     `Campaigns for ${accountName} were paused during the selected ${periodLabel} reporting period ` +

@@ -349,10 +349,10 @@ export function formatGroupedDonutLegendEntry(segment: Pick<VisualChartSegment, 
 
 export function buildVisualChartTitle(chart: ChartSlideData): string {
   const range = chart.periodSubLabel.trim();
-  const shortWindow = chart.actualPeriodDays != null && chart.actualPeriodDays < 30;
-  if (!range) return shortWindow ? "Campaign Performance" : "Last 30 Days Campaign Performance";
-  if (shortWindow) return `Campaign Performance · ${range}`;
-  return `Last 30 Days · ${range}`;
+  // Duration alone cannot distinguish a calendar month from a rolling window.
+  const rollingWindow = chart.reportType === "WEEKLY" && (chart.actualPeriodDays == null || chart.actualPeriodDays === 30);
+  const heading = rollingWindow ? "Last 30 Days" : chart.reportType === "MONTHLY" ? "Monthly Campaign Performance" : chart.reportType === "DAILY" ? "Single-Day Campaign Performance" : "Campaign Performance";
+  return range ? `${heading} · ${range}` : `${heading}${rollingWindow ? " Campaign Performance" : ""}`;
 }
 
 /** Aggregate every campaign before limiting legend rows; never split one goal into campaign slices. */

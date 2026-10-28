@@ -10,6 +10,10 @@ describe("defaultReportDisplayName", () => {
     expect(defaultReportDisplayName("MONTHLY", "07/01/2026", "07/31/2026")).toBe("Monthly — July 1 - July 31");
   });
 
+  it("does not call a selected historical day Yesterday", () => {
+    expect(defaultReportDisplayName("DAILY", "09/14/2025", "09/14/2025")).toBe("Single-Day — September 14");
+  });
+
   it("falls back to just the type label when weekStart/weekEnd are missing", () => {
     expect(defaultReportDisplayName("WEEKLY", null, null)).toBe("Weekly");
     expect(defaultReportDisplayName("MONTHLY", undefined, undefined)).toBe("Monthly");

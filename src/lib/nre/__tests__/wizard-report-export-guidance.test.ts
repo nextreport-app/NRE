@@ -64,6 +64,6 @@ describe("wizardExportGuidanceForReportType", () => {
       platform: "META",
       clientTimezone: "UTC",
     });
-    expect(g.context).toMatch(/Daily breakdown/i);
+    expect(g.context).toMatch(/Day-by-day table/i);
   });
 });
