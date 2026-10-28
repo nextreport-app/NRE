@@ -13,7 +13,7 @@ export type ReportDisplayNameType =
 const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
-  DAILY: "Yesterday",
+  DAILY: "Single-Day",
   QUARTER: "Quarterly",
   YTD: "Year-to-Date",
   COMPARISON: "Comparison",

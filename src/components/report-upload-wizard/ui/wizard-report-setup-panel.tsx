@@ -35,7 +35,7 @@ export function WizardReportSetupPanel({
   function renderChoice(type: (typeof LAUNCH_PRIMARY_REPORT_TYPES)[number]) {
     const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
     const icons: Record<string, string> = { WEEKLY: "📊", MONTHLY: "🗓️", DAILY: "☀️", HISTORICAL: "📈", COMPARISON: "🔀", DAY_BREAKDOWN: "📋" };
-    return <ReportTypeCard key={type} icon={icons[type]} heading={copy.cardHeading} description={copy.cardOneLiner} selected={reportType === type} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
+    return <ReportTypeCard key={type} icon={icons[type]} heading={copy.cardHeading} description={copy.cardOneLiner} csvRequiredNote={wizardCsvRequirementForReportType({ reportType: type, clientTimezone }).shortNote} selected={reportType === type} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
   }
 
   if (variant === "summary") {
@@ -58,6 +58,7 @@ export function WizardReportSetupPanel({
     <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">CSV needed:</span> {requirement.shortNote}</p>
     {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">
       <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
+      <p className="text-[12px] text-dash-ink-secondary">Use Day breakdown for every CSV below; month-only totals are not supported.</p>
       <div role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {LAUNCH_PRIMARY_REPORT_TYPES.map(renderChoice)}
       </div>
