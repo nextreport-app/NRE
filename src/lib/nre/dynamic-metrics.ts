@@ -1,3 +1,4 @@
+import { aggregateSourceRatio } from "./source-ratio";
 import type { MetricAggregation } from "./metric-aggregation";
 /**
  * Aggregate optional metrics from original CSV observations in the selected scope.
@@ -71,6 +72,12 @@ function resolveActualHeader(key: string, platform: "meta" | "google", headerMap
     const header = headerMap.get(entry.csvName);
     if (header) return header;
   }
+  if (platform === "meta") {
+    for (const [normalized, actual] of headerMap) {
+      const stripped = normalized.replace(/\s*\([a-z]{3}\)$/, "");
+      if (stripped !== normalized && dictionary.some(entry => entry.key === key && entry.csvName === stripped)) return actual;
+    }
+  }
   if (platform === "google") {
     for (const alias of GOOGLE_UNIFIED_CSV_ALIASES[key] ?? []) {
       const header = headerMap.get(alias);
@@ -92,6 +99,15 @@ function aggregateCpc<T extends RawMetricRow>(
   totalSpend: number,
   metricKey: "cpc_all" | "cpc_link_click",
 ): number {
+  const canonicalCountHeader = resolveActualHeader(metricKey === "cpc_all" ? "clicks_all" : "link_clicks", "meta", headerMap);
+  const canonicalSpendHeader = resolveActualHeader("spend", "meta", headerMap) ?? resolveActualHeader("cost", "google", headerMap);
+  const canonicalRateHeader = resolveActualHeader(metricKey, "meta", headerMap);
+  if (canonicalCountHeader) {
+    const count = rows.reduce((sum, row) => sum + parseCellNum(row._raw[canonicalCountHeader]), 0);
+    if (!(count > 0)) return NaN;
+    if (canonicalSpendHeader) return totalSpend / count;
+    return aggregateSourceRatio(rows, undefined, canonicalCountHeader, canonicalRateHeader);
+  }
   if (metricKey === "cpc_all") {
     const { cpc } = combinedCtrCpcFromRawRows(rows, headerMap);
     if (cpc > 0) return cpc;
@@ -112,45 +128,45 @@ function aggregateCpc<T extends RawMetricRow>(
     if (totalClicks > 0 && totalSpend > 0) return totalSpend / totalClicks;
   }
 
-  return NaN;
+  const rateCandidates = metricKey === "cpc_link_click" ? ["cpc (cost per link click)"] : ["cpc (all)", "avg. cpc", "average cpc"];
+  const rateHeader = canonicalRateHeader ?? rateCandidates.map(key => headerMap.get(key)).find(Boolean);
+  const countHeader = clickHeaders.map(key => headerMap.get(key)).find(Boolean);
+  // Counts already supplied as zero must not be replaced by a contradictory rate.
+  if (countHeader && rows.reduce((sum, row) => sum + parseCellNum(row._raw[countHeader]), 0) === 0) return NaN;
+  const spendHeader = resolveActualHeader("spend", "meta", headerMap) ?? resolveActualHeader("cost", "google", headerMap);
+  return aggregateSourceRatio(rows, spendHeader, countHeader, rateHeader);
 }
 
-/**
- * ROAS bug fix: a CSV's own ROAS/"Purchase ROAS" column is a PER-ROW ratio
- * (that row's conversion value / that row's spend), not something that can
- * ever be validly summed or averaged across rows — averaging it, as the
- * generic ratio branch below does for every other "ratio" metric, produces
- * nonsense the moment most rows have zero spend/conversions and only one
- * row (out of e.g. 7 days in a week) has a purchase: the "average of
- * non-zero values" degenerates to exactly that single day's ROAS, wildly
- * overstating the week's real performance.
- *
- * The only correct weekly/MTD ROAS is sum(conversion value) / sum(spend)
- * over the whole window — computed here from real totals, and the CSV's own
- * ROAS column is never read for this at all (see ROAS_METRIC_KEYS below,
- * checked before the generic per-metric csvName lookup). If no conversion-
- * value column is present in this CSV, this returns NaN — callers render
- * NaN as "—" — rather than ever falling back to the wrong per-row column.
+/** Prefer conversion-value/spend totals; otherwise use spend-weighted exported ROAS.
+ * Never average daily ROAS values or substitute a different conversion location.
  */
 const ROAS_METRIC_KEYS = new Set(["results_roas", "roas", "app_purchase_roas"]);
 const ROAS_CONVERSION_VALUE_HEADER_CANDIDATES = ["purchases conversion value", "purchase conversion value", "conv. value", "conversion value"];
 
 function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number, key: string): number {
+  const sourcePlatform = key === "roas" ? "google" : "meta";
+  const rateHeader = resolveActualHeader(key, sourcePlatform, headerMap);
+  const spendHeader = resolveActualHeader(key === "roas" ? "cost" : "spend", sourcePlatform, headerMap);
   const candidates = key === "app_purchase_roas" ? ["mobile app purchases conversion value", "mobile app purchase conversion value"] : ROAS_CONVERSION_VALUE_HEADER_CANDIDATES;
   for (const candidate of candidates) {
     const header = headerMap.get(candidate);
     if (!header) continue;
-    const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
-    return totalSpend > 0 ? totalConversionValue / totalSpend : NaN;
+    if (spendHeader) {
+      const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
+      return totalSpend > 0 ? totalConversionValue / totalSpend : NaN;
+    }
+    // An extra conversion-value column must not suppress a standalone observed ratio.
+    return aggregateSourceRatio(rows, undefined, undefined, rateHeader);
   }
-  return NaN;
+  return aggregateSourceRatio(rows, undefined, spendHeader, rateHeader);
 }
 
 /**
  * Add totals; recompute declared ratios from their components. An exported
  * average is never additive merely because it is formatted as currency.
- * Missing components produce unavailable multi-row ratios; a single observed
- * non-ROAS average can be retained. The legacy __avg__ bid-target policy is
+ * Missing components can be recovered only from a matching exported rate and
+ * its row-level weight. A single observed rate can be retained on its own.
+ * The legacy __avg__ bid-target policy is
  * preserved separately and is not a claim of traffic-weighted target parity.
  */
 export function aggregateDynamicMetrics<T extends RawMetricRow>(
@@ -181,6 +197,13 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   for (const metric of metrics) {
     const dictionary = platform === "google" ? GOOGLE_METRIC_DICTIONARY : META_METRIC_DICTIONARY;
     const definition = dictionary.find(entry => entry.key === metric.key && entry.csvName === (metric.csvName ?? "").toLowerCase()) ?? dictionary.find(entry => entry.key === metric.key);
+    // Daily unique viewers cannot establish a deduplicated period audience.
+    if (metric.key === "unique_video_viewers" && rows.length > 1) {
+      result[metric.key] = NaN;
+      continue;
+    }
+    const perUnitOf = metric.perUnitOf ?? definition?.perUnitOf;
+    const perUnitScale = metric.perUnitScale ?? definition?.perUnitScale ?? 1;
     const numeratorKey = metric.numeratorKey ?? definition?.numeratorKey;
     const denominatorKey = metric.denominatorKey ?? definition?.denominatorKey;
     // CPC can be reconstructed from exported per-row rates when its count
@@ -190,19 +213,21 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
       continue;
     }
+    if (metric.key === "ctr" && platform === "meta") {
+      const clicksHeader = resolveActualHeader("clicks_all", "meta", headerMap);
+      const impressionsHeader = resolveActualHeader("impressions", "meta", headerMap);
+      const rateHeader = resolveActualHeader("ctr", "meta", headerMap) ?? headerMap.get(metric.csvName);
+      result[metric.key] = rateHeader || clicksHeader
+        ? aggregateSourceRatio(rows, clicksHeader, impressionsHeader, rateHeader, 100)
+        : impressionsHeader ? combinedCtrCpcFromRawRows(rows, headerMap).ctr : NaN;
+      continue;
+    }
     if (numeratorKey && denominatorKey) {
-      // Both components must exist. Missing input is not an observed zero.
+      // Prefer components; otherwise use only matching, weighted source observations.
       const numeratorHeader = resolveActualHeader(numeratorKey, platform, headerMap);
       const denominatorHeader = resolveActualHeader(denominatorKey, platform, headerMap);
-      if (!numeratorHeader || !denominatorHeader) {
-        const header = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
-        const observed = header ? String(rows[0]._raw[header] ?? "").trim() : "";
-        result[metric.key] = rows.length === 1 && observed !== "" && metric.format !== "ratio" ? parseCellNum(observed) : NaN;
-        continue;
-      }
-      const numerator = sumByKey(numeratorKey);
-      const denominator = sumByKey(denominatorKey);
-      result[metric.key] = denominator > 0 ? numerator / denominator * (metric.ratioScale ?? definition?.ratioScale ?? 1) : NaN;
+      const rateHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+      result[metric.key] = aggregateSourceRatio(rows, numeratorHeader, denominatorHeader, rateHeader, metric.ratioScale ?? definition?.ratioScale ?? 1, denominatorKey !== "reach");
       continue;
     }
     if (metric.key === "frequency") {
@@ -218,21 +243,15 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       }
       continue;
     }
-    if (metric.key === "ctr" && headerMap.has("impressions")) {
-      result[metric.key] = combinedCtrCpcFromRawRows(rows, headerMap).ctr;
-      continue;
-    }
-
-
     if (ROAS_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
       result[metric.key] = aggregateRoas(rows, headerMap, totalSpend, metric.key);
       continue;
     }
 
-    if (metric.format === "currency" && metric.perUnitOf) {
+    if (metric.format === "currency" && perUnitOf) {
       const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
-      if (metric.perUnitOf === "__avg__") {
+      if (perUnitOf === "__avg__") {
         if (!actualHeader) continue;
         const rawValues = rows.map((r) => parseCellNum(r._raw?.[actualHeader]));
         const nonZero = rawValues.filter((v) => v > 0);
@@ -240,11 +259,14 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
         continue;
       }
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
-      const totalCount =
-        metric.perUnitOf === "reach"
-          ? aggregateReach(rows as MetricRow[])
-          : sumByKey(metric.perUnitOf);
-      result[metric.key] = totalCount > 0 ? (totalSpend / totalCount) * (metric.perUnitScale ?? 1) : NaN;
+      const countHeader = resolveActualHeader(perUnitOf, platform, headerMap);
+      if (perUnitOf === "reach" && countHeader) {
+        const mapped = rows.map(row => ({ ...row, reach: row._raw[countHeader] }));
+        const reach = aggregateReach(mapped as MetricRow[]);
+        result[metric.key] = reach > 0 ? totalSpend / reach * perUnitScale : NaN;
+      } else {
+        result[metric.key] = aggregateSourceRatio(rows, resolveActualHeader(spendKey, platform, headerMap), countHeader, actualHeader, perUnitScale, perUnitOf !== "reach");
+      }
       continue;
     }
 
@@ -258,7 +280,9 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     }
 
     const rawValues = rows.map((r) => parseCellNum(r._raw?.[actualHeader]));
-    if (metric.format === "currency" || metric.format === "number") {
+    if (/^(?:average\b|avg[. ])/.test(metric.csvName) || (metric.format === "currency" && /^(?:cost\s*(?:per\b|\/|-)|cpc\b|cpm\b|cpa\b)/i.test(metric.csvName))) {
+      result[metric.key] = rows.length === 1 && String(rows[0]._raw[actualHeader] ?? "").trim() !== "" ? rawValues[0] : NaN;
+    } else if (metric.format === "currency" || metric.format === "number") {
       result[metric.key] = rawValues.reduce((sum, v) => sum + v, 0);
     } else {
       // An exported daily rate/average lacks a valid period denominator.

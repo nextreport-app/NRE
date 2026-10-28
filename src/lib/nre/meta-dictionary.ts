@@ -1,3 +1,4 @@
+import { CURRENCY_SYMBOLS } from "./format";
 import type { MetricAggregation } from "./metric-aggregation";
 /**
  * Meta CSV metric bindings and numeric aggregation components for optional
@@ -1419,7 +1420,7 @@ const referenceMetrics: MetaMetricDefinition[] = [
 ];
 export const META_METRIC_DICTIONARY: MetaMetricDefinition[] = [...BASE_META_METRIC_DICTIONARY, ...referenceMetrics.filter(entry => !BASE_META_METRIC_DICTIONARY.some(existing => existing.csvName === entry.csvName))].map(entry => ({ ...entry, ...AGGREGATION_RULES[entry.key] }));
 
-const TRAILING_CURRENCY_SUFFIX = /\s*\((usd|aud|eur|gbp|inr|cad)\)\s*$/i;
+const TRAILING_CURRENCY_SUFFIX = new RegExp(`\\s*\\((${Object.keys(CURRENCY_SYMBOLS).join("|")})\\)\\s*$`, "i");
 
 /** Case-insensitive exact match on csvName — first entry wins on duplicates (none of the dictionary's own entries collide). */
 export function findMetaMetric(csvName: string): MetaMetricDefinition | undefined {
