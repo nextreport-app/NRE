@@ -203,7 +203,7 @@ function preciseChartMoney(value: number, currency: string): string {
 }
 
 function clientCost(cpr: number, label: string, currency: string, hasResults: boolean): string {
-  if (!hasResults || cpr <= 0) return "cost unavailable";
+  if (!hasResults || cpr <= 0) return "NA";
   const units: Record<string, string> = {
     "COST PER LANDING PAGE VIEW": "view", "COST PER LPV": "view",
     "COST PER PURCHASE": "purchase", "COST PER LEAD": "lead",
@@ -254,6 +254,7 @@ function buildResultBars(
       const resultLine = formatResultLine(row.results, row.resLabel);
       const costLine = formatCostLine(row.cpr, row.cprLabel, currencySymbol, row.results > 0);
       const spendLabel = fmtCurrencyAdaptive(row.spend, currencySymbol);
+      const compactCost = clientCost(row.cpr, row.cprLabel, currencySymbol, row.results > 0);
       const resultsShareLabel = options.includeResultsShare
         ? formatResultsShareLabel(row.results, totalResults)
         : "";
@@ -281,7 +282,7 @@ function buildResultBars(
         resultLine,
         costLine,
         statLine: options.compactStats
-          ? `${preciseChartMoney(row.spend, currencySymbol)} spend · ${clientCost(row.cpr, row.cprLabel, currencySymbol, row.results > 0)}`
+          ? `${preciseChartMoney(row.spend, currencySymbol)} spend${compactCost === "NA" ? " / NA" : ` · ${compactCost}`}`
           : formatStatLine({
           spendLabel,
           resultLine,
