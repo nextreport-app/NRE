@@ -1003,3 +1003,8 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
     bottom: calc(10rem + env(safe-area-inset-bottom));
   }
 }
+
+/* Client directory: keep amber actions and active pagination readable in both themes. */
+.nre-app-shell .nre-clients-page [class~="bg-dash-accent"] {
+  color: #0d1b2e;
+}

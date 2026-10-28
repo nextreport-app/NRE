@@ -9,7 +9,7 @@ export function ClientsPageHeader({ isEmpty, clientCount }: { isEmpty: boolean; 
   const { dashboard: d } = useSiteCopy();
 
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 className="text-[26px] font-bold tracking-tight text-dash-ink">{d.clientsTitle}</h1>
         <p className="mt-1 text-[15px] text-dash-ink-secondary">
@@ -19,7 +19,7 @@ export function ClientsPageHeader({ isEmpty, clientCount }: { isEmpty: boolean; 
       {!isEmpty ? (
         <Link
           href="/clients/new"
-          className="rounded-lg bg-dash-accent px-5 py-2.5 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          className="inline-flex items-center justify-center rounded-lg bg-dash-accent px-5 py-2.5 text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
         >
           {d.clientsNewClient}
         </Link>
