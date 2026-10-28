@@ -47,14 +47,16 @@ export function WizardReportSetupPanel({
     </div>;
   }
 
-  return <section className="space-y-3 rounded-lg border border-dash-border border-l-4 border-l-dash-accent bg-dash-card p-4 sm:p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-1 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3></div>
+  return <section className="overflow-hidden rounded-lg border border-dash-border bg-dash-bg/30">
+    <div className="space-y-2 px-4 py-3.5 sm:px-5">
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+      <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-0.5 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3></div>
       <button type="button" onClick={() => setSetupOpen(open => !open)} aria-expanded={setupOpen} aria-controls={choicesId} className="text-[13px] font-medium text-dash-accent hover:underline">{setupOpen ? "Close choices" : "Change report type"}</button>
     </div>
-    <p className="max-w-2xl text-[13px] leading-relaxed text-dash-ink-secondary">{selectedCopy.cardYouGet}</p>
-    <p className="text-[12px] text-dash-ink-secondary"><span className="font-medium text-dash-ink">CSV needed:</span> {requirement.shortNote}</p>
-    {setupOpen && <div id={choicesId} className="space-y-3">
+    <p className="text-[13px] leading-relaxed text-dash-ink-secondary" title={selectedCopy.cardYouGet}>{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</p>
+    </div>
+    <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">CSV needed:</span> {requirement.shortNote}</p>
+    {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">
       <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
       <div role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {LAUNCH_PRIMARY_REPORT_TYPES.map(renderChoice)}

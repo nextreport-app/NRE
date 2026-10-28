@@ -665,8 +665,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__icon {
 
 /* Wizard — client bar (Reporting for …) */
 .nre-wizard-client-bar {
-  border-color: rgb(246 173 85 / 0.5);
-  border-left-color: #f6ad55;
+  border-color: var(--nre-dash-border);
 }
 
 .nre-wizard-client-bar__label {
@@ -674,7 +673,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__icon {
 }
 
 .nre-wizard-client-bar__name {
-  color: #fbd38d;
+  color: var(--nre-dash-ink);
 }
 
 .nre-wizard-client-bar__link {
@@ -688,8 +687,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__icon {
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar {
-  border-color: #fdba74;
-  border-left-color: #f59e0b;
+  border-color: var(--nre-dash-border);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__label {
