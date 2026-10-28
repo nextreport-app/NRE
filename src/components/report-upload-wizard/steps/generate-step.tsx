@@ -175,7 +175,7 @@ export function WizardGenerateStep() {
       : generateStatus === "error"
         ? "Try again"
         : previewStatus === "loading" || previewRefreshing
-          ? "Loading report options…"
+          ? "Preparing report preview…"
           : !generateStepPreviewReady
             ? previewStatus === "invalid"
               ? "Fix options above"
@@ -183,7 +183,7 @@ export function WizardGenerateStep() {
                 ? "Retry preview"
                 : previewStatus === "idle"
                   ? "Choose dates above"
-                  : "Loading report options…"
+                  : "Preparing report preview…"
             : csvMismatchActive
               ? copy.generateForInternalReview
               : copy.generateReport;
@@ -740,6 +740,7 @@ export function WizardGenerateStep() {
               onBack={() => setStep(3)}
               backLabel="Back to metrics"
               primaryLabel={generateCtaLabel}
+              primaryLoadingLabel={generateCtaLabel}
               onPrimary={handleGenerateStepPrimary}
               primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
               primaryLoading={

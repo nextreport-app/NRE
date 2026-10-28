@@ -146,11 +146,7 @@ export function WizardCampaignsStep() {
   }).length;
 
   return (
-    <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
-      <div className="rounded-md border border-dash-border bg-dash-bg px-3 py-3 text-sm text-dash-ink" role="status">
-        <p>{selectedCampaigns.size} of {campaigns.length} campaigns included · {campaigns.length - selectedCampaigns.size} excluded</p>
-
-      </div>
+    <div className="space-y-5 pb-24 md:pb-0">
       {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
         <CsvDateGuidanceBanner
           guidance={csvDateGuidance}
@@ -172,13 +168,14 @@ export function WizardCampaignsStep() {
         </div>
       ) : null}
 
-      <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-3">
-        <h3
-          id="wizard-campaigns-section-heading"
-          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-ink-secondary"
-        >
-          Campaigns
-        </h3>
+      <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-dash-border pb-4">
+          <div className="flex items-start gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">1</span>
+            <div><h3 id="wizard-campaigns-section-heading" className="text-[16px] font-semibold text-dash-ink">Campaign selection</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">Choose which campaigns to include in this report.</p></div>
+          </div>
+          <p className="rounded-full border border-dash-border bg-dash-bg px-2.5 py-1 text-xs text-dash-ink-secondary" role="status">{selectedCampaigns.size} of {campaigns.length} included{campaigns.length > selectedCampaigns.size ? ` · ${campaigns.length - selectedCampaigns.size} excluded` : ""}</p>
+        </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex cursor-pointer items-center gap-2.5">
@@ -192,7 +189,7 @@ export function WizardCampaignsStep() {
             className="h-4 w-4 flex-shrink-0 accent-accent"
           />
           <span className="text-[14px] text-dash-ink-secondary">
-            {selectedCampaigns.size} of {campaigns.length} campaigns selected
+            Select all campaigns
           </span>
         </label>
         {campaigns.length > 8 && (
@@ -369,26 +366,13 @@ export function WizardCampaignsStep() {
 
       {selectedCampaigns.size > 0 ? (
         <>
-          <div className="relative my-2 py-2" role="separator" aria-label="Objectives section">
-            <div className="absolute inset-0 flex items-center px-1" aria-hidden>
-              <div className="w-full border-t border-dash-border" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-dash-card px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-dash-ink-secondary">
-                Objectives
-              </span>
-            </div>
-          </div>
-
           <section
             aria-labelledby="wizard-objectives-section-heading"
-            className="space-y-4 rounded-lg border border-dash-border nre-wizard-panel p-4 sm:p-5"
+            className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
           >
-          <div>
-            <h3 id="wizard-objectives-section-heading" className="text-[15px] font-semibold text-dash-ink">
-              {copy.campaignObjectives}
-            </h3>
-            <p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.objectivesIntro}</p>
+          <div className="flex items-start gap-3 border-b border-dash-border pb-4">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">2</span>
+            <div><h3 id="wizard-objectives-section-heading" className="text-[16px] font-semibold text-dash-ink">{copy.campaignObjectives}</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.objectivesIntro}</p></div>
           </div>
 
           {blockingCount > 0 ? (

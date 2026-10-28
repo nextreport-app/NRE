@@ -982,3 +982,24 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
 .nre-app-shell .nre-account-primary {
   color: #0d1b2e;
 }
+
+/* Wizard-wide contrast includes all four steps, mobile footers and dialogs.
+   Match solid amber only; tinted selections and warning surfaces keep their ink. */
+.nre-app-shell .nre-report-wizard [class~="bg-dash-accent"] {
+  color: #0d1b2e;
+}
+.nre-app-shell .nre-report-wizard button[class~="bg-dash-accent"] {
+  border-radius: 0.5rem;
+}
+.nre-app-shell .nre-report-wizard button[class~="bg-dash-accent"]:disabled {
+  background-color: color-mix(in srgb, var(--nre-dash-accent) 75%, var(--nre-dash-card));
+  color: #0d1b2e;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  body:has(.nre-report-wizard .nre-wizard-sticky-footer) .whatsapp-float {
+    bottom: calc(10rem + env(safe-area-inset-bottom));
+  }
+}

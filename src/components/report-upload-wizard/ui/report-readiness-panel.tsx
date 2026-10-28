@@ -102,7 +102,7 @@ export function buildGenerateStepReadinessItems(input: {
       id: "preview",
       label: "Preview",
       status: "pending",
-      detail: "Loading report options…",
+      detail: "Preparing report preview…",
     });
   }
 
