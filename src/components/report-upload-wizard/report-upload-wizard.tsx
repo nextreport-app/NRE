@@ -110,7 +110,7 @@ function ReportUploadWizardBody() {
 
   if (w.resumeBootstrapping || w.wizardDraftBootstrapping) {
     return (
-      <div className="space-y-6">
+      <div className="nre-report-wizard space-y-6">
         <div>
           {clientLine}
           <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Choose report type and generate</h1>
@@ -122,7 +122,7 @@ function ReportUploadWizardBody() {
 
   if (w.wizardKind === "website") {
     return (
-      <div className="space-y-6">
+      <div className="nre-report-wizard space-y-6">
         <div>
           {clientLine}
           <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Google Analytics</h1>
@@ -153,7 +153,7 @@ function ReportUploadWizardBody() {
   const generateSuccessScreen = w.step === 4 && w.generateStatus === "done";
 
   return (
-    <div className="space-y-6">
+    <div className="nre-report-wizard space-y-6">
       <div ref={wizardTopRef}>
         {clientLine}
         {!generateSuccessScreen ? (

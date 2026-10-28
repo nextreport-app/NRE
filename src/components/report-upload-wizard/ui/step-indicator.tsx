@@ -19,33 +19,33 @@ export function StepIndicator({
   const { locale } = useSiteTheme();
   const steps = getVisibleWizardSteps(flow);
   return (
-    <nav aria-label="Report progress" className="flex flex-wrap items-center gap-2 text-[14px]">
+    <nav aria-label="Report progress" className={`grid ${steps.length === 4 ? "grid-cols-4" : "grid-cols-2"} items-center gap-2 text-[12px] sm:flex sm:flex-wrap sm:gap-y-3 sm:text-[14px]`}>
       {steps.map((s, i) => {
         const isCompleted = s < step && visitedSteps.has(s);
         return (
-          <div key={s} className="flex items-center gap-2">
+          <div key={s} className="min-w-0 sm:flex sm:items-center sm:gap-2">
             {isCompleted ? (
               <button
                 type="button"
                 onClick={() => onNavigate(s)}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-dash-ink-secondary hover:text-dash-ink"
+                className="flex w-full items-center justify-center gap-1.5 rounded-full px-2 py-1.5 font-medium text-dash-ink-secondary hover:text-dash-ink sm:w-auto sm:px-3"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#68d391]" aria-hidden="true" />
-                {wizardStepLabel(s, locale)}
+                <span className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-[#68d391] sm:block" aria-hidden="true" />
+                <span className="min-w-0 break-words">{wizardStepLabel(s, locale)}</span>
               </button>
             ) : (
               <span
                 aria-current={s === step ? "step" : undefined}
                 className={
                   s === step
-                    ? "rounded-full bg-dash-accent px-3 py-1 font-medium text-dash-ink"
-                    : "rounded-full border border-dash-border px-3 py-1 text-dash-ink-secondary"
+                    ? "block rounded-full bg-dash-accent px-2 py-1.5 text-center sm:px-3 font-semibold text-dash-ink"
+                    : "block rounded-full border border-dash-border px-2 py-1.5 text-center sm:px-3 text-dash-ink-secondary"
                 }
               >
                 {wizardStepLabel(s, locale)}
               </span>
             )}
-            {i < steps.length - 1 && <span className="text-dash-ink-secondary">→</span>}
+            {i < steps.length - 1 && <span aria-hidden="true" className="hidden text-dash-ink-secondary sm:inline">→</span>}
           </div>
         );
       })}
