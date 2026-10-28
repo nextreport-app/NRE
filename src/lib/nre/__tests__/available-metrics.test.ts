@@ -145,6 +145,7 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
   // number from fixture row objects.
   const PARITY_HEADERS = [
     ...META_HEADERS,
+    "Results ROAS",
     "CPC (cost per link click)",
     "Cost per landing page view",
     "CPM (cost per 1,000 impressions)",
@@ -467,14 +468,14 @@ describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-co
   // dedicated-column case already uses — exactly the "calculated correctly
   // from spend/leads" result the reported bug asked for, whether or not a
   // literal "Cost per lead" column happens to be present.
-  it("buildMetaSlots falls through to the Results/Cost-per-result baseline when the CSV has a 'cost per lead' column but no 'website leads' column to divide it by", () => {
+  it("recognizes exported cost per lead while preserving objective-matched baseline accounting", () => {
     const real = buildMetaSlots(
       { resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", spend: "$1", reach: "1", impressions: "1", ctr: "1%", resultValue: "25", cprValue: "$8.00" },
       [{ _raw: { "Amount spent": "200", "Cost per lead": "8.33" } }],
       "$",
     );
     expect(real[3]).toMatchObject({ key: "results", label: "META FORM LEADS", value: "25" });
-    expect(real[4]).toMatchObject({ key: "cost_per_result", label: "COST PER LEAD", value: "$8.00" });
+    expect(real[4]).toMatchObject({ key: "cost_per_lead", label: "COST PER LEAD", value: "$8.00" });
   });
 });
 

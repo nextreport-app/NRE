@@ -259,11 +259,11 @@ describe("aggregateDynamicMetrics — ROAS is always calculated from totals, nev
     expect(lookupMetricValue(rows, roas(), "meta", "C$")).toBe("0.89x");
   });
 
-  it("shows '—' when the conversion-value column is missing entirely, even though a ROAS column is present — never falls back to it", () => {
+  it("retains one exported ROAS observation without requiring conversion value", () => {
     const rows = [row({ "Amount spent": "100", "Results roas": "4.5" })]; // no conversion-value column at all
     const result = aggregateDynamicMetrics(rows, [{ key: "spend", format: "currency", csvName: "amount spent" }, roas()], "meta");
-    expect(Number.isNaN(result.results_roas)).toBe(true);
-    expect(lookupMetricValue(rows, roas(), "meta", "$")).toBe("—");
+    expect(result.results_roas).toBe(4.5);
+    expect(lookupMetricValue(rows, roas(), "meta", "$")).toBe("4.50x");
   });
 
   it("also calculates Google's 'roas' key from conv. value / cost totals, not the CSV's own 'Conv. value / cost' column", () => {

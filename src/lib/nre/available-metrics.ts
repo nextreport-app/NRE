@@ -702,12 +702,11 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
         slot7 = hasAddToCart ? byKey("META", "add_to_cart")! : clicksAll;
         slot8 = hasInitiateCheckout ? byKey("META", "initiate_checkout")! : clicksAll;
       } else {
-        // ROAS is always calculated from conversion value / spend (never
-        // read off the CSV's own ROAS column) — so it only has real data
-        // when a conversion-value column is present too, matching
-        // buildMetaSlots' own pickSlot rejection of a dash-valued candidate.
+        // Either conversion-value totals or spend-weighted exported ROAS can
+        // supply the ratio. Do not hide the latter in the card picker.
         const hasConversionValue = hasHeader(headers, "purchases conversion value", "purchase conversion value", "conversion value", "results value");
-        slot7 = hasConversionValue ? byKey("META", "results_roas")! : byKey("META", "link_clicks")!;
+        const hasExportedRoas = headers.some(header => findMetaMetric(header)?.key === "results_roas");
+        slot7 = hasConversionValue || hasExportedRoas ? byKey("META", "results_roas")! : byKey("META", "link_clicks")!;
         slot8 = hasHeader(headers, "landing page views") ? byKey("META", "landing_page_views")! : clicksAll;
       }
       break;
