@@ -6,6 +6,7 @@
 
 import {
   buildResultTypeMap,
+  META_OBJECTIVE_SPECS,
   getMetaResultLabels,
   type ObjectiveInfo,
 } from "./meta-objective-dictionary";
@@ -91,7 +92,7 @@ export function resolveObjectiveFromResultType(resultType: string | null | undef
  * Objective Confirmation dropdown — every objective a user can manually select.
  * `RESULTS` is deliberately last.
  */
-export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
+const PRIMARY_OBJECTIVE_OPTIONS: ObjectiveInfo[] = [
   { key: "purchases", resultLabel: "PURCHASES", costLabel: "COST PER PURCHASE", isReach: false },
   { key: "initiate_checkout", resultLabel: "INITIATE CHECKOUT", costLabel: "COST PER CHECKOUT", isReach: false },
   { key: "add_to_cart", resultLabel: "ADD TO CART", costLabel: "COST PER ADD TO CART", isReach: false },
@@ -99,7 +100,7 @@ export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
   { key: "meta_form_leads", resultLabel: "META FORM LEADS", costLabel: "COST PER LEAD", isReach: false },
   { key: "link_clicks", resultLabel: "LINK CLICKS", costLabel: "COST PER CLICK", isReach: false },
   { key: "landing_page_views", resultLabel: "LANDING PAGE VIEWS", costLabel: "COST PER LPV", isReach: false },
-  { key: "video_views", resultLabel: "VIDEO VIEWS / THRUPLAYS", costLabel: "COST PER VIDEO VIEW", isReach: false },
+  { key: "video_views", resultLabel: "VIDEO VIEWS", costLabel: "COST PER VIDEO VIEW", isReach: false },
   { key: "reach", resultLabel: "REACH", costLabel: "COST PER 1K REACH", isReach: true },
   { key: "impressions", resultLabel: "IMPRESSIONS", costLabel: "CPM", isReach: true },
   { key: "ad_recall_lift", resultLabel: "AD RECALL LIFT", costLabel: "COST PER RECALL LIFT", isReach: true },
@@ -127,7 +128,7 @@ export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
   { key: "pre_registration", resultLabel: "PRE-REGISTRATION", costLabel: "COST PER PRE-REGISTRATION", isReach: false },
   { key: "event_responses", resultLabel: "EVENT RESPONSES", costLabel: "COST PER RESPONSE", isReach: false },
   { key: "store_visits", resultLabel: "STORE VISITS", costLabel: "COST PER STORE VISIT", isReach: false },
-  { key: "donations", resultLabel: "DONATIONS", costLabel: "COST PER DONATION", isReach: false },
+  { key: "donate", resultLabel: "DONATIONS", costLabel: "COST PER DONATION", isReach: false },
   { key: "find_location", resultLabel: "FIND LOCATION", costLabel: "COST PER LOCATION", isReach: false },
   { key: "payment_info", resultLabel: "PAYMENT INFO", costLabel: "COST PER PAYMENT INFO", isReach: false },
   { key: "app_events", resultLabel: "APP EVENTS", costLabel: "COST PER APP EVENT", isReach: false },
@@ -137,4 +138,13 @@ export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
   { key: "leads", resultLabel: "LEADS", costLabel: "COST PER LEAD", isReach: false },
   { key: "conversions", resultLabel: "CONVERSIONS", costLabel: "COST PER CONVERSION", isReach: false },
   { key: "results", resultLabel: "RESULTS", costLabel: "COST PER RESULT", isReach: false },
+];
+
+// Preserve the familiar ordering, while making new catalog objectives selectable
+// automatically. RESULTS stays last as a deliberate generic fallback.
+export const OBJECTIVE_DROPDOWN_OPTIONS: ObjectiveInfo[] = [
+  ...PRIMARY_OBJECTIVE_OPTIONS.filter(option => option.key !== "results"),
+  ...META_OBJECTIVE_SPECS.filter(spec => !PRIMARY_OBJECTIVE_OPTIONS.some(option => option.key === spec.key))
+    .map(({ key, resultLabel, costLabel, isReach }) => ({ key, resultLabel, costLabel, isReach })),
+  PRIMARY_OBJECTIVE_OPTIONS.find(option => option.key === "results")!,
 ];

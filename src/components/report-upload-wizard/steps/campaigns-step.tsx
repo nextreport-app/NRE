@@ -13,6 +13,7 @@ import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
+import { ObjectivePicker } from "../ui/objective-picker";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { WizardStepHelp } from "../ui/wizard-step-help";
@@ -419,20 +420,7 @@ export function WizardCampaignsStep() {
                           <span aria-hidden className="text-dash-ink-secondary transition-transform group-open/objective:rotate-180">▾</span>
                         </summary>
                         <div className="space-y-2 border-t border-dash-border px-4 py-3">
-                        <select
-                          aria-label={`Objective for ${name}`}
-                          value={currentKey}
-                          onChange={(e) => setCampaignObjective(name, e.target.value)}
-                          className={`w-full rounded-md border px-3 py-2 sm:max-w-sm text-[14px] text-dash-ink outline-none focus:border-[#f6ad55] ${
-                            isBlocking ? "border-[#fc8181] ring-1 ring-[#fc8181]" : "border-dash-border"
-                          } bg-dash-bg`}
-                        >
-                          {options.map((o) => (
-                            <option key={o.key} value={o.key}>
-                              {o.resultLabel}
-                            </option>
-                          ))}
-                        </select>
+                        <ObjectivePicker options={options} value={currentKey} label={`Objective for ${name}`} needsConfirmation={isBlocking} onChange={key => setCampaignObjective(name, key)} />
                       {showCsvObjectivePanel && csvSummary && (csvAlign === false || csvSummary.distinct.length > 1) ? (
                         <div
                           className={`mt-2 rounded-md border px-3 py-1.5 text-[13px] leading-snug ${
