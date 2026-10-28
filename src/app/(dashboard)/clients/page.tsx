@@ -39,7 +39,7 @@ export default async function ClientsPage() {
   const isEmpty = clientCards.length === 0;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="nre-clients-page mx-auto max-w-5xl">
       <ClientsPageHeader isEmpty={isEmpty} clientCount={clientCards.length} />
 
       {isEmpty ? <ClientsGettingStarted emailVerified={!!owner?.emailVerified} /> : <ClientList clients={clientCards} totalCount={clientCards.length} />}

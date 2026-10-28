@@ -88,7 +88,7 @@ export function getPreviousMonthListStatus(
     return {
       status: "stale",
       label: "Prev month — re-upload this month",
-      title: `${info.expectedMonthName} data is saved but was uploaded before ${currentMonthName}. Re-upload the file on Manage so Monthly reports include the comparison row this month.`,
+      title: `${info.expectedMonthName} data is saved but was uploaded before ${currentMonthName}. Replace the file on Manage before including previous-month totals in a report.`,
     };
   }
   return {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Currency } from "@/generated/prisma/enums";
-import { formatClientCurrency, getPreviousMonthListStatus } from "@/lib/client-display";
+import { formatClientCurrency, formatClientTimezone, getClientInitial, getPreviousMonthListStatus } from "@/lib/client-display";
 
 const PAGE_SIZE = 12;
 const MAX_PAGE_BUTTONS = 5;
@@ -52,7 +52,7 @@ function PageButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-current={active ? "page" : undefined}
-      className={`rounded-lg px-3.5 py-2 text-[15px] font-semibold transition-colors ${
+      className={`rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${
         disabled
           ? "cursor-not-allowed bg-dash-card text-dash-ink-secondary/50"
           : active
@@ -169,35 +169,26 @@ function ClientCard({ client }: { client: ClientListItem }) {
   );
 
   return (
-    <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/60 hover:shadow-md">
-      <div className="nre-client-card__divider border-b border-dash-border px-5 py-4">
-        <h3 className="truncate text-[18px] font-bold text-dash-ink" title={client.accountName}>
-          {client.accountName}
-        </h3>
-        <p className="mt-0.5 text-[15px] text-dash-ink-secondary">{formatClientCurrency(client.currency)}</p>
+    <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-sky-500/40">
+      <div className="space-y-3 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-lg font-semibold text-sky-400" aria-hidden="true">{getClientInitial(client.accountName)}</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="break-words text-[16px] font-semibold leading-snug text-dash-ink">
+              <Link href={`/clients/${client.id}`} className="hover:underline focus-visible:outline-dash-accent">{client.accountName}</Link>
+            </h3>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-dash-ink-secondary"><span>{formatClientCurrency(client.currency)}</span><span aria-hidden="true">·</span><span title={client.timezone}>{formatClientTimezone(client.timezone)}</span></p>
+          </div>
+        </div>
+        {prevMonth.status === "missing" ? (
+          <p className="text-[12px] text-dash-ink-secondary" title="Optional: upload previous-month data in Manage when you want those totals included.">Previous-month totals optional</p>
+        ) : (
+          <StatusChip tone={prevMonth.status === "current" ? "good" : "warn"} label={prevMonth.status === "current" ? "Previous-month totals ready" : "Previous-month file needs refresh"} title={prevMonth.title} />
+        )}
       </div>
-
-      <div className="flex flex-wrap gap-2 px-5 py-3">
-        <StatusChip
-          tone={prevMonth.status === "current" ? "good" : "warn"}
-          label={prevMonth.label}
-          title={prevMonth.title}
-        />
-      </div>
-
-      <div className="nre-client-card__divider mt-auto flex gap-3 border-t border-dash-border px-5 py-4">
-        <Link
-          href={`/clients/${client.id}/reports/new`}
-          className="flex-1 rounded-md bg-dash-accent px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-        >
-          Generate Report
-        </Link>
-        <Link
-          href={`/clients/${client.id}`}
-          className="flex-1 rounded-md border border-dash-border bg-dash-bg px-4 py-2.5 text-center text-[15px] font-semibold text-dash-ink hover:bg-dash-border/40"
-        >
-          Manage
-        </Link>
+      <div className="nre-client-card__divider mt-auto flex items-center gap-2 border-t border-dash-border px-4 py-3 sm:px-5">
+        <Link href={`/clients/${client.id}/reports/new`} aria-label={`Generate report for ${client.accountName}`} className="flex-1 rounded-lg bg-dash-accent px-3 py-2.5 text-center text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover">Generate report <span aria-hidden="true">→</span></Link>
+        <Link href={`/clients/${client.id}`} aria-label={`Manage ${client.accountName}`} className="rounded-lg border border-dash-border px-4 py-2.5 text-center text-[13px] font-medium text-dash-ink-secondary hover:bg-dash-bg hover:text-dash-ink">Manage</Link>
       </div>
     </article>
   );
@@ -206,10 +197,14 @@ function ClientCard({ client }: { client: ClientListItem }) {
 export function ClientList({ clients, totalCount }: { clients: ClientListItem[]; totalCount: number }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState("recent");
 
   const filtered = clients.filter((client) =>
     client.accountName.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  if (sort !== "recent") {
+    filtered.sort((a, b) => a.accountName.localeCompare(b.accountName, undefined, { sensitivity: "base", numeric: true }) * (sort === "name-desc" ? -1 : 1));
+  }
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   const [prevTotalPages, setPrevTotalPages] = useState(totalPages);
@@ -228,7 +223,8 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
 
   return (
     <div>
-      <div className="relative mb-6 max-w-md">
+      <div className="mb-5 flex flex-col gap-3 rounded-xl border border-dash-border bg-dash-card/50 p-3 sm:flex-row sm:items-center">
+      <div className="relative min-w-0 flex-1">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-dash-ink-secondary">
           <SearchIcon />
         </span>
@@ -236,9 +232,9 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by client name…"
+          placeholder="Search clients…"
           aria-label="Search clients"
-          className="nre-dash-surface w-full rounded-lg border border-dash-border bg-dash-card py-2.5 pl-10 pr-10 text-[15px] text-dash-ink placeholder:text-dash-ink-secondary outline-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/30"
+          className="nre-dash-surface w-full rounded-lg border border-dash-border bg-dash-bg py-2.5 pl-10 pr-10 text-[14px] text-dash-ink placeholder:text-dash-ink-secondary [&::-webkit-search-cancel-button]:appearance-none outline-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/30"
         />
         {search ? (
           <button
@@ -251,8 +247,9 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
           </button>
         ) : null}
       </div>
-
-      {search && filtered.length > 0 ? (
+      <label className="flex items-center gap-2 text-[12px] text-dash-ink-secondary"><span>Sort</span><select aria-label="Sort clients" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }} className="min-w-0 flex-1 rounded-lg border border-dash-border bg-dash-bg px-3 py-2.5 text-[13px] text-dash-ink outline-none focus:border-dash-accent sm:w-44"><option value="recent">Recently added</option><option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option></select></label>
+      </div>
+      {search.trim() ? (
         <p className="mb-4 text-[14px] text-dash-ink-secondary">
           {filtered.length} of {totalCount} client{totalCount === 1 ? "" : "s"} match &ldquo;{search.trim()}&rdquo;
         </p>
@@ -271,7 +268,7 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {paginated.map((client) => (
               <ClientCard key={client.id} client={client} />
             ))}
