@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
 
@@ -42,6 +42,8 @@ export function MetaAdsSettings({
   const [disconnecting, setDisconnecting] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [accounts, setAccounts] = useState<AdAccountRow[] | null>(null);
+  const [accountSearch, setAccountSearch] = useState("");
+  const visibleAccounts = useMemo(() => (accounts ?? []).filter(a => `${a.name} ${a.accountId ?? a.id}`.toLowerCase().includes(accountSearch.trim().toLowerCase())).sort((a, b) => (a.name || "").localeCompare(b.name || "")), [accounts, accountSearch]);
   const [accountsError, setAccountsError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,12 +55,19 @@ export function MetaAdsSettings({
 
   async function handleDisconnect() {
     setDisconnecting(true);
-    await fetch("/api/meta/disconnect", { method: "POST" }).catch(() => {});
-    setDisconnecting(false);
-    setConnectedName(null);
-    setConnectedUserId(null);
-    setAccounts(null);
-    setAccountsError(null);
+    try {
+      const response = await fetch("/api/meta/disconnect", { method: "POST" });
+      if (!response.ok) throw new Error("disconnect failed");
+      setConnectedName(null);
+      setConnectedUserId(null);
+      setAccounts(null);
+      setAccountSearch("");
+      setAccountsError(null);
+    } catch {
+      setAccountsError("Could not disconnect Meta Ads. Please try again.");
+    } finally {
+      setDisconnecting(false);
+    }
   }
 
   async function handleVerifyAccess() {
@@ -84,47 +93,38 @@ export function MetaAdsSettings({
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
       {!isWizardApiSyncVisible() ? (
-        <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] leading-relaxed text-amber-100/90">
-          <span className="font-semibold text-amber-300">API import is in testing.</span> It is hidden from the report wizard while manual Meta CSV testing continues. Connections remain available below.
-        </p>
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-dash-border bg-dash-bg/50 px-3 py-2 text-[13px] text-dash-ink-secondary">
+          <span className="rounded-full border border-amber-500/25 px-2 py-0.5 text-xs font-medium text-dash-accent">In testing</span>
+          <p>Reports currently use Meta CSV uploads.</p>
+        </div>
       ) : null}
-      {!metaConfigured && (
+      {!metaConfigured && !(connectedName || connectedUserId) && (
         <p className="text-[13px] text-amber-300">
           Meta Ads connections are currently unavailable. You can still upload a CSV to generate reports.
         </p>
       )}
 
       {connectedName || connectedUserId ? (
-        <div className="rounded-md border border-emerald-800 bg-emerald-950/30 p-3">
-          <p className="text-sm text-emerald-300">
-            Connected{connectedName ? `: ${connectedName}` : ""}
-            {connectedUserId ? ` (Meta user ${connectedUserId})` : ""} <span aria-hidden="true">✓</span>
-          </p>
-          <p className="mt-1 text-[12px] text-emerald-200/80">
-            Read-only access — NextReport can list ad accounts and campaign metrics. It cannot create or edit
-            ads.
-          </p>
-          <p className="mt-2 text-[12px] leading-relaxed text-emerald-200/70">
-            API sync uses the same report pipeline as CSV upload — no extra NextReport credits. Each sync is a
-            few read-only Meta API calls; normal weekly use stays within Meta&apos;s rate limits. See our{" "}
-            <a href="/help/download" className="font-medium text-emerald-300 underline hover:text-emerald-200">
-              data guide
-            </a>{" "}
-            for previous-month auto-sync and how metrics are selected.
-          </p>
+        <div className="rounded-lg border border-dash-border bg-dash-bg/50 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">✓ Connected</span>
+            <p className="text-sm font-semibold text-dash-ink">{connectedName || "Meta account"}</p>
+          </div>
+          <p className="mt-2 text-[13px] text-dash-ink-secondary">Read-only reporting access. NextReport cannot create or edit ads.</p>
+          {connectedUserId ? <details className="mt-2 text-xs text-dash-ink-secondary"><summary className="cursor-pointer">Connection details</summary><p className="mt-1 break-all">Meta user ID: {connectedUserId}</p></details> : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={handleVerifyAccess}
-              disabled={loadingAccounts}
+              disabled={loadingAccounts || disconnecting}
               className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
             >
-              {loadingAccounts ? "Checking API access…" : "Verify API access"}
+              {loadingAccounts ? "Loading accounts…" : accounts ? "Refresh accounts" : "Load ad accounts"}
             </button>
             <button
               type="button"
               onClick={handleDisconnect}
-              disabled={disconnecting}
+              disabled={disconnecting || loadingAccounts}
               className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
             >
               {disconnecting ? "Disconnecting…" : "Disconnect"}
@@ -148,21 +148,22 @@ export function MetaAdsSettings({
         </div>
       )}
 
-      {accounts && accounts.length > 0 && (
-        <ul className="space-y-1 rounded-md border border-dash-border bg-dash-bg p-3 text-[13px] text-dash-ink-secondary">
-          {accounts.map((a) => (
-            <li key={a.id}>
-              <span className="text-dash-ink">{a.name}</span>
-              {a.accountId ? ` — act_${a.accountId}` : ` — ${a.id}`}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {accounts && accounts.length === 0 && (
-        <p className="text-[13px] text-dash-ink-secondary">
-          API access works, but no ad accounts were returned for this Meta user.
-        </p>
+      {accounts !== null && (
+        <section className="overflow-hidden rounded-lg border border-dash-border" aria-label="Accessible Meta ad accounts">
+          <div className="space-y-3 border-b border-dash-border p-3 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-dash-ink">Ad accounts</h3><span className="text-xs text-dash-ink-secondary">{accounts.length} accessible</span></div>
+            <p className="text-xs text-dash-ink-secondary">Accounts available to your connected Meta login.</p>
+            {accounts.length > 0 ? <input type="search" value={accountSearch} onChange={e => setAccountSearch(e.target.value)} placeholder="Search by account name or ID" aria-label="Search Meta ad accounts" className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent" /> : null}
+          </div>
+          <ul className="max-h-80 divide-y divide-dash-border overflow-y-auto bg-dash-bg/40">
+            {visibleAccounts.map(a => {
+              const id = (a.accountId || a.id).replace(/^act_/, "");
+              const name = a.name && a.name !== id && a.name !== `act_${id}` ? a.name : "Unnamed ad account";
+              return <li key={a.id} className="flex flex-col gap-1 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4"><span className="min-w-0 break-words text-sm font-medium text-dash-ink">{name}</span><span className="shrink-0 break-all font-mono text-xs text-dash-ink-secondary">ID: {id}</span></li>;
+            })}
+          </ul>
+          {visibleAccounts.length === 0 ? <p className="p-4 text-sm text-dash-ink-secondary">{accounts.length ? "No accounts match your search." : "Connection verified. No accessible ad accounts were returned."}</p> : null}
+        </section>
       )}
 
       {accountsError && <p className="text-sm text-red-400">{accountsError}</p>}

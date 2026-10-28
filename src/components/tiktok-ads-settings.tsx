@@ -10,6 +10,7 @@ const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "That connection attempt expired or was invalid. Please try again.",
   missing_code: "TikTok did not return an authorisation code. Please try again.",
   connection_failed: "Something went wrong connecting to TikTok Ads. Please try again.",
+  region_unavailable: "TikTok Ads connections are unavailable in India.",
   not_configured: "TikTok Ads connections are not available yet.",
 };
 
@@ -28,12 +29,14 @@ export function TikTokAdsSettings({
   justConnected,
   connectError,
   tiktokConfigured,
+  regionRestricted = false,
 }: {
   initialConnectedName: string | null;
   initialConnected: boolean;
   justConnected: boolean;
   connectError: string | null;
   tiktokConfigured: boolean;
+  regionRestricted?: boolean;
 }) {
   const router = useRouter();
   const [connected, setConnected] = useState(initialConnected);
@@ -90,8 +93,7 @@ export function TikTokAdsSettings({
     <div id="tiktok-ads" className="scroll-mt-24">
       <PlatformBetaNotice platform="TIKTOK" />
       <p className="mb-4 mt-4 text-[14px] leading-relaxed text-dash-ink-secondary">
-        Connect TikTok Ads Manager for read-only campaign reporting. Built for US and global advertiser accounts
-        (USD). Indian agencies managing US clients via VPN can connect the same way.
+        {regionRestricted ? "TikTok Ads connections are unavailable in India. Other platforms are unaffected by this regional restriction." : "Connect TikTok Ads Manager for read-only access outside India. TikTok reporting is still in testing."}
       </p>
 
       {justConnected && !errorMessage && (
@@ -104,7 +106,7 @@ export function TikTokAdsSettings({
         <p className="mb-4 rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">{errorMessage}</p>
       )}
 
-      {!tiktokConfigured && (
+      {!tiktokConfigured && !regionRestricted && (
         <p className="mb-4 rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
           TikTok Ads connections are not available yet.
         </p>
@@ -122,7 +124,7 @@ export function TikTokAdsSettings({
             <button
               type="button"
               onClick={handleVerifyAccess}
-              disabled={loadingAdvertisers}
+              disabled={loadingAdvertisers || regionRestricted}
               className="rounded-md border border-dash-border px-3 py-1.5 text-[13px] text-dash-ink-secondary hover:bg-dash-border disabled:opacity-50"
             >
               {loadingAdvertisers ? "Loading advertisers…" : "List advertisers"}
@@ -151,7 +153,7 @@ export function TikTokAdsSettings({
             </ul>
           )}
         </div>
-      ) : (
+      ) : !regionRestricted ? (
         <a
           href={tiktokConfigured ? "/api/tiktok/connect" : "#"}
           className={`inline-block rounded-md px-4 py-2 text-[14px] font-medium ${
@@ -163,7 +165,7 @@ export function TikTokAdsSettings({
         >
           Connect TikTok Ads
         </a>
-      )}
+      ) : null}
     </div>
   );
 }

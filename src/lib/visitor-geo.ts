@@ -8,15 +8,12 @@ export async function getVisitorCountryCode(): Promise<string | null> {
 }
 
 export function isIndiaCountryCode(countryCode: string | null | undefined): boolean {
-  return countryCode === "IN";
+  return countryCode?.trim().toUpperCase() === "IN";
 }
 
-/**
- * TikTok Ads wizard + marketing visibility (all regions).
- * Agencies in restricted markets can skip TikTok in the wizard; product no longer geo-hides the option.
- */
-export function shouldShowTikTokToVisitor(_countryCode: string | null | undefined): boolean {
-  return true;
+/** TikTok connections/reporting are unavailable to visitors detected in India. */
+export function shouldShowTikTokToVisitor(countryCode: string | null | undefined): boolean {
+  return !isIndiaCountryCode(countryCode);
 }
 
 export async function shouldShowTikTokForCurrentVisitor(): Promise<boolean> {

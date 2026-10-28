@@ -1,3 +1,4 @@
+import { isIndiaCountryCode } from "@/lib/visitor-geo";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -9,6 +10,10 @@ const STATE_COOKIE_MAX_AGE_SECONDS = 600;
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.redirect(new URL("/login", req.url));
+
+  if (isIndiaCountryCode(req.headers.get("x-vercel-ip-country"))) {
+    return NextResponse.redirect(new URL("/account?tiktok_ads_error=region_unavailable", req.url));
+  }
 
   if (!isTikTokOAuthConfigured()) {
     return NextResponse.redirect(new URL("/account?tiktok_ads_error=not_configured", req.url));

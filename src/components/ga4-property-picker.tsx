@@ -104,7 +104,7 @@ export function Ga4PropertyPicker({
         </p>
         <Link
           href="/account#ga4"
-          className="inline-flex rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+          className="inline-flex rounded-md nre-account-primary bg-dash-accent px-4 py-2 text-[13px] font-semibold hover:bg-dash-accent-hover"
         >
           Connect Google Analytics
         </Link>
@@ -146,7 +146,7 @@ export function Ga4PropertyPicker({
           type="button"
           onClick={() => void handleSave()}
           disabled={saving || !propertyId}
-          className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+          className="rounded-md nre-account-primary bg-dash-accent px-4 py-2 text-[13px] font-semibold hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save property"}
         </button>
