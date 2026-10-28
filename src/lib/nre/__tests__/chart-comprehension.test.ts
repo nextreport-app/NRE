@@ -30,6 +30,23 @@ const rows = [
 const background = { blipXml: '<a:blip r:embed="rId1"/>', srcRectXml: "", offX: 0, offY: 0, extCx: 12192000, extCy: 6858000, mediaTarget: "../media/background.png" };
 
 describe("client-readable chart identity and metric contracts", () => {
+  it.each(["WEBSITE LEADS", "PURCHASES", "LANDING PAGE VIEWS"])("uses NA for zero %s without inventing a cost", label => {
+    const source = chart([
+      campaign("Zero results", 238.51, 0, label, `COST PER ${label}`),
+      campaign("With results", 962.98, 11, label, "COST PER WEBSITE LEAD"),
+    ]);
+    const model = buildVisualChartSlideModel(source, "C$");
+    expect(model.resultBars.find(bar => bar.fullName === "Zero results")).toMatchObject({
+      valueLabel: "0", barPct: 0, statLine: "C$238.51 spend / NA",
+    });
+    expect(model.resultBars.find(bar => bar.fullName === "With results")?.statLine).toBe("C$962.98 spend · C$87.54 / website lead");
+    const projected = projectChartSlideToShareChart(source, "C$");
+    for (const output of [buildMtdOverviewSlideXml(projected, background, false), buildMtdOverviewSlideXml(projected, background, true), buildMtdOverviewSvg(projected)]) {
+      expect(output).toContain("C$238.51 spend / NA");
+      expect(output).not.toContain("cost unavailable");
+    }
+  });
+
   it("aggregates repeated objectives into one slice while preserving campaign bars", () => {
     const model = buildVisualChartSlideModel(chart(rows), "$");
     expect(model.leftHeading).toBe("Spend by Objective");
