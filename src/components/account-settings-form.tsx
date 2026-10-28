@@ -249,7 +249,7 @@ export function AccountSettingsForm({
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-dash-accent px-4 py-2 text-sm font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
+          className="rounded-md nre-account-primary bg-dash-accent px-4 py-2 text-sm font-medium hover:bg-dash-accent-hover disabled:opacity-60"
         >
           {loading ? "Saving…" : "Save changes"}
         </button>

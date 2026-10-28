@@ -10,7 +10,7 @@ const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "That connection attempt expired or was invalid. Please try again.",
   missing_code: "TikTok did not return an authorisation code. Please try again.",
   connection_failed: "Something went wrong connecting to TikTok Ads. Please try again.",
-  not_configured: "TikTok integration is not configured on this server yet.",
+  not_configured: "TikTok Ads connections are not available yet.",
 };
 
 interface AdvertiserRow {
@@ -106,8 +106,7 @@ export function TikTokAdsSettings({
 
       {!tiktokConfigured && (
         <p className="mb-4 rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
-          TikTok OAuth is not configured yet. Add TIKTOK_APP_ID and TIKTOK_APP_SECRET from your TikTok for Business
-          developer app.
+          TikTok Ads connections are not available yet.
         </p>
       )}
 
@@ -157,7 +156,7 @@ export function TikTokAdsSettings({
           href={tiktokConfigured ? "/api/tiktok/connect" : "#"}
           className={`inline-block rounded-md px-4 py-2 text-[14px] font-medium ${
             tiktokConfigured
-              ? "bg-dash-accent text-dash-ink hover:bg-dash-accent-hover"
+              ? "nre-account-primary bg-dash-accent hover:bg-dash-accent-hover"
               : "cursor-not-allowed bg-dash-border text-dash-ink-muted"
           }`}
           aria-disabled={!tiktokConfigured}

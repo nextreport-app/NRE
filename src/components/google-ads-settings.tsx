@@ -10,7 +10,7 @@ const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "That connection attempt expired or was invalid. Please try again.",
   missing_code: "Google did not return an authorisation code. Please try again.",
   connection_failed: "Something went wrong connecting to Google Ads. Please try again.",
-  not_configured: "Google Ads API credentials are not configured on this server yet.",
+  not_configured: "Google Ads connections are not available yet.",
   no_refresh_token: "Google did not return a refresh token. Try again and choose Allow on the consent screen.",
 };
 
@@ -91,8 +91,7 @@ export function GoogleAdsSettings({
       <PlatformBetaNotice platform="GOOGLE" />
       {!googleAdsConfigured && (
         <p className="text-[13px] text-amber-300">
-          Google Ads API credentials are not configured on this server yet. Add GOOGLE_ADS_CLIENT_ID and
-          GOOGLE_ADS_CLIENT_SECRET in Vercel (OAuth app on a Cloud project with Google Ads API enabled).
+          Google Ads connections are not available yet.
         </p>
       )}
 
@@ -135,7 +134,7 @@ export function GoogleAdsSettings({
           {googleAdsConfigured ? (
             <a
               href="/api/google-ads/connect"
-              className="inline-block rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+              className="inline-block rounded-md nre-account-primary bg-dash-accent px-3 py-1.5 text-[13px] font-medium hover:bg-dash-accent-hover"
             >
               Connect Google Ads
             </a>

@@ -76,7 +76,7 @@ export function GoogleDriveSettings({
           </p>
           <a
             href="/api/google-drive/connect"
-            className="inline-block rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+            className="inline-block rounded-md nre-account-primary bg-dash-accent px-3 py-1.5 text-[13px] font-medium hover:bg-dash-accent-hover"
           >
             Connect Google Drive
           </a>
