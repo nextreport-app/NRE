@@ -88,3 +88,27 @@ describe("all supported report currency suffixes", () => {
     expect(aggregateDynamicMetrics([row({ [`Amount spent (${currency})`]: "12", [header]: "0.6" }), row({ [`Amount spent (${currency})`]: "18", [header]: "0.9" })], [metric!], "meta").cost_per_lpv).toBeCloseTo(0.75);
   });
 });
+
+
+it("retains a single ROAS when revenue is exported but spend is omitted", () => {
+  const metric = meta.find(m => m.csvName === "purchase roas")! as MetricRef;
+  expect(aggregateDynamicMetrics([row({ "Purchases conversion value": "100", "purchase roas": "2" })], [metric], "meta")[metric.key]).toBe(2);
+});
+
+it("does not infer missing counts from a zero cost and zero spend observation", () => {
+  const metric = meta.find(m => m.key === "cost_per_lpv")! as MetricRef;
+  expect(aggregateDynamicMetrics([row({ "amount spent": "10", [metric.csvName]: "2" }), row({ "amount spent": "0", [metric.csvName]: "0" })], [metric], "meta")[metric.key]).toBeNaN();
+});
+
+
+it("blends all-click CTR from exported rates and all-click weights when impressions are omitted", () => {
+  const metric = meta.find(m => m.key === "ctr")! as MetricRef;
+  const rows = [row({ "Clicks (all)": "20", "CTR (all)": "2" }), row({ "Clicks (all)": "40", "CTR (all)": "4" })];
+  expect(aggregateDynamicMetrics(rows, [metric], "meta").ctr).toBeCloseTo(3);
+});
+
+it("weights CTR by impressions rather than averaging daily percentages", () => {
+  const metric = meta.find(m => m.key === "ctr")! as MetricRef;
+  const rows = [row({ Impressions: "1000", "CTR (all)": "2" }), row({ Impressions: "3000", "CTR (all)": "4" })];
+  expect(aggregateDynamicMetrics(rows, [metric], "meta").ctr).toBeCloseTo(3.5);
+});

@@ -7,6 +7,7 @@
 - Cost-per-event cards (LPV, leads, purchases, messaging, video and other dictionary events) discarded exported rates when their count column was absent. Now prefer actual counts; otherwise blend matching daily cost rates using their spend weights and unit scale.
 - Single exported rates, including ROAS and average conversion value, were unnecessarily discarded when another component column was absent. Preserve a single observation. For multiple rows, require valid weights; never take a plain arithmetic mean.
 - ROAS with no conversion-value column can use exported ROAS weighted by spend. Explicit zero-return days contribute their spend. Location-specific website/app ratios retain distinct semantic keys.
+- All-click CTR can use exported percentages weighted by impressions, or invert the matching all-click counts when impressions are omitted. Link-click counts are not substituted for all clicks.
 - A saved selection omitting `perUnitOf` could lose its cost semantics and be summed. Recover semantics from the metric dictionary.
 - CPC aliases (`CPC all`, `Average CPC (all)`) did not receive the same fallback treatment as the original canonical name. Explicit click counts remain authoritative, including zeros.
 - The picker failed to offer an exported ROAS card when conversion value was absent. Its source-presence rule now agrees with the reader.
@@ -21,7 +22,7 @@ For a ratio `R = scale × N / D`:
 2. Only a single exported ratio observation: retain it without demanding another column.
 3. Exported ratios and denominator weights: use `sum(R × D) / sum(D)`.
 4. Exported ratios and numerator weights, such as cost/event: use `scale × sum(N) / sum(scale × N / R)`.
-5. A spending row with missing/zero cost rate cannot establish its event denominator. A weighted row with a missing rate cannot be assumed zero. Leave unavailable.
+5. A spending row with missing/zero cost rate cannot establish its event denominator; neither can a zero-spend/zero-cost observation establish a missing event count. A weighted row with a missing rate cannot be assumed zero. Leave unavailable.
 6. Do not combine daily unique Reach as additive counts. Missing Reach-based period weights do not get a rate-inversion fallback.
 
 Source-rate inversion can inherit the CSV's rounding precision. It is not an independently exported event count; reconstructed denominators are used internally for rates, not surfaced as exported count cards. Without adequate source components or weights, a dash remains appropriate.
@@ -30,7 +31,7 @@ Primary objective counts/costs continue to use objective-matched accounting, rat
 
 ## Verification / prevention
 
-`test:reporting-accuracy` now includes the dictionary-wide source audit and availability checks, in addition to existing accounting/CSV/PPTX regressions. At this change it passes 461 checks. The audit enumerates every numeric primary/secondary Meta and Google dictionary entry for single exported observations, all additive-denominator Meta cost entries for rate blending, and all supported report currencies. Other checks cover missing weights, authoritative zero counts, custom averages, weighted ROAS/order values, saved metric metadata and actual weekly builder output. New dictionary entries automatically enter the relevant audit matrix.
+`test:reporting-accuracy` now includes the dictionary-wide source audit and availability checks, in addition to existing accounting/CSV/PPTX regressions. At this change it passes 465 checks. The audit enumerates every numeric primary/secondary Meta and Google dictionary entry for single exported observations, all additive-denominator Meta cost entries for rate blending, and all supported report currencies. Other checks cover missing weights, authoritative zero counts, custom averages, weighted ROAS/order values, saved metric metadata and actual weekly builder output. New dictionary entries automatically enter the relevant audit matrix.
 
 Supplementary slot, Google-unified reader and dictionary-consistency tests exercise compatibility. No private client CSVs are committed.
 

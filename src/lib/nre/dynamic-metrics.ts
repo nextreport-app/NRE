@@ -144,15 +144,20 @@ const ROAS_METRIC_KEYS = new Set(["results_roas", "roas", "app_purchase_roas"]);
 const ROAS_CONVERSION_VALUE_HEADER_CANDIDATES = ["purchases conversion value", "purchase conversion value", "conv. value", "conversion value"];
 
 function aggregateRoas<T extends RawMetricRow>(rows: T[], headerMap: Map<string, string>, totalSpend: number, key: string): number {
+  const sourcePlatform = key === "roas" ? "google" : "meta";
+  const rateHeader = resolveActualHeader(key, sourcePlatform, headerMap);
+  const spendHeader = resolveActualHeader(key === "roas" ? "cost" : "spend", sourcePlatform, headerMap);
   const candidates = key === "app_purchase_roas" ? ["mobile app purchases conversion value", "mobile app purchase conversion value"] : ROAS_CONVERSION_VALUE_HEADER_CANDIDATES;
   for (const candidate of candidates) {
     const header = headerMap.get(candidate);
     if (!header) continue;
-    const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
-    return totalSpend > 0 ? totalConversionValue / totalSpend : NaN;
+    if (spendHeader) {
+      const totalConversionValue = rows.reduce((sum, r) => sum + parseCellNum(r._raw?.[header]), 0);
+      return totalSpend > 0 ? totalConversionValue / totalSpend : NaN;
+    }
+    // An extra conversion-value column must not suppress a standalone observed ratio.
+    return aggregateSourceRatio(rows, undefined, undefined, rateHeader);
   }
-  const rateHeader = resolveActualHeader(key, key === "roas" ? "google" : "meta", headerMap);
-  const spendHeader = resolveActualHeader(key === "roas" ? "cost" : "spend", key === "roas" ? "google" : "meta", headerMap);
   return aggregateSourceRatio(rows, undefined, spendHeader, rateHeader);
 }
 
@@ -203,6 +208,15 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       result[metric.key] = aggregateCpc(rows, headerMap, totalSpend, metric.key as "cpc_all" | "cpc_link_click");
       continue;
     }
+    if (metric.key === "ctr" && platform === "meta") {
+      const clicksHeader = resolveActualHeader("clicks_all", "meta", headerMap);
+      const impressionsHeader = resolveActualHeader("impressions", "meta", headerMap);
+      const rateHeader = resolveActualHeader("ctr", "meta", headerMap) ?? headerMap.get(metric.csvName);
+      result[metric.key] = rateHeader || clicksHeader
+        ? aggregateSourceRatio(rows, clicksHeader, impressionsHeader, rateHeader, 100)
+        : impressionsHeader ? combinedCtrCpcFromRawRows(rows, headerMap).ctr : NaN;
+      continue;
+    }
     if (numeratorKey && denominatorKey) {
       // Prefer components; otherwise use only matching, weighted source observations.
       const numeratorHeader = resolveActualHeader(numeratorKey, platform, headerMap);
@@ -224,12 +238,6 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       }
       continue;
     }
-    if (metric.key === "ctr" && headerMap.has("impressions")) {
-      result[metric.key] = combinedCtrCpcFromRawRows(rows, headerMap).ctr;
-      continue;
-    }
-
-
     if (ROAS_METRIC_KEYS.has(metric.key)) {
       if (totalSpend === null) totalSpend = sumByKey(spendKey);
       result[metric.key] = aggregateRoas(rows, headerMap, totalSpend, metric.key);

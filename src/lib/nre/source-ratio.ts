@@ -20,22 +20,22 @@ export function aggregateSourceRatio(
   if (numeratorHeader && !denominatorHeader && sum(numeratorHeader) > 0 && rows.some(row => parseCellNum(row._raw[numeratorHeader]) > 0 && !(parseCellNum(row._raw[rateHeader ?? ""]) > 0))) return NaN;
   // A single exported observation does not need another column to be valid.
   if (rows.length === 1 && observed(rows[0], rateHeader)) return parseCellNum(rows[0]._raw[rateHeader!]);
+  if (!numeratorHeader && !denominatorHeader && rateHeader && rows.every(row => observed(row, rateHeader) && parseCellNum(row._raw[rateHeader]) === 0)) return 0;
   if (!rateHeader || !additiveDenominator) return NaN;
   let numerator = 0, denominator = 0;
   for (const row of rows) {
     if (denominatorHeader) {
       const weight = parseCellNum(row._raw[denominatorHeader]);
-      if (weight > 0 && !observed(row, rateHeader)) return NaN;
+      if (!observed(row, rateHeader)) return NaN;
       denominator += weight;
       numerator += weight * parseCellNum(row._raw[rateHeader]) / scale;
     } else if (numeratorHeader) {
       const value = parseCellNum(row._raw[numeratorHeader]);
-      if (value > 0) {
-        const rate = parseCellNum(row._raw[rateHeader]);
-        if (!observed(row, rateHeader) || !(rate > 0)) return NaN;
-        numerator += value;
-        denominator += value / rate * scale;
-      }
+      const rate = parseCellNum(row._raw[rateHeader]);
+      // 0 / 0 does not establish an event count or another missing weight.
+      if (!observed(row, rateHeader) || !(rate > 0)) return NaN;
+      numerator += value;
+      denominator += value / rate * scale;
     } else return NaN;
   }
   return denominator > 0 ? numerator / denominator * scale : NaN;
