@@ -1,3 +1,4 @@
+import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -84,6 +85,7 @@ export default async function AccountSettingsPage({
   const metaConfigured = isMetaApiConfigured();
   const googleAdsConfigured = isGoogleAdsApiConfigured();
   const ga4Configured = isGa4ApiConfigured();
+  const tiktokRegionRestricted = isIndiaCountryCode(await getVisitorCountryCode());
   const tiktokConfigured = isTikTokApiConfigured();
 
   const status = getSubscriptionStatus(user);
@@ -126,7 +128,7 @@ export default async function AccountSettingsPage({
       </section>
 
       <section id="meta-ads" className="mb-10 scroll-mt-6">
-        <SectionHeading>Meta Ads</SectionHeading>
+        <SectionHeading>Meta Ads API Sync</SectionHeading>
         <MetaAdsSettings
           initialConnectedName={user.metaConnectedName}
           initialConnectedUserId={user.metaConnectedUserId}
@@ -137,7 +139,7 @@ export default async function AccountSettingsPage({
       </section>
 
       <section className="mb-10 scroll-mt-6">
-        <SectionHeading>Google Ads</SectionHeading>
+        <SectionHeading>Google Ads API Sync</SectionHeading>
         <GoogleAdsSettings
           initialConnectedEmail={user.googleAdsConnectedEmail}
           initialConnected={user.googleAdsEnabled}
@@ -165,6 +167,7 @@ export default async function AccountSettingsPage({
           initialConnected={user.tiktokAdsEnabled}
           justConnected={tiktok_ads_connected === "1"}
           connectError={tiktok_ads_error ?? null}
+          regionRestricted={tiktokRegionRestricted}
           tiktokConfigured={tiktokConfigured}
         />
       </section>

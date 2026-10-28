@@ -4,11 +4,12 @@ import { isIndiaCountryCode, shouldShowTikTokToVisitor } from "../visitor-geo";
 describe("visitor geo", () => {
   it("detects India country code", () => {
     expect(isIndiaCountryCode("IN")).toBe(true);
+    expect(isIndiaCountryCode(" in ")).toBe(true);
     expect(isIndiaCountryCode("US")).toBe(false);
   });
 
-  it("shows TikTok option in all regions", () => {
-    expect(shouldShowTikTokToVisitor("IN")).toBe(true);
+  it("limits TikTok outside India without treating unknown location as India", () => {
+    expect(shouldShowTikTokToVisitor("IN")).toBe(false);
     expect(shouldShowTikTokToVisitor("US")).toBe(true);
     expect(shouldShowTikTokToVisitor("GB")).toBe(true);
     expect(shouldShowTikTokToVisitor(null)).toBe(true);

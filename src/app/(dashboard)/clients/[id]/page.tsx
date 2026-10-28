@@ -1,3 +1,4 @@
+import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import { SettingsDisclosure } from "@/components/settings-disclosure";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -70,6 +71,7 @@ export default async function ClientDetailPage({
   const { returnTo } = await searchParams;
   const session = await auth();
   if (!session?.user) notFound();
+  const tiktokRegionRestricted = isIndiaCountryCode(await getVisitorCountryCode());
 
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
@@ -166,6 +168,7 @@ export default async function ClientDetailPage({
               Platform connections
             </CardHeading>
             <ClientPlatformConnections
+              tiktokRegionRestricted={tiktokRegionRestricted}
               meta={{
                 connected: !!owner?.metaConnectedUserId,
                 detail: owner?.metaConnectedName ?? null,

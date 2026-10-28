@@ -27,3 +27,9 @@ Google sign-in, Drive/Slides exports and the site's analytics tag remain availab
 - `src/lib/ad-platform-api-sync.ts`: restore wizard API visibility deliberately after testing; existing server API configuration remains separate.
 
 Google Ads Basic Access approval (15,000 operations/day, owner email dated 2 September) is distinct from OAuth scope verification and end-to-end report acceptance. The developer token belongs in the existing server-side GOOGLE_ADS_DEVELOPER_TOKEN configuration; never commit it. A successful GA4 OAuth connection does not certify report calculations or all metric availability.
+
+## Regional connection availability
+
+Visitors detected in India (`IN` in Vercel's country header) see TikTok marked **Unavailable in India** on client settings, and cannot start a new TikTok OAuth connection. Existing grants can still be managed/disconnected. Outside India, configured/connected status is shown normally; missing server configuration is labelled **Connection coming soon**, rather than being confused with a regional restriction. Unknown location is not assumed to be India. This uses visitor location, not nationality, client timezone or billing currency.
+
+Account headings distinguish Meta/Google Ads API Sync from manual CSV reporting. Client rows use API Connection labels. Linking a platform does not enable report generation: the wizard remains Meta manual CSV only in every region. API imports and Google/TikTok/GA4 reporting stay hidden pending testing.
