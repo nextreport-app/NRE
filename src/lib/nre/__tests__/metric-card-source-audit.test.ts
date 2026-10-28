@@ -112,3 +112,9 @@ it("weights CTR by impressions rather than averaging daily percentages", () => {
   const rows = [row({ Impressions: "1000", "CTR (all)": "2" }), row({ Impressions: "3000", "CTR (all)": "4" })];
   expect(aggregateDynamicMetrics(rows, [metric], "meta").ctr).toBeCloseTo(3.5);
 });
+
+
+it("does not sum daily unique viewers into an invented period audience", () => {
+  const metric = meta.find(m => m.key === "unique_video_viewers")! as MetricRef;
+  expect(aggregateDynamicMetrics([row({ Viewers: "100" }), row({ Viewers: "100" })], [metric], "meta")[metric.key]).toBeNaN();
+});

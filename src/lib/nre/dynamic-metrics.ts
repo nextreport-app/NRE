@@ -197,6 +197,11 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
   for (const metric of metrics) {
     const dictionary = platform === "google" ? GOOGLE_METRIC_DICTIONARY : META_METRIC_DICTIONARY;
     const definition = dictionary.find(entry => entry.key === metric.key && entry.csvName === (metric.csvName ?? "").toLowerCase()) ?? dictionary.find(entry => entry.key === metric.key);
+    // Daily unique viewers cannot establish a deduplicated period audience.
+    if (metric.key === "unique_video_viewers" && rows.length > 1) {
+      result[metric.key] = NaN;
+      continue;
+    }
     const perUnitOf = metric.perUnitOf ?? definition?.perUnitOf;
     const perUnitScale = metric.perUnitScale ?? definition?.perUnitScale ?? 1;
     const numeratorKey = metric.numeratorKey ?? definition?.numeratorKey;

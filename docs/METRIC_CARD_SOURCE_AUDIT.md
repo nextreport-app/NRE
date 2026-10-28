@@ -12,6 +12,7 @@
 - CPC aliases (`CPC all`, `Average CPC (all)`) did not receive the same fallback treatment as the original canonical name. Explicit click counts remain authoritative, including zeros.
 - The picker failed to offer an exported ROAS card when conversion value was absent. Its source-presence rule now agrees with the reader.
 - Currency suffix recognition covered fewer currencies than the client settings supported. Picker recognition now covers every supported report currency; the reader resolves those suffixed columns too.
+- Daily unique viewers were being summed into an invented period audience. Multiple daily observations now remain unavailable without an exported deduplicated period total.
 - Unknown custom cost/average fields could be summed because their display format was currency or number. Preserve single observations; leave multi-row averages unavailable without declared weights.
 
 ## Source rules
@@ -31,7 +32,7 @@ Primary objective counts/costs continue to use objective-matched accounting, rat
 
 ## Verification / prevention
 
-`test:reporting-accuracy` now includes the dictionary-wide source audit and availability checks, in addition to existing accounting/CSV/PPTX regressions. At this change it passes 465 checks. The audit enumerates every numeric primary/secondary Meta and Google dictionary entry for single exported observations, all additive-denominator Meta cost entries for rate blending, and all supported report currencies. Other checks cover missing weights, authoritative zero counts, custom averages, weighted ROAS/order values, saved metric metadata and actual weekly builder output. New dictionary entries automatically enter the relevant audit matrix.
+`test:reporting-accuracy` now includes the dictionary-wide source audit and availability checks, in addition to existing accounting/CSV/PPTX regressions. At this change it passes 466 checks. The audit enumerates every numeric primary/secondary Meta and Google dictionary entry for single exported observations, all additive-denominator Meta cost entries for rate blending, and all supported report currencies. Other checks cover missing weights, authoritative zero counts, custom averages, weighted ROAS/order values, saved metric metadata and actual weekly builder output. New dictionary entries automatically enter the relevant audit matrix.
 
 Supplementary slot, Google-unified reader and dictionary-consistency tests exercise compatibility. No private client CSVs are committed.
 
