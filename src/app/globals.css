@@ -979,3 +979,8 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
 .nre-onboarding-intro {
   background: radial-gradient(ellipse at 100% 0, rgb(246 173 85 / .09), transparent 65%), linear-gradient(125deg, rgb(16 185 129 / .05), transparent 70%);
 }
+
+/* Account CTAs use dark ink on amber in both themes, independently of body text. */
+.nre-app-shell .nre-account-primary {
+  color: #0d1b2e;
+}

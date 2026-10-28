@@ -9,7 +9,7 @@ const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "That connection attempt expired or was invalid. Please try again.",
   missing_code: "Meta did not return an authorisation code. Please try again.",
   connection_failed: "Something went wrong connecting to Meta Ads. Please try again.",
-  not_configured: "Meta integration is not configured on this server yet.",
+  not_configured: "Meta Ads connections are currently unavailable. You can still upload a CSV to generate reports.",
 };
 
 interface AdAccountRow {
@@ -90,8 +90,7 @@ export function MetaAdsSettings({
       ) : null}
       {!metaConfigured && (
         <p className="text-[13px] text-amber-300">
-          Meta App credentials are not configured on this server yet. Add META_APP_ID and META_APP_SECRET
-          in your environment before connecting.
+          Meta Ads connections are currently unavailable. You can still upload a CSV to generate reports.
         </p>
       )}
 
@@ -141,7 +140,7 @@ export function MetaAdsSettings({
           {metaConfigured ? (
             <a
               href="/api/meta/connect"
-              className="inline-block rounded-md bg-dash-accent px-3 py-1.5 text-[13px] font-medium text-dash-ink hover:bg-dash-accent-hover"
+              className="inline-block rounded-md nre-account-primary bg-dash-accent px-3 py-1.5 text-[13px] font-medium hover:bg-dash-accent-hover"
             >
               Connect Meta Ads
             </a>

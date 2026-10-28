@@ -9,7 +9,7 @@ const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "That connection attempt expired or was invalid. Please try again.",
   missing_code: "Google did not return an authorisation code. Please try again.",
   connection_failed: "Something went wrong connecting to Google Analytics. Please try again.",
-  not_configured: "Google Analytics API credentials are not configured on this server yet.",
+  not_configured: "Google Analytics connections are not available yet.",
   no_refresh_token: "Google did not return a refresh token. Try again and choose Allow on the consent screen.",
 };
 
@@ -106,8 +106,7 @@ export function Ga4Settings({
 
       {!ga4Configured && (
         <p className="mb-4 rounded-md border border-amber-900 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
-          GA4 OAuth is not configured yet. Add GA4_CLIENT_ID and GA4_CLIENT_SECRET (or reuse GOOGLE_ADS_* from the same
-          Google Cloud project with Analytics Data + Admin APIs enabled).
+          Google Analytics connections are not available yet.
         </p>
       )}
 
@@ -162,7 +161,7 @@ export function Ga4Settings({
           href={ga4Configured ? "/api/ga4/connect" : "#"}
           className={`inline-block rounded-md px-4 py-2 text-[14px] font-medium ${
             ga4Configured
-              ? "bg-dash-accent text-dash-ink hover:bg-dash-accent-hover"
+              ? "nre-account-primary bg-dash-accent hover:bg-dash-accent-hover"
               : "cursor-not-allowed bg-dash-border text-dash-ink-muted"
           }`}
           aria-disabled={!ga4Configured}
