@@ -41,9 +41,7 @@ export function WizardCoverBudgetSection({
   const hasBudget = clientMonthlyBudget != null && clientMonthlyBudget > 0;
 
   const summary = hasBudget
-    ? coverBudgetPreviewLine
-      ? `${coverBudgetPreviewLine}${showBudgetOnCover ? " · Shown on cover" : " · Hidden on cover"}`
-      : "Monthly budget set · open to view pacing"
+    ? `Monthly budget set · ${showBudgetOnCover ? "Shown on cover" : "Hidden on cover"}`
     : "No monthly budget set for this client";
 
   return (
