@@ -342,7 +342,7 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-            <ReportPeriodControls />
+            <ReportPeriodControls stage="generate" />
 
           {showWeeklyPeriodEditor ? (
             <section className="rounded-lg border border-dash-border bg-dash-card p-4">
@@ -564,7 +564,7 @@ export function WizardGenerateStep() {
           )}
 
 
-            {(periodConfirmation || periodConfirmationBullets) &&
+            {reportType !== "MONTHLY" && (periodConfirmation || periodConfirmationBullets) &&
             generateStepPreviewReady &&
             generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">

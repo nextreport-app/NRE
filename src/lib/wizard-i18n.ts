@@ -89,10 +89,10 @@ const EN_STEPS = {
   heading2Google: "Select campaigns, ad groups & objectives",
   heading3: "Review metrics",
   heading4: "Generate report",
-  subtitle1: "Confirm your ad platform, pick a report type, follow CSV Download instructions, then upload.",
+  subtitle1: "Choose a report type, then upload your CSV.",
   subtitle2: "Choose campaigns and confirm each primary result objective.",
   subtitle3: "Metric chips are pre-selected from your CSV — tweak only if needed.",
-  subtitle4: "Confirm dates and preview, then generate your deck.",
+  subtitle4: "Review your dates and settings, then generate your report.",
 };
 
 export type WizardCopy = typeof EN_UI & typeof EN_STEPS;

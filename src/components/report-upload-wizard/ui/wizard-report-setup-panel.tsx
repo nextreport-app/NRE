@@ -55,7 +55,7 @@ export function WizardReportSetupPanel({
     </div>
     <p className="text-[13px] leading-relaxed text-dash-ink-secondary" title={selectedCopy.cardYouGet}>{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</p>
     </div>
-    <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">CSV needed:</span> {requirement.shortNote}</p>
+    {reportType !== "MONTHLY" && <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">CSV needed:</span> {requirement.shortNote}</p>}
     {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">
       <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
       <p className="text-[12px] text-dash-ink-secondary">Use Day breakdown for every CSV below; month-only totals are not supported.</p>
