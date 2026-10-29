@@ -16,6 +16,7 @@ export type WizardDraftPersistInput = {
   uploadSessionId: string;
   platform: WizardPlatformChoice;
   reportType: WizardReportType;
+  historicalMonthCount?: number;
   dateMode: DateMode;
   customStart: string;
   customEnd: string;
@@ -45,6 +46,7 @@ export function buildWizardDraftSnapshot(input: WizardDraftPersistInput): Wizard
     uploadSessionId: input.uploadSessionId,
     platform: input.platform,
     reportType: input.reportType,
+    historicalMonthCount: input.historicalMonthCount,
     dateMode: input.dateMode,
     customStart: input.customStart,
     customEnd: input.customEnd,

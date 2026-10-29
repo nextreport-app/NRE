@@ -30,6 +30,19 @@ async function texts(buffer: Buffer) {
 describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actual %s output", template => {
   const templateBuffer = readFileSync(resolve(process.cwd(), "templates", template));
   const theme = { templateBuffer, isLightTemplate: template.includes("light") };
+  it("renders monthly-total CSV facts without weekly periods or fabricated daily charts", async () => {
+    const source = parseCsvText("Campaign name,Reporting starts,Reporting ends,Amount spent (USD),Results,Result type,Reach,Impressions\nExample,2026-09-01,2026-09-30,300,6,Website leads,1000,9000");
+    expect(validateMtdDailyCsv(source.colMap, source.rows, new Date("2026-10-29T12:00:00Z"), source.headers, "META", undefined, "MONTHLY").valid).toBe(true);
+    const formData = new FormData();
+    formData.set("reportType", JSON.stringify("MONTHLY"));
+    formData.set("dateSelection", JSON.stringify({ mode: "custom", customStart: "2026-09-01", customEnd: "2026-09-30" }));
+    const result = await buildStandardReportForWizard({ client, platform: "META", mtdParsed: source, formData, now: new Date("2026-10-29T12:00:00Z") });
+    if (!("data" in result)) throw new Error(result.error);
+    const output = (await texts(await renderPptx({ ...theme, data: result.data, currencySymbol: "$" }))).join("\n");
+    expect(output).toContain("YOUR MONTHLY PERFORMANCE REPORT");
+    expect(output).toContain("$300");
+    expect(output).not.toMatch(/WEEKLY PERFORMANCE|Last 30 Days/);
+  }, 30_000);
   it("weekly retains its distinct week cards, monthly totals and rolling chart", async () => {
     const data = buildReportData({ ...base, reportType: "WEEKLY", now: new Date("2025-10-01T12:00:00Z"), weeklyRange: { startIso: "2025-09-24", endIso: "2025-09-30" } });
     expect(data.campaignSlides[0].metrics.spend).toBe("$70");

@@ -1,53 +1,56 @@
 "use client";
 
 import { ReportMonthPicker } from "./report-month-picker";
+import { WizardDatePicker, WizardDateRangeFields } from "./wizard-date-picker";
 import { useWizardContext } from "../wizard-context";
-import { historicalPeriods, monthPeriod, reportCalendarYesterday } from "@/lib/nre/report-period-selection";
+import { historicalPeriods, monthPeriod, reportCalendarYesterday, reportPeriodAnchor } from "@/lib/nre/report-period-selection";
 import { getCalendarDateInTimezone } from "@/lib/nre/dates";
 
-/** Same controls on Import and Generate; changes invalidate the existing preview. */
+/** Four visible report choices reuse the existing safe engine modes. */
 export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
   const w = useWizardContext();
-  if (!["MONTHLY", "DAILY", "HISTORICAL"].includes(w.reportType)) return null;
+  if (!["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN"].includes(w.reportType)) return null;
   const now = new Date();
   const yesterday = reportCalendarYesterday(now, w.clientTimezone);
   const today = getCalendarDateInTimezone(now, w.clientTimezone);
   const currentMonth = `${today.year}-${String(today.month).padStart(2, "0")}`;
-  const previousMonth = new Date(Date.UTC(today.year, today.month - 1, 0)).toISOString().slice(0, 7);
   const custom = w.dateMode === "custom";
-  const inputClass = "mt-1 block w-full rounded-md border border-dash-border bg-dash-sidebar px-3 py-2 text-[14px] text-dash-ink";
-  function chooseRange(start: string, end: string) {
-    w.editDateMode("custom"); w.editCustomStart(start); w.editCustomEnd(end);
+  function chooseRange(start: string, end: string) { w.editDateMode("custom"); w.editCustomStart(start); w.editCustomEnd(end); }
+  if (w.reportType === "DAILY") return <WizardDatePicker label="Report day" value={custom ? w.customStart : yesterday} maxIso={yesterday} onChange={day => chooseRange(day, day)} />;
+  if (w.reportType === "DAY_BREAKDOWN") {
+    const start = custom && w.customStart ? w.customStart : yesterday;
+    const end = custom && w.customEnd ? w.customEnd : yesterday;
+    return <section className="space-y-3">
+      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => chooseRange(yesterday, yesterday)} className="rounded-md border border-dash-border px-3 py-1.5 text-xs text-dash-ink hover:bg-dash-card">Yesterday</button><button type="button" onClick={() => { const day = new Date(yesterday + "T12:00:00Z"); day.setUTCDate(day.getUTCDate() - 6); chooseRange(day.toISOString().slice(0, 10), yesterday); }} className="rounded-md border border-dash-border px-3 py-1.5 text-xs text-dash-ink hover:bg-dash-card">Last 7 days</button></div>
+      <WizardDateRangeFields startIso={start} endIso={end} minIso={w.dateBounds?.minIso} maxIso={w.dateBounds?.maxIso && w.dateBounds.maxIso < yesterday ? w.dateBounds.maxIso : yesterday} onStartChange={day => chooseRange(day, end < day ? day : end)} onEndChange={day => chooseRange(start > day ? day : start, day)} />
+      <p className="text-xs text-dash-ink-secondary">One row per day in your CSV. Select the same start and end date for a single-day table.</p>
+      {w.customRangeError && <p className="text-sm text-red-400">{w.customRangeError}</p>}
+    </section>;
   }
-  if (w.reportType === "DAILY") return <label className="block text-[13px] text-dash-ink-secondary">Report day · yesterday by default
-    <input type="date" aria-label="Report day" max={yesterday} value={custom ? w.customStart : yesterday} onChange={e => chooseRange(e.target.value, e.target.value)} className={inputClass} />
-  </label>;
-  if (w.reportType === "MONTHLY") {
-    const month = custom ? w.customStart.slice(0, 7) : yesterday.slice(0, 7);
-    const range = monthPeriod(month || yesterday.slice(0, 7), now, w.clientTimezone);
-    const dateLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(`${range.startIso}T12:00:00Z`), new Date(`${range.endIso}T12:00:00Z`));
-    return <div className="space-y-2">
-      <p className="text-[13px] font-medium text-dash-ink-secondary">Report month</p>
-      <ReportMonthPicker label="Report month" value={month || yesterday.slice(0, 7)} currentMonth={currentMonth} maxMonth={yesterday.slice(0, 7)} onChange={value => { const r = monthPeriod(value, now, w.clientTimezone); chooseRange(r.startIso, r.endIso); }} />
-      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">{stage === "import" ? "CSV coverage" : "Reporting dates"}: {dateLabel}{stage === "import" ? " · Day breakdown" : ""}</p>
-    </div>;
+  const count = w.reportType === "HISTORICAL" ? w.historicalMonthCount : 1;
+  const endMonth = custom && w.customEnd ? w.customEnd.slice(0, 7) : yesterday.slice(0, 7);
+  function periodEnd(month: string) {
+    const end = monthPeriod(month, now, w.clientTimezone).endIso;
+    return month === currentMonth && w.dateBounds?.maxIso?.slice(0, 7) === month && w.dateBounds.maxIso < end ? w.dateBounds.maxIso : end;
   }
-  const includeCurrent = custom && w.customEnd?.slice(0, 7) === currentMonth;
-  const endMonth = custom && w.customEnd ? w.customEnd.slice(0, 7) : previousMonth;
-  const ranges = historicalPeriods(w.historicalMonthCount, endMonth, includeCurrent, now, w.clientTimezone);
-  function chooseMonths(count: number, month: string, include: boolean) {
-    w.editHistoricalMonthCount(count);
-    const selected = historicalPeriods(count, month, include, now, w.clientTimezone);
-    chooseRange(selected[0].startIso, selected[selected.length - 1].endIso);
+  function chooseMonths(number: number, month: string) {
+    const end = periodEnd(month);
+    const anchor = month === currentMonth ? reportPeriodAnchor(end, w.clientTimezone) : now;
+    const ranges = historicalPeriods(number, month, month === currentMonth, anchor, w.clientTimezone);
+    w.handleReportTypeChange(number > 1 ? "HISTORICAL" : "MONTHLY");
+    w.editHistoricalMonthCount(number);
+    chooseRange(ranges[0].startIso, end);
   }
-  return <div className="space-y-3">
-    <div className="flex flex-wrap gap-2">{[3, 6].map(n => <button key={n} type="button" onClick={() => chooseMonths(n, previousMonth, false)} className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:border-dash-accent">Last {n} completed months</button>)}</div>
-    <div className="grid gap-3 sm:grid-cols-2">
-      <label className="text-[13px] text-dash-ink-secondary">Number of months<select aria-label="Number of months" value={w.historicalMonthCount} onChange={e => chooseMonths(Number(e.target.value), endMonth, includeCurrent)} className={inputClass}>{Array.from({ length: 11 }, (_, i) => i + 2).map(n => <option key={n} value={n}>{n} months</option>)}</select></label>
-      <div className="space-y-1 text-[13px] text-dash-ink-secondary"><p>Ending month</p><ReportMonthPicker label="Ending month" value={endMonth} currentMonth={currentMonth} maxMonth={includeCurrent ? currentMonth : previousMonth} onChange={month => chooseMonths(w.historicalMonthCount, month, includeCurrent)} /></div>
+  const end = custom && w.customEnd ? w.customEnd : periodEnd(endMonth);
+  const first = new Date(`${endMonth}-01T12:00:00Z`); first.setUTCMonth(first.getUTCMonth() - count + 1);
+  const start = first.toISOString().slice(0, 10);
+  const rangeLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"));
+  return <section className="space-y-2">
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+      <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">{count === 1 ? "Report month" : "Ending month"}</p><ReportMonthPicker label={count === 1 ? "Report month" : "Ending month"} value={endMonth} currentMonth={currentMonth} maxMonth={yesterday.slice(0, 7)} partialLabel={end < yesterday ? "Month to date" : "Through yesterday"} onChange={month => chooseMonths(count, month)} /></div>
+      <label className="space-y-1 text-[13px] font-medium text-dash-ink-secondary">Number of months<select aria-label="Number of months" value={count} onChange={event => chooseMonths(Number(event.target.value), endMonth)} className="block w-full rounded-lg border border-dash-border bg-dash-bg px-3 py-3 text-sm text-dash-ink">{Array.from({ length: 12 }, (_, index) => index + 1).map(n => <option key={n} value={n}>{n === 1 ? "1 month" : `${n} months`}</option>)}</select></label>
     </div>
-    <label className="flex items-center gap-2 text-[13px] text-dash-ink-secondary"><input type="checkbox" checked={includeCurrent} disabled={today.day === 1} onChange={e => chooseMonths(w.historicalMonthCount, e.target.checked ? currentMonth : previousMonth, e.target.checked)} />Include current partial month (MTD)</label>
-    <p className="text-[12px] text-dash-ink-secondary">{ranges.map(r => r.fullMonthLabel).join(" · ")}</p>
-    <p className="text-[12px] text-dash-ink-secondary">CSV needed: {ranges[0].startIso} – {ranges[ranges.length - 1].endIso}. Partial months are labelled MTD.</p>
-  </div>;
+    <p className="text-xs leading-relaxed text-dash-ink-secondary">{stage === "import" ? "CSV coverage" : "Reporting dates"}: {rangeLabel}{stage === "import" ? " · Day rows or campaign/month totals" : ""}</p>
+    {count > 1 && <p className="text-xs text-dash-ink-secondary">Each month is shown separately, followed by a monthly overview table.</p>}
+  </section>;
 }

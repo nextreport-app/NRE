@@ -151,7 +151,7 @@ export function buildColumnMap(headers: string[]): ColumnMap {
   return map;
 }
 
-export type NreRow = Partial<Record<NreMetricKey, string>> & { _raw: Record<string, string>; _sourceError?: string; _sourcePlatform?: "GOOGLE" };
+export type NreRow = Partial<Record<NreMetricKey, string>> & { _raw: Record<string, string>; _sourceError?: string; _sourcePlatform?: "GOOGLE"; _reportPeriod?: { startIso: string; endIso: string } };
 
 /** Port of readTabWithAutoMap_, operating on parsed CSV headers + string rows. */
 export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
@@ -199,6 +199,7 @@ export function readRowsWithAutoMap(headers: string[], dataRows: string[][]): {
  */
 /** Minimal row shape for date extraction — satisfied by both NreRow and MetricRow. */
 export type RowWithDate = {
+  _reportPeriod?: { startIso: string; endIso: string };
   _raw?: Record<string, string>;
   date_start?: string | null;
   date_end?: string | null;
@@ -221,7 +222,7 @@ function findRealDayOrDateValue(row: RowWithDate): string | null {
 export function getRowDate(row: RowWithDate): string {
   // Last-resort fallback for exports with no real per-row date column at
   // all (rare) — matches the source's own fallback to date_start.
-  return findRealDayOrDateValue(row) ?? row.date_start ?? "";
+  return row._reportPeriod?.startIso ?? findRealDayOrDateValue(row) ?? row.date_start ?? "";
 }
 
 /**

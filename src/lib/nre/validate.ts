@@ -1,3 +1,4 @@
+import { prepareMonthlyCsvFacts } from "./monthly-csv-grain";
 /**
  * NRE v1 — Pillar 5: pre-generation validation.
  * "Before creating a single slide, validate the uploaded CSV... show clear
@@ -106,12 +107,16 @@ export function validateMtdDailyCsv(
   headers: string[] = [],
   platform: Platform = "META",
   metaCustomConversionResultTypes?: import("./meta-result-indicator").MetaCustomConversionResultTypeLookup,
+  reportType?: string,
 ): ValidationResult {
   const manager = adsManagerName(platform);
   const spendColumnHint =
     platform === "GOOGLE" ? "Cost" : platform === "TIKTOK" ? "Cost or Amount spent" : "Amount Spent";
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
+  const periodInput = platform === "META" ? prepareMonthlyCsvFacts(rows) : { aggregate: false, errors: [] };
+  const allowMonthlyTotals = reportType === "MONTHLY" || reportType === "HISTORICAL";
+  if (periodInput.aggregate && (allowMonthlyTotals || csvHasDailyGranularity(rows))) for (const message of periodInput.errors) errors.push({ field: "monthly_grain", message });
   let metaCsvExportProfile: MetaCsvExportProfile | undefined;
   if (platform === "META" && rows.length > 0) {
     metaCsvExportProfile = detectMetaCsvExportProfile(colMap, rows, headers);
@@ -144,7 +149,7 @@ export function validateMtdDailyCsv(
       field: "date",
       message: 'No date column found (expected a "Day", "Date", or "Reporting starts/ends" column).',
     });
-  } else if (!csvHasDailyGranularity(rows)) {
+  } else if (!csvHasDailyGranularity(rows) && !(periodInput.aggregate && allowMonthlyTotals)) {
     // No per-row Day/Date and no equal Reporting starts/ends pairs (Campaigns
     // table + Breakdown: Day uses the latter). File-wide reporting ranges
     // only → weekly/monthly-style totals.

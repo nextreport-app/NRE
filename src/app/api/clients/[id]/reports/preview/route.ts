@@ -76,7 +76,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const { parsed: mtdParsed, metaCampaignPeriodReach, metaAdAccountId, uploadSessionId, fileHash } = resolved.data;
   const platform = mtdParsed.platform;
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
+  const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform, undefined, parsedReportType);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
@@ -87,7 +88,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // this route entirely (see report-data.ts's own doc comment on
   // buildPreviousMonthSummaryReportData). Narrow defensively rather than
   // widening buildReportData's own ReportType to match.
-  const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+
   if (parsedReportType === "COMPARISON") {
     const periodA = formData ? parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema) : undefined;
     const periodB = formData ? parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema) : undefined;

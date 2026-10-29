@@ -420,36 +420,6 @@ export function WizardGenerateStep() {
             </section>
           ) : null}
 
-          {reportType === "DAY_BREAKDOWN" && (
-            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-dash-ink">Select date range</h4>
-              <div className="mt-4 space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                <p className="text-[14px] text-dash-ink-secondary">
-                  Pick any range covered by your day-level CSV
-                  {dateBounds
-                    ? ` (${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)})`
-                    : ""}
-                  .
-                </p>
-                <WizardDateRangeFields
-                  startIso={customStart}
-                  endIso={customEnd}
-                  minIso={dateBounds?.minIso}
-                  maxIso={dateBounds?.maxIso}
-                  onStartChange={(iso) => {
-                    editDateMode("custom");
-                    editCustomStart(iso);
-                  }}
-                  onEndChange={(iso) => {
-                    editDateMode("custom");
-                    editCustomEnd(iso);
-                  }}
-                />
-                {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
-              </div>
-            </section>
-          )}
-
           {/* Section 2 (Comparison variant) — Period A/B presets (A1) */}
           {reportType === "COMPARISON" && (
             <section className="rounded-lg border border-dash-border bg-dash-card p-5">
@@ -564,7 +534,7 @@ export function WizardGenerateStep() {
           )}
 
 
-            {reportType !== "MONTHLY" && (periodConfirmation || periodConfirmationBullets) &&
+            {reportType === "WEEKLY" && (periodConfirmation || periodConfirmationBullets) &&
             generateStepPreviewReady &&
             generateStatus === "idle" ? (
               <div className="nre-wizard-callout-success rounded-lg px-4 py-3">

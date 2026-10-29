@@ -1,3 +1,4 @@
+import { prepareMonthlyCsvFacts, monthlyFactSelectionError } from "../monthly-csv-grain";
 /**
  * Shared standard-report input assembly for generate + preview routes.
  */
@@ -42,6 +43,7 @@ import { computeWizardStandardReportFingerprint } from "../wizard-report-config-
 import { loadWizardPreviewReportCache } from "../wizard-preview-cache";
 
 export interface BuildStandardReportWizardInput {
+  now?: Date;
   client: Client;
   mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[] };
   formData: FormData | null;
@@ -95,7 +97,7 @@ export async function resolveStandardReportForGenerate(
 export async function buildStandardReportForWizard(
   input: BuildStandardReportWizardInput,
 ): Promise<BuildStandardReportWizardResult> {
-  let now = new Date();
+  let now = input.now ?? new Date();
   const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
     input;
   const engine = createReportEngine(platform);
@@ -129,10 +131,16 @@ export async function buildStandardReportForWizard(
 
   let weeklyRange: { startIso: string; endIso: string } | undefined;
   let sourceRows = mtdParsed.rows;
+  if (reportType === "MONTHLY") {
+    const grain = prepareMonthlyCsvFacts(sourceRows);
+    if (grain.errors.length) return { error: grain.errors.join(" ") };
+  }
   if (reportType === "DAILY" || reportType === "MONTHLY") {
     let range;
     try { range = selectedSinglePeriod(reportType, dateSelection, now, client.timezone)!; }
     catch (error) { return { error: (error as Error).message }; }
+    const factError = monthlyFactSelectionError(sourceRows, range);
+    if (factError) return { error: factError };
     const bounds = computeCsvDateBounds(sourceRows);
     if (!bounds || bounds.minIso > range.startIso || bounds.maxIso < range.endIso) return { error: `CSV must cover ${range.startIso} through ${range.endIso}. Export the full selected period, including zero-delivery days where available.` };
     sourceRows = filterNreRowsByDateRange(sourceRows, range);

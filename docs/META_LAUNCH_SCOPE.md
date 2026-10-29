@@ -1,5 +1,7 @@
 # Product launch scope
 
+> Current wizard: four choices — Weekly overview, Monthly report (1–12 months), Compare two periods and Daily report (including one day). See [current workflow contracts](FOUR_REPORT_WORKFLOWS.md). Earlier six-choice notes below describe the previous rollout.
+
 Updated 27 October 2026 for manual Meta acceptance after PR #588.
 
 Only **Meta Ads** is selectable in the report wizard. Google Ads, TikTok Ads and GA4 remain hidden from report-wizard platform pickers until the owner tests and approves them. Connection management is visible in Account Settings and client settings for every platform, including GA4 property linking. The homepage lists these connections with an explicit reporting-testing status; marketing and SEO do not claim their report generation is live. Their implementations and existing report history remain intact. The direct GA4 creation page is unavailable while GA4 is hidden; saved non-Meta drafts are preserved without being restored into the active wizard.

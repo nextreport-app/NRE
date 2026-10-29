@@ -1,7 +1,7 @@
 "use client";
 
 import { paginateExtraMetrics, allSlideMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "@/lib/nre/metric-pagination";
-import { historicalPeriods, selectedSinglePeriod } from "@/lib/nre/report-period-selection";
+import { historicalPeriods, selectedSinglePeriod, monthlySelectionFromBounds, reportCalendarYesterday, restoredMonthCount } from "@/lib/nre/report-period-selection";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -524,6 +524,7 @@ export function useReportUploadWizard({
       if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
         const coerced = coerceLaunchReportType(prefs.reportType);
         setReportType(coerced);
+        setHistoricalMonthCount(restoredMonthCount(prefs.historicalMonthCount, prefs.reportType, prefs.customStart, prefs.customEnd));
       }
       if (prefs.dateMode) {
         if (prefs.dateMode === "custom" && prefs.customStart && prefs.customEnd) {
@@ -553,6 +554,7 @@ export function useReportUploadWizard({
     if (!clientPrefsHydratedRef.current) return;
     saveClientWizardPreferences(clientId, {
       reportType,
+      historicalMonthCount,
       dateMode,
       customStart: dateMode === "custom" ? customStart : undefined,
       customEnd: dateMode === "custom" ? customEnd : undefined,
@@ -563,6 +565,7 @@ export function useReportUploadWizard({
   }, [
     clientId,
     reportType,
+    historicalMonthCount,
     dateMode,
     customStart,
     customEnd,
@@ -581,10 +584,14 @@ export function useReportUploadWizard({
     setCustomEnd("");
     if (next === "DAY_BREAKDOWN" && isLaunchReportTypeEnabled(next)) {
       setDateMode("custom");
-      if (weeklyOptions) {
-        setCustomStart(weeklyOptions.last7.startIso);
-        setCustomEnd(weeklyOptions.last7.endIso);
-      }
+      const yesterday = reportCalendarYesterday(new Date(), clientTimezone);
+      setCustomStart(yesterday); setCustomEnd(yesterday);
+    }
+    if (next === "MONTHLY" && dateBounds) {
+      const selection = monthlySelectionFromBounds(dateBounds, new Date(), clientTimezone);
+      setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY");
+      setHistoricalMonthCount(selection.count);
+      setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);
     }
     setCsvWarningDismissed(false);
   }
@@ -741,6 +748,7 @@ export function useReportUploadWizard({
       ...core,
       platform,
       reportType,
+      historicalMonthCount,
       dateMode,
       customStart,
       customEnd,
@@ -751,7 +759,6 @@ export function useReportUploadWizard({
       comparisonPreset,
       comparisonPeriodA,
       comparisonPeriodB,
-      historicalMonthCount,
       previewKind,
       previewStatus,
       data,
@@ -924,6 +931,7 @@ export function useReportUploadWizard({
         setPlatformPickerExpanded(false);
         setHasSavedPlatformPreference(true);
         setReportType(draft.reportType as ReportTypeValue);
+        setHistoricalMonthCount(restoredMonthCount(draft.historicalMonthCount, draft.reportType, draft.customStart, draft.customEnd));
         setDateMode(draft.dateMode);
         setCustomStart(draft.customStart);
         setCustomEnd(draft.customEnd);
@@ -1001,6 +1009,7 @@ export function useReportUploadWizard({
       uploadSessionId,
       platform,
       reportType,
+      historicalMonthCount,
       dateMode,
       customStart,
       customEnd,
@@ -1043,6 +1052,7 @@ export function useReportUploadWizard({
     uploadSessionId,
     platform,
     reportType,
+    historicalMonthCount,
     dateMode,
     customStart,
     customEnd,
@@ -1159,12 +1169,24 @@ export function useReportUploadWizard({
     setMonthComparisonCoverage(json.monthComparisonCoverage || null);
     setDailyRange(json.dailyRange || null);
     setHasAdLevelCsv(!!json.hasAdLevelCsv);
-    if (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN") {
+    if (reportType === "WEEKLY") {
     const savedSelection: DateSelection = json.dateSelection || { mode: "last7" };
     const normalizedSelection = normalizeSavedDateSelection(savedSelection, json.weeklyOptions || null);
     setDateMode(normalizedSelection.mode);
     setCustomStart(normalizedSelection.customStart || savedSelection.customStart || "");
     setCustomEnd(normalizedSelection.customEnd || savedSelection.customEnd || "");
+    }
+    if (reportType === "DAY_BREAKDOWN" && !preserve) {
+      const yesterday = reportCalendarYesterday(new Date(), clientTimezone);
+      const last = json.dateBounds?.maxIso && json.dateBounds.maxIso < yesterday ? json.dateBounds.maxIso : yesterday;
+      const valid = dateMode === "custom" && customStart && customEnd && customStart >= (json.dateBounds?.minIso ?? "") && customEnd <= last;
+      setDateMode("custom"); setCustomStart(valid ? customStart : last); setCustomEnd(valid ? customEnd : last);
+    }
+    if (["MONTHLY", "HISTORICAL"].includes(reportType) && !preserve && !(dateMode === "custom" && customStart && customEnd && customStart >= (json.dateBounds?.minIso ?? "") && customEnd <= (json.dateBounds?.maxIso ?? "") && customStart <= customEnd)) {
+      const selection = monthlySelectionFromBounds(json.dateBounds, new Date(), clientTimezone);
+      setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY");
+      setHistoricalMonthCount(selection.count);
+      setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);
     }
     setLongRangeConfirmed(false);
     setComparisonPreset("thisWeek");
@@ -1245,7 +1267,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile),
+      body: buildUploadFormData(mtdFile, { reportType }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
 
@@ -1317,7 +1339,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform }),
+      body: buildUploadFormData(mtdFile, { platform, reportType }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
     setReanalyzeSessionStatus("idle");
@@ -1586,7 +1608,7 @@ export function useReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(
         mtdFile,
-        { platform: platformForRequest, selectedCampaigns: campaignsForRequest },
+        { platform: platformForRequest, selectedCampaigns: campaignsForRequest, reportType },
         uploadSessionId,
       ),
     }).catch(() => null);
@@ -2205,6 +2227,7 @@ export function useReportUploadWizard({
     step,
     platform,
     reportType,
+    historicalMonthCount,
     dateMode,
     customStart,
     customEnd,

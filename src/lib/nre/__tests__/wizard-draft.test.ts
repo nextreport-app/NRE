@@ -54,5 +54,7 @@ describe("wizard-draft", () => {
     expect(loaded?.step).toBe(3);
     expect(loaded?.uploadSessionId).toBe("sess-1");
     expect(loaded?.weeklyOptions?.last7.endIso).toBe("2026-10-13");
+    saveWizardDraft(clientId, { ...loaded!, reportType: "HISTORICAL", historicalMonthCount: 6, dateMode: "custom", customStart: "2026-04-01", customEnd: "2026-09-30" });
+    expect(loadWizardDraft(clientId)).toMatchObject({ reportType: "HISTORICAL", historicalMonthCount: 6, customStart: "2026-04-01", customEnd: "2026-09-30" });
   });
 });

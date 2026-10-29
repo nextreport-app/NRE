@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { META_CSV_IMPORT_TOOLTIP } from "@/lib/nre/meta-csv-export-guide";
 
 /** Meta Import — compact CSV export hint (replaces the large Reports export panel). */
-export function WizardMetaCsvImportTooltip() {
+export function WizardMetaCsvImportTooltip({ monthly = false }: { monthly?: boolean }) {
   const tooltipId = useId();
   const [open, setOpen] = useState(false);
 
@@ -29,7 +29,7 @@ export function WizardMetaCsvImportTooltip() {
             : "opacity-0 [@media(hover:hover)]:group-hover/meta-tip:opacity-100"
         }`}
       >
-        <p className="text-[12px] leading-snug text-dash-ink">{META_CSV_IMPORT_TOOLTIP.body}</p>
+        <p className="text-[12px] leading-snug text-dash-ink">{monthly ? "Monthly reports accept campaign totals for one month, or Month breakdown for several months. Include Reporting starts and Reporting ends. Day breakdown also works. Include these common metrics when possible:" : META_CSV_IMPORT_TOOLTIP.body}</p>
         <ul className="mt-2 list-inside list-disc space-y-0.5 text-[12px] text-dash-ink-secondary">
           {META_CSV_IMPORT_TOOLTIP.metrics.map((m) => (
             <li key={m}>{m}</li>

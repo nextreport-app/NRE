@@ -1,6 +1,6 @@
 /**
  * What CSV export users need per wizard report type — date span + breakdown.
- * Meta Ads Reporting exports should always use Day-wise breakdown (not month-only totals).
+ * Daily observations support arbitrary periods; monthly reports also accept validated campaign/month interval totals.
  */
 
 import type { ReportTypeValue } from "@/components/report-upload-wizard/types";
@@ -11,7 +11,7 @@ export type WizardCsvRequirement = {
   shortNote: string;
   /** Extra sentence for tooltip / import helper. */
   detail: string;
-  /** Engine expects daily rows in the file (true for all launch report types). */
+  /** Whether the chosen report needs individual daily observations. */
   dayWiseRequired: boolean;
 };
 
@@ -35,7 +35,7 @@ export function wizardCsvRequirementForReportType(input: {
       };
 
     case "MONTHLY":
-      return { shortNote: "Selected month · Day-wise CSV", detail: `Export the selected full month, or current month from the 1st through yesterday. No weekly data is required. ${DAY_WISE}`, dayWiseRequired: true };
+      return { shortNote: "Day rows or campaign/month totals", detail: "For one month use campaign totals; for several months use Month or Day breakdown. Totals need Reporting starts/ends and one row per campaign/month; a combined multi-month total cannot be split.", dayWiseRequired: false };
 
     case "QUARTER":
     case "YTD":
@@ -75,9 +75,9 @@ export function wizardCsvRequirementForReportType(input: {
 
     case "HISTORICAL":
       return {
-        shortNote: "Multi-month custom range · Day-wise CSV",
-        detail: `One continuous export covering all selected months (including MTD only when explicitly selected) — not a single Last 30 days file. ${DAY_WISE}`,
-        dayWiseRequired: true,
+        shortNote: "Multi-month range · Month or Day breakdown",
+        detail: "Export all selected months using Month or Day breakdown, not a single Last 30 days file. Monthly totals must be campaign-level with Reporting starts/ends.",
+        dayWiseRequired: false,
       };
 
     case "CREATIVE":

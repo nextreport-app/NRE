@@ -17,13 +17,13 @@ export const SHOW_DEFERRED_PLATFORM_UI = false;
 /** Retained implementations awaiting owner testing before public rollout. */
 export const DEFERRED_PLATFORMS = ["GOOGLE", "TIKTOK", "GA4"] as const;
 
-/** Customer-facing Meta CSV reports. Each restored workflow needs owner acceptance testing. */
+/** Supported engine types, including legacy one-day and multi-month modes. */
 export const LAUNCH_ENABLED_REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "HISTORICAL", "COMPARISON", "DAY_BREAKDOWN"] as const;
 export type LaunchEnabledReportType = (typeof LAUNCH_ENABLED_REPORT_TYPES)[number];
 
 export const DEFERRED_REPORT_TYPES = ["QUARTER", "YTD", "CREATIVE"] as const;
-export const LAUNCH_PRIMARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = ["WEEKLY", "MONTHLY", "DAILY", "HISTORICAL"];
-export const LAUNCH_SECONDARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = ["COMPARISON", "DAY_BREAKDOWN"];
+export const LAUNCH_PRIMARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = ["WEEKLY", "MONTHLY", "COMPARISON", "DAY_BREAKDOWN"];
+export const LAUNCH_SECONDARY_REPORT_TYPES: readonly LaunchEnabledReportType[] = [];
 
 export function isLaunchPlatformEnabled(
   platform: string,
@@ -62,7 +62,7 @@ export function coerceLaunchPlatform(platform: string): LaunchEnabledPlatform {
 export const META_LAUNCH_HERO_BADGE = "Meta Ads reporting for agencies";
 
 export const META_LAUNCH_HERO_SUBHEAD =
-  "Upload a day-wise Meta CSV from Ads Manager. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
+  "Upload a Meta Ads CSV from Ads Manager. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
 
 export const META_LAUNCH_FOOTER_BLURB =
   "Automated Meta Ads reporting for digital agencies — client-ready decks in under two minutes.";
