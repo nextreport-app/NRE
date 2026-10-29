@@ -1,0 +1,56 @@
+name: Quality Guardian
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-guardian
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    if: vars.NEXTREPORT_GUARDIAN_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:quality-agents
+      - run: npm run test:reporting-accuracy
+      - run: npm run test:report-choices
+      - run: npm run test:objective-regression
+      - run: npm run test:api-routes
+
+  intake:
+    needs: checks
+    if: always() && vars.NEXTREPORT_GUARDIAN_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Create redacted, deduplicated investigation issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALITY_AGENT_READ_TOKEN: ${{ secrets.QUALITY_AGENT_READ_TOKEN }}
+          NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
+          GUARDIAN_CHECKS_FAILED: ${{ needs.checks.result == 'failure' }}
+        run: node scripts/agents/guardian-intake.mjs

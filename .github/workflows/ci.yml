@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check quality incident and repair boundaries
+        run: npm run test:quality-agents
+
       - name: Run objective regression gate
         run: npm run test:objective-regression
 

@@ -1,0 +1,228 @@
+name: Report Repair Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue with a synthetic reproduction and agent:repair-ready label'
+        required: true
+        type: string
+  issues:
+    types: [labeled]
+  schedule:
+    - cron: '30 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: report-repair-agent
+  cancel-in-progress: false
+
+jobs:
+  select:
+    if: vars.NEXTREPORT_REPAIR_ENABLED == 'true' && (github.event_name != 'issues' || github.event.label.name == 'agent:repair-ready')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      contents: read
+      pull-requests: read
+    outputs:
+      issue: ${{ steps.queue.outputs.issue }}
+    steps:
+      - name: Claim at most one approved issue, with no automatic retry loop
+        id: queue
+        uses: actions/github-script@v7
+        env:
+          HAS_KEY: ${{ secrets.NEXTREPORT_REPAIR_OPENAI_API_KEY != '' }}
+          INPUT_ISSUE: ${{ inputs.issue_number }}
+        with:
+          script: |
+            if (process.env.HAS_KEY !== 'true') { core.setFailed('Configure the dedicated repair API key before enabling repair.'); return; }
+            const repo = context.repo;
+            if (context.eventName === 'issues') {
+              const result = await github.rest.repos.getCollaboratorPermissionLevel({...repo,username:context.actor});
+              if (!['admin','maintain','write'].includes(result.data.permission)) { core.setFailed('Only repository maintainers may queue repairs.'); return; }
+            }
+            const requested = context.payload.issue?.number || Number(process.env.INPUT_ISSUE || 0);
+            let items;
+            if (requested) items = [(await github.rest.issues.get({...repo,issue_number:requested})).data];
+            else if (context.eventName === 'workflow_dispatch') { core.setFailed('A valid issue number is required.'); return; }
+            else items = (await github.rest.issues.listForRepo({...repo,state:'open',labels:'agent:repair-ready',sort:'updated',direction:'asc',per_page:20})).data;
+            const item = items.find(i=>!i.pull_request && i.state==='open' && i.labels.some(l=>l.name==='agent:repair-ready') && !i.labels.some(l=>['agent:repair-running','agent:needs-review'].includes(l.name)));
+            if (!item) { core.info('No approved repair queued.'); return; }
+            const prs = (await github.rest.pulls.list({...repo,state:'open',per_page:100})).data;
+            if (prs.some(p=>p.head.ref.startsWith(`agent/repair-${item.number}-`))) { core.info('An open repair PR already exists.'); return; }
+            for (const [name,color] of [['agent:repair-running','5319e7'],['agent:needs-review','0052cc'],['agent:needs-attention','d93f0b']]) {
+              try { await github.rest.issues.createLabel({...repo,name,color}); } catch(e) { if(e.status!==422)throw e; }
+            }
+            await github.rest.issues.addLabels({...repo,issue_number:item.number,labels:['agent:repair-running']});
+            await github.rest.issues.removeLabel({...repo,issue_number:item.number,name:'agent:repair-ready'});
+            core.setOutput('issue',String(item.number));
+
+  repair:
+    needs: select
+    if: needs.select.outputs.issue != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: nre
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: nre_repair_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U nre -d nre_repair_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    outputs:
+      base_sha: ${{ steps.base.outputs.sha }}
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Record the trusted baseline
+        id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - name: Install pinned coding runner
+        run: npm install --global @openai/codex@0.166.0
+      - name: Preserve trusted orchestration outside the agent workspace
+        run: |
+          mkdir -p "$RUNNER_TEMP/nextreport-trusted"
+          cp scripts/agents/* "$RUNNER_TEMP/nextreport-trusted/"
+      - name: Fetch approved issue without attachments
+        uses: actions/github-script@v7
+        env:
+          REPAIR_ISSUE: ${{ needs.select.outputs.issue }}
+        with:
+          script: |
+            const fs = require('fs');
+            const {data} = await github.rest.issues.get({...context.repo,issue_number:Number(process.env.REPAIR_ISSUE)});
+            fs.writeFileSync(`${process.env.RUNNER_TEMP}/repair-issue.json`, JSON.stringify({number:data.number,title:data.title,body:data.body}),{mode:0o600});
+      - name: Build untrusted-evidence prompt
+        run: node "$RUNNER_TEMP/nextreport-trusted/prepare-repair.mjs" "$RUNNER_TEMP/repair-issue.json" "$RUNNER_TEMP/repair-prompt.txt"
+      - name: Attempt reproduction and a scoped fix
+        timeout-minutes: 15
+        env:
+          OPENAI_API_KEY: ${{ secrets.NEXTREPORT_REPAIR_OPENAI_API_KEY }}
+          CODEX_HOME: ${{ runner.temp }}/nextreport-codex
+          REPAIR_MODEL: ${{ vars.NEXTREPORT_REPAIR_MODEL }}
+        run: |
+          mkdir -p "$CODEX_HOME"
+          printf '%s' "$OPENAI_API_KEY" | codex login --with-api-key
+          unset OPENAI_API_KEY
+          model_args=()
+          if [ -n "$REPAIR_MODEL" ]; then
+            [[ "$REPAIR_MODEL" =~ ^[a-zA-Z0-9._-]+$ ]] || exit 1
+            model_args=(--model "$REPAIR_MODEL")
+          fi
+          timeout 840 codex exec "${model_args[@]}" --sandbox workspace-write -c 'sandbox_workspace_write.network_access=false' -c 'shell_environment_policy.inherit="core"' -c 'approval_policy="never"' --output-schema "$RUNNER_TEMP/nextreport-trusted/repair-output.schema.json" --output-last-message "$RUNNER_TEMP/repair-outcome.json" - < "$RUNNER_TEMP/repair-prompt.txt" > "$RUNNER_TEMP/repair-private.log" 2>&1
+      - name: Remove model credentials and private traces
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/nextreport-codex"
+          rm -f "$RUNNER_TEMP/repair-private.log" "$RUNNER_TEMP/repair-prompt.txt" "$RUNNER_TEMP/repair-issue.json"
+      - name: Validate and preserve candidate source only
+        env:
+          REPAIR_API_KEY: ${{ secrets.NEXTREPORT_REPAIR_OPENAI_API_KEY }}
+        run: node "$RUNNER_TEMP/nextreport-trusted/stage-repair.mjs" "$RUNNER_TEMP/repair-files.json"
+      - name: Rebuild a clean workspace and dependencies before independent verification
+        run: |
+          git reset --hard HEAD
+          git clean -fdx
+          node "$RUNNER_TEMP/nextreport-trusted/restore-repair.mjs" "$RUNNER_TEMP/repair-files.json"
+          npm ci --cache "$RUNNER_TEMP/clean-npm-cache"
+      - name: Require a failing-before / passing-after regression
+        run: node "$RUNNER_TEMP/nextreport-trusted/verify-repair.mjs" "$RUNNER_TEMP/repair-outcome.json" "$RUNNER_TEMP/repair-manifest.json"
+      - name: Run independent release checks on the candidate
+        env:
+          DATABASE_URL: postgresql://nre:isolated_ci_only@127.0.0.1:5432/nre_repair_test
+          DIRECT_URL: postgresql://nre:isolated_ci_only@127.0.0.1:5432/nre_repair_test
+        run: |
+          npm run test:quality-agents
+          npm run test:reporting-accuracy
+          npm run test:report-choices
+          npm run test:objective-regression
+          npm run test:api-routes
+          npx tsc --noEmit
+          npm run build
+      - name: Ensure the tested source still matches the candidate artifact
+        run: node "$RUNNER_TEMP/nextreport-trusted/assert-candidate-unchanged.mjs" "$RUNNER_TEMP/repair-files.json"
+      - name: Preserve only the scoped candidate for a fresh publishing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextreport-repair-candidate
+          path: ${{ runner.temp }}/repair-files.json
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [select, repair]
+    if: needs.repair.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.repair.outputs.base_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: nextreport-repair-candidate
+          path: ${{ runner.temp }}/candidate
+      - name: Preserve trusted publishing scripts before restoring the candidate
+        run: |
+          mkdir -p "$RUNNER_TEMP/nextreport-publisher"
+          cp scripts/agents/* "$RUNNER_TEMP/nextreport-publisher/"
+      - name: Validate candidate paths before any file is written
+        run: node "$RUNNER_TEMP/nextreport-publisher/restore-repair.mjs" "$RUNNER_TEMP/candidate/repair-files.json"
+      - name: Recheck scope and credential tripwires in this fresh job
+        env:
+          REPAIR_API_KEY: ${{ secrets.NEXTREPORT_REPAIR_OPENAI_API_KEY }}
+        run: node "$RUNNER_TEMP/nextreport-publisher/stage-repair.mjs" "$RUNNER_TEMP/publish-files.json"
+      - name: Publish a draft PR without executing candidate code
+        env:
+          GH_TOKEN: ${{ secrets.NEXTREPORT_REPAIR_GITHUB_TOKEN || github.token }}
+          REPAIR_ISSUE_NUMBER: ${{ needs.select.outputs.issue }}
+          REPAIR_BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: node "$RUNNER_TEMP/nextreport-publisher/publish-repair.mjs" "$RUNNER_TEMP/publish-files.json" "$RUNNER_TEMP/repair-pr.md"
+
+  status:
+    needs: [select, repair, publish]
+    if: always() && needs.select.outputs.issue != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Leave an honest investigation status
+        uses: actions/github-script@v7
+        env:
+          ISSUE: ${{ needs.select.outputs.issue }}
+          RESULT: ${{ needs.publish.result }}
+        with:
+          script: |
+            const issue_number=Number(process.env.ISSUE);
+            const success=process.env.RESULT==='success';
+            await github.rest.issues.addLabels({...context.repo,issue_number,labels:[success?'agent:needs-review':'agent:needs-attention']});
+            for(const name of ['agent:repair-running',success?'agent:needs-attention':'agent:needs-review']) {
+              try { await github.rest.issues.removeLabel({...context.repo,issue_number,name}); } catch(e) { if(e.status!==404)throw e; }
+            }
+            await github.rest.issues.createComment({...context.repo,issue_number,body:success?'A candidate draft PR passed the repair gates. Review, deployment and affected-report revalidation are still required.':'The repair attempt did not produce an approved candidate. Check the workflow run and supply a synthetic reproduction or investigate manually. No fix has been deployed. Requeue explicitly after addressing the missing evidence or failure.'});

@@ -36,6 +36,14 @@ describe("verification presentation separates numeric mismatches from source cov
     expect(html).not.toContain("Amount spent");
   });
 
+  it("shows a recorded incident reference without claiming a deployed fix", () => {
+    const html = render({ ...matching, status: "mismatch", qualityIncidentId: "cincidentreference12345", checks: [{ scope: "Report week", metric: "CPC", status: "mismatch", reportDisplay: "—", csvDisplay: "$0.42" }] });
+    expect(html).toContain("Recorded for review.");
+    expect(html).toContain("cincidentreference12345");
+    expect(html).not.toContain("fixed automatically");
+    expect(html).not.toContain("refresh and try again");
+  });
+
   it("retains the successful section heading without the reporting-window list", () => {
     const html = render(matching);
     expect(html).toContain("nre-wizard-callout-success");

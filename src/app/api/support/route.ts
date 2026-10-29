@@ -1,3 +1,4 @@
+import { recordQualityIncident } from "@/lib/quality-agents/incidents";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -136,6 +137,10 @@ export async function POST(req: Request) {
         reportDisplayName,
       },
     });
+
+    if (!["Feature question", "Other"].includes(fields.category)) {
+      await recordQualityIncident({ userId: user.id, contextKey: ticket.id, platform: "OTHER", reportType: "OTHER", kind: "CUSTOMER_REPORTED", signalCodes: ["CUSTOMER_REPORT"] });
+    }
 
     const storedDownloadLinks: { fileName: string; url: string }[] = [];
     let primaryAttachmentUrl: string | null = null;

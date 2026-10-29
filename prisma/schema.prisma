@@ -163,6 +163,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   clients  Client[]
   supportTickets SupportTicket[]
+  reportQualityIncidents ReportQualityIncident[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -622,4 +623,21 @@ model EmailDelivery {
   lastError String?
   createdAt DateTime @default(now())
   @@index([status, createdAt])
+}
+
+// Private operational queue. Never stores CSV rows, campaign names or support messages.
+model ReportQualityIncident {
+  id String @id @default(cuid())
+  fingerprint String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind String
+  platform String
+  reportType String
+  signalCodes String[]
+  occurrences Int @default(1)
+  revision String?
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  @@index([lastSeenAt])
 }
