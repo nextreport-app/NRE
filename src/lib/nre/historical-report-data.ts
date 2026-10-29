@@ -1,3 +1,5 @@
+import { prepareMonthlyCsvFacts, monthlyFactSelectionError } from "./monthly-csv-grain";
+import { getCalendarDateInTimezone } from "./dates";
 import { historicalPeriods, reportPeriodAnchor, reportCalendarYesterday } from "./report-period-selection";
 import type { DateSelection } from "@/lib/validators/report-wizard";
 /**
@@ -86,19 +88,33 @@ export function validateHistoricalReportInput(
   timezone = "UTC",
   dateSelection?: DateSelection,
 ): HistoricalValidationResult {
+  const grain = prepareMonthlyCsvFacts(mtdDailyRows);
+  if (grain.errors.length) return { valid: false, error: grain.errors.join(" ") };
   const bounds = computeCsvDateBounds(mtdDailyRows);
   if (!bounds) {
     return { valid: false, error: "Could not read any dates from the uploaded CSV." };
   }
   let monthRanges;
-  try { monthRanges = historicalPeriods(monthCount, dateSelection?.customEnd?.slice(0, 7), dateSelection?.mode === "custom" && dateSelection.customEnd === reportCalendarYesterday(now, timezone), now, timezone); }
+  try {
+    const yesterday = reportCalendarYesterday(now, timezone);
+    const end = dateSelection?.mode === "custom" ? dateSelection.customEnd : undefined;
+    const today = getCalendarDateInTimezone(now, timezone);
+    const currentMonth = `${today.year}-${String(today.month).padStart(2, "0")}`;
+    const currentMtd = !!end && end.slice(0, 7) === currentMonth && end <= yesterday;
+    const anchor = currentMtd ? reportPeriodAnchor(end!, timezone) : now;
+    monthRanges = historicalPeriods(monthCount, end?.slice(0, 7), currentMtd, anchor, timezone);
+  }
   catch (error) { return { valid: false, error: (error as Error).message }; }
   if (dateSelection?.mode === "custom" && (dateSelection.customStart !== monthRanges[0].startIso || dateSelection.customEnd !== monthRanges[monthRanges.length - 1].endIso)) {
-    return { valid: false, error: "Selected dates must match the requested calendar months (current MTD ends yesterday).", monthRanges };
+    return { valid: false, error: "Selected dates must match the requested calendar months (current MTD ends on the selected completed reporting day).", monthRanges };
   }
   const coverage = validateHistoricalCsvCoverage(bounds, monthRanges);
   if (!coverage.valid) {
     return { valid: false, error: coverage.error, monthRanges };
+  }
+  for (const range of monthRanges) {
+    const factError = monthlyFactSelectionError(mtdDailyRows, range);
+    if (factError) return { valid: false, error: factError, monthRanges };
   }
   const missing = monthRanges.filter(range => filterNreRowsByDateRange(mtdDailyRows, range).length === 0);
   if (missing.length) return { valid: false, error: `CSV has no rows for ${missing.map(r => r.fullMonthLabel).join(", ")}. Upload the selected months; missing months cannot be inferred.`, monthRanges };

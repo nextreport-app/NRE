@@ -1,5 +1,7 @@
 # Flexible Meta CSV reports
 
+> Current wizard: four choices — Weekly overview, Monthly report (1–12 months), Compare two periods and Daily report (including one day). See [current workflow contracts](FOUR_REPORT_WORKFLOWS.md). Earlier six-choice notes below describe the previous rollout.
+
 Updated 27 October 2026. Supersedes PR 601's two-type restriction. Four main choices, with two detailed workflows under a collapsed section:
 
 | Choice | Dates / content |

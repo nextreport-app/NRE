@@ -37,6 +37,7 @@ export type WizardDraftSnapshot = {
   uploadSessionId: string;
   platform: WizardPlatformChoice;
   reportType: WizardReportType;
+  historicalMonthCount?: number;
   dateMode: DateMode;
   customStart: string;
   customEnd: string;

@@ -1,6 +1,6 @@
 /**
  * Meta Ads CSV export — wizard + /help/download share this copy.
- * NextReport requires Ad Reporting export with Day-wise breakdown (not Campaigns-screen export).
+ * Daily workflows use Day breakdown; Monthly also accepts validated campaign/month totals.
  * Column lists are generated from meta-dictionary.ts (same as Step 3 metrics).
  */
 
@@ -36,16 +36,16 @@ export const META_CSV_IMPORT_TOOLTIP = {
 } as const;
 
 export const META_CSV_EXPORT_PATH = {
-  title: "Always use the Ad Reporting section to export (required)",
+  title: "Export a campaign report from Meta Ads Manager",
   exportSteps: [
     "Open Meta Ads Reporting Section (link above) and select the ad account",
     "Build a Campaign report",
-    "Select last 30 days",
-    "Breakdown (Day-wise) always",
+    "Choose the reporting dates required by your report type",
+    "Use Day breakdown for Weekly, Daily and custom comparisons; Monthly accepts campaign totals or Month breakdown",
     "Include metrics to go in the report",
     "Save → Export table data → CSV",
   ] as const,
-  dayBreakdownImportant: 'Important - Set Time breakdown to "Day-wise" — for all campaigns.',
+  dayBreakdownImportant: 'Monthly totals need Reporting starts/ends and one row per campaign/month. Use Day breakdown for Weekly, Daily and custom comparisons.',
   baseColumnsIntro:
     "Include base columns: Popular metric from meta you can always include.",
   baseColumnsInExport: [

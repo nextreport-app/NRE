@@ -5,6 +5,7 @@ import type { WizardGenerateBaseline } from "@/lib/nre/wizard-generate-baseline"
 
 export type ClientWizardPreferences = {
   reportType?: ReportTypeValue;
+  historicalMonthCount?: number;
   dateMode?: DateMode;
   customStart?: string;
   customEnd?: string;

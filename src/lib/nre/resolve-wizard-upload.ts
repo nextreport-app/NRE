@@ -12,7 +12,7 @@ import {
   loadWizardUploadSession,
   type WizardParsedMtd,
 } from "./wizard-upload-session";
-import { parseJsonFormField, platformSchema, uploadSessionIdSchema } from "@/lib/validators/report-wizard";
+import { parseJsonFormField, platformSchema, reportTypeSchema, uploadSessionIdSchema } from "@/lib/validators/report-wizard";
 
 export interface WizardUploadContext {
   userId: string;
@@ -50,6 +50,7 @@ export async function resolveWizardMtdFromFormData(
     };
   }
 
+  const reportType = parseJsonFormField(formData, "reportType", reportTypeSchema);
   const uploadSessionId = parseJsonFormField(formData, "uploadSessionId", uploadSessionIdSchema);
   if (uploadSessionId) {
     const session = await loadWizardUploadSession(ctx.userId, ctx.clientId, uploadSessionId);
@@ -63,7 +64,7 @@ export async function resolveWizardMtdFromFormData(
         },
       };
     }
-    const validation = validateMtdDailyCsv(session.colMap, session.rows, undefined, session.headers, session.platform);
+    const validation = validateMtdDailyCsv(session.colMap, session.rows, undefined, session.headers, session.platform, undefined, reportType);
     if (!validation.valid) return { ok: false, status: 400, body: { valid: false, errors: validation.errors, warnings: validation.warnings, error: "This cached upload no longer passes source validation. Please correct the export and analyze it again." } };
     return {
       ok: true,
@@ -97,7 +98,7 @@ export async function resolveWizardMtdFromFormData(
   const platformOverride = parseJsonFormField(formData, "platform", platformSchema);
   const platform: Platform = platformOverride ?? detectPlatform(headers);
   const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform);
+  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform, undefined, reportType);
   if (!validation.valid) {
     return {
       ok: false,

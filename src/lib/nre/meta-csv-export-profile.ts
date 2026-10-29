@@ -59,7 +59,7 @@ export function detectMetaCsvExportProfile(
   const includesAdSetBreakdown = !!colMap.ad_set_name && rowsIncludeNamedAdSets(rows);
   const campaignsTableSignals =
     !includesAdSetBreakdown &&
-    csvHasDailyGranularity(rows) &&
+    (csvHasDailyGranularity(rows) || rows.some(row => row._reportPeriod)) &&
     (rows.some(hasReportingStartsEndsDailyRow) ||
       [...h].some((x) => x.includes("campaign delivery")) ||
       hasResultIndicatorColumn);
@@ -178,11 +178,11 @@ export function normalizeMetaCampaignsTableToAdsReportingShape(
     const name = normalizeCampaignName(String(row.campaign_name ?? ""));
     const rowIso = rowDateIso(row);
     const startIso = name ? startsByCampaign.get(name) : undefined;
-    if (rowIso && startIso && rowIso < startIso) {
+    if (!row._reportPeriod && rowIso && startIso && rowIso < startIso) {
       rows.splice(i, 1);
       continue;
     }
-    if (!rowHasDeliverySignal(row)) {
+    if (!row._reportPeriod && !rowHasDeliverySignal(row)) {
       rows.splice(i, 1);
     }
   }

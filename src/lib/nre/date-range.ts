@@ -41,7 +41,7 @@ export function computeEffectiveYesterday(
 ): ParsedDate | null {
   let latestTs: number | null = null;
   rows.forEach((row) => {
-    const d = parseDate(getRowDate(row));
+    const d = parseDate(row._reportPeriod?.endIso ?? getRowDate(row));
     if (!d) return;
     const ts = tsOf(d);
     if (latestTs === null || ts > latestTs) latestTs = ts;
@@ -97,8 +97,10 @@ export function computeActualDataRangeInWindow(
     if (!d) return;
     const ts = Date.UTC(d.year, d.month - 1, d.day);
     if (ts < startTs || ts > endTs) return;
+    const factEnd = row._reportPeriod ? Date.parse(row._reportPeriod.endIso + "T00:00:00Z") : ts;
+    if (factEnd > endTs) return;
     if (minTs === null || ts < minTs) minTs = ts;
-    if (maxTs === null || ts > maxTs) maxTs = ts;
+    if (maxTs === null || factEnd > maxTs) maxTs = factEnd;
   });
   if (minTs === null || maxTs === null) return null;
   return { startIso: toIsoDate(dateFromTs(minTs)), endIso: toIsoDate(dateFromTs(maxTs)) };
@@ -326,7 +328,8 @@ export function computeCsvDateBounds(rows: NreRow[]): CsvDateBounds | null {
     if (!d) return;
     const ts = tsOf(d);
     if (minTs === null || ts < minTs) minTs = ts;
-    if (maxTs === null || ts > maxTs) maxTs = ts;
+    const endTs = row._reportPeriod ? Date.parse(row._reportPeriod.endIso + "T00:00:00Z") : ts;
+    if (maxTs === null || endTs > maxTs) maxTs = endTs;
   });
   if (minTs === null || maxTs === null) return null;
   return { minIso: toIsoDate(dateFromTs(minTs)), maxIso: toIsoDate(dateFromTs(maxTs)) };
@@ -437,7 +440,8 @@ export function filterNreRowsByDateRange<T extends NreRow>(rows: T[], range: Dat
     const d = parseDate(getRowDate(row));
     if (!d) return false;
     const ts = Date.UTC(d.year, d.month - 1, d.day);
-    return ts >= startTs && ts <= endTs;
+    const factEnd = row._reportPeriod ? Date.parse(row._reportPeriod.endIso + "T00:00:00Z") : ts;
+    return ts >= startTs && factEnd <= endTs;
   });
 }
 

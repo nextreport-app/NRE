@@ -251,7 +251,7 @@ const REPORT_TYPE_ES: Partial<Record<ReportTypeValue, Partial<WizardReportTypeCo
   },
   MONTHLY: {
     cardHeading: "Informe mensual",
-    cardOneLiner: "Un mes completo o el mes en curso hasta ayer.",
+    cardOneLiner: "Un mes, MTD o varios meses por separado.",
     pickerLabel: "Informe mensual",
   },
   DAILY: {
@@ -265,14 +265,14 @@ const REPORT_TYPE_ES: Partial<Record<ReportTypeValue, Partial<WizardReportTypeCo
     pickerLabel: "Informe comparativo",
   },
   HISTORICAL: {
-    cardHeading: "Informe histórico multi-mes",
+    cardHeading: "Informe mensual",
     cardOneLiner: "Varios meses.",
-    pickerLabel: "Informe histórico",
+    pickerLabel: "Informe mensual",
   },
   DAY_BREAKDOWN: {
-    cardHeading: "Tabla día a día",
+    cardHeading: "Informe diario",
     cardOneLiner: "Una fila por día.",
-    pickerLabel: "Tabla día a día",
+    pickerLabel: "Informe diario",
   },
 };
 

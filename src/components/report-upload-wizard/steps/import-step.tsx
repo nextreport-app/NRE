@@ -382,7 +382,7 @@ export function WizardImportStep() {
             <>
               <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
 
-              {csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
+              {w.reportType === "WEEKLY" && csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
                 <CsvDateGuidanceBanner
                   guidance={csvDateGuidance}
                   onContinue={() => setCsvWarningDismissed(true)}

@@ -23,8 +23,8 @@ describe("wizardExportGuidanceForReportType", () => {
       clientTimezone: "UTC",
       now: new Date("2026-10-01T12:00:00Z"),
     });
-    expect(g.lines.some((b) => /selected calendar month/i.test(b))).toBe(true);
-    expect(g.lines.some((b) => /weekly data is not required/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /selected month/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /Day breakdown is optional/i.test(b))).toBe(true);
     expect(g.context).toMatch(/Monthly report/i);
   });
 
@@ -35,7 +35,7 @@ describe("wizardExportGuidanceForReportType", () => {
       clientTimezone: "UTC",
       now: new Date("2026-10-08T12:00:00Z"),
     });
-    expect(g.lines[0]).toMatch(/1st through yesterday/i);
+    expect(g.lines[0]).toMatch(/1st through the last completed day/i);
   });
 
   it("daily guidance describes one selected day", () => {
@@ -55,7 +55,7 @@ describe("wizardExportGuidanceForReportType", () => {
       clientTimezone: "UTC",
       now: new Date("2026-10-31T12:00:00Z"),
     });
-    expect(g.lines.some((b) => /through yesterday/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /last completed day/i.test(b))).toBe(true);
   });
 
   it("day-by-day table uses distinct download context label", () => {
@@ -64,6 +64,6 @@ describe("wizardExportGuidanceForReportType", () => {
       platform: "META",
       clientTimezone: "UTC",
     });
-    expect(g.context).toMatch(/Day-by-day table/i);
+    expect(g.context).toMatch(/Daily report/i);
   });
 });

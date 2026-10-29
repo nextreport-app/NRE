@@ -21,6 +21,7 @@ import {
   metaCampaignPeriodReachMapsSchema,
   parseJsonFormField,
   platformSchema,
+  reportTypeSchema,
   type DateSelection,
 } from "@/lib/validators/report-wizard";
 import { detectPlatform } from "@/lib/nre/google-columns";
@@ -83,6 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform === "META"
         ? await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountIdEarly)
         : undefined;
+    const requestedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
     const validation = validateMtdDailyCsv(
       mtdParsed.colMap,
       mtdParsed.rows,
@@ -90,6 +92,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       mtdParsed.headers,
       platform,
       metaCustomConversionResultTypes,
+      requestedReportType,
     );
     if (!validation.valid) {
       return NextResponse.json(
@@ -146,7 +149,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       client.timezone,
     );
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
-    const csvDateGuidance = analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone);
+    const csvDateGuidance = (requestedReportType ?? "WEEKLY") === "WEEKLY" && !mtdParsed.rows.some(row => row._reportPeriod) ? analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone) : null;
 
     const supplementalRows = await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns);
     const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
