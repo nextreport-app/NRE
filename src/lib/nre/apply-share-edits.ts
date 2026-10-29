@@ -7,7 +7,7 @@ import type { DynamicMetricValue } from "./dynamic-metrics";
 import type { ReportData } from "./report-data";
 import type { ShareReportData } from "./share-report";
 
-function patchMetricSlots(
+export function patchMetricSlots(
   slots: (DynamicMetricValue | null)[] | undefined,
   shared: DynamicMetricValue[],
 ): (DynamicMetricValue | null)[] | undefined {

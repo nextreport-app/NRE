@@ -1,9 +1,9 @@
+import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { WizardReportType } from "@/lib/validators/report-wizard";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
 import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
 import type { ValidationIssue } from "@/lib/nre/validate";
-import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { ObjectiveInfo } from "@/lib/nre/result-type-map";
 import type { AdSetGroup } from "@/lib/nre/ad-sets";
 import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
@@ -101,14 +101,6 @@ export interface ReportUploadWizardProps {
   /** Prefill agency name when unset (usually User.name). */
   accountDisplayName?: string | null;
 }
-
-/** Overflow dialog when adding metrics beyond slide limits. */
-export type MetricOverflowDialog = {
-  campaignName: string;
-  normalized: string;
-  metric: SelectedMetric;
-  mode: "confirm_second_slide" | "blocked_max";
-};
 
 /** Re-exported domain types used across step components. */
 export type {

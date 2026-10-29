@@ -18,7 +18,7 @@ export default function HelpMetricsPage() {
         <h2 className="text-lg font-semibold text-white">Defaults</h2>
         <p>
           Each campaign gets a sensible set for its objective (e.g. lead campaigns emphasize leads and cost per lead).
-          Up to eight chips can sit on the first slide; extras move to a continuation slide when needed.
+          The first eight metrics stay on the main slide. Extra metrics are arranged automatically on balanced additional slides, with no empty slots or repeated cards. You can select up to 64 metrics per campaign.
         </p>
         <h2 className="text-lg font-semibold text-white">Customize</h2>
         <ul className="list-inside list-disc space-y-2">

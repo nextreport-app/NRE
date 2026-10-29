@@ -184,12 +184,8 @@ export interface CampaignSlideData {
    * template's corresponding card position.
    */
   dynamicMetrics: (DynamicMetricValue | null)[];
-  /**
-   * Part 4 — present only when this campaign's selected chips exceeded 8;
-   * the remaining selected metrics (never padded with unselected extras),
-   * rendered as a second "[Name] — Additional Metrics (continued from
-   * previous slide)" slide immediately after the main one.
-   */
+  /** All cards beyond the first eight, stored flat for archive compatibility.
+   * Renderers balance these across dedicated adaptive metric pages. */
   additionalMetricsSlide?: (DynamicMetricValue | null)[];
   /** Multi-Month Historical reports — replaces the default report-type header on this slide (e.g. "YOUR MAY PERFORMANCE REPORT"). */
   performanceHeader?: string;
@@ -1765,22 +1761,16 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       override ? metricsInOverrideOrder(override, selectedMetrics) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
       objectiveKeyFor(campaignObjective?.resultLabel),
     ).filter((m): m is SelectedMetric => m !== null);
-    const [slide1Keys, slide2Keys] = splitMetricsForSlides(
+    const [slide1Keys, ...extraPages] = splitMetricsForSlides(
       relevantMetrics,
       availableMetricsPool,
       campaignObjective?.resultLabel,
       campaignObjective?.costLabel,
     );
-    // Slide 1 is the wizard selection in chip order. Slide 2 is extras;
-    // if those extras are 1–3, padSparseContinuationSlide repeats this
-    // campaign's result + cost pair from slide 1 so the continuation is
-    // never a single lonely card. No invented CSV columns. A selected
-    // metric with no real data for THIS campaign keeps its label and
-    // shows "—" (buildSlotsFromSelection). fill-tags.ts must still retext
-    // that slot so template "CPC (All)" cannot linger.
     const dynamicMetrics = buildSlotsFromSelection(slide1Keys, baselineValues, rawRows, slotPlatform, currencySymbol);
-    const additionalMetricsSlide = slide2Keys
-      ? buildSlotsFromSelection(slide2Keys, baselineValues, rawRows, slotPlatform, currencySymbol)
+    // Kept flat in persisted data for existing archives/share-edit compatibility.
+    const additionalMetricsSlide = extraPages.length
+      ? buildSlotsFromSelection(extraPages.flat(), baselineValues, rawRows, slotPlatform, currencySymbol)
       : undefined;
     return { dynamicMetrics, additionalMetricsSlide };
   }

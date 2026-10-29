@@ -652,7 +652,7 @@ describe("splitMetricsForSlides — Part 4", () => {
     expect(slide2.map((m) => m.key)).not.toContain("pad_high");
   });
 
-  it("pads a single extra with slide 1's result + cost pair so the continuation has at least 3 cards", () => {
+  it("keeps a single extra without repeating the primary result or cost", () => {
     const slide1 = [
       selected("spend"),
       selected("reach"),
@@ -666,12 +666,10 @@ describe("splitMetricsForSlides — Part 4", () => {
     const extras = [selected("frequency")];
     expect(padSparseContinuationSlide(slide1, extras, "WEBSITE LEADS").map((m) => m.key)).toEqual([
       "frequency",
-      "results",
-      "cost_per_result",
     ]);
     const [first, second] = splitMetricsForSlides([...slide1, selected("frequency")], [], "WEBSITE LEADS");
     expect(first.map((m) => m.key)).toEqual(slide1.map((m) => m.key));
-    expect(second.map((m) => m.key)).toEqual(["frequency", "results", "cost_per_result"]);
+    expect(second.map((m) => m.key)).toEqual(["frequency"]);
   });
 
   it("findPrimaryResultCostPair uses the objective result + cost keys, never a neighbour chip like CTR", () => {
@@ -705,8 +703,6 @@ describe("splitMetricsForSlides — Part 4", () => {
     ]);
     expect(padSparseContinuationSlide(slide1, [selected("frequency")], "LINK CLICKS").map((m) => m.key)).toEqual([
       "frequency",
-      "link_clicks",
-      "cpc_link_click",
     ]);
   });
 
@@ -717,22 +713,25 @@ describe("splitMetricsForSlides — Part 4", () => {
   });
 
   it("evaluateAddMetric never blocks a 9th chip when extras are sparse — Add anyway opens a continuation", () => {
-    expect(evaluateAddMetric(8, 2)).toBe("confirm_second_slide");
-    expect(evaluateAddMetric(8, 4)).toBe("confirm_second_slide");
-    expect(evaluateAddMetric(8, 1)).toBe("confirm_second_slide");
+    expect(evaluateAddMetric(8, 2)).toBe("allow");
+    expect(evaluateAddMetric(8, 4)).toBe("allow");
+    expect(evaluateAddMetric(8, 1)).toBe("allow");
     expect(evaluateAddMetric(7, 1)).toBe("allow");
     expect(evaluateAddMetric(9, 1)).toBe("allow");
     expect(evaluateAddMetric(15, 1)).toBe("allow");
-    expect(evaluateAddMetric(16, 1)).toBe("blocked_max");
+    expect(evaluateAddMetric(16, 1)).toBe("allow");
+    expect(evaluateAddMetric(MAX_TOTAL_METRICS, 1)).toBe("blocked_max");
   });
 
   it("additionalMetricsHeading names the continuation", () => {
     expect(additionalMetricsHeading("Shoes - Search")).toBe("Shoes - Search — Additional Metrics");
   });
 
-  it("caps at MAX_TOTAL_METRICS, dropping anything beyond it", () => {
-    const sel = Array.from({ length: 20 }, (_, i) => selected(`m${i}`));
-    const [slide1, slide2] = splitMetricsForSlides(sel, []);
-    expect(slide1.length + slide2.length).toBe(MAX_TOTAL_METRICS);
+  it("preserves 20 metrics across balanced pages and rejects an oversized direct request", () => {
+    const selection = Array.from({ length: 20 }, (_, i) => selected(`m${i}`));
+    const pages = splitMetricsForSlides(selection, []);
+    expect(pages.map(page => page.length)).toEqual([8, 6, 6]);
+    expect(pages.flat()).toEqual(selection);
+    expect(() => splitMetricsForSlides(Array.from({ length: MAX_TOTAL_METRICS + 1 }, (_, i) => selected(`m${i}`)))).toThrow(/up to/);
   });
 });

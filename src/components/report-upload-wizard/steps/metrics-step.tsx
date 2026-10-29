@@ -1,5 +1,6 @@
 "use client";
 
+import { paginateExtraMetrics } from "@/lib/nre/metric-pagination";
 import { useMemo, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
@@ -32,17 +33,14 @@ export function WizardMetricsStep() {
     addCampaignMetric,
     campaignAvailableMetrics,
     campaignObjectives,
-    confirmOpenSecondSlide,
     expandedCsvExtras,
     handleMetricsContinue,
     metricsStatus,
     objectiveAccent,
-    overflowDialog,
     perCampaignMetrics,
     perCampaignMinWarning,
     removeCampaignMetric,
     setExpandedCsvExtras,
-    setOverflowDialog,
     setStep,
   } = w;
 
@@ -67,6 +65,7 @@ export function WizardMetricsStep() {
     const selectedForCampaign = perCampaignMetrics.get(normalized) ?? [];
     const availableForCampaign = campaignAvailableMetrics(normalized);
     const accent = objectiveAccent(objective?.resultLabel);
+    const pages = [selectedForCampaign.slice(0, MAX_METRICS_PER_SLIDE), ...paginateExtraMetrics(selectedForCampaign.slice(MAX_METRICS_PER_SLIDE))];
 
     return (
       <div
@@ -88,14 +87,14 @@ export function WizardMetricsStep() {
           )}
         </div>
         <p className="mt-0.5 text-[14px] text-dash-ink-secondary">
-          {selectedForCampaign.length <= MAX_METRICS_PER_SLIDE
-            ? `${selectedForCampaign.length} of ${MAX_METRICS_PER_SLIDE} chips on this campaign slide`
-            : `${selectedForCampaign.length} chips · first ${MAX_METRICS_PER_SLIDE} on slide 1, ${selectedForCampaign.length - MAX_METRICS_PER_SLIDE} on a continuation slide`}
+          {selectedForCampaign.length} metrics · {pages.length} {pages.length === 1 ? "slide" : "slides"}
         </p>
 
         <p className="mt-3 text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.includedMetrics}</p>
-        <div className="mt-1.5 flex flex-wrap gap-2">
-          {selectedForCampaign.map((m) => (
+        <div className="mt-2 space-y-3">
+          {pages.map((metrics, index) => <div key={index} className={pages.length > 1 ? "rounded-lg border border-dash-border bg-dash-bg/30 p-3" : ""}>
+            {pages.length > 1 && <p className="mb-2 text-xs font-medium text-dash-ink-secondary">{index === 0 ? "Main slide" : `Additional metrics · page ${index}`} · {metrics.length} metrics</p>}
+            <div className="flex flex-wrap gap-2">{metrics.map((m) => (
             <span
               key={m.key}
               className="flex items-center gap-2 rounded-md border border-dash-border bg-dash-card nre-dash-surface"
@@ -113,8 +112,9 @@ export function WizardMetricsStep() {
                 ✕
               </button>
             </span>
-          ))}
+          ))}</div></div>)}
         </div>
+        {pages.length > 1 && <p className="mt-2 text-xs text-dash-ink-secondary">Extra cards resize automatically. No empty slots or repeated metrics.</p>}
 
         {perCampaignMinWarning && (
           <p className="nre-wizard-confidence--warn mt-2 text-[14px]">{perCampaignMinWarning}</p>
@@ -123,6 +123,7 @@ export function WizardMetricsStep() {
         <details className="mt-4 border-t border-dash-border pt-3"><summary className="cursor-pointer text-[13px] font-medium text-dash-accent">Add more metrics · optional</summary><div className="mt-3">
         <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.addFromCsv}</p>
         <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{copy.addFromCsvHint}</p>
+        {selectedForCampaign.length >= MAX_TOTAL_METRICS && <p className="mt-2 text-xs text-dash-ink-secondary">{MAX_TOTAL_METRICS}-metric limit reached. Remove a metric to add another.</p>}
         {availableForCampaign.length === 0 ? (
           <p className="mt-1.5 text-[14px] text-dash-ink-secondary">No extra columns in this export.</p>
         ) : (
@@ -135,7 +136,8 @@ export function WizardMetricsStep() {
                 <button
                   key={candidate.key}
                   type="button"
-                  onClick={() => addCampaignMetric(normalized, candidate, name)}
+                  disabled={selectedForCampaign.length >= MAX_TOTAL_METRICS}
+                  onClick={() => addCampaignMetric(normalized, candidate)}
                   className="rounded-md border border-[#1e3a5f] bg-transparent text-[14px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
                   style={{ padding: "8px 12px" }}
                 >
@@ -157,6 +159,16 @@ export function WizardMetricsStep() {
         </div></details>
       </div>
     );
+  }
+
+  if (w.reportType === "COMPARISON" || w.reportType === "DAY_BREAKDOWN") {
+    return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
+      <h3 className="text-base font-semibold text-dash-ink">Table metrics are included</h3>
+      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Both periods use the same fixed comparison metrics so they can be compared fairly." : "Each daily row uses the same fixed metrics so you can compare days."} Additional metric slides are available on performance reports, rather than this table format.</p>
+      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Spend, reach, results and cost per result for each period, plus a comparison summary." : "Spend, reach, impressions, CTR, CPC and objective-specific results and costs."}</p>
+      <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-dash-ink">{copy.continueToGenerate}</button></div>
+      <WizardStickyFooter stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))} onBack={() => setStep(2)} backLabel={copy.back} primaryLabel={copy.continueToGenerate} onPrimary={handleMetricsContinue} />
+    </div>;
   }
 
   return (
@@ -232,51 +244,7 @@ export function WizardMetricsStep() {
         )}
       />
 
-      {overflowDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-dash-border bg-dash-card p-5">
-            {overflowDialog.mode === "blocked_max" && (
-              <>
-                <p className="text-[15px] font-semibold text-dash-ink">Maximum {MAX_TOTAL_METRICS} metrics (2 slides)</p>
-                <p className="mt-2 text-[14px] text-dash-ink-secondary">
-                  Remove a chip before adding {overflowDialog.metric.label}.
-                </p>
-              </>
-            )}
-            {overflowDialog.mode === "confirm_second_slide" && (
-              <>
-                <p className="text-[15px] font-semibold text-dash-ink">Add a second slide?</p>
-                <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
-                  <span className="font-medium text-dash-ink">{overflowDialog.metric.label}</span> will go on slide 2.
-                  Each campaign slide fits {MAX_METRICS_PER_SLIDE} metrics.
-                </p>
-                <p className="mt-2 text-[13px] text-dash-ink-muted">
-                  Remove a chip above to stay on one slide instead.
-                </p>
-              </>
-            )}
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {overflowDialog.mode === "confirm_second_slide" && (
-                <button
-                  type="button"
-                  onClick={confirmOpenSecondSlide}
-                  className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
-                >
-                  Add to slide 2
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setOverflowDialog(null)}
-                className="rounded-md border border-dash-border px-4 py-2 text-[14px] text-dash-ink-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
