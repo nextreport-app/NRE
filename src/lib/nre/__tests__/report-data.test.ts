@@ -3962,7 +3962,7 @@ describe("buildReportData — Part 3/4: wizard selectedMetrics override + multi-
     const slide = data.campaignSlides[0];
     expect(slide.dynamicMetrics).toHaveLength(8);
     expect(slide.additionalMetricsSlide).toBeDefined();
-    expect(slide.additionalMetricsSlide!.map((m) => m?.key)).toEqual(["frequency", "results", "cost_per_result"]);
+    expect(slide.additionalMetricsSlide!.map((m) => m?.key)).toEqual(["frequency"]);
   });
 
   it("reuses the already-computed baseline value for a core key (spend) rather than re-deriving it from raw rows", () => {

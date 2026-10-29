@@ -1,4 +1,6 @@
 "use client";
+
+import { paginateExtraMetrics, allSlideMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "@/lib/nre/metric-pagination";
 import { historicalPeriods, selectedSinglePeriod } from "@/lib/nre/report-period-selection";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -363,12 +365,7 @@ export function useReportUploadWizard({
   const metricsFetchedKeyRef = useRef<string | null>(null);
   const metricsFetchInFlightRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
-  const [overflowDialog, setOverflowDialog] = useState<{
-    campaignName: string;
-    normalized: string;
-    metric: SelectedMetric;
-    mode: "confirm_second_slide" | "blocked_max";
-  } | null>(null);
+
 
   // Step 5 — Dates (populated by /analyze)
   const [dateBounds, setDateBounds] = useState<{ minIso: string; maxIso: string } | null>(
@@ -1906,27 +1903,23 @@ export function useReportUploadWizard({
     setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, current.filter((m) => m.key !== key)));
   }
 
-  /** Adds one metric pill. 8 → 9 confirms a continuation slide; 9–16 add freely. */
-  function addCampaignMetric(normalizedName: string, metric: SelectedMetric, campaignName: string) {
+  /** Extra pages are automatic; never interrupt adding a CSV-backed metric. */
+  function addCampaignMetric(normalizedName: string, metric: SelectedMetric) {
     const current = perCampaignMetrics.get(normalizedName) ?? [];
-    const decision = evaluateAddMetric(current.length);
-    if (decision === "allow") {
-      setPerCampaignMinWarning(null);
-      setPerCampaignMetrics((prev) => new Map(prev).set(normalizedName, [...current, metric]));
+    if (current.some(item => item.key === metric.key)) return;
+    if (evaluateAddMetric(current.length) === "blocked_max") {
+      setPerCampaignMinWarning(`Choose up to ${MAX_TOTAL_METRICS} metrics per campaign. Remove one to add another.`);
       return;
     }
-    setOverflowDialog({ campaignName, normalized: normalizedName, metric, mode: decision });
-  }
-
-  function confirmOpenSecondSlide() {
-    if (!overflowDialog) return;
-    const current = perCampaignMetrics.get(overflowDialog.normalized) ?? [];
-    setPerCampaignMetrics((prev) => new Map(prev).set(overflowDialog.normalized, [...current, overflowDialog.metric]));
     setPerCampaignMinWarning(null);
-    setOverflowDialog(null);
+    setPerCampaignMetrics(prev => {
+      const latest = prev.get(normalizedName) ?? [];
+      if (latest.some(item => item.key === metric.key) || latest.length >= MAX_TOTAL_METRICS) return prev;
+      return new Map(prev).set(normalizedName, [...latest, metric]);
+    });
   }
 
-  /** Sent to the preview/generate APIs as the account-wide "wizard is driving metric selection at all" signal and the padding candidate pool's own baseline (report-data.ts's redistributeCardSlots) — the union of every selected campaign's own current metrics, deduped by key. Each campaign's OWN exact list is what actually reaches its slide, via currentCampaignMetricOverridesPayload below; this union only ever matters as a fallback padding source. */
+  /** Sent to the preview/generate APIs as the account-wide "wizard is driving metric selection at all" signal and the padding candidate pool's own baseline (report-data.ts's redistributeCardSlots) — the union of campaign metric definitions, deduped by key. Each campaign's exact ordered list reaches its slides through currentCampaignMetricOverridesPayload. */
   function currentSelectedMetricsPayload(): SelectedMetric[] | undefined {
     if (perCampaignMetrics.size === 0) return undefined;
     const union = new Map<string, SelectedMetric>();
@@ -2831,11 +2824,18 @@ export function useReportUploadWizard({
   function estimatedSlideCount(): number {
     if (previewKind === "comparison") return 1 + summaryCampaignNames().length + 1;
     if (previewKind === "historical" && historicalData) {
-      const continuation = historicalData.slides.filter((s) => s.additionalMetricsSlide).length;
-      return 1 + historicalData.slides.length + continuation;
+      if (historicalData.isPaused) return 2;
+      const continuation = historicalData.slides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
+      return 1 + historicalData.slides.length + continuation + (historicalData.comparisonRows.length ? 1 : 0);
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
-      return 1 + dayBreakdownData.tableSlides.length;
+      return dayBreakdownData.isPaused ? 2 : 1 + dayBreakdownData.tableSlides.length;
+    }
+    if (data) {
+      const slides = [...data.campaignSlides, ...data.adSetSlides];
+      const continuation = slides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
+      const guideCount = new Set(slides.flatMap(slide => allSlideMetrics(slide).filter(metric => metric.key !== "spend").map(metric => metric.key))).size;
+      return 1 + (data.isPaused ? 1 : slides.length + continuation) + (data.chart ? 1 : 0) + 1 + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
     }
     return 1 + summaryCampaignNames().length + selectedAdSets.size + 1 + 1 + 1;
   }
@@ -2948,11 +2948,8 @@ export function useReportUploadWizard({
     perCampaignMetrics,
     perCampaignAvailablePool,
     perCampaignMinWarning,
-    overflowDialog,
-    setOverflowDialog,
     removeCampaignMetric,
     addCampaignMetric,
-    confirmOpenSecondSlide,
     campaignAvailableMetrics,
     objectiveAccent,
     handleMetricsContinue,

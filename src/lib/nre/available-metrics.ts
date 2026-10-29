@@ -1,3 +1,5 @@
+import { MAX_METRICS_PER_SLIDE, MAX_TOTAL_METRICS, paginateExtraMetrics } from "./metric-pagination";
+export { MAX_METRICS_PER_SLIDE, MAX_TOTAL_METRICS } from "./metric-pagination";
 /**
  * Part 2/3a — the CSV-driven metric pool behind the (optional) Metric
  * Review wizard step: every classifiable column in the uploaded CSV,
@@ -164,34 +166,16 @@ export function filterAddableMetrics<T extends { key: string; label: string }>(p
   });
 }
 
-/** Engine split — 1-8 selected metrics fit the template's 8 card slots on one slide; 9-16 spill onto a continuation slide. Users never have to think about 8; the wizard just places extras on the next slide. */
-export const MAX_METRICS_PER_SLIDE = 8;
-/** Hard ceiling for this template — two campaign slides × 8 cards. A 17th chip is rejected until a third continuation slide exists. */
-export const MAX_TOTAL_METRICS = 16;
-
-export type AddMetricDecision = "allow" | "confirm_second_slide" | "blocked_max";
-
-/**
- * What should happen when the user clicks + on an Add-from-CSV chip.
- *
- * The 9th chip is never blocked because the CSV has only 1–3 extras left.
- * 8 → 9 asks once (continuation slide), then 10–16 add freely. A sparse
- * continuation (1–3 extras) is padded with that campaign's result + cost
- * pair from slide 1 so clients never see a one-card slide.
- */
+/** Adding an extra metric is automatic; a visible layout summary replaces modal confirmation. */
+export type AddMetricDecision = "allow" | "blocked_max";
 export function evaluateAddMetric(selectedCount: number, _addableRemaining = 0): AddMetricDecision {
-  if (selectedCount >= MAX_TOTAL_METRICS) return "blocked_max";
-  if (selectedCount < MAX_METRICS_PER_SLIDE) return "allow";
-  if (selectedCount === MAX_METRICS_PER_SLIDE) return "confirm_second_slide";
-  return "allow";
+  void _addableRemaining; // Retained for older callers; sparse extras never need confirmation.
+  return selectedCount >= MAX_TOTAL_METRICS ? "blocked_max" : "allow";
 }
 
 export function additionalMetricsHeading(name: string): string {
   return `${name} — Additional Metrics`;
 }
-
-/** Pad the continuation when the user added this many extras or fewer (1–3). Four extras already fill the slide honestly. */
-export const SPARSE_CONTINUATION_EXTRAS = 3;
 
 /**
  * The campaign's own result + cost-per-result chips (leads / cost per lead,
@@ -233,41 +217,22 @@ export function findPrimaryResultCostPair(
   return found.slice(0, 2);
 }
 
-/**
- * User extras first (the chips they added), then the slide-1 result/cost
- * pair when extras are sparse — so 1 extra becomes at least 3 cards.
- * Never invents CSV columns the user did not pick; only repeats chips
- * already on slide 1. 4+ extras are left as-is.
- */
+/** @deprecated Continuations no longer repeat selected result/cost cards as filler. */
 export function padSparseContinuationSlide(
-  slide1: SelectedMetric[],
-  extras: SelectedMetric[],
-  resultLabel?: string,
-  costLabel?: string,
+  _slide1: SelectedMetric[], extras: SelectedMetric[], _resultLabel?: string, _costLabel?: string,
 ): SelectedMetric[] {
-  if (extras.length === 0 || extras.length > SPARSE_CONTINUATION_EXTRAS) return extras;
-  const extraKeys = new Set(extras.map((item) => item.key));
-  const fillers = findPrimaryResultCostPair(slide1, resultLabel, costLabel).filter((item) => !extraKeys.has(item.key));
-  return [...extras, ...fillers].slice(0, MAX_METRICS_PER_SLIDE);
+  void _slide1; void _resultLabel; void _costLabel;
+  return extras;
 }
 
-/**
- * Splits a wizard selection into one slide (≤8) or two (9–16). Slide 1 is
- * the first 8 in the user's order; slide 2 is the extras, padded with the
- * campaign's result + cost pair when those extras are 1–3. Selections
- * beyond MAX_TOTAL_METRICS are dropped.
- */
+/** Preserve the first eight; balance all extras without padding or silent truncation. */
 export function splitMetricsForSlides(
-  selected: SelectedMetric[],
-  _available: AvailableMetric[] = [],
-  resultLabel?: string,
-  costLabel?: string,
+  selected: SelectedMetric[], _available: AvailableMetric[] = [], _resultLabel?: string, _costLabel?: string,
 ): SelectedMetric[][] {
-  const capped = selected.slice(0, MAX_TOTAL_METRICS);
-  if (capped.length <= MAX_METRICS_PER_SLIDE) return [capped];
-  const slide1 = capped.slice(0, MAX_METRICS_PER_SLIDE);
-  const extras = capped.slice(MAX_METRICS_PER_SLIDE);
-  return [slide1, padSparseContinuationSlide(slide1, extras, resultLabel, costLabel)];
+  void _available; void _resultLabel; void _costLabel;
+  const unique = selected.filter((metric, index) => selected.findIndex(other => other.key === metric.key) === index);
+  if (unique.length > MAX_TOTAL_METRICS) throw new Error(`Choose up to ${MAX_TOTAL_METRICS} metrics per campaign.`);
+  return [unique.slice(0, MAX_METRICS_PER_SLIDE), ...paginateExtraMetrics(unique.slice(MAX_METRICS_PER_SLIDE))];
 }
 
 function byKey(platform: MetricPlatform, key: string, labelOverride?: string, formatOverride?: MetricFormat): SelectedMetric | null {

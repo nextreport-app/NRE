@@ -1,3 +1,5 @@
+import { METRIC_GUIDE_ENTRIES_PER_SLIDE } from "../nre/metric-pagination";
+import { additionalMetricPages, buildAdditionalMetricsSlideXml } from "./additional-metrics-slide";
 /**
  * Top-level PPTX render orchestrator — builds the final ordered slide list
  * (cover, campaign summaries, ad-set slides, MTD chart, period/MTD table,
@@ -221,23 +223,12 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         ),
         rels: template.campaign.rels,
       });
-      // Part 4 — a second "[Name] — Additional Metrics" slide, present only
-      // when the wizard's selectedMetrics exceeded 8 for this campaign.
-      if (slide.additionalMetricsSlide) {
-        slides.push({
-          xml: buildCampaignOrAdSetSlideXml(
-            template.campaign,
-            slide,
-            ai,
-            data.reportType,
-            data.platform,
-            true,
-            false,
-            isLightTemplate,
-          ),
-          rels: template.campaign.rels,
-        });
-      }
+      // Dedicated adaptive pages preserve every extra selected metric.
+      const extraPages = additionalMetricPages(slide);
+      extraPages.forEach((metrics, index) => slides.push({
+        xml: buildAdditionalMetricsSlideXml(slide, metrics, index, extraPages.length, template.background, isLightTemplate),
+        rels: buildChartSlideRels(template.background.mediaTarget),
+      }));
     }
     for (const slide of data.adSetSlides) {
       if (!adSetVisible(slide.campaignName, slide.adSetName)) continue;
@@ -255,21 +246,11 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         ),
         rels: template.campaign.rels,
       });
-      if (slide.additionalMetricsSlide) {
-        slides.push({
-          xml: buildCampaignOrAdSetSlideXml(
-            template.campaign,
-            slide,
-            ai,
-            data.reportType,
-            data.platform,
-            true,
-            false,
-            isLightTemplate,
-          ),
-          rels: template.campaign.rels,
-        });
-      }
+      const extraPages = additionalMetricPages(slide);
+      extraPages.forEach((metrics, index) => slides.push({
+        xml: buildAdditionalMetricsSlideXml(slide, metrics, index, extraPages.length, template.background, isLightTemplate),
+        rels: buildChartSlideRels(template.background.mediaTarget),
+      }));
     }
   }
 
@@ -334,10 +315,13 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   });
   }
   if (showMetricGuide) {
-  slides.push({
-    xml: buildLegendSlideXml(template.legend.xml, collectLegendEntries(data), isLightTemplate),
-    rels: template.legend.rels,
-  });
+    const entries = collectLegendEntries(data);
+    for (let offset = 0; offset < Math.max(1, entries.length); offset += METRIC_GUIDE_ENTRIES_PER_SLIDE) {
+      slides.push({
+        xml: buildLegendSlideXml(template.legend.xml, entries.slice(offset, offset + METRIC_GUIDE_ENTRIES_PER_SLIDE), isLightTemplate),
+        rels: template.legend.rels,
+      });
+    }
   }
 
   return assemblePptx(template, slides);
@@ -478,21 +462,11 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
         ),
         rels: template.campaign.rels,
       });
-      if (slide.additionalMetricsSlide) {
-        slides.push({
-          xml: buildCampaignOrAdSetSlideXml(
-            template.campaign,
-            slide,
-            ai,
-            "MONTHLY",
-            data.platform,
-            true,
-            false,
-            isLightTemplate,
-          ),
-          rels: template.campaign.rels,
-        });
-      }
+      const extraPages = additionalMetricPages(slide);
+      extraPages.forEach((metrics, index) => slides.push({
+        xml: buildAdditionalMetricsSlideXml(slide, metrics, index, extraPages.length, template.background, isLightTemplate),
+        rels: buildChartSlideRels(template.background.mediaTarget),
+      }));
     }
 
     if (data.comparisonRows.length > 0) {

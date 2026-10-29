@@ -216,7 +216,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     if (metric.key === "ctr" && platform === "meta") {
       const clicksHeader = resolveActualHeader("clicks_all", "meta", headerMap);
       const impressionsHeader = resolveActualHeader("impressions", "meta", headerMap);
-      const rateHeader = resolveActualHeader("ctr", "meta", headerMap) ?? headerMap.get(metric.csvName);
+      const rateHeader = resolveActualHeader("ctr", "meta", headerMap) ?? headerMap.get(metric.csvName.trim().toLowerCase());
       result[metric.key] = rateHeader || clicksHeader
         ? aggregateSourceRatio(rows, clicksHeader, impressionsHeader, rateHeader, 100)
         : impressionsHeader ? combinedCtrCpcFromRawRows(rows, headerMap).ctr : NaN;
@@ -226,7 +226,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       // Prefer components; otherwise use only matching, weighted source observations.
       const numeratorHeader = resolveActualHeader(numeratorKey, platform, headerMap);
       const denominatorHeader = resolveActualHeader(denominatorKey, platform, headerMap);
-      const rateHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+      const rateHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName.trim().toLowerCase());
       result[metric.key] = aggregateSourceRatio(rows, numeratorHeader, denominatorHeader, rateHeader, metric.ratioScale ?? definition?.ratioScale ?? 1, denominatorKey !== "reach");
       continue;
     }
@@ -238,7 +238,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
         const impressions = rows.reduce((sum, row) => sum + parseCellNum(row._raw[impressionsHeader]), 0);
         result[metric.key] = reach > 0 ? impressions / reach : NaN;
       } else {
-        const header = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+        const header = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName.trim().toLowerCase());
         result[metric.key] = rows.length === 1 && header ? parseCellNum(rows[0]._raw[header]) : NaN;
       }
       continue;
@@ -250,7 +250,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
     }
 
     if (metric.format === "currency" && perUnitOf) {
-      const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+      const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName.trim().toLowerCase());
       if (perUnitOf === "__avg__") {
         if (!actualHeader) continue;
         const rawValues = rows.map((r) => parseCellNum(r._raw?.[actualHeader]));
@@ -270,7 +270,7 @@ export function aggregateDynamicMetrics<T extends RawMetricRow>(
       continue;
     }
 
-    const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName);
+    const actualHeader = resolveActualHeader(metric.key, platform, headerMap) ?? headerMap.get(metric.csvName.trim().toLowerCase());
     if (!actualHeader) continue;
 
     if (metric.format === "text") {

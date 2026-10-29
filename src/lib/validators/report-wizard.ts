@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_TOTAL_METRICS, MAX_METRIC_UNION } from "@/lib/nre/metric-pagination";
 
 export const DATE_SELECTION_MODES = ["last7", "prev7", "last14", "custom"] as const;
 
@@ -116,9 +117,8 @@ export const selectedMetricSchema = z.object({
   perUnitScale: z.number().optional(),
 });
 
-// Part 4's own cap (available-metrics.ts's MAX_TOTAL_METRICS) — validated
-// again here at the request boundary rather than trusted from the client.
-export const selectedMetricsSchema = z.array(selectedMetricSchema).max(16);
+// This is an account-wide union; individual campaign lists have their own limit.
+export const selectedMetricsSchema = z.array(selectedMetricSchema).max(MAX_METRIC_UNION);
 
 // Objective Confirmation wizard step's output — user-reviewed/corrected
 // per-campaign objectives, keyed by normalized campaign name (matches
@@ -139,7 +139,7 @@ export const campaignObjectivesSchema = z.record(z.string(), objectiveInfoSchema
 // campaignMetricOverrides doc comment for the hard-replacement semantics).
 // A campaign absent from this object keeps the automatic per-objective
 // filtering, unchanged.
-export const campaignMetricOverridesSchema = z.record(z.string(), z.array(z.string().trim().min(1)));
+export const campaignMetricOverridesSchema = z.record(z.string(), z.array(z.string().trim().min(1)).max(MAX_TOTAL_METRICS));
 
 // Objective Confirmation memory cache (Part 3) — every campaign shown on
 // the Objective Confirmation step (cached pre-fills, untouched engine

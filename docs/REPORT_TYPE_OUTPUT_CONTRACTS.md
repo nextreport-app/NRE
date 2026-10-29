@@ -20,7 +20,7 @@ Current month ends yesterday in the client's timezone; month-by-month includes c
 - Chart headings use report type as well as window length. A full calendar month must not inherit a rolling-30-day label.
 - Selected-day slides no longer say Yesterday. Their totals heading and date column no longer say Monthly/Month; the daily table date column also says Date.
 - Empty monthly/day reports no longer promise unrelated previous-month or rolling-chart context.
-- Month-total cards preserve metrics 9–16 on a continuation slide instead of silently dropping them.
+- Month-total cards preserve all metrics beyond eight across adaptive additional slides instead of silently dropping them.
 
 ## Verification and limits
 

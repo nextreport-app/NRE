@@ -1,3 +1,4 @@
+import { allSlideMetrics } from "./metric-pagination";
 /**
  * Builds the JSON payload stored in Report.summaryJson for a WEEKLY/MONTHLY
  * report (never called for COMPARISON reports — see reports/route.ts, whose
@@ -263,7 +264,7 @@ export function buildShareReportData(
       // uploaded CSV genuinely has no data for); the share page's metric
       // grid only ever renders real, CSV-backed metrics, so nulls are
       // dropped here rather than threaded through as empty cards.
-      metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
+      metrics: allSlideMetrics(slide),
       aiSummary: ai.summary,
       aiInsights: ai.insights,
     };
@@ -278,7 +279,7 @@ export function buildShareReportData(
       dateRange: slide.ai.dateRange,
       adFrequency: adFrequencyLabel(slide.rowFreq),
       statusIndicator: slide.statusIndicator,
-      metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
+      metrics: allSlideMetrics(slide),
       aiSummary: ai.summary,
       aiInsights: ai.insights,
     };
@@ -404,7 +405,7 @@ export function buildHistoricalShareReportData(
       dateRange: slide.dateRangeLine.split("\n")[0]?.trim() ?? slide.dateRangeLine,
       adFrequency: adFrequencyLabel(slide.avgFreq),
       statusIndicator: slide.statusIndicator,
-      metrics: slide.dynamicMetrics.filter((m): m is DynamicMetricValue => m !== null),
+      metrics: allSlideMetrics(slide),
       slideReportTypeLabel: historicalSlideReportTypeLabel(slide.performanceHeader),
       aiSummary: ai.summary,
       aiInsights: ai.insights,

@@ -6,7 +6,7 @@
 import type { ReportData } from "./report-data";
 import type { ShareReportData, ShareVisibility } from "./share-report";
 import { defaultShareVisibility } from "./share-report";
-import { applyShareEditsToReportData } from "./apply-share-edits";
+import { applyShareEditsToReportData, patchMetricSlots } from "./apply-share-edits";
 import type { AiCopy } from "../pptx/fill-tags";
 import type { HistoricalReportData } from "./historical-report-data";
 import { historicalSlideShareKey } from "./share-report";
@@ -61,9 +61,17 @@ export async function regeneratePptxFromShare(
 
   if (isHistoricalArchive(archive)) {
     const visibility: ShareVisibility = share.visibility ?? defaultShareVisibility(share);
+    const sharedMetrics = new Map(share.campaigns.map(campaign => [campaign.campaignName, campaign.metrics]));
     const slides = archive.historicalData.slides.filter(
       (slide) => visibility.campaigns[historicalSlideShareKey(slide)] !== false,
-    );
+    ).map(slide => {
+      const metrics = sharedMetrics.get(historicalSlideShareKey(slide));
+      return metrics ? {
+        ...slide,
+        dynamicMetrics: patchMetricSlots(slide.dynamicMetrics, metrics) ?? slide.dynamicMetrics,
+        additionalMetricsSlide: patchMetricSlots(slide.additionalMetricsSlide, metrics),
+      } : slide;
+    });
 
     return renderHistoricalPptx({
       templateBuffer,
