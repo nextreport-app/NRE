@@ -1,3 +1,4 @@
+import { safeDiagnosticProfile } from "@/lib/quality-agents/recovery-diagnostics";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { qualityAgentAuthorized } from "@/lib/quality-agents/incident-policy";
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
     where: { lastSeenAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 100,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    select: { id: true, kind: true, platform: true, reportType: true, signalCodes: true, occurrences: true, revision: true, createdAt: true, lastSeenAt: true },
+    select: { state: true, issueNumber: true, fixPrNumber: true, diagnosticsJson: true, id: true, kind: true, platform: true, reportType: true, signalCodes: true, occurrences: true, revision: true, createdAt: true, lastSeenAt: true },
   });
-  return NextResponse.json({ incidents, nextCursor: incidents.length === 100 ? incidents[99].id : null }, { headers });
+  return NextResponse.json({ incidents: incidents.map(({diagnosticsJson,...incident})=>({...incident,diagnosticProfile:safeDiagnosticProfile(diagnosticsJson)})), nextCursor: incidents.length === 100 ? incidents[99].id : null }, { headers });
 }

@@ -119,7 +119,6 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
           <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
-          {verification.qualityIncidentId && <p className="nre-wizard-callout-warn__body text-[12px]">Recorded for review. Reference: {verification.qualityIncidentId}. You do not need to submit a duplicate ticket for these checks.</p>}
           <DateCoverageNotice warnings={coverageWarnings} />
 
           {[...byScope.entries()].map(([scope, scopeChecks]) => (

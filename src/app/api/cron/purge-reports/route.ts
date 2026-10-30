@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   await prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await prisma.usageBucket.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await prisma.reportGenerationEvent.deleteMany({ where: { occurredAt: { lt: new Date(Date.now()-90*86400000) } } });
+  await prisma.reportQualityIncident.updateMany({ where: { lastSeenAt: { lt: new Date(Date.now()-7*86400000) }, diagnosticsJson: { not: null } }, data: { diagnosticsJson: null } });
   await prisma.reportQualityIncident.deleteMany({ where: { lastSeenAt: { lt: new Date(Date.now()-90*86400000) } } });
   // Keep deduplication tombstones, but remove accepted email bodies after 30 days.
   await prisma.emailDelivery.updateMany({ where: { status: "ACCEPTED", payloadJson: { not: "{}" }, acceptedAt: { lt: new Date(Date.now()-30*86400000) } }, data: { payloadJson: "{}" } });

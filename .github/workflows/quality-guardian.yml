@@ -40,6 +40,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,8 +50,17 @@ jobs:
           node-version: '24'
       - name: Create redacted, deduplicated investigation issues
         env:
+          AUTO_INVESTIGATE: ${{ vars.NEXTREPORT_REPAIR_ENABLED == 'true' }}
           GH_TOKEN: ${{ github.token }}
           QUALITY_AGENT_READ_TOKEN: ${{ secrets.QUALITY_AGENT_READ_TOKEN }}
           NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
           GUARDIAN_CHECKS_FAILED: ${{ needs.checks.result == 'failure' }}
         run: node scripts/agents/guardian-intake.mjs
+
+      - name: Confirm production readiness for proposed fixes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALITY_AGENT_READ_TOKEN: ${{ secrets.QUALITY_AGENT_READ_TOKEN }}
+          QUALITY_AGENT_WORKER_TOKEN: ${{ secrets.QUALITY_AGENT_WORKER_TOKEN }}
+          NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
+        run: node scripts/agents/recovery-deployment-sync.mjs

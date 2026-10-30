@@ -1,4 +1,4 @@
-import { issueForIncident, GUARDIAN_LABEL } from './policy.mjs';
+import { issueForIncident, GUARDIAN_LABEL, eligibleAutomaticInvestigation } from './policy.mjs';
 const repo = process.env.GITHUB_REPOSITORY;
 const token = process.env.GH_TOKEN;
 if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || !token) throw new Error('Repository-scoped GitHub credentials required');
@@ -40,10 +40,19 @@ for (let page = 0; page < 10 && created < 10; page++) {
  const {incidents,nextCursor}=await response.json();
  if(!Array.isArray(incidents)||incidents.length>100)throw new Error('Invalid feed');
  for(const incident of incidents){
+  if(incident.state==='VERIFIED')continue;
   const issue=issueForIncident(incident);
-  if(existing.some(i=>i.body?.includes(`<!-- nextreport-incident:${incident.id} -->`)))continue;
+  const previous=existing.find(i=>i.body?.includes(`<!-- nextreport-incident:${incident.id} -->`));
+  const auto=process.env.AUTO_INVESTIGATE==='true'&&eligibleAutomaticInvestigation(incident);
+  if(previous){
+   if(auto&&previous.state==='open'&&!previous.labels?.some(l=>['agent:repair-ready','agent:repair-running','agent:needs-review','agent:needs-attention'].includes(typeof l==='string'?l:l.name))) {
+    await github(`issues/${previous.number}`,'PATCH',{body:issue.body});
+    await github(`issues/${previous.number}/labels`,'POST',{labels:['agent:repair-ready']});
+   }
+   continue;
+  }
   if(created>=10)break;
-  await github('issues','POST',{...issue,labels:[GUARDIAN_LABEL,'agent:needs-reproduction']});created++;
+  await github('issues','POST',{...issue,labels:[GUARDIAN_LABEL,auto?'agent:repair-ready':'agent:needs-reproduction']});created++;
  }
  if(!nextCursor)break;
  if(!/^c[a-z0-9]{15,40}$/.test(nextCursor)||nextCursor===cursor)throw new Error('Invalid feed cursor');

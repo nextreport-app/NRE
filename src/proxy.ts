@@ -40,7 +40,7 @@ export default auth((req) => {
 
   // This exact service endpoint uses its own read-only bearer credential in the
   // route handler. Let it return JSON 401/503 instead of a browser login redirect.
-  if (pathname === "/api/internal/quality-incidents") return NextResponse.next();
+  if (["/api/internal/quality-incidents", "/api/internal/quality-recovery"].includes(pathname)) return NextResponse.next();
 
   // Vercel cron + internal report worker — Bearer CRON_SECRET, not a session cookie.
   // Must pass through before the login redirect or workers receive HTML and never run.

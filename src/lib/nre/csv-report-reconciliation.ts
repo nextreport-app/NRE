@@ -435,27 +435,29 @@ function appendCtrCpcChecks(params: {
   const reportCpc = parseCellNum(reportCpcDisplay);
   const suffix = campaignSuffix ? ` (${campaignSuffix})` : "";
 
-  if (csvCtr > 0 && reportCtr > 0) {
+  if (csvCtr > 0) {
+    const matches = /\d/.test(reportCtrDisplay) && closeEnough(reportCtr, csvCtr, CTR_TOLERANCE);
     checks.push({
       metric: `CTR (all)${suffix}`,
       scope,
       reportDisplay: reportCtrDisplay,
       csvDisplay: fmtPercent(csvCtr),
-      status: closeEnough(reportCtr, csvCtr, CTR_TOLERANCE) ? "ok" : "mismatch",
-      note: closeEnough(reportCtr, csvCtr, CTR_TOLERANCE)
+      status: matches ? "ok" : "mismatch",
+      note: matches
         ? undefined
         : "CTR (all) is blended from your CSV (total all-clicks ÷ impressions), not a simple average of daily rows.",
     });
   }
 
-  if (csvCpc > 0 && reportCpc > 0) {
+  if (csvCpc > 0) {
+    const matches = /\d/.test(reportCpcDisplay) && closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE);
     checks.push({
       metric: `CPC (all)${suffix}`,
       scope,
       reportDisplay: reportCpcDisplay,
       csvDisplay: fmtCurrency2dp(csvCpc, currencySymbol),
-      status: closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE) ? "ok" : "mismatch",
-      note: closeEnough(reportCpc, csvCpc, CPC_ALL_TOLERANCE)
+      status: matches ? "ok" : "mismatch",
+      note: matches
         ? undefined
         : "CPC (all) is total spend ÷ all-clicks for this window — not cost per link click.",
     });

@@ -400,6 +400,7 @@ model Client {
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports Report[]
+  qualityIncidents ReportQualityIncident[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -636,8 +637,29 @@ model ReportQualityIncident {
   reportType String
   signalCodes String[]
   occurrences Int @default(1)
+  clientId String?
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contextHash String?
+  diagnosticsJson String? @db.Text
+  state String @default("RECORDED")
+  stateUpdatedAt DateTime @default(now())
+  issueNumber Int?
+  fixPrNumber Int?
+  deployedRevision String?
+  resolvedAt DateTime?
+  repairAttempts ReportRepairAttempt[]
   revision String?
   createdAt DateTime @default(now())
   lastSeenAt DateTime @default(now())
   @@index([lastSeenAt])
+  @@index([userId, clientId, contextHash])
+}
+
+// One reservation per workflow run. The daily global quota lives in UsageBucket.
+model ReportRepairAttempt {
+  runKey String @id
+  incidentId String?
+  incident ReportQualityIncident? @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  issueNumber Int
+  createdAt DateTime @default(now())
 }

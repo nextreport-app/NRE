@@ -1,4 +1,5 @@
 "use client";
+import { ReportRecoveryPanel } from "../ui/report-recovery-panel";
 import { ReportPeriodControls } from "../ui/report-period-controls";
 
 import { useEffect, useState } from "react";
@@ -165,6 +166,7 @@ export function WizardGenerateStep() {
     generateStatus === "idle" &&
     csvVerification?.status === "mismatch";
   const generateCtaDisabled =
+    csvVerification?.status === "mismatch" ||
     previewStatus === "invalid" ||
     (previewStatus !== "error" && !generateStepPreviewReady) ||
     reportBrandingBlocksGenerate ||
@@ -185,7 +187,7 @@ export function WizardGenerateStep() {
                   ? "Choose dates above"
                   : "Preparing report preview…"
             : csvMismatchActive
-              ? copy.generateForInternalReview
+              ? "Resolve discrepancy first"
               : copy.generateReport;
   const showStandardCoverBudget =
     reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
@@ -576,6 +578,7 @@ export function WizardGenerateStep() {
             ) : null}
 
             <div className="space-y-4">
+              {csvVerification?.qualityIncidentId && (generateStatus === "idle" || generateStatus === "error") && <ReportRecoveryPanel key={csvVerification.qualityIncidentId} clientId={clientId} incidentId={csvVerification.qualityIncidentId} hasMismatch={csvVerification.status === "mismatch"} onRecheck={w.recheckRecovery} />}
               {(previewKind === "normal" ||
                 previewKind === "comparison" ||
                 previewKind === "historical" ||

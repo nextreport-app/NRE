@@ -1,5 +1,7 @@
 # Quality Guardian and Report Repair Agent
 
+> Updated customer recovery, automatic intake, worker credentials and daily allowance: [Customer report recovery](CUSTOMER_REPORT_RECOVERY.md). The original rollout below describes the initial manual approval flow.
+
 ## What is implemented
 
 Two separate workflows support reporting reliability. They do not run a growth campaign or replace customer support staff.
@@ -26,7 +28,7 @@ Passing a gate is evidence for the tested case, not a guarantee for all possible
 
 ## Privacy and permissions
 
-- The private table contains an opaque ID, owner relationship, a one-way deduplication fingerprint, controlled signal codes, platform/report type, timestamps, revision and count. No CSV rows, numeric values, campaign names, source URLs, attachments or customer messages are copied.
+- The private table contains an opaque ID, owner relationship, a one-way deduplication fingerprint, controlled signal codes, platform/report type, timestamps, revision and count. No raw CSV rows, campaign names, source URLs, attachments or customer messages are copied. The recovery extension retains bounded comparison values privately for seven days after last detection; those values are never exported to GitHub or the model.
 - Ticket text stays in the existing private SupportTicket record. A ticket-linked capture uses its ID only as hashed deduplication input, not as outbound issue text.
 - The feed selects an explicit allowlist, omitting owner IDs and fingerprints. It requires an independent >=32-character bearer token, is read-only, no-store, and paginated at 100 rows. It exposes only incidents seen within seven days. The existing daily retention cron purges records not seen in 90 days; deleting the owner cascades immediately.
 - GitHub intake exports controlled categories and the opaque incident reference only. An exported issue is not automatically removed when a user deletes their account; it contains no account identity or source data.

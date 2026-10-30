@@ -1,3 +1,4 @@
+import { guardReportGeneration } from "@/lib/quality-agents/generation-guard";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { createReportWithinCapacity } from "@/lib/report-capacity";
 import { NextResponse } from "next/server";
@@ -235,6 +236,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       csvHeaders: mtdParsed.headers,
     });
 
+    const recoveryGuard = await guardReportGeneration({client,userId:session.user.id,parsed:mtdParsed,formData,sourceKey:`${id}:${fileHash ?? uploadSessionId ?? "preview"}`,candidate:{kind:"COMPARISON",data:comparisonData,periodRows: supplementalRows,}});
+    if (recoveryGuard) return recoveryGuard;
+
     const fileName = `Comparison Report - ${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}.pptx`.replace(/[\s/]/g, "_");
 
     let comparisonReport;
@@ -312,6 +316,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
+    const recoveryGuard = await guardReportGeneration({client,userId:session.user.id,parsed:mtdParsed,formData,sourceKey:`${id}:${fileHash ?? uploadSessionId ?? "preview"}`,candidate:{kind:"HISTORICAL",data:historicalData,}});
+    if (recoveryGuard) return recoveryGuard;
+
     const fileName = `Multi-Month Report - ${historicalData.monthsLabel}.pptx`.replace(/[\s/]/g, "_");
     const shareToken = generateShareToken();
 
@@ -383,6 +390,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
+    const recoveryGuard = await guardReportGeneration({client,userId:session.user.id,parsed:mtdParsed,formData,sourceKey:`${id}:${fileHash ?? uploadSessionId ?? "preview"}`,candidate:{kind:"DAY_BREAKDOWN",data:dayBreakdownData,}});
+    if (recoveryGuard) return recoveryGuard;
+
     const fileName = `Daily Report - ${dayBreakdownData.rangeLabel}.pptx`.replace(/[\s/]/g, "_");
     const shareToken = generateShareToken();
 
@@ -441,6 +451,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
   const { data, aiCopyPrecalc } = result;
+
+  const recoveryGuard = await guardReportGeneration({client,userId:session.user.id,parsed:mtdParsed,formData,sourceKey:`${id}:${fileHash ?? uploadSessionId ?? "preview"}`,candidate:{kind:"STANDARD",data:data,}});
+  if (recoveryGuard) return recoveryGuard;
 
   const [weekStart, weekEnd] = data.fileDateRange.includes(" to ")
     ? data.fileDateRange.split(" to ")
