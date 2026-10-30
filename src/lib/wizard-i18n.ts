@@ -17,9 +17,9 @@ const EN_UI = {
       : `Deck preview differs from your CSV on ${count} totals`,
   csvMismatchBody:
     "Review the differing metrics, date windows, and objective choices below. Generation is paused until these listed checks agree. Rebuild and recheck the preview; the investigation details are saved automatically when available.",
-  csvVerifiedTitle: "Listed CSV checks passed",
+  csvVerifiedTitle: "CSV checks passed",
   csvVerifiedDetail: () =>
-    "The comparisons passed for their own reporting windows. This is a consistency check, not a guarantee that every source metric or inferred objective is correct.",
+    "The checked metrics match your CSV for each reporting period.",
   csvSkippedTitle: "CSV cross-check not run",
   csvSkippedLead:
     "This is not a pass — deck totals were not compared to your CSV for this report setup.",
