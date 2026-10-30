@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-vi.mock('@/lib/prisma',()=>({prisma:{reportQualityIncident:{upsert:vi.fn()}}}));
+vi.mock('@/lib/prisma',()=>({prisma:{reportQualityIncident:{upsert:vi.fn(),updateMany:vi.fn()}}}));
 import {prisma} from '@/lib/prisma';
 import {captureCsvQualityIncident,recordQualityIncident} from '../incidents';
 import {incidentFingerprint,mismatchSignals} from '../incident-policy';
@@ -7,7 +7,7 @@ import type {CsvVerificationResult} from '@/lib/nre/csv-report-reconciliation';
 const context={userId:'private-user',contextKey:'private-csv-hash',platform:'META',reportType:'WEEKLY'};
 function mismatch():CsvVerificationResult{return{status:'mismatch',checks:[{status:'mismatch',scope:'Private campaign',metric:'CPC (all)',reportDisplay:'—',csvDisplay:'$0.42'}]}}
 describe('report quality incident capture',()=>{
- beforeEach(()=>{vi.clearAllMocks();vi.mocked(prisma.reportQualityIncident.upsert).mockResolvedValue({id:'cincidentreference12345'} as never)});
+ beforeEach(()=>{vi.clearAllMocks();vi.mocked(prisma.reportQualityIncident.updateMany).mockResolvedValue({count:0});vi.mocked(prisma.reportQualityIncident.upsert).mockResolvedValue({id:'cincidentreference12345'} as never)});
  afterEach(()=>vi.unstubAllEnvs());
  it('captures disagreement without retaining customer metric values or names',async()=>{
   const verification=mismatch();await captureCsvQualityIncident(context,verification);

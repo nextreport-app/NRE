@@ -8,7 +8,7 @@ export function safeReportType(value: string): string { return TYPES.has(value) 
 export function safePlatform(value: string): string { return ["META", "GOOGLE", "TIKTOK", "GA4"].includes(value) ? value : "OTHER"; }
 function metricCode(metric: string): typeof SIGNAL_CODES[number] {
   if (/\bctr\b|click.through/i.test(metric)) return "CTR";
-  if (/\bcpc\b|cost per click/i.test(metric)) return "CPC";
+  if (/\bcpc\b|cost per(?: link)? click/i.test(metric)) return "CPC";
   if (/cost per|\bcpr\b/i.test(metric)) return "COST_PER_RESULT";
   if (/spend|amount spent/i.test(metric)) return "SPEND";
   if (/result|lead|purchase|conversion/i.test(metric)) return "RESULTS";

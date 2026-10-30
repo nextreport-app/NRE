@@ -44,6 +44,7 @@ export function computeWizardStandardReportFingerprint(input: {
   const { formData, client, platform, fileHash } = input;
   const payload = {
     engineVersion: REPORT_ENGINE_VERSION,
+    deploymentRevision: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
     asOfDay: new Intl.DateTimeFormat("en-CA", { timeZone: client.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(input.now ?? new Date()),
     accountName: client.accountName,
     currency: client.currency,

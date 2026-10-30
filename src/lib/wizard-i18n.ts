@@ -16,7 +16,7 @@ const EN_UI = {
       ? "Deck preview differs from your CSV on 1 total"
       : `Deck preview differs from your CSV on ${count} totals`,
   csvMismatchBody:
-    "Review the differing metrics, date windows, and objective choices below. If you generate for internal review, do not share it with a client until these differences are resolved.",
+    "Review the differing metrics, date windows, and objective choices below. Generation is paused until these listed checks agree. Rebuild and recheck the preview; the investigation details are saved automatically when available.",
   csvVerifiedTitle: "Listed CSV checks passed",
   csvVerifiedDetail: () =>
     "The comparisons passed for their own reporting windows. This is a consistency check, not a guarantee that every source metric or inferred objective is correct.",

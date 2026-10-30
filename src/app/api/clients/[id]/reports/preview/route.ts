@@ -1,3 +1,4 @@
+import { recoveryContextKey, buildPrivateDiagnostics } from "@/lib/quality-agents/recovery-diagnostics";
 import { captureCsvQualityIncident } from "@/lib/quality-agents/incidents";
 import { assertReportComplexity } from "@/lib/report-complexity";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
@@ -156,7 +157,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
+    await captureCsvQualityIncident({ userId: session.user.id, contextKey: recoveryContextKey(`${id}:${fileHash ?? uploadSessionId ?? "preview"}`, formData, client.timezone, client), clientId: id, diagnostics: buildPrivateDiagnostics(mtdParsed.rows, mtdParsed.colMap, csvVerification), recheckIncidentId: typeof formData?.get("recoveryIncidentId") === "string" ? String(formData.get("recoveryIncidentId")) : undefined, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
     return NextResponse.json({
       valid: true,
@@ -214,7 +215,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
+    await captureCsvQualityIncident({ userId: session.user.id, contextKey: recoveryContextKey(`${id}:${fileHash ?? uploadSessionId ?? "preview"}`, formData, client.timezone, client), clientId: id, diagnostics: buildPrivateDiagnostics(mtdParsed.rows, mtdParsed.colMap, csvVerification), recheckIncidentId: typeof formData?.get("recoveryIncidentId") === "string" ? String(formData.get("recoveryIncidentId")) : undefined, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
     return NextResponse.json({
       valid: true,
@@ -290,7 +291,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
-    await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
+    await captureCsvQualityIncident({ userId: session.user.id, contextKey: recoveryContextKey(`${id}:${fileHash ?? uploadSessionId ?? "preview"}`, formData, client.timezone, client), clientId: id, diagnostics: buildPrivateDiagnostics(mtdParsed.rows, mtdParsed.colMap, csvVerification), recheckIncidentId: typeof formData?.get("recoveryIncidentId") === "string" ? String(formData.get("recoveryIncidentId")) : undefined, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
     return NextResponse.json({
       valid: true,
@@ -363,13 +364,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         fingerprint,
         reportData: built.data,
       });
-      scheduleWizardPreviewAiWarm({
-        userId: session.user.id,
-        clientId: id,
-        sessionId: uploadSessionId,
-        fingerprint,
-        reportData: built.data,
-      });
+
     } catch (err) {
       console.error("[reports:preview] preview cache save failed:", err);
     }
@@ -386,7 +381,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     periodRows: periodRowsForVerify,
   });
 
-  await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
+  await captureCsvQualityIncident({ userId: session.user.id, contextKey: recoveryContextKey(`${id}:${fileHash ?? uploadSessionId ?? "preview"}`, formData, client.timezone, client), clientId: id, diagnostics: buildPrivateDiagnostics(mtdParsed.rows, mtdParsed.colMap, csvVerification), recheckIncidentId: typeof formData?.get("recoveryIncidentId") === "string" ? String(formData.get("recoveryIncidentId")) : undefined, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
+
+  // Never spend insight-generation calls on a known mismatch or an automatic recovery recheck.
+  if (csvVerification.status === "ok" && !formData?.get("recoveryIncidentId") && uploadSessionId && fileHash) {
+    scheduleWizardPreviewAiWarm({userId:session.user.id,clientId:id,sessionId:uploadSessionId,fingerprint:computeWizardStandardReportFingerprint({fileHash,client,platform,formData}),reportData:built.data});
+  }
 
   return NextResponse.json({
     valid: true,

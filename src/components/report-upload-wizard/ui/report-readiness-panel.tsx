@@ -126,7 +126,7 @@ export function buildGenerateStepReadinessItems(input: {
       id: "csv",
       label: "CSV cross-check",
       status: "warning",
-      detail: "Preview differs from your CSV — contact support if the deck looks wrong",
+      detail: "Preview differs from your CSV. Rebuild and recheck; generation is paused while listed checks disagree.",
     });
   } else if (v?.status === "skipped") {
     items.push({

@@ -1,5 +1,5 @@
 import {execFileSync} from 'node:child_process';
-import {readFileSync,writeFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,appendFileSync} from 'node:fs';
 const issue = Number(process.env.REPAIR_ISSUE_NUMBER), repo=process.env.GITHUB_REPOSITORY;
 if (!Number.isSafeInteger(issue)||issue<=0||!/^[-\w.]+\/[-\w.]+$/.test(repo??'')) throw new Error('Invalid publish context');
 const records=JSON.parse(readFileSync(process.argv[2],'utf8'));
@@ -11,4 +11,7 @@ git(['add','--',...manifest.paths]);git(['commit','-m',`Fix reporting regression
 execFileSync('gh',['auth','setup-git'],{stdio:'pipe'});git(['push','origin',branch]);
 const body=`Addresses #${issue}.\n\nA new regression test failed on unchanged main and passed with this candidate. Independent type checks, reporting accuracy, report choices, objective regressions, API routes and production build passed in [the repair run](https://github.com/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}).\n\nThis is a draft: review the reproduction and calculation semantics before merging. No production deployment, customer notification or resolution claim has been made. Existing reports must be regenerated and revalidated after a verified deployment. GitHub's default automation token may not trigger ordinary PR CI; run required CI or configure a narrowly scoped GitHub App token before merging.\n\nRegression tests:\n${manifest.tests.map(t=>'- '+t).join('\n')}`;
 const file=process.argv[3];writeFileSync(file,body,{mode:0o600});
-execFileSync('gh',['pr','create','--draft','--base',process.env.REPAIR_BASE_BRANCH||'main','--head',branch,'--title',`Repair report regression #${issue}`,'--body-file',file],{stdio:'inherit'});
+const output=execFileSync('gh',['pr','create','--draft','--base',process.env.REPAIR_BASE_BRANCH||'main','--head',branch,'--title',`Repair report regression #${issue}`,'--body-file',file],{encoding:'utf8'}).trim();
+const match=output.match(/https:\/\/github\.com\/[^\s]+\/pull\/(\d+)/);if(!match)throw new Error('PR created but its reference could not be confirmed');
+if(process.env.GITHUB_OUTPUT)appendFileSync(process.env.GITHUB_OUTPUT,`pr_number=${match[1]}\n`);
+console.log('Draft PR created.');

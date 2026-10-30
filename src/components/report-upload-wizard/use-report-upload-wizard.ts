@@ -2022,7 +2022,7 @@ export function useReportUploadWizard({
     setPreviewStatus(status);
   }
 
-  async function fetchPreview(options?: { csvAlignResults?: boolean }): Promise<CsvVerificationResult | null> {
+  async function fetchPreview(options?: { csvAlignResults?: boolean; recoveryIncidentId?: string }): Promise<CsvVerificationResult | null> {
     const alignForRequest = options?.csvAlignResults ?? csvAlignResults;
     if (!mtdFile && !uploadSessionId) {
       setPreviewMessage("Go back to Import and upload your CSV again.");
@@ -2117,6 +2117,7 @@ export function useReportUploadWizard({
           showBudgetPacingOnCover: showBudgetOnCover,
           includePreviousMonthComparison,
           csvAlignResults: alignForRequest,
+          recoveryIncidentId: options?.recoveryIncidentId,
           ...metaReachWizardFormExtra(),
         },
         uploadSessionId,
@@ -2253,7 +2254,7 @@ export function useReportUploadWizard({
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
     if (!mtdFile && !uploadSessionId) return;
-    if (usesFullAdWizard(platform) && !generateStepPreviewReady) return;
+    if (usesFullAdWizard(platform) && (!generateStepPreviewReady || csvVerification?.status === "mismatch")) return;
     if (reportBrandingBlocksGenerate) {
       setReportBrandingError(
         "Share branding is set to show your agency name, but no agency name is saved. Add one in Account settings.",
@@ -3051,6 +3052,7 @@ export function useReportUploadWizard({
     handleGenerate,
     handleGenerateStepPrimary,
     retryPreview,
+    recheckRecovery: (incidentId: string) => fetchPreview({ recoveryIncidentId: incidentId }),
     generatedWithCsvMismatch,
     generatedWithCsvVerifySkipped,
     reportId,

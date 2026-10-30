@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       issue_number:
-        description: 'Issue with a synthetic reproduction and agent:repair-ready label'
-        required: true
+        description: 'Optional issue number; leave empty to process automatically captured investigations'
+        required: false
         type: string
   issues:
     types: [labeled]
@@ -31,12 +31,35 @@ jobs:
     outputs:
       issue: ${{ steps.queue.outputs.issue }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Intake customer investigations automatically
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALITY_AGENT_READ_TOKEN: ${{ secrets.QUALITY_AGENT_READ_TOKEN }}
+          NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
+          AUTO_INVESTIGATE: 'true'
+        run: node scripts/agents/guardian-intake.mjs
+      - name: Verify whether reviewed fixes reached production
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALITY_AGENT_READ_TOKEN: ${{ secrets.QUALITY_AGENT_READ_TOKEN }}
+          QUALITY_AGENT_WORKER_TOKEN: ${{ secrets.QUALITY_AGENT_WORKER_TOKEN }}
+          NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
+        run: node scripts/agents/recovery-deployment-sync.mjs
       - name: Claim at most one approved issue, with no automatic retry loop
         id: queue
         uses: actions/github-script@v7
         env:
           HAS_KEY: ${{ secrets.NEXTREPORT_REPAIR_OPENAI_API_KEY != '' }}
           INPUT_ISSUE: ${{ inputs.issue_number }}
+          QUALITY_AGENT_WORKER_TOKEN: ${{ secrets.QUALITY_AGENT_WORKER_TOKEN }}
+          NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
         with:
           script: |
             if (process.env.HAS_KEY !== 'true') { core.setFailed('Configure the dedicated repair API key before enabling repair.'); return; }
@@ -48,12 +71,23 @@ jobs:
             const requested = context.payload.issue?.number || Number(process.env.INPUT_ISSUE || 0);
             let items;
             if (requested) items = [(await github.rest.issues.get({...repo,issue_number:requested})).data];
-            else if (context.eventName === 'workflow_dispatch') { core.setFailed('A valid issue number is required.'); return; }
             else items = (await github.rest.issues.listForRepo({...repo,state:'open',labels:'agent:repair-ready',sort:'updated',direction:'asc',per_page:20})).data;
             const item = items.find(i=>!i.pull_request && i.state==='open' && i.labels.some(l=>l.name==='agent:repair-ready') && !i.labels.some(l=>['agent:repair-running','agent:needs-review'].includes(l.name)));
             if (!item) { core.info('No approved repair queued.'); return; }
             const prs = (await github.rest.pulls.list({...repo,state:'open',per_page:100})).data;
             if (prs.some(p=>p.head.ref.startsWith(`agent/repair-${item.number}-`))) { core.info('An open repair PR already exists.'); return; }
+            const workerToken=process.env.QUALITY_AGENT_WORKER_TOKEN;
+            if(!workerToken){core.setFailed('Configure QUALITY_AGENT_WORKER_TOKEN before activating paid repair.');return;}
+            const origin=new URL(process.env.NEXTREPORT_APP_ORIGIN||'https://nextreport.in');
+            if(origin.protocol!=='https:'||origin.pathname!=='/'||origin.search||origin.hash||origin.username||origin.password)throw new Error('Invalid application origin');
+            const incidentId=item.body?.match(/<!-- nextreport-incident:(c[a-z0-9]{15,40}) -->/)?.[1];
+            const reservation=await fetch(new URL('/api/internal/quality-recovery',origin),{method:'POST',headers:{Authorization:`Bearer ${workerToken}`,'Content-Type':'application/json'},body:JSON.stringify({action:'reserve',runId:String(context.runId),runAttempt:Number(process.env.GITHUB_RUN_ATTEMPT||1),issueNumber:item.number,incidentId}),redirect:'error',signal:AbortSignal.timeout(30000)});
+            if(reservation.status===429){core.info('Daily paid attempt allowance reached; investigation remains queued.');return;}
+            if(reservation.status===409){
+              try {await github.rest.issues.removeLabel({...repo,issue_number:item.number,name:'agent:repair-ready'});}catch(e){if(e.status!==404)throw e;}
+              core.info('Investigation is no longer eligible; no model call started.');return;
+            }
+            if(!reservation.ok){core.setFailed(`Recovery reservation failed (${reservation.status}); no model call started.`);return;}
             for (const [name,color] of [['agent:repair-running','5319e7'],['agent:needs-review','0052cc'],['agent:needs-attention','d93f0b']]) {
               try { await github.rest.issues.createLabel({...repo,name,color}); } catch(e) { if(e.status!==422)throw e; }
             }
@@ -168,6 +202,8 @@ jobs:
           if-no-files-found: error
 
   publish:
+    outputs:
+      pr_number: ${{ steps.publish.outputs.pr_number }}
     needs: [select, repair]
     if: needs.repair.result == 'success'
     runs-on: ubuntu-latest
@@ -198,6 +234,7 @@ jobs:
           REPAIR_API_KEY: ${{ secrets.NEXTREPORT_REPAIR_OPENAI_API_KEY }}
         run: node "$RUNNER_TEMP/nextreport-publisher/stage-repair.mjs" "$RUNNER_TEMP/publish-files.json"
       - name: Publish a draft PR without executing candidate code
+        id: publish
         env:
           GH_TOKEN: ${{ secrets.NEXTREPORT_REPAIR_GITHUB_TOKEN || github.token }}
           REPAIR_ISSUE_NUMBER: ${{ needs.select.outputs.issue }}
@@ -217,10 +254,18 @@ jobs:
         env:
           ISSUE: ${{ needs.select.outputs.issue }}
           RESULT: ${{ needs.publish.result }}
+          PR_NUMBER: ${{ needs.publish.outputs.pr_number }}
+          QUALITY_AGENT_WORKER_TOKEN: ${{ secrets.QUALITY_AGENT_WORKER_TOKEN }}
+          NEXTREPORT_APP_ORIGIN: ${{ vars.NEXTREPORT_APP_ORIGIN }}
         with:
           script: |
             const issue_number=Number(process.env.ISSUE);
             const success=process.env.RESULT==='success';
+            const origin=new URL(process.env.NEXTREPORT_APP_ORIGIN||'https://nextreport.in');
+            if(origin.protocol!=='https:'||origin.pathname!=='/'||origin.search||origin.hash||origin.username||origin.password)throw new Error('Invalid application origin');
+            const response=await fetch(new URL('/api/internal/quality-recovery',origin),{method:'POST',headers:{Authorization:`Bearer ${process.env.QUALITY_AGENT_WORKER_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({action:'result',runId:String(context.runId),runAttempt:Number(process.env.GITHUB_RUN_ATTEMPT||1),state:success?'FIX_PROPOSED':'NEEDS_REVIEW',...(success?{prNumber:Number(process.env.PR_NUMBER)}:{})}),redirect:'error',signal:AbortSignal.timeout(30000)});
+            if(!response.ok)throw new Error(`Could not update customer recovery status (${response.status})`);
+
             await github.rest.issues.addLabels({...context.repo,issue_number,labels:[success?'agent:needs-review':'agent:needs-attention']});
             for(const name of ['agent:repair-running',success?'agent:needs-attention':'agent:needs-review']) {
               try { await github.rest.issues.removeLabel({...context.repo,issue_number,name}); } catch(e) { if(e.status!==404)throw e; }
