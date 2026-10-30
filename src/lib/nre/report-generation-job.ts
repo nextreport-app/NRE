@@ -1,3 +1,4 @@
+import { recordQualityIncident } from "@/lib/quality-agents/incidents";
 import { completeReportGeneration } from "@/lib/report-generation-events";
 import { claimReportGeneration, failReportGeneration } from "@/lib/report-capacity";
 /**
@@ -401,5 +402,6 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     console.error("[report-generation-job] failed:", err);
     const message = err instanceof Error ? err.message : "Report generation failed.";
     await markReportFailed(reportId, message);
+    await recordQualityIncident({ userId: job.userId, contextKey: reportId, platform: job.platform, reportType: report.reportType, kind: "GENERATION_FAILURE", signalCodes: ["GENERATION_FAILED"] });
   }
 }

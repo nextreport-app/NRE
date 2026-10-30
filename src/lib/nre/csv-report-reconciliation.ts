@@ -58,6 +58,8 @@ export interface CsvCoverageWarning {
 }
 
 export interface CsvVerificationResult {
+  /** Reference to a privately recorded operational incident; not proof of a fix. */
+  qualityIncidentId?: string;
   status: CsvVerificationStatus;
   checks: CsvVerificationCheck[];
   /** Source completeness is separate from agreement with the available rows. */

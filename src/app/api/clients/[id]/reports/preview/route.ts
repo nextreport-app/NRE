@@ -1,3 +1,4 @@
+import { captureCsvQualityIncident } from "@/lib/quality-agents/incidents";
 import { assertReportComplexity } from "@/lib/report-complexity";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -155,6 +156,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
+    await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
+
     return NextResponse.json({
       valid: true,
       errors: [],
@@ -210,6 +213,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignObjectives: campaignObjectives ?? null,
       platform,
     });
+
+    await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
     return NextResponse.json({
       valid: true,
@@ -284,6 +289,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignObjectives: campaignObjectives ?? null,
       platform,
     });
+
+    await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
     return NextResponse.json({
       valid: true,
@@ -378,6 +385,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     now: previewNow,
     periodRows: periodRowsForVerify,
   });
+
+  await captureCsvQualityIncident({ userId: session.user.id, contextKey: `${id}:${fileHash ?? uploadSessionId ?? "preview"}`, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
   return NextResponse.json({
     valid: true,

@@ -1,0 +1,1 @@
+{"type":"object","properties":{"outcome":{"type":"string","enum":["fixed","needs_context"]},"summary":{"type":"string"},"reproduction":{"type":"string"},"limitations":{"type":"string"}},"required":["outcome","summary","reproduction","limitations"],"additionalProperties":false}
