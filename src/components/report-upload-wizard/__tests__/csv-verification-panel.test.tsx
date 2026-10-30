@@ -21,7 +21,7 @@ describe("verification presentation separates numeric mismatches from source cov
     const html = render(verification);
     expect(html).toContain("CSV date coverage to review");
     expect(html).toContain("2026-10-21");
-    expect(html).toContain("The comparisons passed for their own reporting windows.");
+    expect(html).toContain("The checked metrics match your CSV for each reporting period.");
     expect(html).not.toContain("Deck preview differs");
     expect(html).not.toContain("nre-wizard-callout-success");
     const items = buildGenerateStepReadinessItems({ campaignsSelected: 2, previewStatus: "idle", generateStepPreviewReady: true, csvVerification: verification, previewRefreshing: false, reportTypeLabel: "Weekly" });
@@ -39,7 +39,7 @@ describe("verification presentation separates numeric mismatches from source cov
   it("retains the successful section heading without the reporting-window list", () => {
     const html = render(matching);
     expect(html).toContain("nre-wizard-callout-success");
-    expect(html).toContain("Listed CSV checks passed");
+    expect(html).toContain("CSV checks passed");
     expect(html).not.toContain("Report week (Oct 19 - Oct 25)");
     expect(html).not.toContain("CSV date coverage to review");
   });
