@@ -314,7 +314,10 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
     slides.push(...monthCampaignSlides);
 
     const monthTotal = buildMonthTotalSlide(monthRange, monthData, monthRows, currencySymbol, selectedMetrics);
-    if (monthTotal) {
+    // A lone campaign already presents the same monthly totals. Keep the
+    // account overview when multiple campaigns contributed, including ones
+    // omitted by the low-spend campaign-slide filter.
+    if (monthTotal && (monthData.campaignSlides.length > 1 || monthCampaignSlides.length === 0)) {
       slides.push(monthTotal);
     }
 

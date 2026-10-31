@@ -80,7 +80,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
   }, 30_000);
   it("keeps overflow chips on monthly total continuation slides", async () => {
     const selectedMetrics: SelectedMetric[] = ["spend", "reach", "impressions", "results", "ctr", "cpc", "link_clicks", "cpm", "frequency"].map(key => ({ key, label: key.toUpperCase(), format: "number", csvName: key }));
-    const data = buildHistoricalReportData({ ...base, monthCount: 3, selectedMetrics });
+    const data = buildHistoricalReportData({ ...base, mtdDailyRows: [...base.mtdDailyRows, ...base.mtdDailyRows.map(row => ({ ...row, campaign_name: "Second campaign" }))], monthCount: 3, selectedMetrics });
     const totals = data.slides.filter(s => s.isMonthTotal);
     expect(totals).toHaveLength(3);
     for (const total of totals) expect(total.additionalMetricsSlide?.filter(Boolean).map(m => m!.key)).toEqual(["frequency"]);
@@ -93,7 +93,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     const output = await texts(await renderHistoricalPptx({ ...theme, data }));
     expect(output.join("\n")).not.toMatch(/WEEKLY PERFORMANCE|Last 30 Days|YESTERDAY PERFORMANCE/);
     expect(output.at(-1)).toContain("MULTI-MONTH PERFORMANCE OVERVIEW");
-    for (const month of ["JULY", "AUGUST", "SEPTEMBER"]) expect(output.join("\n")).toContain(`YOUR ${month} MONTH TOTAL`);
+    for (const month of ["JULY", "AUGUST", "SEPTEMBER"]) expect(output.join("\n")).toContain(`YOUR ${month} PERFORMANCE REPORT`);
   }, 30_000);
   it("day-by-day output is tables only, with a row per selected day", async () => {
     const data = buildDayBreakdownReportData({ ...base, dateRange: { startIso: "2025-09-01", endIso: "2025-09-10" } });
