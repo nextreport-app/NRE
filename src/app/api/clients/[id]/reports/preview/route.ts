@@ -34,6 +34,7 @@ import {
   campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
+  comparisonMetricKeysSchema,
   dateSelectionSchema,
   historicalMonthCountSchema,
   parseJsonFormField,
@@ -142,6 +143,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
       platform,
       csvHeaders: mtdParsed.headers,
+      comparisonMetricKeys: formData ? parseJsonFormField(formData, "comparisonMetricKeys", comparisonMetricKeysSchema) : undefined,
     });
 
     const csvAlign = resolveCsvAlignResults(formData);

@@ -1,4 +1,5 @@
 "use client";
+import { comparisonOptionalMetrics, isComparisonCoreMetric } from "@/lib/nre/comparison-extra-metrics";
 import { comparisonPresetPeriods } from "@/lib/nre/comparison-period-selection";
 
 import { paginateExtraMetrics, allSlideMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "@/lib/nre/metric-pagination";
@@ -411,6 +412,7 @@ export function useReportUploadWizard({
   const clientPrefsHydratedRef = useRef(false);
 
   // Comparison dates are chosen before upload and preserved across analysis.
+  const [comparisonMetricKeys, setComparisonMetricKeys] = useState<string[]>([]);
   const [comparisonPreset, setComparisonPreset] = useState<ComparisonPreset>("thisWeek");
   const [comparisonPeriodA, setComparisonPeriodA] = useState<DateRangeIso | null>(() => comparisonPresetPeriods("thisWeek", new Date(), clientTimezone).periodA);
   const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(() => comparisonPresetPeriods("thisWeek", new Date(), clientTimezone).periodB);
@@ -690,6 +692,7 @@ export function useReportUploadWizard({
   }
 
   function resetMetricsState() {
+    setComparisonMetricKeys([]);
     metricsFetchedKeyRef.current = null;
     metricsFetchInFlightRef.current = null;
     setMetricsFetchedForSelection(null);
@@ -751,7 +754,7 @@ export function useReportUploadWizard({
       weeklyOptions,
       mtdRange,
       monthComparisonOptions,
-      comparisonPreset,
+      comparisonPreset, comparisonMetricKeys, csvHeaders,
       comparisonPeriodA,
       comparisonPeriodB,
       previewKind,
@@ -770,6 +773,8 @@ export function useReportUploadWizard({
 
   function applyGenerateSnapshot(snapshot: WizardGenerateSnapshot) {
     setReportId(snapshot.reportId);
+    setComparisonMetricKeys(snapshot.comparisonMetricKeys ?? []);
+    if (snapshot.csvHeaders) setCsvHeaders(snapshot.csvHeaders);
     setDownloadUrl(snapshot.downloadUrl);
     setShareToken(snapshot.shareToken);
     setPlatform(coerceLaunchPlatform(snapshot.platform));
@@ -919,6 +924,8 @@ export function useReportUploadWizard({
         setPlatformPickerExpanded(false);
         setHasSavedPlatformPreference(true);
         setReportType(draft.reportType as ReportTypeValue);
+        setComparisonMetricKeys(draft.comparisonMetricKeys ?? []);
+        setCsvHeaders(ctx.headers ?? draft.csvHeaders ?? []);
         if (draft.comparisonPeriodA && draft.comparisonPeriodB) {
           setComparisonPreset(draft.comparisonPreset === "thisMonth" ? "custom" : draft.comparisonPreset ?? "custom");
           setComparisonPeriodA(draft.comparisonPeriodA);
@@ -942,8 +949,8 @@ export function useReportUploadWizard({
         setDailyRange(ctx.dailyRange ?? draft.dailyRange ?? null);
         const last7 = ctx.weeklyOptions?.last7 ?? draft.weeklyOptions?.last7 ?? null;
         const prev7 = ctx.weeklyOptions?.prev7 ?? draft.weeklyOptions?.prev7 ?? null;
-        setComparisonPeriodA(last7);
-        setComparisonPeriodB(prev7);
+        setComparisonPeriodA(draft.comparisonPeriodA ?? last7);
+        setComparisonPeriodB(draft.comparisonPeriodB ?? prev7);
         setPreviewKind(draft.previewKind);
         setPreviewStatus(draft.previewStatus);
         setData(draft.data);
@@ -1003,7 +1010,7 @@ export function useReportUploadWizard({
       platform,
       reportType,
       historicalMonthCount,
-      comparisonPreset, comparisonPeriodA, comparisonPeriodB,
+      comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, csvHeaders,
       dateMode,
       customStart,
       customEnd,
@@ -1064,7 +1071,7 @@ export function useReportUploadWizard({
     mtdRange,
     weeklyOptions,
     dateBounds,
-    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB,
+    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, csvHeaders,
     generateStatus,
   ]);
 
@@ -2109,6 +2116,7 @@ export function useReportUploadWizard({
           dateSelection,
           reportType,
           platform,
+          comparisonMetricKeys: reportType === "COMPARISON" ? comparisonMetricKeys : undefined,
           comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
           comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
@@ -2232,6 +2240,7 @@ export function useReportUploadWizard({
     customEnd,
     longRangeConfirmed,
     comparisonPreset,
+    comparisonMetricKeys,
     comparisonPeriodA?.startIso,
     comparisonPeriodA?.endIso,
     comparisonPeriodB?.startIso,
@@ -2292,6 +2301,7 @@ export function useReportUploadWizard({
           reportTitle: defaultReportTitleFor(reportType),
           reportType,
           platform,
+          comparisonMetricKeys: reportType === "COMPARISON" ? comparisonMetricKeys : undefined,
           comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
           comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
           historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined,
@@ -2858,7 +2868,11 @@ export function useReportUploadWizard({
 
   /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
   function estimatedSlideCount(): number {
-    if (previewKind === "comparison") return 1 + summaryCampaignNames().length + 2;
+    if (previewKind === "comparison") {
+      const extras = comparisonData?.campaigns.flatMap(campaign => campaign.additionalMetrics ?? []) ?? [];
+      const guideCount = Math.max(1, Math.ceil(new Set(extras.map(metric => metric.key)).size / METRIC_GUIDE_ENTRIES_PER_SLIDE));
+      return 1 + summaryCampaignNames().length + 1 + guideCount + (comparisonData?.campaigns.reduce((sum, campaign) => sum + paginateExtraMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
+    }
     if (previewKind === "historical" && historicalData) {
       if (historicalData.isPaused) return 3;
       const monthlySlides = [...historicalData.slides, ...(historicalData.adSetSlides ?? [])];
@@ -3029,6 +3043,9 @@ export function useReportUploadWizard({
     reportType,
     handleReportTypeChange,
     comparisonPreset,
+    comparisonMetricKeys,
+    comparisonOptionalMetrics: comparisonOptionalMetrics(csvHeaders, platform).filter(metric => ![...selectedCampaigns].length || ![...selectedCampaigns].every(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? isComparisonCoreMetric(metric, objective.resultLabel, objective.costLabel) : false; })),
+    toggleComparisonMetric: (key: string) => setComparisonMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < MAX_TOTAL_METRICS ? [...previous, key] : previous),
     handleComparisonPresetSelect,
     comparisonPeriodA,
     comparisonPeriodB,

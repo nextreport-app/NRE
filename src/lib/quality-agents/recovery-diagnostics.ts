@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {NRE_METRIC_KEYS,type ColumnMap,type NreRow} from '@/lib/nre/columns';
 import {mismatchSignals} from './incident-policy';
 import type {CsvVerificationResult} from '@/lib/nre/csv-report-reconciliation';
-const CONFIG_FIELDS=['reportType','platform','dateSelection','comparisonPeriodA','comparisonPeriodB','historicalMonthCount','selectedCampaigns','selectedAdSets','selectedMetrics','campaignObjectives','campaignMetricOverrides','includePreviousMonthComparison','csvAlignResults'];
+const CONFIG_FIELDS=['reportType','platform','dateSelection','comparisonMetricKeys','comparisonPeriodA','comparisonPeriodB','historicalMonthCount','selectedCampaigns','selectedAdSets','selectedMetrics','campaignObjectives','campaignMetricOverrides','includePreviousMonthComparison','csvAlignResults'];
 function canonical(value:unknown):unknown {if(Array.isArray(value))return value.map(canonical);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,canonical(v)]));return value;}
 export function recoveryContextKey(sourceKey:string,form:FormData|null,timezone="UTC",client?:{currency?:string;previousMonthDataUrl?:string|null;previousMonthDataUpdatedAt?:Date|null}):string {
   const settings=CONFIG_FIELDS.map(key=>{const raw=form?.get(key);if(typeof raw!=='string')return [key,null];try{return[key,canonical(JSON.parse(raw))]}catch{return[key,raw]}});

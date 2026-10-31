@@ -92,6 +92,7 @@ function CampaignComparisonSection({
         <MetricComparisonRow label={campaign.objective} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.results} valueKey="results" />
         <MetricComparisonRow label={campaign.costLabel} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.cpr} valueKey="cpr" />
       </div>
+      {!!campaign.additionalMetrics?.length && <div className="mt-6 overflow-x-auto"><h3 className="mb-3 text-sm font-semibold text-ink">Additional comparison metrics</h3><table className="w-full text-left text-sm text-ink"><thead className="text-xs text-ink-muted"><tr><th className="p-2">Metric</th><th className="p-2">Period A</th><th className="p-2">Period B</th><th className="p-2">Change</th></tr></thead><tbody>{campaign.additionalMetrics.map(metric => <tr key={metric.key} className="border-t border-navy-border"><td className="p-2">{metric.label}</td><td className="p-2">{metric.formattedA}</td><td className="p-2">{metric.formattedB}</td><td className="p-2">{metric.percent === null ? "N/A" : `${metric.percent > 0 ? "+" : ""}${metric.percent.toFixed(1)}%`}</td></tr>)}</tbody></table></div>}
     </section>
   );
 }

@@ -163,9 +163,15 @@ export function WizardMetricsStep() {
 
   if (w.reportType === "COMPARISON" || w.reportType === "DAY_BREAKDOWN") {
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
-      <h3 className="text-base font-semibold text-dash-ink">{w.reportType === "COMPARISON" ? "4 comparison metrics per campaign" : "Table metrics are included"}</h3>
-      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Each campaign slide shows Period A, Period B and the percentage change for the same four metrics." : "Each daily row uses the same fixed metrics so you can compare days."} Metrics are fixed for this report type.</p>
+      <h3 className="text-base font-semibold text-dash-ink">{w.reportType === "COMPARISON" ? "Comparison metrics" : "Table metrics are included"}</h3>
+      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Each campaign slide shows Period A, Period B and the percentage change for the same four metrics." : "Each daily row uses the same fixed metrics so you can compare days."}{w.reportType === "DAY_BREAKDOWN" ? " Metrics are fixed for this report type." : " Add more CSV-backed metrics below; they appear on additional comparison slides."}</p>
       <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Included: ad spend, reach, results for the campaign objective and cost per result. A summary compares all selected campaigns." : "Spend, reach, impressions, CTR, CPC and objective-specific results and costs."}</p>
+      {w.reportType === "COMPARISON" && <details className="rounded-lg border border-dash-border bg-dash-bg/40 p-4" open={w.comparisonMetricKeys.length > 0}>
+        <summary className="cursor-pointer text-sm font-semibold text-dash-accent">Add comparison metrics · optional{w.comparisonMetricKeys.length ? ` · ${w.comparisonMetricKeys.length} selected` : ""}</summary>
+        <p className="mt-3 text-xs text-dash-ink-secondary">Selected metrics are compared for each campaign. Missing values and percentage changes from a zero baseline show N/A. Existing default metrics are not repeated.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">{w.comparisonOptionalMetrics.map(metric => <label key={metric.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-dash-border p-3 text-sm text-dash-ink"><input type="checkbox" className="accent-sky-500" checked={w.comparisonMetricKeys.includes(metric.key)} onChange={() => w.toggleComparisonMetric(metric.key)} disabled={!w.comparisonMetricKeys.includes(metric.key) && w.comparisonMetricKeys.length >= MAX_TOTAL_METRICS} />{metric.label}</label>)}</div>
+        {!w.comparisonOptionalMetrics.length && <p className="mt-3 text-sm text-dash-ink-secondary">No additional supported metric columns were detected in this CSV.</p>}
+      </details>}
       <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-[#0b1728]">{copy.continueToGenerate}</button></div>
       <WizardStickyFooter stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))} onBack={() => setStep(2)} backLabel={copy.back} primaryLabel={copy.continueToGenerate} onPrimary={handleMetricsContinue} />
     </div>;

@@ -1,3 +1,4 @@
+import { buildComparisonExtraMetrics, type ComparisonExtraMetric } from "./comparison-extra-metrics";
 /**
  * NRE v1 — report data orchestrator.
  * Ports the pure-data-computation half of generateWeeklyReport() (and
@@ -2225,6 +2226,7 @@ export interface ComparisonChanges {
 }
 
 export interface ComparisonCampaignData {
+  additionalMetrics?: ComparisonExtraMetric[];
   campaignName: string;
   /** The campaign's own resultLabel (e.g. "PURCHASES") — Period A's detected objective wins when Period A has any rows for this campaign, since that's the more current/relevant period; falls back to Period B's when Period A is empty (a campaign that ran only in the earlier period). */
   objective: string;
@@ -2266,6 +2268,7 @@ export interface BuildComparisonReportDataInput {
   platform?: Platform;
   /** CSV headers — required for Google comparison objective labels (campaign-type slots). */
   csvHeaders?: string[];
+  comparisonMetricKeys?: string[];
 }
 
 function filterRowsByDateRange<T extends NreRow>(rows: T[], range: DateRangeIso): T[] {
@@ -2368,6 +2371,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     now = new Date(),
     platform = "META",
     csvHeaders,
+    comparisonMetricKeys,
   } = input;
 
   const isGoogle = platform === "GOOGLE";
@@ -2386,8 +2390,8 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
 
   const byCampaignA = groupAggRowsByCampaign(rowsA);
   const byCampaignB = groupAggRowsByCampaign(rowsB);
-  const byCampaignRawA = isGoogle ? groupRawRowsByCampaign(rowsA) : null;
-  const byCampaignRawB = isGoogle ? groupRawRowsByCampaign(rowsB) : null;
+  const byCampaignRawA = groupRawRowsByCampaign(rowsA);
+  const byCampaignRawB = groupRawRowsByCampaign(rowsB);
   const googleCampaignTypeMap: Map<string, GoogleObjectiveKey> | null =
     isGoogle && csvHeaders?.length
       ? buildGoogleCampaignTypeMap(
@@ -2450,6 +2454,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
 
     return {
       campaignName,
+      additionalMetrics: buildComparisonExtraMetrics({ rowsA: byCampaignRawA[campaignName] ?? [], rowsB: byCampaignRawB[campaignName] ?? [], keys: comparisonMetricKeys, headers: csvHeaders ?? Object.keys(mtdDailyRows[0]?._raw ?? {}), platform, currencySymbol, objective, costLabel }),
       objective,
       costLabel,
       metricsA: comparisonMetricSet(spendA, reachA, resultsA, cprA, currencySymbol),

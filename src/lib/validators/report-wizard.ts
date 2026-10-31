@@ -118,6 +118,8 @@ export const selectedMetricSchema = z.object({
 });
 
 // This is an account-wide union; individual campaign lists have their own limit.
+export const comparisonMetricKeysSchema = z.array(z.string().trim().min(1)).max(MAX_TOTAL_METRICS);
+
 export const selectedMetricsSchema = z.array(selectedMetricSchema).max(MAX_METRIC_UNION);
 
 // Objective Confirmation wizard step's output — user-reviewed/corrected
