@@ -6,8 +6,10 @@ describe("comparison date journey", () => {
   it("offers presets and CSV coverage before uploading without depending on file bounds", () => {
     const html = renderToStaticMarkup(<ComparisonPeriodControls stage="import" />);
     expect(html).toContain("Last 7 days vs previous 7 days");
-    expect(html).toContain("Last two complete months");
-    expect(html).toContain("Custom dates");
+    expect(html).toContain("Last 15 days vs previous 15 days");
+    expect(html).toContain("Last 30 days vs previous 30 days");
+    expect(html).not.toContain("Last two complete months");
+    expect(html).toContain("Custom date range");
     expect(html).toContain("CSV coverage needed");
     expect(html).toContain("Day-wise breakdown covering both periods");
   });
@@ -16,7 +18,7 @@ describe("comparison date journey", () => {
     expect(html).toContain("Period A");
     expect(html).toContain("Period B");
     expect(html).toContain("Change dates");
-    expect(html).not.toContain("Custom dates");
+    expect(html).not.toContain("Custom date range");
     expect(html).not.toContain("CSV coverage needed");
   });
 });

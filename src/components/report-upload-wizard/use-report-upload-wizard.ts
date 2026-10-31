@@ -643,8 +643,8 @@ export function useReportUploadWizard({
   /** Comparison Report's preset pill onSelect (A1) — This week/This month presets recompute Period A/B from the server-provided options; Custom just switches to the date-picker view, leaving whatever dates are already there. */
   function handleComparisonPresetSelect(preset: ComparisonPreset) {
     acknowledgePostGenerateEdit();
-    setComparisonPreset(preset);
-    if (preset !== "custom") {
+    setComparisonPreset(preset === "thisMonth" ? "custom" : preset);
+    if (preset !== "custom" && preset !== "thisMonth") {
       const periods = comparisonPresetPeriods(preset, new Date(), clientTimezone);
       setComparisonPeriodA(periods.periodA);
       setComparisonPeriodB(periods.periodB);
@@ -781,7 +781,7 @@ export function useReportUploadWizard({
     setWeeklyOptions(snapshot.weeklyOptions);
     setMtdRange(snapshot.mtdRange);
     setMonthComparisonOptions(snapshot.monthComparisonOptions);
-    setComparisonPreset(snapshot.comparisonPreset);
+    setComparisonPreset(snapshot.comparisonPreset === "thisMonth" ? "custom" : snapshot.comparisonPreset);
     setComparisonPeriodA(snapshot.comparisonPeriodA);
     setComparisonPeriodB(snapshot.comparisonPeriodB);
     setHistoricalMonthCount(snapshot.historicalMonthCount ?? 4);
@@ -920,7 +920,7 @@ export function useReportUploadWizard({
         setHasSavedPlatformPreference(true);
         setReportType(draft.reportType as ReportTypeValue);
         if (draft.comparisonPeriodA && draft.comparisonPeriodB) {
-          setComparisonPreset(draft.comparisonPreset ?? "custom");
+          setComparisonPreset(draft.comparisonPreset === "thisMonth" ? "custom" : draft.comparisonPreset ?? "custom");
           setComparisonPeriodA(draft.comparisonPeriodA);
           setComparisonPeriodB(draft.comparisonPeriodB);
         }
