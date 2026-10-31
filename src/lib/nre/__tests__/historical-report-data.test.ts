@@ -4,6 +4,7 @@ import { buildHistoricalReportData, buildHistoricalAiCopyMap, validateHistorical
 import { buildHistoricalShareReportData } from "../share-report";
 import { buildHistoricalSlideCopy } from "../historical-slide-copy";
 import type { NreRow } from "../columns";
+import { adSetKey } from "../ad-sets";
 
 function dailyRow(iso: string, campaign: string, spend: string, results = "5"): NreRow {
   return {
@@ -36,6 +37,17 @@ describe("computeHistoricalMonthRanges", () => {
 });
 
 describe("buildHistoricalReportData", () => {
+  it("keeps previous-month and current-MTD ad sets and charts in separate date windows", () => {
+    const rows = [dailyRow("2026-09-01", "Shoes", "20"), dailyRow("2026-09-30", "Shoes", "30"), dailyRow("2026-10-01", "Shoes", "40"), dailyRow("2026-10-30", "Shoes", "60")];
+    const data = buildHistoricalReportData({ accountName: "Acme", currencySymbol: "C$", timezone: "UTC", monthlyBudget: null, mtdDailyRows: rows,
+      monthCount: 2, selectedAdSets: [adSetKey("Shoes", "Set 1")], now: new Date("2026-10-31T12:00:00Z"), dateSelection: { mode: "custom", customStart: "2026-09-01", customEnd: "2026-10-30" } });
+    expect(data.adSetSlides?.map(slide => slide.metrics.spend)).toEqual(["C$50", "C$100"]);
+    expect(data.adSetSlides?.map(slide => slide.performanceHeader)).toEqual(["YOUR SEPTEMBER PERFORMANCE REPORT", "YOUR OCTOBER PERFORMANCE REPORT (MTD)"]);
+    expect(data.monthlyCharts?.map(item => item.chart.totalAllSpend)).toEqual([50, 100]);
+    expect(data.monthlyCharts?.map(item => item.chart.actualPeriodDays)).toEqual([30, 30]);
+    expect(data.monthlyCharts?.map(item => item.monthLabel)).toEqual(["September 2026", "October 2026 (MTD)"]);
+    expect(data.currencySymbol).toBe("C$");
+  });
   it("omits duplicate month totals for a single campaign while retaining comparison rows", () => {
     const fullRows: NreRow[] = [];
     for (const month of [5, 6, 7, 8]) {

@@ -40,6 +40,7 @@ import {
   reportTypeSchema,
   resolveIncludePreviousMonthComparison,
   selectedCampaignsSchema,
+  selectedAdSetsSchema,
   selectedMetricsSchema,
 } from "@/lib/validators/report-wizard";
 
@@ -195,6 +196,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       monthlyBudget: client.monthlyBudget,
       mtdDailyRows: mtdParsed.rows,
       selectedCampaigns: selectedCampaigns ?? null,
+      selectedAdSets: formData ? parseJsonFormField(formData, "selectedAdSets", selectedAdSetsSchema) ?? [] : [],
       selectedMetrics,
       campaignObjectives,
       campaignMetricOverrides,

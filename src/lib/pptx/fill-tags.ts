@@ -458,7 +458,7 @@ function slideReportHeader(reportType: ReportType | "WEBSITE" = "WEEKLY"): strin
 }
 
 function resolveSlideReportHeader(slide: SlideData, reportType: ReportType | "WEBSITE"): string {
-  if (slide.kind === "campaign" && slide.performanceHeader) {
+  if (slide.performanceHeader) {
     return slide.performanceHeader;
   }
   return slideReportHeader(reportType);

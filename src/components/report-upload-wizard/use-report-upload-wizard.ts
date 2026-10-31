@@ -2859,14 +2859,16 @@ export function useReportUploadWizard({
 
   /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
   function estimatedSlideCount(): number {
-    if (previewKind === "comparison") return 1 + summaryCampaignNames().length + 1;
+    if (previewKind === "comparison") return 1 + summaryCampaignNames().length + 2;
     if (previewKind === "historical" && historicalData) {
-      if (historicalData.isPaused) return 2;
-      const continuation = historicalData.slides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
-      return 1 + historicalData.slides.length + continuation + (historicalData.comparisonRows.length ? 1 : 0);
+      if (historicalData.isPaused) return 3;
+      const monthlySlides = [...historicalData.slides, ...(historicalData.adSetSlides ?? [])];
+      const guideCount = new Set(monthlySlides.flatMap(slide => allSlideMetrics(slide).filter(metric => metric.key !== "spend").map(metric => metric.key))).size;
+      const continuation = monthlySlides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
+      return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
-      return dayBreakdownData.isPaused ? 2 : 1 + dayBreakdownData.tableSlides.length;
+      return dayBreakdownData.isPaused ? 3 : 2 + dayBreakdownData.tableSlides.length;
     }
     if (data) {
       const slides = [...data.campaignSlides, ...data.adSetSlides];

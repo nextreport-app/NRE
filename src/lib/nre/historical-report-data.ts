@@ -24,6 +24,8 @@ import { parseCellNum, fmtCurrency2dp } from "./format";
 import {
   buildReportData,
   type CampaignSlideData,
+  type AdSetSlideData,
+  type ChartSlideData,
   type Platform,
   type ReportData,
   type SlideMetrics,
@@ -51,6 +53,9 @@ export interface HistoricalReportData {
   monthRanges: HistoricalMonthRange[];
   /** Ordered: each month's campaigns, then that month's total, then next month… */
   slides: CampaignSlideData[];
+  adSetSlides?: (AdSetSlideData & { performanceHeader?: string })[];
+  monthlyCharts?: { monthLabel: string; chart: ChartSlideData }[];
+  currencySymbol?: string;
   /** Final comparison table — one row per month (oldest first). */
   comparisonRows: TableRowData[];
   tableHeaderLabels: TableHeaderLabels;
@@ -64,6 +69,7 @@ export interface BuildHistoricalReportDataInput {
   monthlyBudget: number | null;
   mtdDailyRows: NreRow[];
   selectedCampaigns?: string[] | null;
+  selectedAdSets?: string[] | null;
   selectedMetrics?: SelectedMetric[];
   campaignObjectives?: Record<string, { resultLabel: string; costLabel: string }>;
   campaignMetricOverrides?: Record<string, string[]>;
@@ -240,11 +246,12 @@ function buildMonthTotalSlide(
 }
 
 /** Builds AI copy map keyed the same way as historicalSlideShareKey. */
-export function buildHistoricalAiCopyMap(slides: CampaignSlideData[]): Map<string, AiCopy> {
+export function buildHistoricalAiCopyMap(slides: CampaignSlideData[], adSets: AdSetSlideData[] = []): Map<string, AiCopy> {
   const map = new Map<string, AiCopy>();
   for (const slide of slides) {
     map.set(`campaign:${historicalSlideShareKey(slide)}`, buildHistoricalSlideCopy(slide));
   }
+  for (const slide of adSets) map.set(`adset:${slide.ai.dateRange || "Month"} — ${slide.campaignName}/${slide.adSetName}`, buildHistoricalSlideCopy(slide));
   return map;
 }
 
@@ -256,6 +263,7 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
     monthlyBudget,
     mtdDailyRows,
     selectedCampaigns,
+    selectedAdSets,
     selectedMetrics,
     campaignObjectives,
     campaignMetricOverrides,
@@ -273,6 +281,8 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
 
   const slides: CampaignSlideData[] = [];
   const comparisonRows: TableRowData[] = [];
+  const adSetSlides: (AdSetSlideData & { performanceHeader?: string })[] = [];
+  const monthlyCharts: { monthLabel: string; chart: ChartSlideData }[] = [];
   let tableHeaderLabels: TableHeaderLabels = { resultColumns: [] };
 
   for (const monthRange of monthRanges) {
@@ -288,7 +298,7 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
       mtdDailyRows: monthRows,
       periodRows: [],
       selectedCampaigns: null,
-      selectedAdSets: null,
+      selectedAdSets: selectedAdSets ?? [],
       reportType: "MONTHLY",
       selectedMetrics,
       campaignObjectives,
@@ -312,6 +322,8 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
     );
 
     slides.push(...monthCampaignSlides);
+    adSetSlides.push(...monthData.adSetSlides.map(slide => ({ ...slide, performanceHeader: monthRange.performanceHeader, ai: { ...slide.ai, dateRange: monthRange.fullMonthLabel } })));
+    if (monthData.chart) monthlyCharts.push({ monthLabel: monthRange.fullMonthLabel, chart: monthData.chart });
 
     const monthTotal = buildMonthTotalSlide(monthRange, monthData, monthRows, currencySymbol, selectedMetrics);
     // A lone campaign already presents the same monthly totals. Keep the
@@ -354,6 +366,9 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
     monthCount,
     monthRanges,
     slides,
+    adSetSlides,
+    monthlyCharts,
+    currencySymbol,
     comparisonRows,
     tableHeaderLabels,
     platform,

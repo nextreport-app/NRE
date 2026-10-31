@@ -4,7 +4,7 @@
  * No provider call or unsupported performance judgement is needed.
  */
 
-import type { CampaignSlideData } from "./report-data";
+import type { CampaignSlideData, AdSetSlideData } from "./report-data";
 import type { AiCopy } from "../pptx/fill-tags";
 
 function cprPhrase(cpr: string, resultLabel: string): string {
@@ -14,7 +14,7 @@ function cprPhrase(cpr: string, resultLabel: string): string {
 }
 
 /** Builds campaign- or month-total-specific summary + minimal insights. */
-export function buildHistoricalSlideCopy(slide: CampaignSlideData): AiCopy {
+export function buildHistoricalSlideCopy(slide: CampaignSlideData | AdSetSlideData): AiCopy {
   const monthLabel = slide.ai.dateRange || "this period";
   const spend = slide.metrics.spend;
   const results = slide.metrics.results;
@@ -34,7 +34,7 @@ export function buildHistoricalSlideCopy(slide: CampaignSlideData): AiCopy {
   if (monthLabel.includes("(MTD)")) observations.push("This is month-to-date performance through the selected end date, rather than a complete month.");
   const insights = observations.join("\n");
 
-  if (slide.isMonthTotal) {
+  if (slide.kind === "campaign" && slide.isMonthTotal) {
     return {
       summary: `Combined across all campaigns, ${monthLabel} delivered ${spend} in ad spend and ${results} ${resultLabel}${cprPart}.`,
       insights,
@@ -42,7 +42,7 @@ export function buildHistoricalSlideCopy(slide: CampaignSlideData): AiCopy {
   }
 
   return {
-    summary: `${slide.campaignName} spent ${spend} in ${monthLabel} and recorded ${results} ${resultLabel}${cprPart}.`,
+    summary: `${slide.kind === "adset" ? slide.adSetName : slide.campaignName} spent ${spend} in ${monthLabel} and recorded ${results} ${resultLabel}${cprPart}.`,
     insights,
   };
 }

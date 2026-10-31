@@ -226,7 +226,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         job.platform === "TIKTOK" ? "TIKTOK" : "META",
         client.template,
       );
-      const aiCopyMap = buildHistoricalAiCopyMap(job.historicalData.slides);
+      const aiCopyMap = buildHistoricalAiCopyMap(job.historicalData.slides, job.historicalData.adSetSlides);
       const pptxBuffer = await renderHistoricalPptx({
         templateBuffer,
         data: job.historicalData,

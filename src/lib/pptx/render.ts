@@ -16,6 +16,7 @@ import { additionalMetricPages, buildAdditionalMetricsSlideXml } from "./additio
 import type { ReportData, ComparisonReportData } from "../nre/report-data";
 import type { HistoricalReportData } from "../nre/historical-report-data";
 import type { DayBreakdownReportData } from "../nre/day-breakdown-report-data";
+import { buildHistoricalSlideCopy } from "../nre/historical-slide-copy";
 import { historicalSlideShareKey } from "../nre/share-report";
 import type { WebsiteReportData } from "../nre/website-report-data";
 import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns } from "../nre/website-report-config";
@@ -445,7 +446,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
       rels: template.campaign.rels,
     });
   } else {
-    for (const slide of data.slides) {
+    for (const [slideIndex, slide] of data.slides.entries()) {
       const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
       slides.push({
         xml: buildCampaignOrAdSetSlideXml(
@@ -465,6 +466,22 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
         xml: buildAdditionalMetricsSlideXml(slide, metrics, index, extraPages.length, template.background, isLightTemplate),
         rels: buildChartSlideRels(template.background.mediaTarget),
       }));
+      const monthLabel = slide.ai.dateRange;
+      if (data.slides[slideIndex + 1]?.ai.dateRange !== monthLabel) {
+        for (const adSet of (data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel)) {
+          const key = `adset:${monthLabel} — ${adSet.campaignName}/${adSet.adSetName}`;
+          slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, adSet, aiCopyBySlideKey?.get(key) ?? buildHistoricalSlideCopy(adSet), "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
+          const pages = additionalMetricPages(adSet);
+          pages.forEach((metrics, index) => slides.push({ xml: buildAdditionalMetricsSlideXml(adSet, metrics, index, pages.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) }));
+        }
+        const chart = data.monthlyCharts?.find(item => item.monthLabel === monthLabel)?.chart;
+        if (chart) {
+          const { buildChartSlideBundle } = await import("./chart-slide-render");
+          const bundle = await buildChartSlideBundle(chart, data.currencySymbol ?? "$", template.background, isLightTemplate, data.platform);
+          slides.push({ xml: bundle.xml, rels: buildChartSlideRels(template.background.mediaTarget) });
+        }
+      }
+
     }
 
     if (data.comparisonRows.length > 0) {
@@ -481,7 +498,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     }
   }
 
-  appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: [] }));
+  appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }));
   return assemblePptx(template, slides);
 }
 
