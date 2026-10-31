@@ -17,6 +17,7 @@ describe("monthly range presentation", () => {
     expect(html).toContain("(MTD)");
     expect(html).toContain("2 months selected");
     expect(html).not.toContain("Number of months");
-    expect(html).toContain("one combined total across several months cannot be split accurately");
+    expect(html).toContain("Day-wise breakdown for this entire date range");
+    expect(html.match(/Through yesterday/g)).toHaveLength(1);
   });
 });

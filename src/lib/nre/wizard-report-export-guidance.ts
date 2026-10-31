@@ -34,7 +34,7 @@ function metaExportLines(reportType: ReportTypeValue, now: Date, timezone: strin
       return metaWeeklyExportLines(now, timezone);
 
     case "MONTHLY":
-      return ["Export the selected month or current MTD from the 1st through the last completed day you want to report.", "Day breakdown is optional. Campaign totals need Reporting starts and Reporting ends, with one row per campaign/month and no ad/ad-set breakdown.", "For multiple months, use Month or Day breakdown; a combined multi-month total cannot produce separate monthly metrics."];
+      return ["Export the selected month or current MTD from the 1st through the last completed day you want to report.", "Choose Day-wise breakdown when exporting your CSV.", "For multiple months, include every selected month in one export with Day-wise breakdown."];
     case "QUARTER":
     case "YTD":
       if (cal.isFirstDayOfMonth) {
@@ -89,7 +89,7 @@ function metaExportLines(reportType: ReportTypeValue, now: Date, timezone: strin
 
     case "HISTORICAL":
       return [
-        "Export all selected months with Month or Day breakdown. Month totals need Reporting starts/ends and one row per campaign/month.",
+        "Export all selected months with Day-wise breakdown.",
         "Use one continuous custom range. A single combined multi-month total cannot be split into monthly figures.",
         cal.isFirstDayOfMonth
           ? "On the 1st, the latest full month is usually the one that just ended (Previous Month export)."

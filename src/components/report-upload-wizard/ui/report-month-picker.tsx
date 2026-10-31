@@ -9,8 +9,8 @@ export function reportMonthLabel(month: string): string {
 }
 
 /** A month-only calendar, independent of browser/OS date-input styling. */
-export function ReportMonthPicker({ value, maxMonth, currentMonth, label, partialLabel = "Through yesterday", onChange }: {
-  value: string; maxMonth: string; currentMonth: string; label: string; partialLabel?: string; onChange: (month: string) => void;
+export function ReportMonthPicker({ value, maxMonth, currentMonth, label, partialLabel = "Through yesterday", showPartialLabel = true, onChange }: {
+  value: string; maxMonth: string; currentMonth: string; label: string; partialLabel?: string; showPartialLabel?: boolean; onChange: (month: string) => void;
 }) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -48,7 +48,7 @@ export function ReportMonthPicker({ value, maxMonth, currentMonth, label, partia
   }
   return <div ref={root} className="relative w-full" onKeyDown={event => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); close(); } }} onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }}>
     <button ref={trigger} type="button" aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls={`${id}-calendar`} onClick={() => open ? close() : show()} className={CALENDAR_TRIGGER}>
-      <span className="flex flex-wrap items-center gap-2">{reportMonthLabel(value)}{value === currentMonth && <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[11px] font-normal text-dash-ink-secondary">{partialLabel}</span>}</span>
+      <span className="flex flex-wrap items-center gap-2">{reportMonthLabel(value)}{showPartialLabel && value === currentMonth && <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[11px] font-normal text-dash-ink-secondary">{partialLabel}</span>}</span>
       <CalendarIcon />
     </button>
     {open && <div id={`${id}-calendar`} role="dialog" aria-label={`Choose ${label.toLowerCase()}`} className={`${CALENDAR_PANEL} left-0 ${above ? "bottom-full mb-2" : "top-full mt-2"}`}>

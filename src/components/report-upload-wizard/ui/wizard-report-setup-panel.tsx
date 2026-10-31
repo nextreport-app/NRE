@@ -58,7 +58,7 @@ export function WizardReportSetupPanel({
     {!["MONTHLY", "HISTORICAL"].includes(reportType) && <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">CSV needed:</span> {requirement.shortNote}</p>}
     {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">
       <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
-      <p className="text-[12px] text-dash-ink-secondary">Choose the output you need. CSV requirements depend on the report type.</p>
+      <p className="text-[12px] text-dash-ink-secondary">Use a Day-wise breakdown CSV for every report type. Choose the date range needed for your report.</p>
       <div role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {LAUNCH_PRIMARY_REPORT_TYPES.map(renderChoice)}
       </div>

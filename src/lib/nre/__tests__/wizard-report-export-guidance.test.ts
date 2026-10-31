@@ -24,7 +24,7 @@ describe("wizardExportGuidanceForReportType", () => {
       now: new Date("2026-10-01T12:00:00Z"),
     });
     expect(g.lines.some((b) => /selected month/i.test(b))).toBe(true);
-    expect(g.lines.some((b) => /Day breakdown is optional/i.test(b))).toBe(true);
+    expect(g.lines.some((b) => /Choose Day-wise breakdown/i.test(b))).toBe(true);
     expect(g.context).toMatch(/Monthly report/i);
   });
 
