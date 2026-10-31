@@ -16,6 +16,7 @@ import { apiErrorResponse } from "@/lib/api-error";
 import { fileFromFormData } from "@/lib/http-file";
 import {
   campaignSelectionMemorySchema,
+  comparisonPeriodSchema,
   dateSelectionSchema,
   metaAdAccountIdSchema,
   metaCampaignPeriodReachMapsSchema,
@@ -148,6 +149,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       mtdParsed.rows,
       client.timezone,
     );
+    if (requestedReportType === "COMPARISON" && formData) {
+      const a = parseJsonFormField(formData, "comparisonPeriodA", comparisonPeriodSchema);
+      const b = parseJsonFormField(formData, "comparisonPeriodB", comparisonPeriodSchema);
+      if (a && b && dateBounds) {
+        const coverage = validateComparisonReportCoverage(a, b, dateBounds, null);
+        if (!coverage.valid) return NextResponse.json({ valid: false, errors: [{ field: "comparisonPeriod", message: `${coverage.error} Export one Day-wise breakdown CSV covering both selected periods, or change the dates above.` }], warnings: [], detectedPlatform, platform });
+      }
+    }
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
     const csvDateGuidance = (requestedReportType ?? "WEEKLY") === "WEEKLY" && !mtdParsed.rows.some(row => row._reportPeriod) ? analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone) : null;
 

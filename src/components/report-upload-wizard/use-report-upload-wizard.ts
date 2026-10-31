@@ -1,4 +1,5 @@
 "use client";
+import { comparisonPresetPeriods } from "@/lib/nre/comparison-period-selection";
 
 import { paginateExtraMetrics, allSlideMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "@/lib/nre/metric-pagination";
 import { historicalPeriods, selectedSinglePeriod, monthlySelectionFromBounds, reportCalendarYesterday, restoredMonthCount } from "@/lib/nre/report-period-selection";
@@ -409,14 +410,10 @@ export function useReportUploadWizard({
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
   const clientPrefsHydratedRef = useRef(false);
 
-  // Step 5 — Comparison Report's Period A/B pickers (A1). Seeded from
-  // weeklyOptions (This week vs Last week, the default preset) as soon as
-  // /analyze returns — see applyAnalyzeResult — so switching to the
-  // Comparison tab always starts with something sensible pre-filled even
-  // before the user touches a preset.
+  // Comparison dates are chosen before upload and preserved across analysis.
   const [comparisonPreset, setComparisonPreset] = useState<ComparisonPreset>("thisWeek");
-  const [comparisonPeriodA, setComparisonPeriodA] = useState<DateRangeIso | null>(null);
-  const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(null);
+  const [comparisonPeriodA, setComparisonPeriodA] = useState<DateRangeIso | null>(() => comparisonPresetPeriods("thisWeek", new Date(), clientTimezone).periodA);
+  const [comparisonPeriodB, setComparisonPeriodB] = useState<DateRangeIso | null>(() => comparisonPresetPeriods("thisWeek", new Date(), clientTimezone).periodB);
   const [historicalMonthCount, setHistoricalMonthCount] = useState(3);
   const [monthComparisonOptions, setMonthComparisonOptions] = useState<{ periodA: DateRangeIso; periodB: DateRangeIso } | null>(null);
   const [monthComparisonCoverage, setMonthComparisonCoverage] = useState<{
@@ -647,12 +644,10 @@ export function useReportUploadWizard({
   function handleComparisonPresetSelect(preset: ComparisonPreset) {
     acknowledgePostGenerateEdit();
     setComparisonPreset(preset);
-    if (preset === "thisWeek" && weeklyOptions) {
-      setComparisonPeriodA(weeklyOptions.last7);
-      setComparisonPeriodB(weeklyOptions.prev7);
-    } else if (preset === "thisMonth" && monthComparisonOptions) {
-      setComparisonPeriodA(monthComparisonOptions.periodA);
-      setComparisonPeriodB(monthComparisonOptions.periodB);
+    if (preset !== "custom") {
+      const periods = comparisonPresetPeriods(preset, new Date(), clientTimezone);
+      setComparisonPeriodA(periods.periodA);
+      setComparisonPeriodB(periods.periodB);
     }
   }
 
@@ -786,16 +781,9 @@ export function useReportUploadWizard({
     setWeeklyOptions(snapshot.weeklyOptions);
     setMtdRange(snapshot.mtdRange);
     setMonthComparisonOptions(snapshot.monthComparisonOptions);
-    const preset =
-      snapshot.comparisonPreset === "thisMonth" ? "thisWeek" : snapshot.comparisonPreset;
-    setComparisonPreset(preset);
-    if (preset === "thisWeek" && snapshot.weeklyOptions) {
-      setComparisonPeriodA(snapshot.weeklyOptions.last7);
-      setComparisonPeriodB(snapshot.weeklyOptions.prev7);
-    } else {
-      setComparisonPeriodA(snapshot.comparisonPeriodA);
-      setComparisonPeriodB(snapshot.comparisonPeriodB);
-    }
+    setComparisonPreset(snapshot.comparisonPreset);
+    setComparisonPeriodA(snapshot.comparisonPeriodA);
+    setComparisonPeriodB(snapshot.comparisonPeriodB);
     setHistoricalMonthCount(snapshot.historicalMonthCount ?? 4);
     setPreviewKind(snapshot.previewKind);
     setPreviewStatus(snapshot.previewStatus);
@@ -931,6 +919,11 @@ export function useReportUploadWizard({
         setPlatformPickerExpanded(false);
         setHasSavedPlatformPreference(true);
         setReportType(draft.reportType as ReportTypeValue);
+        if (draft.comparisonPeriodA && draft.comparisonPeriodB) {
+          setComparisonPreset(draft.comparisonPreset ?? "custom");
+          setComparisonPeriodA(draft.comparisonPeriodA);
+          setComparisonPeriodB(draft.comparisonPeriodB);
+        }
         setHistoricalMonthCount(restoredMonthCount(draft.historicalMonthCount, draft.reportType, draft.customStart, draft.customEnd));
         setDateMode(draft.dateMode);
         setCustomStart(draft.customStart);
@@ -1010,6 +1003,7 @@ export function useReportUploadWizard({
       platform,
       reportType,
       historicalMonthCount,
+      comparisonPreset, comparisonPeriodA, comparisonPeriodB,
       dateMode,
       customStart,
       customEnd,
@@ -1070,7 +1064,7 @@ export function useReportUploadWizard({
     mtdRange,
     weeklyOptions,
     dateBounds,
-    dailyRange,
+    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB,
     generateStatus,
   ]);
 
@@ -1189,9 +1183,7 @@ export function useReportUploadWizard({
       setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);
     }
     setLongRangeConfirmed(false);
-    setComparisonPreset("thisWeek");
-    setComparisonPeriodB(json.weeklyOptions?.prev7 || null);
-    setComparisonPeriodA(json.weeklyOptions?.last7 || null);
+    // Keep the periods chosen before uploading; CSV dates must not silently replace them.
     if (!preserve) {
       resetMetricsState();
       resetPreviewState();
@@ -1260,6 +1252,11 @@ export function useReportUploadWizard({
   // handleMismatchGoBack for the two ways out of it.
   async function handleAnalyze() {
     if (!mtdFile || !selectedPlatformCard) return;
+    if (reportType === "COMPARISON" && !comparisonPeriodsReady()) {
+      setAnalyzeStatus("invalid");
+      setAnalyzeErrors([{ field: "comparisonPeriod", message: "Choose valid Period A and Period B date ranges ending no later than yesterday." }]);
+      return;
+    }
     setAnalyzeStatus("loading");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
@@ -1267,7 +1264,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { reportType }),
+      body: buildUploadFormData(mtdFile, { reportType, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
 
@@ -1339,7 +1336,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, reportType }),
+      body: buildUploadFormData(mtdFile, { platform, reportType, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
     setReanalyzeSessionStatus("idle");
@@ -1485,7 +1482,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform: selectedPlatformCard }),
+      body: buildUploadFormData(mtdFile, { platform: selectedPlatformCard, reportType, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
     setContinueStatus("idle");
@@ -2003,7 +2000,8 @@ export function useReportUploadWizard({
   }
 
   function comparisonPeriodsReady(): boolean {
-    return !!(comparisonPeriodA?.startIso && comparisonPeriodA?.endIso && comparisonPeriodB?.startIso && comparisonPeriodB?.endIso);
+    const yesterday = reportCalendarYesterday(new Date(), clientTimezone);
+    return [comparisonPeriodA, comparisonPeriodB].every(period => !!period?.startIso && !!period.endIso && period.startIso <= period.endIso && period.endIso <= yesterday);
   }
 
   /**
@@ -2605,8 +2603,9 @@ export function useReportUploadWizard({
     const prefs = readClientWizardPreferences(clientId);
     setShowBudgetOnCover(typeof prefs?.showBudgetOnCover === "boolean" ? prefs.showBudgetOnCover : false);
     setComparisonPreset("thisWeek");
-    setComparisonPeriodA(null);
-    setComparisonPeriodB(null);
+    const periods = comparisonPresetPeriods("thisWeek", new Date(), clientTimezone);
+    setComparisonPeriodA(periods.periodA);
+    setComparisonPeriodB(periods.periodB);
     setMonthComparisonOptions(null);
 
     setPreviewStatus("idle");

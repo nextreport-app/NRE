@@ -40,9 +40,6 @@ export function WizardGenerateStep() {
     clientMonthlyBudget,
     clientName,
     comparisonData,
-    comparisonPeriodA,
-    comparisonPeriodB,
-    comparisonPreset,
     copied,
     clientShareMessageCopied,
     shareLinkCopied,
@@ -71,7 +68,6 @@ export function WizardGenerateStep() {
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
-    handleComparisonPresetSelect,
     handleCopyLink,
     handleCopyShareLink,
     handleGenerate,
@@ -128,8 +124,6 @@ export function WizardGenerateStep() {
     shareToken,
     showBudgetOnCover,
     spanDays,
-    updateComparisonPeriodA,
-    updateComparisonPeriodB,
     weeklyOptions,
     weeklyRangeIso,
     reportPeriodConfirmationLine,
@@ -421,66 +415,6 @@ export function WizardGenerateStep() {
               </div>
             </section>
           ) : null}
-
-          {/* Section 2 (Comparison variant) — Period A/B presets (A1) */}
-          {reportType === "COMPARISON" && (
-            <section className="rounded-lg border border-dash-border bg-dash-card p-5">
-              <h4 className="text-[16px] font-semibold text-dash-ink">Select comparison periods</h4>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <WeeklyPeriodOption
-                  selected={comparisonPreset === "thisWeek"}
-                  label="This week vs Last week"
-                  sublabel={
-                    weeklyOptions
-                      ? `${formatIsoRange(weeklyOptions.last7)} vs ${formatIsoRange(weeklyOptions.prev7)}`
-                      : undefined
-                  }
-                  onSelect={() => handleComparisonPresetSelect("thisWeek")}
-                />
-                <WeeklyPeriodOption
-                  selected={comparisonPreset === "custom"}
-                  label="Custom"
-                  onSelect={() => handleComparisonPresetSelect("custom")}
-                />
-              </div>
-
-              {comparisonPreset === "custom" && (
-                <div className="mt-4 space-y-4 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                  <div>
-                    <p className="mb-3 text-[14px] font-medium text-dash-ink">Period A (current)</p>
-                    <WizardDateRangeFields
-                      startIso={comparisonPeriodA?.startIso ?? ""}
-                      endIso={comparisonPeriodA?.endIso ?? ""}
-                      minIso={dateBounds?.minIso}
-                      maxIso={dateBounds?.maxIso}
-                      startLabel="Start"
-                      endLabel="End"
-                      onStartChange={(iso) => updateComparisonPeriodA("startIso", iso)}
-                      onEndChange={(iso) => updateComparisonPeriodA("endIso", iso)}
-                    />
-                  </div>
-                  <div>
-                    <p className="mb-3 text-[14px] font-medium text-dash-ink">Period B (compare)</p>
-                    <WizardDateRangeFields
-                      startIso={comparisonPeriodB?.startIso ?? ""}
-                      endIso={comparisonPeriodB?.endIso ?? ""}
-                      minIso={dateBounds?.minIso}
-                      maxIso={dateBounds?.maxIso}
-                      startLabel="Start"
-                      endLabel="End"
-                      onStartChange={(iso) => updateComparisonPeriodB("startIso", iso)}
-                      onEndChange={(iso) => updateComparisonPeriodB("endIso", iso)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <p className="mt-4 rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink-secondary">
-                Tip: Both periods must fit your main CSV (or use Custom and export a longer range from{" "}
-                {platform === "TIKTOK" ? "TikTok Ads Manager" : "Meta Ads Manager"} that includes Period A and Period B).
-              </p>
-            </section>
-          )}
 
               {previewStatus === "invalid" && (
                 <div className="space-y-3">

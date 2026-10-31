@@ -7,6 +7,7 @@ import type { WizardReportType } from "@/lib/validators/report-wizard";
 
 import type {
   DateMode,
+  ComparisonPreset,
   DateRangeIso,
   PreviewKind,
   PreviewStatus,
@@ -38,6 +39,9 @@ export type WizardDraftSnapshot = {
   platform: WizardPlatformChoice;
   reportType: WizardReportType;
   historicalMonthCount?: number;
+  comparisonPreset?: ComparisonPreset;
+  comparisonPeriodA?: DateRangeIso | null;
+  comparisonPeriodB?: DateRangeIso | null;
   dateMode: DateMode;
   customStart: string;
   customEnd: string;
