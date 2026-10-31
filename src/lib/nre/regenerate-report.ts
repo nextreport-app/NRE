@@ -1,3 +1,4 @@
+import { adSetVisibilityKey } from "./share-report";
 /**
  * Re-renders a stored PPTX from the generation-time archive + the agency's
  * published share edits (visibility toggles and copy changes).
@@ -73,9 +74,17 @@ export async function regeneratePptxFromShare(
       } : slide;
     });
 
+    const adSetSlides = (archive.historicalData.adSetSlides ?? []).filter(slide => {
+      const campaignName = `${slide.ai.dateRange || "Month"} — ${slide.campaignName}`;
+      return visibility.campaigns[campaignName] !== false && visibility.adSets[adSetVisibilityKey(campaignName, slide.adSetName)] !== false;
+    }).map(slide => {
+      const campaignName = `${slide.ai.dateRange || "Month"} — ${slide.campaignName}`;
+      const metrics = share.adSets.find(item => item.campaignName === campaignName && item.adSetName === slide.adSetName)?.metrics;
+      return metrics ? { ...slide, dynamicMetrics: patchMetricSlots(slide.dynamicMetrics, metrics) ?? slide.dynamicMetrics, additionalMetricsSlide: patchMetricSlots(slide.additionalMetricsSlide, metrics) } : slide;
+    });
     return renderHistoricalPptx({
       templateBuffer,
-      data: { ...archive.historicalData, slides, isPaused: slides.length === 0 },
+      data: { ...archive.historicalData, slides, adSetSlides, isPaused: slides.length === 0 },
       reportTitle: archive.reportTitle,
       agencyName: archive.agencyName,
       clientLogo,

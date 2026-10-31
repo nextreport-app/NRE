@@ -13,6 +13,10 @@ import { renderPptx, renderHistoricalPptx, renderDayBreakdownPptx, renderCompari
 import { validateMtdDailyCsv } from "../validate";
 import type { SelectedMetric } from "../available-metrics";
 import { buildVisualChartTitle } from "../visual-chart-slide";
+import { adSetKey } from "../ad-sets";
+import { buildHistoricalAiCopyMap } from "../historical-report-data";
+import { buildHistoricalShareReportData } from "../share-report";
+import { regeneratePptxFromShare } from "../regenerate-report";
 
 const client = { id: "contract", userId: "contract", accountName: "Output contract", currency: "USD", timezone: "UTC", monthlyBudget: null, campaignObjectiveCache: null, showBudgetPacingOnCover: false } as Client;
 const dates = Array.from({ length: 92 }, (_, i) => new Date(Date.UTC(2025, 6, 1 + i)).toISOString().slice(0, 10));
@@ -30,6 +34,27 @@ async function texts(buffer: Buffer) {
 describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actual %s output", template => {
   const templateBuffer = readFileSync(resolve(process.cwd(), "templates", template));
   const theme = { templateBuffer, isLightTemplate: template.includes("light") };
+  it("honours selected ad sets for every month and charts each month's own window", async () => {
+    const input = { ...base, monthCount: 3 };
+    const selected = buildHistoricalReportData({ ...input, selectedAdSets: [adSetKey("Example campaign", "Example ad set")] });
+    const unselected = buildHistoricalReportData({ ...input, selectedAdSets: [] });
+    expect(selected.adSetSlides).toHaveLength(3);
+    expect(unselected.adSetSlides).toHaveLength(0);
+    expect(selected.comparisonRows).toEqual(unselected.comparisonRows);
+    expect(selected.monthlyCharts?.map(item => item.chart.totalAllSpend)).toEqual([310, 310, 300]);
+    expect(selected.monthlyCharts?.map(item => item.chart.actualPeriodDays)).toEqual([31, 31, 30]);
+    const output = await texts(await renderHistoricalPptx({ ...theme, data: selected, aiCopyBySlideKey: buildHistoricalAiCopyMap(selected.slides, selected.adSetSlides) }));
+    expect(output.filter(slide => slide.includes("Example ad set") && slide.includes("AD SPEND"))).toHaveLength(3);
+    expect(output.filter(slide => slide.includes("SPEND BY OBJECTIVE"))).toHaveLength(3);
+    expect(output.join("\n")).not.toMatch(/Last 30 Days|WEEKLY PERFORMANCE/);
+    expect(output.at(-1)).toContain("METRIC ABBREVIATION GUIDE");
+    const share = buildHistoricalShareReportData(selected, buildHistoricalAiCopyMap(selected.slides, selected.adSetSlides));
+    expect(share.adSets).toHaveLength(3);
+    expect(new Set(share.adSets.map(item => item.campaignName)).size).toBe(3);
+    const regenerated = await texts(await regeneratePptxFromShare({ ...share, _renderArchive: { historicalData: selected, isLightTemplate: theme.isLightTemplate } }, templateBuffer));
+    expect(regenerated.filter(slide => slide.includes("Example ad set") && slide.includes("AD SPEND"))).toHaveLength(3);
+    expect(regenerated.filter(slide => slide.includes("SPEND BY OBJECTIVE"))).toHaveLength(3);
+  }, 30_000);
   it("renders monthly-total CSV facts without weekly periods or fabricated daily charts", async () => {
     const source = parseCsvText("Campaign name,Reporting starts,Reporting ends,Amount spent (USD),Results,Result type,Reach,Impressions\nExample,2026-09-01,2026-09-30,300,6,Website leads,1000,9000");
     expect(validateMtdDailyCsv(source.colMap, source.rows, new Date("2026-10-29T12:00:00Z"), source.headers, "META", undefined, "MONTHLY").valid).toBe(true);

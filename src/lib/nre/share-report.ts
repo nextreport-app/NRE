@@ -428,13 +428,17 @@ export function buildHistoricalShareReportData(
       budgetSummary: "",
     },
     campaigns,
-    adSets: [],
+    adSets: (data.adSetSlides ?? []).map(slide => {
+      const campaignName = `${slide.ai.dateRange || "Month"} — ${slide.campaignName}`;
+      const ai = aiCopyBySlideKey.get(`adset:${campaignName}/${slide.adSetName}`) ?? { summary: "", insights: "" };
+      return { campaignName, adSetName: slide.adSetName, resultLabel: slide.resultLabel, dateRange: slide.dateRangeLine.split("\n")[0], adFrequency: adFrequencyLabel(slide.rowFreq), statusIndicator: slide.statusIndicator, metrics: allSlideMetrics(slide), aiSummary: ai.summary, aiInsights: ai.insights };
+    }),
     chart: null,
     tableHeaderLabels: data.tableHeaderLabels,
     periodRow: EMPTY_TABLE_ROW,
     mtdRow: EMPTY_TABLE_ROW,
     historicalComparisonRows: data.comparisonRows,
-    metricGuide: [],
+    metricGuide: collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }),
     agencyName: extras.agencyName ?? null,
     reportBranding: extras.reportBranding,
     generatedAt: now.toISOString(),
@@ -442,7 +446,7 @@ export function buildHistoricalShareReportData(
       cover: true,
       overview: false,
       combinedTotal: data.comparisonRows.length > 0,
-      metricGuide: false,
+      metricGuide: true,
       campaigns: Object.fromEntries(campaigns.map((c) => [c.campaignName, true])),
       adSets: {},
     },

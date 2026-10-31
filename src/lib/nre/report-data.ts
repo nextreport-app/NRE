@@ -192,6 +192,7 @@ export interface CampaignSlideData {
 }
 
 export interface AdSetSlideData {
+  performanceHeader?: string;
   kind: "adset";
   campaignName: string;
   adSetName: string;
