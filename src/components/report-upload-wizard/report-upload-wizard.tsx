@@ -178,7 +178,7 @@ function ReportUploadWizardBody() {
           message={w.uploadSessionRecovery}
           reanalyzing={w.reanalyzeSessionStatus === "loading"}
           onReanalyze={() => void w.handleReanalyzeSession()}
-          onStartOver={() => w.setStep(1)}
+          onStartOver={w.handleGenerateAnother}
         />
       ) : null}
 
