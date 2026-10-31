@@ -19,7 +19,7 @@ export function UploadSessionRecoveryBanner({
           type="button"
           onClick={onReanalyze}
           disabled={reanalyzing}
-          className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+          className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-[#0b1728] hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {reanalyzing ? "Re-analyzing…" : "Re-analyze same file"}
         </button>

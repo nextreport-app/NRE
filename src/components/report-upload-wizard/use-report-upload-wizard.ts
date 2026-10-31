@@ -2545,6 +2545,18 @@ export function useReportUploadWizard({
 
   /** B3's "Generate Another Report for [Client Name]" — a full reset back to Step 1 for the same client, without leaving the wizard (no trip through My Clients). */
   function handleGenerateAnother() {
+    setUploadSessionRecovery(null);
+    setReanalyzeSessionStatus("idle");
+    setCsvVerification(null);
+    setCsvAlignResults(false);
+    csvAlignAttemptedRef.current = false;
+    if (previewDebounceRef.current) {
+      clearTimeout(previewDebounceRef.current);
+      previewDebounceRef.current = null;
+    }
+    resetMetricsState();
+    resetPreviewState();
+    setHistoricalMonthCount(3);
     const initial = readInitialPlatformPickerState(showTikTokOption);
     setSelectedPlatformCard(initial.selectedPlatformCard);
     setWizardKind(initial.wizardKind);
@@ -2607,6 +2619,7 @@ export function useReportUploadWizard({
     clearWizardGenerateSnapshot(clientId);
     clearAllWizardDrafts();
     setStep(1);
+    setVisitedSteps(new Set([1]));
   }
 
   const wizardLeaveGuardActive =
