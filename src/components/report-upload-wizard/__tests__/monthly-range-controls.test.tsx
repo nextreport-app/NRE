@@ -10,7 +10,7 @@ describe("monthly range presentation", () => {
     const html = renderToStaticMarkup(<ReportPeriodControls />);
     expect(html).toContain("From month");
     expect(html).toContain("To month");
-    expect(html).toContain("Previous month + MTD");
+    expect(html).not.toContain("Previous month + MTD");
     expect(html).toContain("September 2026");
     expect(html).toContain("October 2026");
     expect(html).toContain("(full month)");

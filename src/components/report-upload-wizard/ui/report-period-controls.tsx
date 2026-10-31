@@ -59,7 +59,6 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
   const shortcuts = [
     { label: "Current month to date", from: currentMonth, to: currentMonth },
     { label: "Previous month", from: shiftMonth(currentMonth, -1), to: shiftMonth(currentMonth, -1) },
-    { label: "Previous month + MTD", from: shiftMonth(currentMonth, -1), to: currentMonth },
     { label: "Last 3 complete months", from: shiftMonth(currentMonth, -3), to: shiftMonth(currentMonth, -1) },
     { label: "Last 6 complete months", from: shiftMonth(currentMonth, -6), to: shiftMonth(currentMonth, -1) },
   ];
