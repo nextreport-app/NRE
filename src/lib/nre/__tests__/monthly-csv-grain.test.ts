@@ -46,7 +46,9 @@ describe("monthly CSV interval facts",()=>{
   expect(validate(parsed,"HISTORICAL").valid).toBe(true);
   const result=buildHistoricalReportData({accountName:"Example",currencySymbol:"$",timezone:"UTC",monthlyBudget:null,mtdDailyRows:parsed.rows,monthCount:3,now});
   expect(result.comparisonRows.map(row=>row.spend)).toEqual(["$100","$200","$300"]);
-  expect(result.slides.filter(slide=>slide.isMonthTotal)).toHaveLength(3);
+  expect(result.slides.filter(slide=>slide.isMonthTotal)).toHaveLength(0);
+  expect(result.slides).toHaveLength(3);
+  expect(result.slides.map(slide=>slide.metrics.spend)).toEqual(["$100","$200","$300"]);
   expect(parsed.rows.every(row=>!row._raw.Day)).toBe(true);
  });
  it("supports observed current MTD ending before yesterday without labelling extra days",async()=>{
