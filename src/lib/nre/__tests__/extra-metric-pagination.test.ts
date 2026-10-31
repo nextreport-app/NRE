@@ -97,7 +97,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("adaptive cards in actual %s
   }, 60_000);
   it("keeps more than 16 metrics on historical month-total slides too", async () => {
     const { input } = fixture(20);
-    const data = buildHistoricalReportData({ ...input, monthCount: 1 });
+    const data = buildHistoricalReportData({ ...input, mtdDailyRows: [...input.mtdDailyRows, ...input.mtdDailyRows.map(row => ({ ...row, campaign_name: "Second campaign" }))], monthCount: 1 });
     const total = data.slides.find(slide => slide.isMonthTotal)!;
     expect(total.additionalMetricsSlide).toHaveLength(12);
     const output = await slides(await renderHistoricalPptx({ ...options, data }));

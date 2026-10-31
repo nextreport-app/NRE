@@ -36,7 +36,7 @@ describe("computeHistoricalMonthRanges", () => {
 });
 
 describe("buildHistoricalReportData", () => {
-  it("builds campaign slides, month totals, and comparison rows", () => {
+  it("omits duplicate month totals for a single campaign while retaining comparison rows", () => {
     const fullRows: NreRow[] = [];
     for (const month of [5, 6, 7, 8]) {
       fullRows.push(dailyRow(`2026-${String(month).padStart(2, "0")}-01`, "Shoes", "10"));
@@ -59,21 +59,22 @@ describe("buildHistoricalReportData", () => {
     });
 
     expect(data.isPaused).toBe(false);
-    expect(data.slides).toHaveLength(8);
-    expect(data.slides.filter((s) => s.isMonthTotal)).toHaveLength(4);
+    expect(data.slides).toHaveLength(4);
+    expect(data.slides.filter((s) => s.isMonthTotal)).toHaveLength(0);
     expect(data.comparisonRows).toHaveLength(4);
     expect(data.slides[0].performanceHeader).toBe("YOUR MAY PERFORMANCE REPORT");
     expect(data.slides[0].isMonthTotal).toBeFalsy();
-    expect(data.slides[1].isMonthTotal).toBe(true);
-    expect(data.slides[1].performanceHeader).toBe("YOUR MAY MONTH TOTAL");
+    expect(data.slides[1].isMonthTotal).toBeFalsy();
+    expect(data.slides[1].performanceHeader).toBe("YOUR JUNE PERFORMANCE REPORT");
 
     const copy = buildHistoricalSlideCopy(data.slides[0]);
-    expect(copy.insights).toBe("Historical data.");
+    expect(copy.insights).toContain("recorded");
+    expect(copy.insights).not.toContain("Historical data.");
     expect(copy.summary).toContain("Shoes spent");
 
     const share = buildHistoricalShareReportData(data, buildHistoricalAiCopyMap(data.slides));
     expect(share.reportType).toBe("HISTORICAL");
-    expect(share.campaigns).toHaveLength(8);
+    expect(share.campaigns).toHaveLength(4);
     expect(share.campaigns[0].slideReportTypeLabel).toBe("May Performance Report");
     expect(share.historicalComparisonRows).toHaveLength(4);
     expect(share.visibility?.combinedTotal).toBe(true);
@@ -95,6 +96,21 @@ describe("buildHistoricalReportData", () => {
     });
     const campaignSlides = data.slides.filter((s) => !s.isMonthTotal);
     expect(campaignSlides.map((s) => s.campaignName)).toEqual(["Big"]);
+    expect(data.slides.some(slide => slide.isMonthTotal)).toBe(true);
+  });
+
+  it("describes zero results and partial-month scope without invented performance judgements", () => {
+    const data = buildHistoricalReportData({ accountName: "Acme", currencySymbol: "$", timezone: "UTC", monthlyBudget: null,
+      campaignObjectives: { Shoes: { resultLabel: "WEBSITE LEADS", costLabel: "COST PER WEBSITE LEAD" } },
+      mtdDailyRows: [dailyRow("2026-05-01", "Shoes", "30", "0"), dailyRow("2026-05-31", "Shoes", "30", "0")],
+      monthCount: 1, now: new Date("2026-06-07T12:00:00Z") });
+    const slide = data.slides[0];
+    slide.ai.dateRange = "May 2026 (MTD)";
+    const copy = buildHistoricalSlideCopy(slide);
+    expect(copy.insights).toContain("No website leads were recorded");
+    expect(copy.insights).toContain("cost per result is not applicable");
+    expect(copy.insights).toContain("month-to-date");
+    expect(copy.insights).not.toMatch(/Historical data\.|strong|healthy|efficient/i);
   });
 });
 

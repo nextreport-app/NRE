@@ -1,7 +1,7 @@
 /**
  * Deterministic, past-tense slide copy for Multi-Month Historical reports.
- * Historical months are closed — summaries describe what happened; insights
- * stay minimal (no forward-looking recommendations).
+ * Summaries and observations describe the selected month, including MTD.
+ * No provider call or unsupported performance judgement is needed.
  */
 
 import type { CampaignSlideData } from "./report-data";
@@ -20,16 +20,29 @@ export function buildHistoricalSlideCopy(slide: CampaignSlideData): AiCopy {
   const results = slide.metrics.results;
   const resultLabel = slide.resultLabel.toLowerCase();
   const cprPart = cprPhrase(slide.metrics.cpr, slide.resultLabel);
+  const observations: string[] = [];
+  const available = (value: string) => /\d/.test(value) && !/N\/A/i.test(value);
+  if (available(results) && slide.ai.resultsNum === 0 && slide.ai.spendNum > 0) {
+    observations.push(`No ${resultLabel} were recorded for this period despite ${spend} in spend; cost per result is not applicable.`);
+  } else if (slide.ai.resultsNum > 0) {
+    observations.push(`${results} ${resultLabel} were recorded${cprPart}.`);
+  } else {
+    observations.push(`Recorded ad spend for this period was ${spend}.`);
+  }
+  if (available(slide.metrics.ctr)) observations.push(`CTR (all) was ${slide.metrics.ctr}${available(slide.metrics.cpc) ? `, with CPC (all) of ${slide.metrics.cpc}` : ""}.`);
+  else if (available(slide.metrics.cpc)) observations.push(`CPC (all) was ${slide.metrics.cpc}.`);
+  if (monthLabel.includes("(MTD)")) observations.push("This is month-to-date performance through the selected end date, rather than a complete month.");
+  const insights = observations.join("\n");
 
   if (slide.isMonthTotal) {
     return {
       summary: `Combined across all campaigns, ${monthLabel} delivered ${spend} in ad spend and ${results} ${resultLabel}${cprPart}.`,
-      insights: "Historical data.",
+      insights,
     };
   }
 
   return {
     summary: `${slide.campaignName} spent ${spend} in ${monthLabel} and recorded ${results} ${resultLabel}${cprPart}.`,
-    insights: "Historical data.",
+    insights,
   };
 }
