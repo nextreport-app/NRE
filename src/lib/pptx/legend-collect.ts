@@ -4,7 +4,7 @@ import type { ReportData } from "../nre/report-data";
 import type { LegendEntry } from "./legend-slide";
 
 /** Collects distinct metric keys for the PPT/share Metric Guide — no server-only deps. */
-export function collectLegendEntries(data: ReportData): LegendEntry[] {
+export function collectLegendEntries(data: Pick<ReportData, "platform" | "campaignSlides" | "adSetSlides">): LegendEntry[] {
   const seen = new Set<string>();
   const entries: LegendEntry[] = [];
   const findByKey = data.platform === "GOOGLE" ? findGoogleMetricByKey : findMetaMetricByKey;
