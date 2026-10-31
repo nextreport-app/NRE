@@ -19,7 +19,7 @@ export type PreviewStatus = "idle" | "loading" | "invalid" | "error";
 export type GenerateStatus = "idle" | "loading" | "done" | "error";
 export type DateMode = "last7" | "prev7" | "last14" | "custom";
 export type ReportTypeValue = WizardReportType;
-export type ComparisonPreset = "thisWeek" | "thisMonth" | "custom";
+export type ComparisonPreset = "thisWeek" | "last15" | "last30" | "thisMonth" | "custom";
 export type PreviewKind = "normal" | "comparison" | "historical" | "dayBreakdown";
 export type DriveView = "collapsed" | "editing" | "success";
 
