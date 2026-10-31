@@ -71,6 +71,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     expect(data.campaignSlides[0].metrics.spend).toBe(spend);
     const output = await texts(await renderPptx({ ...theme, data, currencySymbol: "$" }));
     const joined = output.join("\n");
+    expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     expect(joined).toContain(heading);
     expect(joined).not.toMatch(/WEEKLY PERFORMANCE|YESTERDAY PERFORMANCE|Last 30 Days/);
     if (type === "DAILY") {
@@ -92,14 +93,16 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     expect(data.comparisonRows.map(r => r.spend)).toEqual(["$310", "$310", "$300"]);
     const output = await texts(await renderHistoricalPptx({ ...theme, data }));
     expect(output.join("\n")).not.toMatch(/WEEKLY PERFORMANCE|Last 30 Days|YESTERDAY PERFORMANCE/);
-    expect(output.at(-1)).toContain("MULTI-MONTH PERFORMANCE OVERVIEW");
+    expect(output.at(-2)).toContain("MULTI-MONTH PERFORMANCE OVERVIEW");
+    expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     for (const month of ["JULY", "AUGUST", "SEPTEMBER"]) expect(output.join("\n")).toContain(`YOUR ${month} PERFORMANCE REPORT`);
   }, 30_000);
   it("day-by-day output is tables only, with a row per selected day", async () => {
     const data = buildDayBreakdownReportData({ ...base, dateRange: { startIso: "2025-09-01", endIso: "2025-09-10" } });
     expect(data.dayRows).toHaveLength(10);
     const output = await texts(await renderDayBreakdownPptx({ ...theme, data }));
-    expect(output).toHaveLength(1 + data.tableSlides.length);
+    expect(output).toHaveLength(2 + data.tableSlides.length);
+    expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     expect(output.join("\n")).not.toMatch(/MONTHLY CAMPAIGN|WEEKLY PERFORMANCE|Last 30 Days/);
     expect(output[1]).toContain("Date");
   }, 30_000);
@@ -110,7 +113,8 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     const data = buildComparisonReportData({ ...base, periodA: { startIso: aStart, endIso: aEnd }, periodB: { startIso: bStart, endIso: bEnd } });
     const output = await texts(await renderComparisonPptx({ ...theme, data }));
     expect(output.join("\n")).toContain(spend);
-    expect(output).toHaveLength(3); // Cover, campaign comparison, summary.
+    expect(output).toHaveLength(4); // Cover, campaign comparison, summary, guide.
+    expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     expect(output.join("\n")).not.toMatch(/MONTHLY CAMPAIGN|WEEKLY PERFORMANCE|Last 30 Days/);
   }, 30_000);
 });

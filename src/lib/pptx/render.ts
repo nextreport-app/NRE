@@ -24,8 +24,8 @@ import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
 import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildDayBreakdownTableSlideXml, buildHistoricalTableSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
-import { assemblePptx, loadTemplate, type SlideToInsert } from "./package";
-import { buildLegendSlideXml } from "./legend-slide";
+import { assemblePptx, loadTemplate, type SlideToInsert, type LoadedTemplate } from "./package";
+import { buildLegendSlideXml, type LegendEntry } from "./legend-slide";
 import { buildComparisonCampaignSlideXml, buildComparisonCoverSlideXml, buildComparisonSummarySlideXml, COMPARISON_BG_REL_ID } from "./comparison-slides";
 import {
   buildCreativeFatigueSlideXml,
@@ -137,6 +137,13 @@ export interface RenderPptxInput {
   shareChart?: ShareChartData | null;
 }
 
+/** Every exported deck ends with the guide, including paused and regenerated reports. */
+function appendMetricGuide(template: LoadedTemplate, slides: SlideToInsert[], isLightTemplate: boolean, entries: LegendEntry[] = []) {
+  for (let offset = 0; offset < Math.max(1, entries.length); offset += METRIC_GUIDE_ENTRIES_PER_SLIDE) {
+    slides.push({ xml: buildLegendSlideXml(template.legend.xml, entries.slice(offset, offset + METRIC_GUIDE_ENTRIES_PER_SLIDE), isLightTemplate), rels: template.legend.rels });
+  }
+}
+
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   const {
     templateBuffer,
@@ -153,7 +160,6 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   const vis = shareVisibility;
   const showOverview = vis?.overview !== false;
   const showCombinedTotal = vis?.combinedTotal !== false;
-  const showMetricGuide = vis?.metricGuide !== false;
   const campaignVisible = (name: string) => vis?.campaigns[name] !== false;
   const adSetVisible = (campaignName: string, adSetName: string) =>
     vis?.adSets[adSetVisibilityKey(campaignName, adSetName)] !== false;
@@ -314,15 +320,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     rels: template.table.rels,
   });
   }
-  if (showMetricGuide) {
-    const entries = collectLegendEntries(data);
-    for (let offset = 0; offset < Math.max(1, entries.length); offset += METRIC_GUIDE_ENTRIES_PER_SLIDE) {
-      slides.push({
-        xml: buildLegendSlideXml(template.legend.xml, entries.slice(offset, offset + METRIC_GUIDE_ENTRIES_PER_SLIDE), isLightTemplate),
-        rels: template.legend.rels,
-      });
-    }
-  }
+  appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries(data));
 
   return assemblePptx(template, slides);
 }
@@ -331,8 +329,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
 //
 // A separate top-level entry point from renderPptx above — comparison
 // reports have their own slide order (Cover → one comparison campaign slide
-// per campaign → summary table; no MTD chart, no ad-set slides, no metric
-// guide slide) and their own from-scratch slide builders (see
+// per campaign → summary table → metric guide; no MTD chart or ad-set slides) and their own from-scratch slide builders (see
 // comparison-slides.ts), so this doesn't branch inside renderPptx/ReportData
 // at all, matching the same "separate, parallel pipeline" split
 // report-data.ts's buildComparisonReportData already establishes on the
@@ -382,6 +379,7 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     rels: buildComparisonSlideRels(template.background.mediaTarget),
   });
 
+  appendMetricGuide(template, slides, isLightTemplate);
   return assemblePptx(template, slides);
 }
 
@@ -483,7 +481,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     }
   }
 
-  void isLightTemplate;
+  appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: [] }));
   return assemblePptx(template, slides);
 }
 
@@ -565,6 +563,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     });
   }
 
+  appendMetricGuide(template, slides, isLightTemplate);
   return assemblePptx(template, slides);
 }
 
@@ -691,5 +690,19 @@ export async function renderWebsitePptx(input: RenderWebsitePptxInput): Promise<
     });
   }
 
+  appendMetricGuide(template, slides, isLightTemplate, [
+    { term: "Users", explanation: "Distinct users reported by Google Analytics for the selected period." },
+    { term: "Sessions", explanation: "Visits recorded by Google Analytics during the selected period." },
+    { term: "Engaged sessions", explanation: "Sessions meeting the engagement criteria configured in Google Analytics." },
+    { term: "Engagement rate", explanation: "Engaged sessions divided by total sessions, expressed as a percentage." },
+    { term: "Conversions", explanation: "Conversion or key-event occurrences returned by the connected analytics source." },
+    { term: "Conversion rate", explanation: "The source-reported conversion rate for the corresponding row or metric." },
+    { term: "Page views", explanation: "Recorded page views; repeated views of a page can be counted." },
+    { term: "New users", explanation: "Users recorded as visiting for the first time by Google Analytics." },
+    { term: "Returning users", explanation: "Users recorded as having visited previously by Google Analytics." },
+    { term: "Source / medium", explanation: "Where traffic originated and the traffic category assigned to it." },
+    { term: "Channel", explanation: "A grouping of traffic sources, such as organic search or paid social." },
+    { term: "MTD", explanation: "Month to date: the selected portion of the current calendar month." },
+  ]);
   return assemblePptx(template, slides);
 }

@@ -107,6 +107,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("adaptive cards in actual %s
     expect(totalShare.metrics).toHaveLength(20);
     totalShare.metrics.find(metric => metric.key === "extra_11")!.value = "9,876,543";
     const regenerated = await slides(await regeneratePptxFromShare({ ...share, _renderArchive: { historicalData: data, isLightTemplate: options.isLightTemplate } }, options.templateBuffer));
+    expect(regenerated.at(-1)).toContain("METRIC ABBREVIATION GUIDE");
     expect(regenerated.filter(xml => xml.includes(">ADDITIONAL METRICS<")).join("\n")).toContain(">9,876,543<");
   }, 60_000);
 });
