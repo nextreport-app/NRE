@@ -1,5 +1,6 @@
 "use client";
 
+import { ComparisonPeriodControls } from "./comparison-period-controls";
 import { ReportMonthPicker } from "./report-month-picker";
 import { WizardDatePicker, WizardDateRangeFields } from "./wizard-date-picker";
 import { useWizardContext } from "../wizard-context";
@@ -9,6 +10,7 @@ import { getCalendarDateInTimezone } from "@/lib/nre/dates";
 /** Four visible report choices reuse the existing safe engine modes. */
 export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
   const w = useWizardContext();
+  if (w.reportType === "COMPARISON") return <ComparisonPeriodControls stage={stage} />;
   if (!["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN"].includes(w.reportType)) return null;
   const now = new Date();
   const yesterday = reportCalendarYesterday(now, w.clientTimezone);

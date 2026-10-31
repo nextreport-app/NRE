@@ -163,10 +163,10 @@ export function WizardMetricsStep() {
 
   if (w.reportType === "COMPARISON" || w.reportType === "DAY_BREAKDOWN") {
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
-      <h3 className="text-base font-semibold text-dash-ink">Table metrics are included</h3>
-      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Both periods use the same fixed comparison metrics so they can be compared fairly." : "Each daily row uses the same fixed metrics so you can compare days."} Additional metric slides are available on performance reports, rather than this table format.</p>
-      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Spend, reach, results and cost per result for each period, plus a comparison summary." : "Spend, reach, impressions, CTR, CPC and objective-specific results and costs."}</p>
-      <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-dash-ink">{copy.continueToGenerate}</button></div>
+      <h3 className="text-base font-semibold text-dash-ink">{w.reportType === "COMPARISON" ? "4 comparison metrics per campaign" : "Table metrics are included"}</h3>
+      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Each campaign slide shows Period A, Period B and the percentage change for the same four metrics." : "Each daily row uses the same fixed metrics so you can compare days."} Metrics are fixed for this report type.</p>
+      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Included: ad spend, reach, results for the campaign objective and cost per result. A summary compares all selected campaigns." : "Spend, reach, impressions, CTR, CPC and objective-specific results and costs."}</p>
+      <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-[#0b1728]">{copy.continueToGenerate}</button></div>
       <WizardStickyFooter stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))} onBack={() => setStep(2)} backLabel={copy.back} primaryLabel={copy.continueToGenerate} onPrimary={handleMetricsContinue} />
     </div>;
   }

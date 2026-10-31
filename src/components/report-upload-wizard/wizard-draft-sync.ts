@@ -17,6 +17,9 @@ export type WizardDraftPersistInput = {
   platform: WizardPlatformChoice;
   reportType: WizardReportType;
   historicalMonthCount?: number;
+  comparisonPreset?: WizardDraftSnapshot["comparisonPreset"];
+  comparisonPeriodA?: WizardDraftSnapshot["comparisonPeriodA"];
+  comparisonPeriodB?: WizardDraftSnapshot["comparisonPeriodB"];
   dateMode: DateMode;
   customStart: string;
   customEnd: string;
@@ -47,6 +50,9 @@ export function buildWizardDraftSnapshot(input: WizardDraftPersistInput): Wizard
     platform: input.platform,
     reportType: input.reportType,
     historicalMonthCount: input.historicalMonthCount,
+    comparisonPreset: input.comparisonPreset,
+    comparisonPeriodA: input.comparisonPeriodA,
+    comparisonPeriodB: input.comparisonPeriodB,
     dateMode: input.dateMode,
     customStart: input.customStart,
     customEnd: input.customEnd,

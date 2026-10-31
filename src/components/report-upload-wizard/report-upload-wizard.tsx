@@ -164,7 +164,7 @@ function ReportUploadWizardBody() {
                 : wizardStepHeading(w.step, w.platform, locale)}
             </h1>
             {wizardStepSubtitle(w.step, w.platform, locale) ? (
-              <p className="text-[14px] text-dash-ink-secondary">{wizardStepSubtitle(w.step, w.platform, locale)}</p>
+              <p className="text-[14px] text-dash-ink-secondary">{w.step === 3 && w.reportType === "COMPARISON" ? "Review the metrics included in your comparison report." : wizardStepSubtitle(w.step, w.platform, locale)}</p>
             ) : null}
           </>
         ) : null}
