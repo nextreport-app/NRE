@@ -30,8 +30,7 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
   const count = w.reportType === "HISTORICAL" ? w.historicalMonthCount : 1;
   const endMonth = custom && w.customEnd ? w.customEnd.slice(0, 7) : yesterday.slice(0, 7);
   function periodEnd(month: string) {
-    const end = monthPeriod(month, now, w.clientTimezone).endIso;
-    return month === currentMonth && w.dateBounds?.maxIso?.slice(0, 7) === month && w.dateBounds.maxIso < end ? w.dateBounds.maxIso : end;
+    return monthPeriod(month, now, w.clientTimezone).endIso;
   }
   function chooseMonths(number: number, month: string) {
     const end = periodEnd(month);
@@ -45,12 +44,37 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
   const first = new Date(`${endMonth}-01T12:00:00Z`); first.setUTCMonth(first.getUTCMonth() - count + 1);
   const start = first.toISOString().slice(0, 10);
   const rangeLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"));
-  return <section className="space-y-2">
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
-      <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">{count === 1 ? "Report month" : "Ending month"}</p><ReportMonthPicker label={count === 1 ? "Report month" : "Ending month"} value={endMonth} currentMonth={currentMonth} maxMonth={yesterday.slice(0, 7)} partialLabel={end < yesterday ? "Month to date" : "Through yesterday"} onChange={month => chooseMonths(count, month)} /></div>
-      <label className="space-y-1 text-[13px] font-medium text-dash-ink-secondary">Number of months<select aria-label="Number of months" value={count} onChange={event => chooseMonths(Number(event.target.value), endMonth)} className="block w-full rounded-lg border border-dash-border bg-dash-bg px-3 py-3 text-sm text-dash-ink">{Array.from({ length: 12 }, (_, index) => index + 1).map(n => <option key={n} value={n}>{n === 1 ? "1 month" : `${n} months`}</option>)}</select></label>
+  const startMonth = start.slice(0, 7);
+  function shiftMonth(month: string, offset: number) {
+    const date = new Date(`${month}-01T12:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() + offset);
+    return date.toISOString().slice(0, 7);
+  }
+  function chooseMonthRange(from: string, to: string) {
+    const a = new Date(`${from}-01T12:00:00Z`), b = new Date(`${to}-01T12:00:00Z`);
+    const months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1;
+    chooseMonths(months, to);
+  }
+  const latestMonth = yesterday.slice(0, 7);
+  const shortcuts = [
+    { label: "Current month to date", from: currentMonth, to: currentMonth },
+    { label: "Previous month", from: shiftMonth(currentMonth, -1), to: shiftMonth(currentMonth, -1) },
+    { label: "Previous month + MTD", from: shiftMonth(currentMonth, -1), to: currentMonth },
+    { label: "Last 3 complete months", from: shiftMonth(currentMonth, -3), to: shiftMonth(currentMonth, -1) },
+    { label: "Last 6 complete months", from: shiftMonth(currentMonth, -6), to: shiftMonth(currentMonth, -1) },
+  ];
+  const periods = historicalPeriods(count, endMonth, endMonth === currentMonth, endMonth === currentMonth ? reportPeriodAnchor(end, w.clientTimezone) : now, w.clientTimezone);
+  return <section className="space-y-4 rounded-xl border border-dash-border bg-dash-bg/40 p-4">
+    <div><h3 className="text-sm font-semibold text-dash-ink">Which months would you like to report?</h3><p className="mt-1 text-xs text-dash-ink-secondary">Choose one month or a range of up to 12 months. Each month is shown separately.</p></div>
+    <div className="flex flex-wrap gap-2">{shortcuts.filter(option => option.to <= latestMonth).map(option => <button key={option.label} type="button" aria-pressed={startMonth === option.from && endMonth === option.to} onClick={() => chooseMonthRange(option.from, option.to)} className={`rounded-lg border px-3 py-2 text-xs font-medium ${startMonth === option.from && endMonth === option.to ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink hover:bg-dash-card"}`}>{option.label}</button>)}</div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">From month</p><ReportMonthPicker label="From month" value={startMonth} currentMonth={currentMonth} maxMonth={latestMonth} onChange={month => chooseMonthRange(month, month > endMonth ? month : endMonth > shiftMonth(month, 11) ? shiftMonth(month, 11) : endMonth)} /></div>
+      <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">To month</p><ReportMonthPicker label="To month" value={endMonth} currentMonth={currentMonth} maxMonth={latestMonth} partialLabel={end < yesterday ? "Month to date" : "Through yesterday"} onChange={month => chooseMonthRange(month < startMonth ? month : startMonth < shiftMonth(month, -11) ? shiftMonth(month, -11) : startMonth, month)} /></div>
     </div>
-    <p className="text-xs leading-relaxed text-dash-ink-secondary">{stage === "import" ? "CSV coverage" : "Reporting dates"}: {rangeLabel}{stage === "import" ? " · Day rows or campaign/month totals" : ""}</p>
-    {count > 1 && <p className="text-xs text-dash-ink-secondary">Each month is shown separately, followed by a monthly overview table.</p>}
+    <div className="rounded-lg border border-dash-border bg-dash-card/50 p-3">
+      <p className="text-xs font-semibold text-dash-ink">{count === 1 ? "1 month selected" : `${count} months selected`}</p>
+      <ul className="mt-2 grid gap-1.5 text-xs text-dash-ink-secondary sm:grid-cols-2">{periods.map((period, index) => <li key={period.startIso}>{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(period.startIso + "T12:00:00Z"))}: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).formatRange(new Date(period.startIso + "T12:00:00Z"), new Date((index === periods.length - 1 ? end : period.endIso) + "T12:00:00Z"))}{period.startIso.slice(0, 7) === currentMonth ? " (MTD)" : " (full month)"}</li>)}</ul>
+    </div>
+    <p className="text-xs leading-relaxed text-dash-ink-secondary">{stage === "import" ? "CSV coverage needed" : "Reporting dates"}: {rangeLabel}.{stage === "import" ? " Upload day rows or separate campaign totals for each month; one combined total across several months cannot be split accurately." : ""}</p>
   </section>;
 }
