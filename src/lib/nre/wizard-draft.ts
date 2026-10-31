@@ -39,6 +39,8 @@ export type WizardDraftSnapshot = {
   platform: WizardPlatformChoice;
   reportType: WizardReportType;
   historicalMonthCount?: number;
+  comparisonMetricKeys?: string[];
+  csvHeaders?: string[];
   comparisonPreset?: ComparisonPreset;
   comparisonPeriodA?: DateRangeIso | null;
   comparisonPeriodB?: DateRangeIso | null;

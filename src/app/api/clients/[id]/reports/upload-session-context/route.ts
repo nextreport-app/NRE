@@ -51,6 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({
       ok: true,
+      headers: payload.headers,
       ...context,
     });
   } catch (err) {

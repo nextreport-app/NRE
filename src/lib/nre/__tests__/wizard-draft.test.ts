@@ -56,7 +56,7 @@ describe("wizard-draft", () => {
     expect(loaded?.weeklyOptions?.last7.endIso).toBe("2026-10-13");
     saveWizardDraft(clientId, { ...loaded!, reportType: "HISTORICAL", historicalMonthCount: 6, dateMode: "custom", customStart: "2026-04-01", customEnd: "2026-09-30" });
     expect(loadWizardDraft(clientId)).toMatchObject({ reportType: "HISTORICAL", historicalMonthCount: 6, customStart: "2026-04-01", customEnd: "2026-09-30" });
-    const comparison = { reportType: "COMPARISON" as const, comparisonPreset: "custom" as const, comparisonPeriodA: { startIso: "2026-09-01", endIso: "2026-09-30" }, comparisonPeriodB: { startIso: "2025-09-01", endIso: "2025-09-30" } };
+    const comparison = { comparisonMetricKeys: ["impressions", "cpc_all"], csvHeaders: ["Impressions", "CPC (all)"], reportType: "COMPARISON" as const, comparisonPreset: "custom" as const, comparisonPeriodA: { startIso: "2026-09-01", endIso: "2026-09-30" }, comparisonPeriodB: { startIso: "2025-09-01", endIso: "2025-09-30" } };
     saveWizardDraft(clientId, { ...loaded!, ...comparison });
     expect(loadWizardDraft(clientId)).toMatchObject(comparison);
   });

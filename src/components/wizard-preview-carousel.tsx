@@ -20,6 +20,7 @@
  */
 
 import { useState, type ReactNode } from "react";
+import { paginateExtraMetrics } from "@/lib/nre/metric-pagination";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -335,10 +336,12 @@ function buildSlides({
         render: () => <ComparisonCampaignSlide campaignName={first.campaignName} objective={first.objective} />,
       });
     }
+    if (first) paginateExtraMetrics(first.additionalMetrics ?? []).forEach((metrics, index) => slides.push({ key: `comparison-extra-${index}`, render: () => <div className="flex h-full flex-col"><SlideHeading>ADDITIONAL COMPARISON METRICS</SlideHeading><p className="mt-1 text-xs" style={{ color: MUTED }}>{first.campaignName} · Period A / Period B / Change</p><div className="mt-3 grid gap-1 text-[8px] sm:text-[10px]">{metrics.map(metric => <div key={metric.key} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 rounded px-2 py-1" style={{ background: CARD_BG, color: MUTED }}><span>{metric.label}</span><span>…</span><span>…</span><span>…</span></div>)}</div></div> }));
     slides.push({ key: "comparison-summary", render: () => <ComparisonSummarySlide /> });
 
-    const extraCampaigns = Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0));
-    const moreText = extraCampaigns > 0 ? `+ ${extraCampaigns} more slides in your full report (${extraCampaigns} campaign comparison slides)` : null;
+    const extraCampaigns = Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0)) + comparisonData.campaigns.slice(1).reduce((sum, campaign) => sum + paginateExtraMetrics(campaign.additionalMetrics ?? []).length, 0);
+    const hidden = extraCampaigns + Math.max(0, slides.length - MAX_SLIDES);
+    const moreText = hidden > 0 ? `+ ${hidden} more slides in your full report (campaign and additional comparison slides)` : null;
     return { slides: slides.slice(0, MAX_SLIDES), moreText };
   }
 

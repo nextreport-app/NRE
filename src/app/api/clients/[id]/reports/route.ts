@@ -37,6 +37,7 @@ import {
   campaignMetricOverridesSchema,
   campaignObjectivesSchema,
   comparisonPeriodSchema,
+  comparisonMetricKeysSchema,
   confirmedCampaignObjectivesSchema,
   dateSelectionSchema,
   historicalMonthCountSchema,
@@ -235,6 +236,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
       platform,
       csvHeaders: mtdParsed.headers,
+      comparisonMetricKeys: formData ? parseJsonFormField(formData, "comparisonMetricKeys", comparisonMetricKeysSchema) : undefined,
     });
 
     const recoveryGuard = await guardReportGeneration({client,userId:session.user.id,parsed:mtdParsed,formData,sourceKey:`${id}:${fileHash ?? uploadSessionId ?? "preview"}`,candidate:{kind:"COMPARISON",data:comparisonData,periodRows: supplementalRows,}});
