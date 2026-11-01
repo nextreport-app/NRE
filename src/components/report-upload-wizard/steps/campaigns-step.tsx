@@ -228,8 +228,8 @@ export function WizardCampaignsStep() {
             const isSelected = selectedCampaigns.has(name);
             const group = adSetGroups.find((g) => g.campaignName === name);
             const isExpanded = expandedCampaigns.has(name);
-            const isMultiAdSet = !!group && group.adSetNames.length >= 2;
-            const isSingleAdSet = !!group && group.adSetNames.length === 1;
+            const isMultiAdSet = w.reportType !== "DAY_BREAKDOWN" && !!group && group.adSetNames.length >= 2;
+            const isSingleAdSet = w.reportType !== "DAY_BREAKDOWN" && !!group && group.adSetNames.length === 1;
             const allAdSetsDeselected =
               !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
             const spend = campaignSpend[name] ?? 0;

@@ -324,6 +324,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     },
   );
 
+  if (options.reportType === "DAY_BREAKDOWN") return setShapeWrap(setShapeExtCx(filled, cover.reportDate, 880 * 12700), cover.reportDate, "none");
   return cover.budgetSummary?.trim()
     ? ensureCoverBudgetSingleLine(filled, cover.budgetSummary)
     : filled;
@@ -816,10 +817,7 @@ export function buildDayBreakdownTableSlideXml(
     hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
     isLightTemplate,
   });
-  const headerText =
-    slideCount > 1 && slideIndex > 0
-      ? "DAY-BY-DAY PERFORMANCE OVERVIEW (CONTINUED)"
-      : "DAY-BY-DAY PERFORMANCE OVERVIEW";
+  const headerText = `DAILY PERFORMANCE OVERVIEW${slideCount > 1 ? ` (${slideIndex + 1}/${slideCount})` : ""}`;
   let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
     bold: true,
     sizePt: REPORT_HEADER_SIZE_PT,

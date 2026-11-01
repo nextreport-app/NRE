@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { dailyPeriodLabel, dailyPresetRange } from "@/lib/nre/daily-period-selection";
 import { ComparisonPeriodControls } from "./comparison-period-controls";
 import { ReportMonthPicker } from "./report-month-picker";
 import { WizardDatePicker, WizardDateRangeFields } from "./wizard-date-picker";
@@ -10,6 +12,7 @@ import { getCalendarDateInTimezone } from "@/lib/nre/dates";
 /** Four visible report choices reuse the existing safe engine modes. */
 export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
   const w = useWizardContext();
+  const [customDaily, setCustomDaily] = useState(false);
   if (w.reportType === "COMPARISON") return <ComparisonPeriodControls stage={stage} />;
   if (!["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN"].includes(w.reportType)) return null;
   const now = new Date();
@@ -22,7 +25,7 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
     const start = custom && w.customStart ? w.customStart : yesterday;
     const end = custom && w.customEnd ? w.customEnd : yesterday;
     const label = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"));
-    return <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-dash-border bg-dash-card p-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{label}</p></div>{changeDates}</section>;
+    return <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-dash-border bg-dash-card p-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{w.reportType === "DAY_BREAKDOWN" && <span className="block font-semibold">{dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone)}</span>}{label}</p></div>{changeDates}</section>;
   }
   function chooseRange(start: string, end: string) { w.editDateMode("custom"); w.editCustomStart(start); w.editCustomEnd(end); }
   if (w.reportType === "DAILY") return <WizardDatePicker label="Report day" value={custom ? w.customStart : yesterday} maxIso={yesterday} onChange={day => chooseRange(day, day)} />;
@@ -30,9 +33,14 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
     const start = custom && w.customStart ? w.customStart : yesterday;
     const end = custom && w.customEnd ? w.customEnd : yesterday;
     return <section className="space-y-3">
-      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => chooseRange(yesterday, yesterday)} className="rounded-md border border-dash-border px-3 py-1.5 text-xs text-dash-ink hover:bg-dash-card">Yesterday</button><button type="button" onClick={() => { const day = new Date(yesterday + "T12:00:00Z"); day.setUTCDate(day.getUTCDate() - 6); chooseRange(day.toISOString().slice(0, 10), yesterday); }} className="rounded-md border border-dash-border px-3 py-1.5 text-xs text-dash-ink hover:bg-dash-card">Last 7 days</button></div>
-      <WizardDateRangeFields startIso={start} endIso={end} minIso={w.dateBounds?.minIso} maxIso={w.dateBounds?.maxIso && w.dateBounds.maxIso < yesterday ? w.dateBounds.maxIso : yesterday} onStartChange={day => chooseRange(day, end < day ? day : end)} onEndChange={day => chooseRange(start > day ? day : start, day)} />
-      <p className="text-xs text-dash-ink-secondary">One row per day in your CSV. Select the same start and end date for a single-day table.</p>
+      <h3 className="text-sm font-semibold text-dash-ink">Which days would you like to report?</h3>
+      <div className="flex flex-wrap gap-2">{[1, 7, 14, 30].map(days => {
+        const range = dailyPresetRange(days, now, w.clientTimezone);
+        const active = !customDaily && start === range.startIso && end === range.endIso;
+        return <button key={days} type="button" aria-pressed={active} onClick={() => { setCustomDaily(false); chooseRange(range.startIso, range.endIso); }} className={`rounded-lg border px-3 py-2 text-xs font-medium ${active ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink hover:bg-dash-card"}`}>{days === 1 ? "Yesterday" : `Last ${days} days`}</button>;
+      })}<button type="button" aria-pressed={customDaily || dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone) === "Custom date range"} onClick={() => setCustomDaily(true)} className={`rounded-lg border px-3 py-2 text-xs font-medium ${customDaily || dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone) === "Custom date range" ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink"}`}>Custom date range</button></div>
+      <WizardDateRangeFields startIso={start} endIso={end} maxIso={yesterday} onStartChange={day => { setCustomDaily(true); chooseRange(day, end < day ? day : end); }} onEndChange={day => { setCustomDaily(true); chooseRange(start > day ? day : start, day); }} />
+      <p className="text-xs text-dash-ink-secondary">CSV coverage needed: {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"))}. Upload a CSV with Day-wise breakdown covering this entire range. Each table row combines your selected campaigns for one day; missing days are not treated as zero delivery.</p>
       {w.customRangeError && <p className="text-sm text-red-400">{w.customRangeError}</p>}
     </section>;
   }

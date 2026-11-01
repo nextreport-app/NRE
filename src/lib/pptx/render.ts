@@ -538,7 +538,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
 
   const cover = {
     accountName: data.accountName,
-    reportDate: data.reportDate,
+    reportDate: `${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,
     dateRange: data.rangeLabel,
     healthBadge: "Daily",
     healthScore: 0,

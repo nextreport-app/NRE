@@ -1,3 +1,4 @@
+import { dailyPeriodLabel, dailyRangeLabel } from "./daily-period-selection";
 /**
  * Day-by-Day Performance reports — account-level totals per calendar day in a
  * custom date range, rendered as paginated Combined Total table slides.
@@ -15,7 +16,7 @@ import {
   validateCustomWeeklyRange,
 } from "./date-range";
 import { aggregateRows } from "./aggregate";
-import { buildCampaignObjectiveMap } from "./objective";
+import { normalizeCampaignName, buildCampaignObjectiveMap } from "./objective";
 import {
   buildAggregatedTableRow,
   type Platform,
@@ -33,6 +34,7 @@ export interface DayBreakdownReportData {
   reportDate: string;
   /** e.g. "Jun 20 - Jun 26, 2026" */
   rangeLabel: string;
+  periodLabel?: string;
   dateRange: DateRangeIso;
   dayCount: number;
   /** One row per day, oldest first. */
@@ -72,24 +74,6 @@ function formatIsoDayLabel(iso: string): string {
     year: "numeric",
     timeZone: "UTC",
   }).format(d);
-}
-
-function formatRangeLabel(range: DateRangeIso): string {
-  const start = formatIsoDayLabel(range.startIso);
-  const end = formatIsoDayLabel(range.endIso);
-  if (range.startIso === range.endIso) return start;
-  const year = new Date(range.endIso + "T00:00:00Z").getUTCFullYear();
-  const startShort = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(range.startIso + "T00:00:00Z"));
-  const endShort = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(range.endIso + "T00:00:00Z"));
-  return `${startShort} - ${endShort}, ${year}`;
 }
 
 function rowDayIso(row: NreRow): string | null {
@@ -164,6 +148,10 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
   const aggRows = sortedDayIsos.map((dayIso) => aggregateRows(byDay.get(dayIso) ?? []));
   const objectiveMap = buildCampaignObjectiveMap(aggRows.flat());
 
+  for (const [name, objective] of Object.entries(input.campaignObjectives ?? {})) {
+    objectiveMap.set(normalizeCampaignName(name), objective);
+  }
+
   const dayRows: TableRowData[] = sortedDayIsos.map((dayIso, index) => {
     const row = buildAggregatedTableRow(aggRows[index] ?? [], currencySymbol, objectiveMap, timezone);
     const dayLabel = formatIsoDayLabel(dayIso);
@@ -196,7 +184,8 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
     isPaused: dayRows.every((row) => !row.hasData),
     accountName,
     reportDate: `${reportDateParts.month}-${reportDateParts.day}-${reportDateParts.year}`,
-    rangeLabel: formatRangeLabel(dateRange),
+    rangeLabel: dailyRangeLabel(dateRange),
+    periodLabel: dailyPeriodLabel(dateRange, now, timezone),
     dateRange,
     dayCount: dayRows.filter((row) => row.hasData).length,
     dayRows,

@@ -112,3 +112,32 @@ describe("buildDayBreakdownShareReportData", () => {
     expect(share.visibility?.combinedTotal).toBe(true);
   });
 });
+
+import { dailyPresetRange, dailyPeriodLabel, dailyRangeLabel } from "../daily-period-selection";
+describe("daily presets and complete exports", () => {
+  const now = new Date("2026-11-01T06:00:00Z");
+  it.each([1, 7, 14, 30])("keeps all %i selected days across table pages", days => {
+    const range = dailyPresetRange(days, now, "Asia/Kolkata");
+    expect(range.endIso).toBe("2026-10-31");
+    expect(dailyPeriodLabel(range, now, "Asia/Kolkata")).toBe(days === 1 ? "Yesterday" : `Last ${days} days`);
+    const rows = Array.from({ length: days }, (_, index) => {
+      const date = new Date(`${range.startIso}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + index);
+      return dailyRow(date.toISOString().slice(0, 10), "Campaign", "10");
+    });
+    const data = buildDayBreakdownReportData({ accountName: "Acme", currencySymbol: "$", timezone: "Asia/Kolkata", mtdDailyRows: rows, dateRange: range, now });
+    expect(data.tableSlides.flat()).toHaveLength(days);
+    expect(data.tableSlides).toHaveLength(Math.ceil(days / 8));
+    expect(data.periodLabel).toBe(dailyPeriodLabel(range, now, "Asia/Kolkata"));
+  });
+  it("honours the objective confirmed in the campaign step", () => {
+    const data = buildDayBreakdownReportData({ accountName: "Acme", currencySymbol: "$", timezone: "UTC", mtdDailyRows: [dailyRow("2026-10-31", "Campaign", "10")], dateRange: { startIso: "2026-10-31", endIso: "2026-10-31" }, campaignObjectives: { Campaign: { resultLabel: "REACH", costLabel: "COST PER 1,000 PEOPLE REACHED" } } });
+    expect(data.tableHeaderLabels.resultColumns.map(column => column.label)).toContain("REACH");
+    expect(data.tableHeaderLabels.resultColumns.map(column => column.label)).not.toContain("WEBSITE LEADS");
+  });
+  it("keeps both years in a custom range", () => {
+    const range = { startIso: "2025-12-30", endIso: "2026-01-02" };
+    expect(dailyRangeLabel(range)).toContain("2025");
+    expect(dailyRangeLabel(range)).toContain("2026");
+    expect(dailyPeriodLabel(range, now)).toBe("Custom date range");
+  });
+});
