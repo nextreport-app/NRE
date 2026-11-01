@@ -1,4 +1,5 @@
 "use client";
+import { comparisonSummaryPages } from "@/lib/nre/comparison-summary-pagination";
 import { comparisonOptionalMetrics, isComparisonCoreMetric, paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 import { comparisonPresetPeriods } from "@/lib/nre/comparison-period-selection";
 
@@ -2871,7 +2872,7 @@ export function useReportUploadWizard({
     if (previewKind === "comparison") {
       const extras = comparisonData?.campaigns.flatMap(campaign => campaign.additionalMetrics ?? []) ?? [];
       const guideCount = Math.max(1, Math.ceil(new Set(extras.map(metric => metric.key)).size / METRIC_GUIDE_ENTRIES_PER_SLIDE));
-      return 1 + summaryCampaignNames().length + 1 + guideCount + (comparisonData?.campaigns.reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
+      return 1 + summaryCampaignNames().length + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + guideCount + (comparisonData?.campaigns.reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
     }
     if (previewKind === "historical" && historicalData) {
       if (historicalData.isPaused) return 3;

@@ -1,6 +1,7 @@
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildComparisonExtraSlide } from "./comparison-extra-slide";
+import { comparisonSummaryPages } from "../nre/comparison-summary-pagination";
 import { paginateComparisonMetrics } from "../nre/comparison-extra-metrics";
 import { METRIC_GUIDE_ENTRIES_PER_SLIDE } from "../nre/metric-pagination";
 import { additionalMetricPages, buildAdditionalMetricsSlideXml } from "./additional-metrics-slide";
@@ -381,10 +382,11 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     pages.forEach((metrics, page) => slides.push({ xml: buildComparisonExtraSlide({ campaignName: campaign.campaignName, metrics, periodALabel: data.periodALabel, periodBLabel: data.periodBLabel, page, pages: pages.length, background: template.background, isLightTemplate }), rels: buildComparisonSlideRels(template.background.mediaTarget) }));
   }
 
-  slides.push({
-    xml: buildComparisonSummarySlideXml(data, template.background, isLightTemplate),
+  const summaryPages = comparisonSummaryPages(data.campaigns);
+  summaryPages.forEach((page, index) => slides.push({
+    xml: buildComparisonSummarySlideXml(data, template.background, isLightTemplate, { ...page, page: index, pages: summaryPages.length }),
     rels: buildComparisonSlideRels(template.background.mediaTarget),
-  });
+  }));
 
   appendMetricGuide(template, slides, isLightTemplate, [...new Map(data.campaigns.flatMap(campaign => (campaign.additionalMetrics ?? []).map(metric => [metric.key, { term: metric.label, explanation: findMetaMetricByKey(metric.key)?.explanation ?? findGoogleMetricByKey(metric.key)?.explanation ?? metric.label } ] as const))).values()]);
   return assemblePptx(template, slides);
