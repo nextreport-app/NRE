@@ -74,7 +74,6 @@ export function buildComparisonCoverSlideXml(
 }
 
 const W = 960;
-const H = 540;
 
 export interface ComparisonMetricRow {
   unavailable?: boolean;
@@ -239,121 +238,55 @@ function deltaColor(change: ComparisonChange, palette: SlideSurfacePalette, metr
   return tone === "positive" ? (light ? "15803d" : "68d391") : tone === "negative" ? (light ? "b91c1c" : "fc8181") : palette.label;
 }
 
-interface TableCol {
-  header: string;
-  widthPt: number;
-  align: "l" | "ctr";
-}
-
-const TABLE_COLS: TableCol[] = [
-  { header: "CAMPAIGN", widthPt: 220, align: "l" },
-  { header: "SPEND A", widthPt: 105, align: "ctr" },
-  { header: "SPEND B", widthPt: 105, align: "ctr" },
-  { header: "Δ%", widthPt: 75, align: "ctr" },
-  { header: "RESULTS A", widthPt: 105, align: "ctr" },
-  { header: "RESULTS B", widthPt: 105, align: "ctr" },
-  { header: "Δ%", widthPt: 75, align: "ctr" },
-];
-
-function tableCellXml(x: number, y: number, w: number, h: number, text: string, fill: string, textColor: string, bold: boolean, align: "l" | "ctr"): string {
-  return (
-    rectangle({ x, y, w, h, fillHex: fill }) +
-    textBox({ x: x + 6, y: y + h / 2 - 8, w: w - 12, h: 16, text, sizePt: 12, bold, colorHex: textColor, align })
-  );
-}
-
-/**
- * Single-slide "all campaigns side by side" summary — built as a grid of
- * rectangle cells + text boxes rather than a real DrawingML `<a:tbl>`
- * table: visually identical (solid fills, aligned columns/rows) but far
- * less schema-fragile to hand-generate, and every other from-scratch slide
- * in this codebase (chart/legend) already uses the same
- * shapes-composed-into-a-grid approach rather than raw `<a:tbl>` markup.
- */
+/** Three readable metric sections replace the cramped, seven-column grid. */
 export function buildComparisonSummarySlideXml(
   comparison: ComparisonReportData,
   background: TemplateBackgroundImage,
   isLightTemplate = false,
+  options?: { campaigns: ComparisonCampaignData[]; includeTotal: boolean; page: number; pages: number },
 ): string {
   const palette = slideSurfacePalette(isLightTemplate);
   resetShapeIdCounter();
-  const shapes: string[] = [];
-  shapes.push(backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background }));
-
-  const TITLE_Y = 24;
-  shapes.push(
-    textBox({ x: 0, y: TITLE_Y, w: W, h: 32, text: "CAMPAIGN COMPARISON SUMMARY", sizePt: 24, bold: true, colorHex: palette.heading }),
-  );
-  shapes.push(
-    textBox({
-      x: 0,
-      y: TITLE_Y + 34,
-      w: W,
-      h: 20,
-      text: `Period A: ${comparison.periodALabel}   vs   Period B: ${comparison.periodBLabel}`,
-      sizePt: 14,
-      colorHex: palette.label,
-    }),
-  );
-
-  const tableW = TABLE_COLS.reduce((sum, c) => sum + c.widthPt, 0);
-  const tableX = (W - tableW) / 2;
-  const tableTop = TITLE_Y + 34 + 20 + 20;
-  const bottomMargin = 24;
-  const availableH = H - tableTop - bottomMargin;
-
-  const dataRowCount = comparison.campaigns.length + 1; // +1 for TOTAL
-  const totalRows = dataRowCount + 1; // +1 for header
-  const rowH = Math.min(34, Math.max(20, availableH / totalRows));
-
-  let y = tableTop;
-  let x = tableX;
-  TABLE_COLS.forEach((col) => {
-    shapes.push(tableCellXml(x, y, col.widthPt, rowH, col.header, palette.tableHeaderFill, isLightTemplate ? palette.tableHeaderLabel : palette.text, true, col.align));
-    x += col.widthPt;
-  });
-  y += rowH;
-
-  comparison.campaigns.forEach((c) => {
-    x = tableX;
-    const cells: [string, string, "l" | "ctr"][] = [
-      [c.campaignName.length > 28 ? c.campaignName.slice(0, 28) + "…" : c.campaignName, palette.tableNameFill, "l"],
-      [c.metricsA.spend.formatted, palette.tablePeriodAFill, "ctr"],
-      [c.metricsB.spend.formatted, palette.tablePeriodBFill, "ctr"],
-      [deltaText(c.changes.spend), palette.tableNameFill, "ctr"],
-      [c.metricsA.results.formatted, palette.tablePeriodAFill, "ctr"],
-      [c.metricsB.results.formatted, palette.tablePeriodBFill, "ctr"],
-      [deltaText(c.changes.results), palette.tableNameFill, "ctr"],
-    ];
-    cells.forEach(([text, fill, align], i) => {
-      const col = TABLE_COLS[i];
-      const isDeltaCol = i === 3 || i === 6;
-      const textColor = isDeltaCol ? deltaColor(i === 3 ? c.changes.spend : c.changes.results, palette, i === 3 ? "spend" : "results") : palette.text;
-      shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, fill, textColor, isDeltaCol, align));
-      x += col.widthPt;
-    });
-    y += rowH;
-  });
-
-  // TOTAL row
-  x = tableX;
-  const totals = comparison.totals;
-  const totalCells: [string, "l" | "ctr"][] = [
-    ["TOTAL", "l"],
-    [totals.metricsA.spend.formatted, "ctr"],
-    [totals.metricsB.spend.formatted, "ctr"],
-    [deltaText(totals.changes.spend), "ctr"],
-    [totals.metricsA.results.formatted, "ctr"],
-    [totals.metricsB.results.formatted, "ctr"],
-    [deltaText(totals.changes.results), "ctr"],
+  const shapes = [backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background })];
+  shapes.push(textBox({ x: 40, y: 20, w: 880, h: 32, text: `CAMPAIGN COMPARISON SUMMARY${options && options.pages > 1 ? ` (${options.page + 1}/${options.pages})` : ""}`, sizePt: 25, bold: true, colorHex: palette.heading }));
+  shapes.push(textBox({ x: 40, y: 56, w: 880, h: 24, text: `Period A: ${comparison.periodALabel}   vs   Period B: ${comparison.periodBLabel}`, sizePt: 16, colorHex: palette.label }));
+  const campaigns = options?.campaigns ?? comparison.campaigns;
+  const includeTotal = options?.includeTotal ?? true;
+  const objectives = new Set(comparison.campaigns.map(campaign => campaign.objective.trim().toUpperCase()));
+  const sameObjective = objectives.size <= 1;
+  const overlappingReach = comparison.campaigns.length > 1 && [...objectives].some(objective => objective === "REACH" || objective === "UNIQUE REACH");
+  const comparableResultsTotal = sameObjective && !overlappingReach;
+  const scaledCostTotal = comparison.campaigns.length > 1 && /(?:1k|1,?000|thousand)/i.test(comparison.campaigns[0]?.costLabel ?? "");
+  const totalSource = comparison.campaigns.length === 1 ? comparison.campaigns[0] : comparison.totals;
+  const sections = [
+    { key: "spend" as const, label: "AD SPEND" },
+    { key: "results" as const, label: sameObjective ? comparison.campaigns[0]?.objective ?? "RESULTS" : "RESULTS" },
+    { key: "cpr" as const, label: sameObjective ? comparison.campaigns[0]?.costLabel ?? "COST PER RESULT" : "COST PER RESULT" },
   ];
-  totalCells.forEach(([text, align], i) => {
-    const col = TABLE_COLS[i];
-    const isDeltaCol = i === 3 || i === 6;
-    const textColor = isDeltaCol ? deltaColor(i === 3 ? totals.changes.spend : totals.changes.results, palette, i === 3 ? "spend" : "results") : palette.text;
-    shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, palette.tableTotalFill, textColor, true, align));
-    x += col.widthPt;
+  const columns = [{ x: 40, w: 400, align: "l" as const }, { x: 440, w: 180, align: "ctr" as const }, { x: 620, w: 180, align: "ctr" as const }, { x: 800, w: 120, align: "ctr" as const }];
+  const rowHeight = 30;
+  const rowCount = campaigns.length + (includeTotal ? 1 : 0);
+  if (rowCount > 3) throw new Error("Paginate comparison summaries before rendering more than three rows.");
+  const sectionHeight = 20 + 26 + rowCount * rowHeight + 8;
+  const cell = (column: number, y: number, height: number, text: string, fill: string, color: string, bold: boolean, header = false) => {
+    const col = columns[column];
+    shapes.push(rectangle({ x: col.x, y, w: col.w, h: height, fillHex: fill }));
+    shapes.push(textBox({ x: col.x + 10, y: y + (height - 24) / 2, w: col.w - 20, h: 24, text, sizePt: header ? 14 : column === 0 ? 15 : 17, colorHex: color, bold, align: col.align }));
+  };
+  sections.forEach((section, index) => {
+    const top = 94 + index * sectionHeight;
+    shapes.push(textBox({ x: 40, y: top, w: 880, h: 20, text: section.label, sizePt: 16, bold: true, colorHex: palette.heading, align: "l" }));
+    ["CAMPAIGN", "PERIOD A", "PERIOD B", "CHANGE"].forEach((label, column) => cell(column, top + 20, 26, label, palette.tableHeaderFill, isLightTemplate ? palette.tableHeaderLabel : palette.text, true, true));
+    const draw = (name: string, a: string, b: string, change: ComparisonChange, row: number, total: boolean, comparable = true) => {
+      const y = top + 46 + row * rowHeight;
+      const fill = total ? palette.tableTotalFill : row % 2 ? palette.tablePeriodBFill : palette.tablePeriodAFill;
+      const values = [name.length > 48 ? name.slice(0, 48) + "…" : name, comparable ? a : "N/A", comparable ? b : "N/A", comparable ? deltaText(change) : "N/A"];
+      values.forEach((value, column) => cell(column, y, rowHeight, value, fill, column === 3 && comparable ? deltaColor(change, palette, section.key) : palette.text, total || column > 0));
+    };
+    campaigns.forEach((campaign, row) => draw(campaign.campaignName, campaign.metricsA[section.key].formatted, campaign.metricsB[section.key].formatted, campaign.changes[section.key], row, false));
+    if (includeTotal) draw("TOTAL — ALL CAMPAIGNS", totalSource.metricsA[section.key].formatted, totalSource.metricsB[section.key].formatted, totalSource.changes[section.key], campaigns.length, true, section.key === "spend" || (comparableResultsTotal && (section.key !== "cpr" || !scaledCostTotal)));
   });
-
+  const note = !sameObjective ? "Different campaign objectives: combined results and cost per result are not comparable." : overlappingReach ? "Campaign reach can overlap; combined reach results and cost per result are not comparable." : scaledCostTotal ? "Combined cost per result is unavailable for this cost unit; refer to each campaign’s cost above." : options && options.pages > 1 ? "Account totals appear on the final summary page." : "Cost per result = spend ÷ results. Lower costs are favourable; spend changes are neutral.";
+  shapes.push(textBox({ x: 40, y: 521, w: 800, h: 15, text: note, sizePt: 11, colorHex: palette.label }));
   return buildBlankSlideXml(shapes);
 }

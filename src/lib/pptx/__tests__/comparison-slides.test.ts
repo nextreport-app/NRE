@@ -217,11 +217,11 @@ describe("buildComparisonSummarySlideXml", () => {
     expect(xml).toContain(`r:embed="${COMPARISON_BG_REL_ID}"`);
   });
 
-  it("truncates a campaign name longer than 28 characters with an ellipsis", () => {
+  it("uses more space for campaign names before truncating very long names", () => {
     const longName = "A Very Long Campaign Name That Exceeds The Column Width";
     const data = comparisonData({ campaigns: [campaign({ campaignName: longName })] });
     const xml = buildComparisonSummarySlideXml(data, BACKGROUND);
-    expect(xml).toContain(longName.slice(0, 28) + "…");
+    expect(xml).toContain(longName.slice(0, 48) + "…");
     expect(xml).not.toContain(longName);
   });
 

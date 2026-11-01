@@ -20,6 +20,7 @@
  */
 
 import { useState, type ReactNode } from "react";
+import { comparisonSummaryPages } from "@/lib/nre/comparison-summary-pagination";
 import { paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
@@ -277,11 +278,11 @@ function ComparisonCampaignSlide({ campaignName, objective, metricLabels }: { ca
   );
 }
 
-function ComparisonSummarySlide() {
+function ComparisonSummarySlide({ page, pages }: { page: number; pages: number }) {
   return (
     <div className="flex h-full flex-col">
       <SlideHeading>CAMPAIGN COMPARISON SUMMARY</SlideHeading>
-      <PlaceholderTextBox text="Overall comparison summary will be generated..." />
+      <div className="mt-3 space-y-3">{["AD SPEND", "RESULTS", "COST PER RESULT"].map(label => <div key={label}><p className="text-[9px] font-bold sm:text-[10px]" style={{ color: ACCENT }}>{label}</p><div className="mt-1 grid grid-cols-4 gap-2 rounded px-2 py-1 text-[8px] sm:text-[9px]" style={{ background: CARD_BG, color: MUTED }}><span>Campaign</span><span>Period A</span><span>Period B</span><span>Change</span></div></div>)}</div>{pages > 1 && <p className="mt-2 text-[8px]" style={{ color: MUTED }}>Summary {page + 1} of {pages}</p>}
     </div>
   );
 }
@@ -334,7 +335,8 @@ function buildSlides({
       });
     }
     if (first) paginateComparisonMetrics(first.additionalMetrics ?? []).forEach((metrics, index) => slides.push({ key: `comparison-extra-${index}`, render: () => <ComparisonCampaignSlide campaignName={first.campaignName} objective="Additional comparison metrics" metricLabels={metrics.map(metric => metric.label)} /> }));
-    slides.push({ key: "comparison-summary", render: () => <ComparisonSummarySlide /> });
+    const summaries = comparisonSummaryPages(comparisonData.campaigns);
+    summaries.forEach((_, index) => slides.push({ key: `comparison-summary-${index}`, render: () => <ComparisonSummarySlide page={index} pages={summaries.length} /> }));
 
     const extraCampaigns = Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0)) + comparisonData.campaigns.slice(1).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0);
     const hidden = extraCampaigns + Math.max(0, slides.length - MAX_SLIDES);
