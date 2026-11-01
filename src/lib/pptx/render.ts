@@ -1,7 +1,8 @@
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildComparisonExtraSlide } from "./comparison-extra-slide";
-import { paginateExtraMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "../nre/metric-pagination";
+import { paginateComparisonMetrics } from "../nre/comparison-extra-metrics";
+import { METRIC_GUIDE_ENTRIES_PER_SLIDE } from "../nre/metric-pagination";
 import { additionalMetricPages, buildAdditionalMetricsSlideXml } from "./additional-metrics-slide";
 /**
  * Top-level PPTX render orchestrator — builds the final ordered slide list
@@ -376,7 +377,7 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
       xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate),
       rels: buildComparisonSlideRels(template.background.mediaTarget),
     });
-    const pages = paginateExtraMetrics(campaign.additionalMetrics ?? []);
+    const pages = paginateComparisonMetrics(campaign.additionalMetrics ?? []);
     pages.forEach((metrics, page) => slides.push({ xml: buildComparisonExtraSlide({ campaignName: campaign.campaignName, metrics, periodALabel: data.periodALabel, periodBLabel: data.periodBLabel, page, pages: pages.length, background: template.background, isLightTemplate }), rels: buildComparisonSlideRels(template.background.mediaTarget) }));
   }
 
