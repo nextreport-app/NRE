@@ -11,7 +11,7 @@
  */
 
 import { comparisonTone, comparisonPercent } from "../nre/comparison-presentation";
-import { setShapeExtCx, setShapeWrap } from "./ooxml";
+import { setShapeExtCx, setShapeWrap, insertShapeBeforeSpTreeClose } from "./ooxml";
 import { backgroundImage, buildBlankSlideXml, rectangle, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
 import type { TemplateBackgroundImage, TemplateSlide } from "./package";
 import { buildCoverSlideXml } from "./fill-tags";
@@ -55,10 +55,10 @@ function changeBadgeText(change: ComparisonChange): string {
 export function buildComparisonCoverSlideXml(
   template: TemplateSlide,
   comparison: ComparisonReportData,
-  options: { agencyName?: string | null; reportTitle?: string | null } = {},
+  options: { agencyName?: string | null; reportTitle?: string | null; isLightTemplate?: boolean } = {},
 ): string {
   const dates = `${comparison.periodALabel} vs ${comparison.periodBLabel}`;
-  const xml = buildCoverSlideXml(
+  let xml = buildCoverSlideXml(
     template,
     {
       accountName: comparison.accountName,
@@ -68,8 +68,13 @@ export function buildComparisonCoverSlideXml(
       healthScore: 0,
       budgetSummary: "",
     },
-    { agencyName: options.agencyName, reportTitle: options.reportTitle, reportType: "COMPARISON" },
+    { agencyName: options.agencyName, reportTitle: options.reportTitle, reportType: "COMPARISON", isLightTemplate: options.isLightTemplate },
   );
+  if (comparison.comparisonLabel) {
+    const ids = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map(match => Number(match[1]));
+    resetShapeIdCounter(Math.max(1, ...ids));
+    xml = insertShapeBeforeSpTreeClose(xml, textBox({ x: 40, y: 166, w: 455, h: 28, text: comparison.comparisonLabel, sizePt: 17, bold: true, colorHex: slideSurfacePalette(!!options.isLightTemplate).heading, align: "l" }));
+  }
   return setShapeWrap(setShapeExtCx(xml, dates, 880 * 12700), dates, "none");
 }
 
@@ -98,6 +103,7 @@ export function buildComparisonCampaignSlideXml(
   periodBLabel: string,
   background: TemplateBackgroundImage,
   isLightTemplate = false,
+  periodTitles?: { a: string; b: string },
 ): string {
   const rows: ComparisonMetricRow[] = [
     { key: "spend", label: "AD SPEND", valueA: campaign.metricsA.spend.formatted, valueB: campaign.metricsB.spend.formatted, change: campaign.changes.spend },
@@ -105,7 +111,7 @@ export function buildComparisonCampaignSlideXml(
     { key: "results", label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
     { key: "cpr", label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
   ];
-  return buildComparisonMetricSlideXml(campaign.campaignName, rows, periodALabel, periodBLabel, background, isLightTemplate);
+  return buildComparisonMetricSlideXml(campaign.campaignName, rows, periodALabel, periodBLabel, background, isLightTemplate, undefined, periodTitles);
 }
 
 export function buildComparisonMetricSlideXml(
@@ -116,6 +122,7 @@ export function buildComparisonMetricSlideXml(
   background: TemplateBackgroundImage,
   isLightTemplate = false,
   footer?: string,
+  periodTitles?: { a: string; b: string },
 ): string {
   const palette = slideSurfacePalette(isLightTemplate);
   resetShapeIdCounter();
@@ -154,9 +161,9 @@ export function buildComparisonMetricSlideXml(
 
   const HEADER_Y = DIVIDER_Y + 18;
   const HEADER_H = 22;
-  shapes.push(textBox({ x: colAX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: "PERIOD A", sizePt: 15, bold: true, colorHex: palette.heading }));
+  shapes.push(textBox({ x: colAX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: periodTitles?.a ?? "PERIOD A", sizePt: 15, bold: true, colorHex: palette.heading }));
   shapes.push(textBox({ x: badgeX, y: HEADER_Y, w: BADGE_W, h: HEADER_H, text: "vs", sizePt: 13, colorHex: palette.label }));
-  shapes.push(textBox({ x: colBX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: "PERIOD B", sizePt: 15, bold: true, colorHex: palette.heading }));
+  shapes.push(textBox({ x: colBX, y: HEADER_Y, w: COL_W, h: HEADER_H, text: periodTitles?.b ?? "PERIOD B", sizePt: 15, bold: true, colorHex: palette.heading }));
 
   const SUBHEADER_Y = HEADER_Y + HEADER_H + 2;
   const SUBHEADER_H = 16;
@@ -276,14 +283,14 @@ export function buildComparisonSummarySlideXml(
   sections.forEach((section, index) => {
     const top = 94 + index * sectionHeight;
     shapes.push(textBox({ x: 40, y: top, w: 880, h: 20, text: section.label, sizePt: 16, bold: true, colorHex: palette.heading, align: "l" }));
-    ["CAMPAIGN", "PERIOD A", "PERIOD B", "CHANGE"].forEach((label, column) => cell(column, top + 20, 26, label, palette.tableHeaderFill, isLightTemplate ? palette.tableHeaderLabel : palette.text, true, true));
+    ["CAMPAIGN", comparison.periodATitle ?? "PERIOD A", comparison.periodBTitle ?? "PERIOD B", "CHANGE"].forEach((label, column) => cell(column, top + 20, 26, label, palette.tableHeaderFill, isLightTemplate ? palette.tableHeaderLabel : palette.text, true, true));
     const draw = (name: string, a: string, b: string, change: ComparisonChange, row: number, total: boolean, comparable = true) => {
       const y = top + 46 + row * rowHeight;
       const fill = total ? palette.tableTotalFill : row % 2 ? palette.tablePeriodBFill : palette.tablePeriodAFill;
       const values = [name.length > 48 ? name.slice(0, 48) + "…" : name, comparable ? a : "N/A", comparable ? b : "N/A", comparable ? deltaText(change) : "N/A"];
       values.forEach((value, column) => cell(column, y, rowHeight, value, fill, column === 3 && comparable ? deltaColor(change, palette, section.key) : palette.text, total || column > 0));
     };
-    campaigns.forEach((campaign, row) => draw(campaign.campaignName, campaign.metricsA[section.key].formatted, campaign.metricsB[section.key].formatted, campaign.changes[section.key], row, false));
+    campaigns.forEach((campaign, row) => draw(!sameObjective && section.key !== "spend" ? `${campaign.campaignName.slice(0, Math.max(12, 45 - campaign.objective.slice(0, 24).length))} · ${campaign.objective.slice(0, 24)}` : campaign.campaignName, campaign.metricsA[section.key].formatted, campaign.metricsB[section.key].formatted, campaign.changes[section.key], row, false));
     if (includeTotal) draw("TOTAL — ALL CAMPAIGNS", totalSource.metricsA[section.key].formatted, totalSource.metricsB[section.key].formatted, totalSource.changes[section.key], campaigns.length, true, section.key === "spend" || (comparableResultsTotal && (section.key !== "cpr" || !scaledCostTotal)));
   });
   const note = !sameObjective ? "Different campaign objectives: combined results and cost per result are not comparable." : overlappingReach ? "Campaign reach can overlap; combined reach results and cost per result are not comparable." : scaledCostTotal ? "Combined cost per result is unavailable for this cost unit; refer to each campaign’s cost above." : options && options.pages > 1 ? "Account totals appear on the final summary page." : "Cost per result = spend ÷ results. Lower costs are favourable; spend changes are neutral.";

@@ -1,3 +1,4 @@
+import { comparisonPeriodDescription } from "./comparison-period-description";
 import { buildComparisonExtraMetrics, type ComparisonExtraMetric } from "./comparison-extra-metrics";
 /**
  * NRE v1 — report data orchestrator.
@@ -2237,6 +2238,9 @@ export interface ComparisonCampaignData {
 }
 
 export interface ComparisonReportData {
+  comparisonLabel?: string;
+  periodATitle?: string;
+  periodBTitle?: string;
   /** True only when BOTH periods have zero total spend across every campaign — mirrors ReportData.isPaused's "nothing to report" meaning, adapted for two periods instead of one. */
   isPaused: boolean;
   accountName: string;
@@ -2269,6 +2273,7 @@ export interface BuildComparisonReportDataInput {
   /** CSV headers — required for Google comparison objective labels (campaign-type slots). */
   csvHeaders?: string[];
   comparisonMetricKeys?: string[];
+  campaignObjectives?: Record<string, { resultLabel: string; costLabel: string }>;
 }
 
 function filterRowsByDateRange<T extends NreRow>(rows: T[], range: DateRangeIso): T[] {
@@ -2372,6 +2377,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     platform = "META",
     csvHeaders,
     comparisonMetricKeys,
+    campaignObjectives,
   } = input;
 
   const isGoogle = platform === "GOOGLE";
@@ -2422,6 +2428,10 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
   const campaignObjectiveMap = isGoogle
     ? null
     : buildCampaignObjectiveMap(aggregateRows([...rowsA, ...rowsB]));
+
+  for (const [name, objective] of Object.entries(campaignObjectives ?? {})) {
+    campaignObjectiveMap?.set(normalizeCampaignName(name), objective);
+  }
 
   const campaigns: ComparisonCampaignData[] = campaignNames.map((campaignName) => {
     const campRowsA = byCampaignA[campaignName] ?? [];
@@ -2489,6 +2499,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     isPaused: totalSpendA === 0 && totalSpendB === 0,
     accountName,
     reportDate: formatCoverReportDate(campaignFilteredRows, now, timezone),
+    ...comparisonPeriodDescription(periodA, periodB, now, timezone),
     periodALabel: getComparisonPeriodLabel(periodA.startIso, periodA.endIso),
     periodBLabel: getComparisonPeriodLabel(periodB.startIso, periodB.endIso),
     campaigns,

@@ -369,17 +369,17 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
   const slides: SlideToInsert[] = [];
 
   slides.push({
-    xml: buildComparisonCoverSlideXml(template.cover, data, { agencyName, reportTitle }),
+    xml: buildComparisonCoverSlideXml(template.cover, data, { agencyName, reportTitle, isLightTemplate }),
     rels: template.cover.rels,
   });
 
   for (const campaign of data.campaigns) {
     slides.push({
-      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate),
+      xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate, { a: data.periodATitle ?? "PERIOD A", b: data.periodBTitle ?? "PERIOD B" }),
       rels: buildComparisonSlideRels(template.background.mediaTarget),
     });
     const pages = paginateComparisonMetrics(campaign.additionalMetrics ?? []);
-    pages.forEach((metrics, page) => slides.push({ xml: buildComparisonExtraSlide({ campaignName: campaign.campaignName, metrics, periodALabel: data.periodALabel, periodBLabel: data.periodBLabel, page, pages: pages.length, background: template.background, isLightTemplate }), rels: buildComparisonSlideRels(template.background.mediaTarget) }));
+    pages.forEach((metrics, page) => slides.push({ xml: buildComparisonExtraSlide({ periodATitle: data.periodATitle, periodBTitle: data.periodBTitle, campaignName: campaign.campaignName, metrics, periodALabel: data.periodALabel, periodBLabel: data.periodBLabel, page, pages: pages.length, background: template.background, isLightTemplate }), rels: buildComparisonSlideRels(template.background.mediaTarget) }));
   }
 
   const summaryPages = comparisonSummaryPages(data.campaigns);

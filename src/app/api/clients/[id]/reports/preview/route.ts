@@ -142,6 +142,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
       platform,
+      campaignObjectives: campaignObjectives,
       csvHeaders: mtdParsed.headers,
       comparisonMetricKeys: formData ? parseJsonFormField(formData, "comparisonMetricKeys", comparisonMetricKeysSchema) : undefined,
     });

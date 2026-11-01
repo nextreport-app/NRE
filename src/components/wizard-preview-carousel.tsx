@@ -322,7 +322,7 @@ function buildSlides({
             platform={platform}
             reportType={reportType}
             clientName={clientName}
-            dateRangeText={`Period A: ${comparisonData.periodALabel}  vs  Period B: ${comparisonData.periodBLabel}`}
+            dateRangeText={`${comparisonData.comparisonLabel ? comparisonData.comparisonLabel + " · " : ""}Period A: ${comparisonData.periodALabel}  vs  Period B: ${comparisonData.periodBLabel}`}
           />
         ),
       },

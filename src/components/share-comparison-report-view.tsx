@@ -62,10 +62,14 @@ function CampaignComparisonSection({
   campaign,
   periodALabel,
   periodBLabel,
+  periodATitle = "Period A",
+  periodBTitle = "Period B",
 }: {
   campaign: ComparisonCampaignData;
   periodALabel: string;
   periodBLabel: string;
+  periodATitle?: string;
+  periodBTitle?: string;
 }) {
   return (
     <section className="mb-8 break-inside-avoid rounded-xl border border-navy-border bg-navy-panel p-4 sm:p-6">
@@ -73,11 +77,11 @@ function CampaignComparisonSection({
       <p className="mt-1 text-sm text-ink-muted">{campaign.objective}</p>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ink-muted sm:text-xs">
         <div>
-          <p>Period A</p>
+          <p>{periodATitle}</p>
           <p className="mt-0.5 font-normal normal-case text-ink-secondary">{periodALabel}</p>
         </div>
         <div>
-          <p>Period B</p>
+          <p>{periodBTitle}</p>
           <p className="mt-0.5 font-normal normal-case text-ink-secondary">{periodBLabel}</p>
         </div>
       </div>
@@ -87,7 +91,7 @@ function CampaignComparisonSection({
         <MetricComparisonRow label={campaign.objective} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.results} valueKey="results" />
         <MetricComparisonRow label={campaign.costLabel} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.cpr} valueKey="cpr" />
       </div>
-      {!!campaign.additionalMetrics?.length && <div className="mt-6 overflow-x-auto"><h3 className="mb-3 text-sm font-semibold text-ink">Additional comparison metrics</h3><table className="w-full text-left text-sm text-ink"><thead className="text-xs text-ink-muted"><tr><th className="p-2">Metric</th><th className="p-2">Period A</th><th className="p-2">Period B</th><th className="p-2">Change</th></tr></thead><tbody>{campaign.additionalMetrics.map(metric => <tr key={metric.key} className="border-t border-navy-border"><td className="p-2">{metric.label}</td><td className="p-2">{metric.formattedA}</td><td className="p-2">{metric.formattedB}</td><td className="p-2"><span className={`rounded px-2 py-1 ${trendClass(metric.key, metric.label, metric.percent)}`}>{comparisonPercent(metric.percent)}</span></td></tr>)}</tbody></table></div>}
+      {!!campaign.additionalMetrics?.length && <div className="mt-6 overflow-x-auto"><h3 className="mb-3 text-sm font-semibold text-ink">Additional comparison metrics</h3><table className="w-full text-left text-sm text-ink"><thead className="text-xs text-ink-muted"><tr><th className="p-2">Metric</th><th className="p-2">{periodATitle}</th><th className="p-2">{periodBTitle}</th><th className="p-2">Change</th></tr></thead><tbody>{campaign.additionalMetrics.map(metric => <tr key={metric.key} className="border-t border-navy-border"><td className="p-2">{metric.label}</td><td className="p-2">{metric.formattedA}</td><td className="p-2">{metric.formattedB}</td><td className="p-2"><span className={`rounded px-2 py-1 ${trendClass(metric.key, metric.label, metric.percent)}`}>{comparisonPercent(metric.percent)}</span></td></tr>)}</tbody></table></div>}
     </section>
   );
 }
@@ -101,6 +105,12 @@ export function ShareComparisonReportView({
   shareToken?: string;
   isPrint?: boolean;
 }) {
+  const mixedObjectives = new Set(data.campaigns.map(campaign => campaign.objective.trim().toUpperCase())).size > 1;
+  const multipleCampaigns = data.campaigns.length > 1;
+  const overlappingReach = multipleCampaigns && data.campaigns.some(campaign => ["REACH", "UNIQUE REACH"].includes(campaign.objective));
+  const comparableResults = !mixedObjectives && !overlappingReach;
+  const comparableCost = comparableResults && !(multipleCampaigns && /(?:1k|1,?000|thousand)/i.test(data.campaigns[0]?.costLabel ?? ""));
+  const account = data.campaigns.length === 1 ? data.campaigns[0] : data.totals;
   const branding = reportBrandingFromShareJson(data);
   const brandingDisplay = resolveShareBrandingDisplay(branding);
   const coverPreparedByLine = preparedByCoverLine(branding);
@@ -152,6 +162,7 @@ export function ShareComparisonReportView({
           </div>
           <h1 className="mt-3 text-[22px] font-bold text-ink sm:text-[30px] md:text-[34px]">{data.accountName}</h1>
           <p className="mt-2 text-[13px] text-ink-muted sm:text-[15px]">COMPARISON PERFORMANCE REPORT</p>
+          {data.comparisonLabel && <p className="mt-3 text-base font-semibold text-ink">{data.comparisonLabel}</p>}
           <p className="mt-3 text-sm text-ink-secondary">
             {data.periodALabel}
             <span className="mx-2 text-ink-muted">vs</span>
@@ -170,6 +181,8 @@ export function ShareComparisonReportView({
               <CampaignComparisonSection
                 key={campaign.campaignName}
                 campaign={campaign}
+                periodATitle={data.periodATitle}
+                periodBTitle={data.periodBTitle}
                 periodALabel={data.periodALabel}
                 periodBLabel={data.periodBLabel}
               />
@@ -178,10 +191,12 @@ export function ShareComparisonReportView({
             <section className="mb-8 break-inside-avoid rounded-xl border border-navy-border bg-navy-panel p-4 sm:p-6">
               <h2 className="text-lg font-bold text-ink sm:text-xl">Account totals</h2>
               <div className="mt-4 space-y-3">
-                <MetricComparisonRow label="Ad Spend" metricsA={data.totals.metricsA} metricsB={data.totals.metricsB} change={data.totals.changes.spend} valueKey="spend" />
-                <MetricComparisonRow label="Reach" metricsA={data.totals.metricsA} metricsB={data.totals.metricsB} change={data.totals.changes.reach} valueKey="reach" />
-                <MetricComparisonRow label="Results" metricsA={data.totals.metricsA} metricsB={data.totals.metricsB} change={data.totals.changes.results} valueKey="results" />
-                <MetricComparisonRow label="Cost per result" metricsA={data.totals.metricsA} metricsB={data.totals.metricsB} change={data.totals.changes.cpr} valueKey="cpr" />
+                <MetricComparisonRow label="Ad Spend" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.spend} valueKey="spend" />
+                {!multipleCampaigns && <MetricComparisonRow label="Reach" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.reach} valueKey="reach" />}
+                {comparableResults && <MetricComparisonRow label="Results" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.results} valueKey="results" />}
+                {comparableCost && <MetricComparisonRow label="Cost per result" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.cpr} valueKey="cpr" />}
+                {!comparableResults && <p className="text-sm text-ink-muted">Results and cost per result are shown per campaign because objectives differ or campaign reach can overlap.</p>}
+                {multipleCampaigns && <p className="text-sm text-ink-muted">Reach is shown per campaign because audiences can overlap.</p>}
               </div>
             </section>
           </>
