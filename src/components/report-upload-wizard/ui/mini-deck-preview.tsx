@@ -63,7 +63,8 @@ export function buildMiniDeckSlides(input: {
   }
 
   if (input.previewKind === "dayBreakdown") {
-    slides.push({ key: "day-table", title: "Daily totals table", subtitle: input.periodHint, accent: "table" });
+    slides.push({ key: "day-table", title: "Daily tables", subtitle: `${input.periodHint ?? ""} · Daily totals and selected extras, paginated automatically`, accent: "table" });
+    slides.push({ key: "day-guide", title: "Metric guide", accent: "other" });
     return slides;
   }
 

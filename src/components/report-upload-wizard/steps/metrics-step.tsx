@@ -1,5 +1,7 @@
 "use client";
+import { paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 
+import { MetricChipPicker } from "../ui/metric-chip-picker";
 import { paginateExtraMetrics } from "@/lib/nre/metric-pagination";
 import { useMemo, useState } from "react";
 import { useWizardContext } from "../wizard-context";
@@ -26,21 +28,18 @@ export function WizardMetricsStep() {
   if (!stepActive) return null;
 
   const {
-    ADD_FROM_CSV_VISIBLE,
     MAX_METRICS_PER_SLIDE,
     MAX_TOTAL_METRICS,
     MIN_SELECTED_METRICS,
     addCampaignMetric,
     campaignAvailableMetrics,
     campaignObjectives,
-    expandedCsvExtras,
     handleMetricsContinue,
     metricsStatus,
     objectiveAccent,
     perCampaignMetrics,
     perCampaignMinWarning,
     removeCampaignMetric,
-    setExpandedCsvExtras,
     setStep,
   } = w;
 
@@ -90,89 +89,29 @@ export function WizardMetricsStep() {
           {selectedForCampaign.length} metrics · {pages.length} {pages.length === 1 ? "slide" : "slides"}
         </p>
 
-        <p className="mt-3 text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.includedMetrics}</p>
-        <div className="mt-2 space-y-3">
-          {pages.map((metrics, index) => <div key={index} className={pages.length > 1 ? "rounded-lg border border-dash-border bg-dash-bg/30 p-3" : ""}>
-            {pages.length > 1 && <p className="mb-2 text-xs font-medium text-dash-ink-secondary">{index === 0 ? "Main slide" : `Additional metrics · page ${index}`} · {metrics.length} metrics</p>}
-            <div className="flex flex-wrap gap-2">{metrics.map((m) => (
-            <span
-              key={m.key}
-              className="flex items-center gap-2 rounded-md border border-dash-border bg-dash-card nre-dash-surface"
-              style={{ padding: "8px 12px" }}
-            >
-              <span className="text-[12px] uppercase text-dash-ink" style={{ letterSpacing: "0.5px" }}>
-                {m.label}
-              </span>
-              <button
-                type="button"
-                onClick={() => removeCampaignMetric(normalized, m.key)}
-                aria-label={`Remove ${m.label} from ${name}`}
-                className="text-[#64748b] hover:text-[#fc8181]"
-              >
-                ✕
-              </button>
-            </span>
-          ))}</div></div>)}
-        </div>
-        {pages.length > 1 && <p className="mt-2 text-xs text-dash-ink-secondary">Extra cards resize automatically. No empty slots or repeated metrics.</p>}
-
-        {perCampaignMinWarning && (
-          <p className="nre-wizard-confidence--warn mt-2 text-[14px]">{perCampaignMinWarning}</p>
-        )}
-
-        <details className="mt-4 border-t border-dash-border pt-3"><summary className="cursor-pointer text-[13px] font-medium text-dash-accent">Add more metrics · optional</summary><div className="mt-3">
-        <p className="text-[14px] font-medium uppercase tracking-wide text-dash-ink-secondary">{copy.addFromCsv}</p>
-        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{copy.addFromCsvHint}</p>
-        {selectedForCampaign.length >= MAX_TOTAL_METRICS && <p className="mt-2 text-xs text-dash-ink-secondary">{MAX_TOTAL_METRICS}-metric limit reached. Remove a metric to add another.</p>}
-        {availableForCampaign.length === 0 ? (
-          <p className="mt-1.5 text-[14px] text-dash-ink-secondary">No extra columns in this export.</p>
-        ) : (
-          <>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {(expandedCsvExtras.has(normalized)
-                ? availableForCampaign
-                : availableForCampaign.slice(0, ADD_FROM_CSV_VISIBLE)
-              ).map((candidate) => (
-                <button
-                  key={candidate.key}
-                  type="button"
-                  disabled={selectedForCampaign.length >= MAX_TOTAL_METRICS}
-                  onClick={() => addCampaignMetric(normalized, candidate)}
-                  className="rounded-md border border-[#1e3a5f] bg-transparent text-[14px] text-dash-ink-secondary hover:border-dash-ink-secondary hover:text-dash-ink"
-                  style={{ padding: "8px 12px" }}
-                >
-                  <span className="text-[#68d391]">+</span> {candidate.label}
-                </button>
-              ))}
-            </div>
-            {availableForCampaign.length > ADD_FROM_CSV_VISIBLE && !expandedCsvExtras.has(normalized) && (
-              <button
-                type="button"
-                onClick={() => setExpandedCsvExtras((prev) => new Set(prev).add(normalized))}
-                className="mt-2 text-[14px] text-dash-accent hover:underline"
-              >
-                Show {availableForCampaign.length - ADD_FROM_CSV_VISIBLE} more
-              </button>
-            )}
-          </>
-        )}
-        </div></details>
+        <MetricChipPicker selected={selectedForCampaign} groups={pages.map((page, index) => ({ label: pages.length > 1 ? index === 0 ? "Main slide" : `Additional metrics · page ${index}` : "", keys: page.map(metric => metric.key) }))} available={availableForCampaign} onAdd={metric => { const candidate = availableForCampaign.find(item => item.key === metric.key); if (candidate) addCampaignMetric(normalized, candidate); }} onRemove={key => removeCampaignMetric(normalized, key)} limit={MAX_TOTAL_METRICS} hint={copy.addFromCsvHint} />
+        {pages.length > 1 && <p className="mt-2 text-xs text-dash-ink-secondary">Additional metrics are paginated automatically. No empty slots or repeated metrics.</p>}
+        {perCampaignMinWarning && <p className="mt-2 text-sm text-amber-300">{perCampaignMinWarning}</p>}
       </div>
     );
   }
 
   if (w.reportType === "COMPARISON" || w.reportType === "DAY_BREAKDOWN") {
-    return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 pb-24 md:pb-5">
-      <h3 className="text-base font-semibold text-dash-ink">{w.reportType === "COMPARISON" ? "Comparison metrics" : "Table metrics are included"}</h3>
-      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Each campaign slide shows Period A, Period B and the percentage change for the same four metrics." : "Each daily row uses the same fixed metrics so you can compare days."}{w.reportType === "DAY_BREAKDOWN" ? " Metrics are fixed for this report type." : " Add more CSV-backed metrics below; they appear on additional comparison slides."}</p>
-      <p className="text-sm text-dash-ink-secondary">{w.reportType === "COMPARISON" ? "Included: ad spend, reach, results for the campaign objective and cost per result. A summary compares all selected campaigns." : "Spend, reach, impressions, CTR, CPC and objective-specific results and costs."}</p>
-      {w.reportType === "COMPARISON" && <details className="rounded-lg border border-dash-border bg-dash-bg/40 p-4" open={w.comparisonMetricKeys.length > 0}>
-        <summary className="cursor-pointer text-sm font-semibold text-dash-accent">Add comparison metrics · optional{w.comparisonMetricKeys.length ? ` · ${w.comparisonMetricKeys.length} selected` : ""}</summary>
-        <p className="mt-3 text-xs text-dash-ink-secondary">Selected metrics are compared for each campaign. Missing values and percentage changes from a zero baseline show N/A. Existing default metrics are not repeated.</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">{w.comparisonOptionalMetrics.map(metric => <label key={metric.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-dash-border p-3 text-sm text-dash-ink"><input type="checkbox" className="accent-sky-500" checked={w.comparisonMetricKeys.includes(metric.key)} onChange={() => w.toggleComparisonMetric(metric.key)} disabled={!w.comparisonMetricKeys.includes(metric.key) && w.comparisonMetricKeys.length >= MAX_TOTAL_METRICS} />{metric.label}</label>)}</div>
-        {!w.comparisonOptionalMetrics.length && <p className="mt-3 text-sm text-dash-ink-secondary">No additional supported metric columns were detected in this CSV.</p>}
-      </details>}
+    const daily = w.reportType === "DAY_BREAKDOWN";
+    const optional = daily ? w.dailyOptionalMetrics : w.comparisonOptionalMetrics;
+    const keys = daily ? w.dailyMetricKeys : w.comparisonMetricKeys;
+    const toggle = daily ? w.toggleDailyMetric : w.toggleComparisonMetric;
+    const included = (daily ? ["Ad spend", "Reach", "Impressions", "CTR (All)", "CPC (All)", "Objective-specific results", "Cost per result"] : ["Ad spend", "Reach", "Results for campaign objective", "Cost per result"]).map((label, index) => ({ key: `included-${index}`, label }));
+    const extras = optional.filter(metric => keys.includes(metric.key));
+    return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
+      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your CSV. Add or remove optional metrics below.</p>
+      <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "3px solid #38bdf8" }}>
+        <h3 className="text-[15px] font-bold text-dash-ink">{daily ? "Daily tables · selected campaigns" : "Comparison · selected campaigns"}</h3>
+        <p className="mt-1 text-sm text-dash-ink-secondary">{daily ? "The same metrics are shown for each day, combined across selected campaigns. Extras appear on additional daily tables." : "The same metrics are compared for every selected campaign. Extras appear on additional comparison slides."}</p>
+        <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={optional} lockedKeys={included.map(metric => metric.key)} onAdd={metric => toggle(metric.key)} onRemove={toggle} limit={MAX_TOTAL_METRICS + included.length} hint="Only supported metrics from your CSV are shown. Missing values show N/A; existing included metrics are not repeated." />
+      </div>
       <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-[#0b1728]">{copy.continueToGenerate}</button></div>
+      <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />
       <WizardStickyFooter stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))} onBack={() => setStep(2)} backLabel={copy.back} primaryLabel={copy.continueToGenerate} onPrimary={handleMetricsContinue} />
     </div>;
   }

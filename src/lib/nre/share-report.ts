@@ -1,3 +1,5 @@
+import { dailyExtraMetricGuide } from "./daily-extra-metrics";
+import type { DailyExtraTable } from "./daily-extra-metrics";
 import { allSlideMetrics } from "./metric-pagination";
 /**
  * Builds the JSON payload stored in Report.summaryJson for a WEEKLY/MONTHLY
@@ -167,6 +169,7 @@ export interface ShareReportData {
   mtdRow: TableRowData;
   /** Multi-Month Historical — one row per calendar month for the final comparison table. */
   historicalComparisonRows?: TableRowData[];
+  dailyAdditionalTables?: DailyExtraTable[];
   /** Optional one-line Combined Total story (older share JSON omits this). */
   combinedTotalStory?: string;
   metricGuide: LegendEntry[];
@@ -374,7 +377,8 @@ export function buildDayBreakdownShareReportData(
     periodRow: EMPTY_TABLE_ROW,
     mtdRow: EMPTY_TABLE_ROW,
     historicalComparisonRows: data.dayRows,
-    metricGuide: [],
+    dailyAdditionalTables: data.additionalTables,
+    metricGuide: dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns),
     agencyName: extras.agencyName ?? null,
     reportBranding: extras.reportBranding,
     generatedAt: now.toISOString(),
@@ -382,7 +386,7 @@ export function buildDayBreakdownShareReportData(
       cover: true,
       overview: false,
       combinedTotal: data.dayRows.length > 0,
-      metricGuide: false,
+      metricGuide: true,
       campaigns: {},
       adSets: {},
     },

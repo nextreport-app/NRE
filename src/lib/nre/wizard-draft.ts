@@ -40,6 +40,7 @@ export type WizardDraftSnapshot = {
   reportType: WizardReportType;
   historicalMonthCount?: number;
   comparisonMetricKeys?: string[];
+  dailyMetricKeys?: string[];
   csvHeaders?: string[];
   comparisonPreset?: ComparisonPreset;
   comparisonPeriodA?: DateRangeIso | null;

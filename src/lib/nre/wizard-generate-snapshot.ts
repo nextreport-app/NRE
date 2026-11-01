@@ -25,6 +25,7 @@ export interface WizardGenerateSnapshot {
   mtdRange: { startIso: string; endIso: string } | null;
   monthComparisonOptions: { periodA: { startIso: string; endIso: string }; periodB: { startIso: string; endIso: string } } | null;
   comparisonMetricKeys?: string[];
+  dailyMetricKeys?: string[];
   csvHeaders?: string[];
   comparisonPreset: "thisWeek" | "last15" | "last30" | "thisMonth" | "custom";
   comparisonPeriodA: { startIso: string; endIso: string } | null;

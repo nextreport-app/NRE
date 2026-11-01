@@ -27,6 +27,7 @@ const snapshot: WizardGenerateSnapshot = {
   },
   mtdRange: { startIso: "2026-08-01", endIso: "2026-08-26" },
   monthComparisonOptions: null,
+  dailyMetricKeys: ["landing_page_views"],
   comparisonMetricKeys: ["impressions", "cpc_all"],
   csvHeaders: ["Impressions", "CPC (all)"],
   comparisonPreset: "thisWeek",

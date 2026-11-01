@@ -392,6 +392,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       mtdDailyRows: mtdParsed.rows,
       dateRange: dateResolution.weeklyRange,
       selectedCampaigns: selectedCampaigns ?? null,
+      campaignObjectives: formData ? parseJsonFormField(formData, "campaignObjectives", campaignObjectivesSchema) : undefined,
+      dailyMetricKeys: formData ? parseJsonFormField(formData, "dailyMetricKeys", comparisonMetricKeysSchema) : undefined,
+      csvHeaders: mtdParsed.headers,
       platform,
     });
 
@@ -428,7 +431,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             isPaused: dayBreakdownData.isPaused,
             rangeLabel: dayBreakdownData.rangeLabel,
             dayCount: dayBreakdownData.dayCount,
-            tableSlideCount: dayBreakdownData.tableSlides.length,
+            tableSlideCount: dayBreakdownData.tableSlides.length + (dayBreakdownData.additionalTables?.length ?? 0),
           }),
           jobPayload: serializeReportGenerationJob(jobPayload),
         },

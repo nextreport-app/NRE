@@ -866,11 +866,16 @@ export function ShareReportView({
         {showCombinedTotal && (
         <section className={slideClass}>
           <SlideCard>
-            <h2 className="mb-4 text-[22px] font-bold text-ink sm:text-[28px]">Monthly Campaign Performance Overview</h2>
+            <h2 className="mb-4 text-[22px] font-bold text-ink sm:text-[28px]">{visibleData.reportType === "DAY_BREAKDOWN" ? "Daily Performance Overview" : "Monthly Campaign Performance Overview"}</h2>
             <CombinedTotalTable data={visibleData} compact={isPrint} />
           </SlideCard>
         </section>
         )}
+
+        {showCombinedTotal && visibleData.dailyAdditionalTables?.map((table, index) => <section key={`daily-extra-${index}`} className={slideClass}><SlideCard>
+          <h2 className="mb-4 text-[22px] font-bold text-ink">Additional daily metrics · {index + 1} of {visibleData.dailyAdditionalTables!.length}</h2>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{["Date", ...table.metrics.map(metric => metric.label)].map((label, column) => <th key={column} className="p-3 text-left">{label}</th>)}</tr></thead><tbody>{table.rows.map(row => <tr key={row.date}>{[row.date, ...row.values].map((value, column) => <td key={column} className="border-t border-ink/10 p-3">{value}</td>)}</tr>)}</tbody></table></div>
+        </SlideCard></section>)}
 
         {showMetricGuide && (
         <section className={slideClass}>
