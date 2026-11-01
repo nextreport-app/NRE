@@ -1,3 +1,4 @@
+import { buildDailyExtraTables, type DailyExtraTable } from "./daily-extra-metrics";
 import { dailyPeriodLabel, dailyRangeLabel } from "./daily-period-selection";
 /**
  * Day-by-Day Performance reports — account-level totals per calendar day in a
@@ -35,6 +36,7 @@ export interface DayBreakdownReportData {
   /** e.g. "Jun 20 - Jun 26, 2026" */
   rangeLabel: string;
   periodLabel?: string;
+  additionalTables?: DailyExtraTable[];
   dateRange: DateRangeIso;
   dayCount: number;
   /** One row per day, oldest first. */
@@ -53,6 +55,8 @@ export interface BuildDayBreakdownReportDataInput {
   dateRange: DateRangeIso;
   selectedCampaigns?: string[] | null;
   selectedMetrics?: SelectedMetric[];
+  dailyMetricKeys?: string[];
+  csvHeaders?: string[];
   campaignObjectives?: Record<string, { resultLabel: string; costLabel: string }>;
   campaignMetricOverrides?: Record<string, string[]>;
   objectiveCache?: Record<string, { resultLabel: string; costLabel: string; key: string }>;
@@ -190,6 +194,7 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
     dayCount: dayRows.filter((row) => row.hasData).length,
     dayRows,
     tableSlides,
+    additionalTables: buildDailyExtraTables(byDay, input.csvHeaders ?? [...new Set(mtdDailyRows.flatMap(row => Object.keys(row._raw ?? {})))], input.dailyMetricKeys, tableHeaderLabels.resultColumns.map(column => ({ resultLabel: column.label, costLabel: column.costLabel })), currencySymbol),
     tableHeaderLabels,
     platform,
   };

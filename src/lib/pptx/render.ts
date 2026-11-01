@@ -1,3 +1,5 @@
+import { dailyExtraMetricGuide } from "../nre/daily-extra-metrics";
+import { buildDailyExtraSlide } from "./daily-extra-slide";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildComparisonExtraSlide } from "./comparison-extra-slide";
@@ -588,7 +590,10 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     });
   }
 
-  appendMetricGuide(template, slides, isLightTemplate);
+  if (!data.isPaused) (data.additionalTables ?? []).forEach((table, index, tables) => {
+    slides.push({ xml: buildDailyExtraSlide(table, `${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`, index, tables.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) });
+  });
+  appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns));
   return assemblePptx(template, slides);
 }
 

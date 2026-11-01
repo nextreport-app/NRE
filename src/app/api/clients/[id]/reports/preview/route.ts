@@ -282,6 +282,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignObjectives,
       campaignMetricOverrides,
       objectiveCache: parseObjectiveCache(client.campaignObjectiveCache),
+      dailyMetricKeys: formData ? parseJsonFormField(formData, "dailyMetricKeys", comparisonMetricKeysSchema) : undefined,
+      csvHeaders: mtdParsed.headers,
       platform,
     });
 
