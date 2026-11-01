@@ -134,8 +134,9 @@ describe("renderComparisonPptx — real template end-to-end", () => {
 
     const { slideCount, slideTexts } = inspectWithPythonPptx(outPath);
 
-    // Cover + 2 campaign comparison slides (Brand - Reach, Shoes - Purchases, alphabetical) + summary = 4.
-    expect(slideCount).toBe(4);
+    // Cover + 2 campaign comparison slides (Brand - Reach, Shoes - Purchases, alphabetical) + summary + metric guide = 5.
+    expect(slideCount).toBe(5);
+    expect(slideTexts.at(-1)).toContain("METRIC ABBREVIATION GUIDE");
     const [cover, campaign1, campaign2, summary] = slideTexts;
 
     expect(cover).toContain("COMPARISON PERFORMANCE REPORT");
