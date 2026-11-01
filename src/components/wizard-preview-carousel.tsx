@@ -20,7 +20,7 @@
  */
 
 import { useState, type ReactNode } from "react";
-import { paginateExtraMetrics } from "@/lib/nre/metric-pagination";
+import { paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -262,7 +262,7 @@ function LegendSlide({ entries }: { entries: string[] }) {
 // written for the normal single-CSV flow; comparison reports have a
 // structurally different slide set, so this mirrors the same visual shell
 // with the fields comparison reports actually have) ──────────────────────
-function ComparisonCampaignSlide({ campaignName, objective }: { campaignName: string; objective: string }) {
+function ComparisonCampaignSlide({ campaignName, objective, metricLabels }: { campaignName: string; objective: string; metricLabels?: string[] }) {
   return (
     <div className="flex h-full flex-col">
       <SlideHeading>{campaignName}</SlideHeading>
@@ -270,10 +270,7 @@ function ComparisonCampaignSlide({ campaignName, objective }: { campaignName: st
         {objective}
       </p>
       <div className="mt-3 grid flex-1 grid-cols-2 gap-2 sm:mt-4">
-        <MetricCardMini label="SPEND" />
-        <MetricCardMini label="REACH" />
-        <MetricCardMini label="RESULTS" />
-        <MetricCardMini label="COST PER RESULT" />
+        {(metricLabels ?? ["SPEND", "REACH", "RESULTS", "COST PER RESULT"]).map(label => <MetricCardMini key={label} label={label} />)}
       </div>
       <PlaceholderTextBox text="Period A vs Period B comparison will be calculated on generation..." />
     </div>
@@ -336,10 +333,10 @@ function buildSlides({
         render: () => <ComparisonCampaignSlide campaignName={first.campaignName} objective={first.objective} />,
       });
     }
-    if (first) paginateExtraMetrics(first.additionalMetrics ?? []).forEach((metrics, index) => slides.push({ key: `comparison-extra-${index}`, render: () => <div className="flex h-full flex-col"><SlideHeading>ADDITIONAL COMPARISON METRICS</SlideHeading><p className="mt-1 text-xs" style={{ color: MUTED }}>{first.campaignName} · Period A / Period B / Change</p><div className="mt-3 grid gap-1 text-[8px] sm:text-[10px]">{metrics.map(metric => <div key={metric.key} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 rounded px-2 py-1" style={{ background: CARD_BG, color: MUTED }}><span>{metric.label}</span><span>…</span><span>…</span><span>…</span></div>)}</div></div> }));
+    if (first) paginateComparisonMetrics(first.additionalMetrics ?? []).forEach((metrics, index) => slides.push({ key: `comparison-extra-${index}`, render: () => <ComparisonCampaignSlide campaignName={first.campaignName} objective="Additional comparison metrics" metricLabels={metrics.map(metric => metric.label)} /> }));
     slides.push({ key: "comparison-summary", render: () => <ComparisonSummarySlide /> });
 
-    const extraCampaigns = Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0)) + comparisonData.campaigns.slice(1).reduce((sum, campaign) => sum + paginateExtraMetrics(campaign.additionalMetrics ?? []).length, 0);
+    const extraCampaigns = Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0)) + comparisonData.campaigns.slice(1).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0);
     const hidden = extraCampaigns + Math.max(0, slides.length - MAX_SLIDES);
     const moreText = hidden > 0 ? `+ ${hidden} more slides in your full report (campaign and additional comparison slides)` : null;
     return { slides: slides.slice(0, MAX_SLIDES), moreText };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseCsvText } from "../parse-csv";
 import { buildComparisonReportData } from "../report-data";
-import { comparisonOptionalMetrics } from "../comparison-extra-metrics";
+import { comparisonOptionalMetrics, paginateComparisonMetrics } from "../comparison-extra-metrics";
 
 const source = parseCsvText(`Campaign name,Day,Amount spent (USD),Results,Result type,Reach,Impressions,Clicks (all),CTR (all),CPC (all),Link clicks,Landing page views,Cost per landing page view
 Example,2026-10-01,100,5,Website leads,20,100,10,10,10,50,10,10
@@ -11,6 +11,11 @@ Example,2026-09-02,50,2,Website leads,10,150,10,6.666667,5,0,0,`);
 const base = { accountName: "Example", currencySymbol: "$", timezone: "UTC", mtdDailyRows: source.rows, csvHeaders: source.headers, periodA: { startIso: "2026-10-01", endIso: "2026-10-02" }, periodB: { startIso: "2026-09-01", endIso: "2026-09-02" } };
 
 describe("optional comparison metrics", () => {
+  it("balances five selected metrics across two paired-card pages without losing their order", () => {
+    const pages = paginateComparisonMetrics([1, 2, 3, 4, 5]);
+    expect(pages.map(page => page.length)).toEqual([3, 2]);
+    expect(pages.flat()).toEqual([1, 2, 3, 4, 5]);
+  });
   it("lists exported numeric metrics, excluding defaults and unrecognised columns", () => {
     const keys = comparisonOptionalMetrics([...source.headers, "Client secret", "Unknown metric"], "META").map(metric => metric.key);
     expect(keys).toEqual(expect.arrayContaining(["impressions", "ctr", "cpc_all", "link_clicks", "landing_page_views", "cost_per_lpv"]));
@@ -52,9 +57,9 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("additional comparison outpu
     const zip = await JSZip.loadAsync(buffer);
     const paths = Object.keys(zip.files).filter(path => /^ppt\/slides\/slide\d+\.xml$/.test(path)).sort((a, b) => Number(a.match(/slide(\d+)/)![1]) - Number(b.match(/slide(\d+)/)![1]));
     const output = await Promise.all(paths.map(path => zip.file(path)!.async("string")));
-    const extras = output.filter(xml => xml.includes(">ADDITIONAL COMPARISON METRICS<"));
-    expect(extras).toHaveLength(Math.ceil(count / 8));
-    for (let index = 0; index < count; index++) expect(extras.join("\n").split(`>EXTRA METRIC ${index + 1}<`)).toHaveLength(2);
+    const extras = output.filter(xml => xml.includes(">ADDITIONAL COMPARISON METRICS ·"));
+    expect(extras).toHaveLength(Math.ceil(count / 4));
+    for (let index = 0; index < count; index++) expect(extras.join("\n").split(`>EXTRA METRIC ${index + 1}<`)).toHaveLength(3);
     expect(extras.join("\n")).not.toContain(">AD SPEND<");
     expect(extras.join("\n")).not.toContain(">—<");
     expect(output.at(-1)).toContain("METRIC ABBREVIATION GUIDE");

@@ -6,6 +6,22 @@ import { findMetaMetric } from "./meta-dictionary";
 import { findGoogleMetric } from "./google-dictionary";
 import { MAX_TOTAL_METRICS } from "./metric-pagination";
 
+/** Match the default comparison slide's four paired metric rows. */
+export const COMPARISON_METRICS_PER_SLIDE = 4;
+export function paginateComparisonMetrics<T>(metrics: readonly T[]): T[][] {
+  if (!metrics.length) return [];
+  const pages = Math.ceil(metrics.length / COMPARISON_METRICS_PER_SLIDE);
+  const size = Math.floor(metrics.length / pages);
+  const remainder = metrics.length % pages;
+  let offset = 0;
+  return Array.from({ length: pages }, (_, index) => {
+    const count = size + (index < remainder ? 1 : 0);
+    const page = metrics.slice(offset, offset + count);
+    offset += count;
+    return page;
+  });
+}
+
 export interface ComparisonExtraMetric {
   key: string;
   label: string;

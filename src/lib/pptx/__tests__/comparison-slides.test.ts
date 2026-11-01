@@ -154,12 +154,21 @@ describe("buildComparisonCampaignSlideXml", () => {
 });
 
 describe.each([false, true])("metric-aware comparison badges (light=%s)", light => {
+  it("uses identical card geometry, heading, fonts and badges for default and additional slides", () => {
+    const original = campaign();
+    const main = buildComparisonCampaignSlideXml(original, "A", "B", BACKGROUND, light);
+    const labels = { spend: "AD SPEND", reach: "REACH", results: original.objective, cpr: original.costLabel };
+    const metrics = (["spend", "reach", "results", "cpr"] as const).map(key => ({ key, label: labels[key], valueA: original.metricsA[key].value, valueB: original.metricsB[key].value, formattedA: original.metricsA[key].formatted, formattedB: original.metricsB[key].formatted, percent: original.changes[key].percent }));
+    const extra = buildComparisonExtraSlide({ campaignName: original.campaignName, metrics, periodALabel: "A", periodBLabel: "B", page: 0, pages: 1, background: BACKGROUND, isLightTemplate: light });
+    const shapes = (xml: string) => [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]);
+    expect(shapes(extra).slice(0, -1)).toEqual(shapes(main));
+  });
   it("applies the same semantic colours to additional cost and CTR metrics", () => {
     const metric = { valueA: 20, valueB: 9, formattedA: "$20", formattedB: "$9" };
     const xml = buildComparisonExtraSlide({ campaignName: "Example", metrics: [{ ...metric, key: "cost_per_lpv", label: "COST PER LPV", percent: 120 }, { ...metric, key: "ctr", label: "CTR", percent: 30 }], periodALabel: "A", periodBLabel: "B", page: 0, pages: 1, background: BACKGROUND, isLightTemplate: light });
     const shapes = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]);
-    expect(shapes.find(shape => shape.includes(">+120%<"))).toContain(`srgbClr val="${light ? "b91c1c" : "fc8181"}"`);
-    expect(shapes.find(shape => shape.includes(">+30%<"))).toContain(`srgbClr val="${light ? "15803d" : "68d391"}"`);
+    expect(shapes[shapes.findIndex(shape => shape.includes(">+120% ↑<")) - 1]).toContain('srgbClr val="fc8181"');
+    expect(shapes[shapes.findIndex(shape => shape.includes(">+30% ↑<")) - 1]).toContain('srgbClr val="68d391"');
   });
   it.each([[120, "up", "fc8181"], [-50, "down", "68d391"]] as const)("uses the correct cost-per-result colour for %s percent", (percent, direction, color) => {
     const xml = buildComparisonCampaignSlideXml(campaign({ changes: { ...campaign().changes, cpr: change(percent, direction) } }), "A", "B", BACKGROUND, light);

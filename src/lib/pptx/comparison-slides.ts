@@ -76,7 +76,8 @@ export function buildComparisonCoverSlideXml(
 const W = 960;
 const H = 540;
 
-interface MetricRowSpec {
+export interface ComparisonMetricRow {
+  unavailable?: boolean;
   key: string;
   label: string;
   valueA: string;
@@ -99,6 +100,24 @@ export function buildComparisonCampaignSlideXml(
   background: TemplateBackgroundImage,
   isLightTemplate = false,
 ): string {
+  const rows: ComparisonMetricRow[] = [
+    { key: "spend", label: "AD SPEND", valueA: campaign.metricsA.spend.formatted, valueB: campaign.metricsB.spend.formatted, change: campaign.changes.spend },
+    { key: "reach", label: "REACH", valueA: campaign.metricsA.reach.formatted, valueB: campaign.metricsB.reach.formatted, change: campaign.changes.reach },
+    { key: "results", label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
+    { key: "cpr", label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
+  ];
+  return buildComparisonMetricSlideXml(campaign.campaignName, rows, periodALabel, periodBLabel, background, isLightTemplate);
+}
+
+export function buildComparisonMetricSlideXml(
+  campaignName: string,
+  rows: ComparisonMetricRow[],
+  periodALabel: string,
+  periodBLabel: string,
+  background: TemplateBackgroundImage,
+  isLightTemplate = false,
+  footer?: string,
+): string {
   const palette = slideSurfacePalette(isLightTemplate);
   resetShapeIdCounter();
   const shapes: string[] = [];
@@ -113,7 +132,7 @@ export function buildComparisonCampaignSlideXml(
       y: TITLE_Y,
       w: W - MARGIN * 2,
       h: TITLE_H,
-      text: `${campaign.campaignName} (Campaign)`,
+      text: `${campaignName} (Campaign)`,
       sizePt: 22,
       bold: true,
       colorHex: palette.text,
@@ -150,12 +169,7 @@ export function buildComparisonCampaignSlideXml(
   const ROW_GAP = 16;
   const CARD_PAD_X = 16;
 
-  const rows: MetricRowSpec[] = [
-    { key: "spend", label: "AD SPEND", valueA: campaign.metricsA.spend.formatted, valueB: campaign.metricsB.spend.formatted, change: campaign.changes.spend },
-    { key: "reach", label: "REACH", valueA: campaign.metricsA.reach.formatted, valueB: campaign.metricsB.reach.formatted, change: campaign.changes.reach },
-    { key: "results", label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
-    { key: "cpr", label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
-  ];
+
 
   rows.forEach((row, i) => {
     const y = ROWS_TOP + i * (CARD_H + ROW_GAP);
@@ -191,7 +205,7 @@ export function buildComparisonCampaignSlideXml(
       );
     }
 
-    const { bg, text } = changeBadgeColors(row.change, palette, row.key, row.label);
+    const { bg, text } = row.unavailable ? { bg: CHANGE_FLAT_BG, text: "FFFFFF" } : changeBadgeColors(row.change, palette, row.key, row.label);
     const BADGE_H = 30;
     const badgeY = y + (CARD_H - BADGE_H) / 2;
     shapes.push(roundedCard({ x: badgeX, y: badgeY, w: BADGE_W, h: BADGE_H, fillHex: bg, strokeHex: bg, radiusPt: 15 }));
@@ -201,7 +215,7 @@ export function buildComparisonCampaignSlideXml(
         y: badgeY + 6,
         w: BADGE_W,
         h: 18,
-        text: changeBadgeText(row.change),
+        text: row.unavailable ? "N/A" : changeBadgeText(row.change),
         sizePt: 13,
         bold: true,
         colorHex: text,
@@ -209,6 +223,7 @@ export function buildComparisonCampaignSlideXml(
     );
   });
 
+  if (footer) shapes.push(textBox({ x: 40, y: 505, w: 880, h: 17, text: footer, sizePt: 10, colorHex: palette.label }));
   return buildBlankSlideXml(shapes);
 }
 
