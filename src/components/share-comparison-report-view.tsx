@@ -1,5 +1,6 @@
 "use client";
 
+import { comparisonTone, comparisonPercent } from "@/lib/nre/comparison-presentation";
 import type { ComparisonChange, ComparisonCampaignData, ComparisonMetricSet } from "@/lib/nre/report-data";
 import type { ShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
@@ -13,22 +14,16 @@ import { ShareReportBrandingHeader } from "@/components/share-report-branding-he
 function changeBadgeLabel(change: ComparisonChange): string {
   if (change.direction === "new") return "NEW";
   const arrow = change.direction === "up" ? "↑" : change.direction === "down" ? "↓" : "→";
-  const pct = change.percent ?? 0;
-  const sign = pct > 0 ? "+" : "";
-  return `${sign}${Math.round(pct)}% ${arrow}`;
+  return `${comparisonPercent(change.percent)} ${arrow}`;
 }
 
-function changeBadgeClass(change: ComparisonChange): string {
-  switch (change.direction) {
-    case "up":
-      return "bg-emerald-500/20 text-emerald-300";
-    case "down":
-      return "bg-red-500/20 text-red-300";
-    case "new":
-      return "bg-amber-500/20 text-amber-300";
-    default:
-      return "bg-slate-500/20 text-slate-300";
-  }
+function trendClass(key: string, label: string, percent: number | null): string {
+  const tone = comparisonTone(key, label, percent);
+  return tone === "positive" ? "bg-emerald-500/20 text-emerald-300" : tone === "negative" ? "bg-red-500/20 text-red-300" : "bg-slate-500/20 text-slate-300";
+}
+
+function changeBadgeClass(change: ComparisonChange, key: string, label: string): string {
+  return change.direction === "new" ? "bg-amber-500/20 text-amber-300" : trendClass(key, label, change.percent);
 }
 
 function MetricComparisonRow({
@@ -51,7 +46,7 @@ function MetricComparisonRow({
         <p className="mt-1 text-lg font-bold text-ink sm:text-xl">{metricsA[valueKey].formatted}</p>
       </div>
       <span
-        className={`inline-flex min-w-[72px] justify-center rounded-full px-2 py-1 text-[11px] font-semibold sm:min-w-[84px] sm:text-xs ${changeBadgeClass(change)}`}
+        className={`inline-flex min-w-[72px] justify-center rounded-full px-2 py-1 text-[11px] font-semibold sm:min-w-[84px] sm:text-xs ${changeBadgeClass(change, valueKey, label)}`}
       >
         {changeBadgeLabel(change)}
       </span>
@@ -92,7 +87,7 @@ function CampaignComparisonSection({
         <MetricComparisonRow label={campaign.objective} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.results} valueKey="results" />
         <MetricComparisonRow label={campaign.costLabel} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.cpr} valueKey="cpr" />
       </div>
-      {!!campaign.additionalMetrics?.length && <div className="mt-6 overflow-x-auto"><h3 className="mb-3 text-sm font-semibold text-ink">Additional comparison metrics</h3><table className="w-full text-left text-sm text-ink"><thead className="text-xs text-ink-muted"><tr><th className="p-2">Metric</th><th className="p-2">Period A</th><th className="p-2">Period B</th><th className="p-2">Change</th></tr></thead><tbody>{campaign.additionalMetrics.map(metric => <tr key={metric.key} className="border-t border-navy-border"><td className="p-2">{metric.label}</td><td className="p-2">{metric.formattedA}</td><td className="p-2">{metric.formattedB}</td><td className="p-2">{metric.percent === null ? "N/A" : `${metric.percent > 0 ? "+" : ""}${metric.percent.toFixed(1)}%`}</td></tr>)}</tbody></table></div>}
+      {!!campaign.additionalMetrics?.length && <div className="mt-6 overflow-x-auto"><h3 className="mb-3 text-sm font-semibold text-ink">Additional comparison metrics</h3><table className="w-full text-left text-sm text-ink"><thead className="text-xs text-ink-muted"><tr><th className="p-2">Metric</th><th className="p-2">Period A</th><th className="p-2">Period B</th><th className="p-2">Change</th></tr></thead><tbody>{campaign.additionalMetrics.map(metric => <tr key={metric.key} className="border-t border-navy-border"><td className="p-2">{metric.label}</td><td className="p-2">{metric.formattedA}</td><td className="p-2">{metric.formattedB}</td><td className="p-2"><span className={`rounded px-2 py-1 ${trendClass(metric.key, metric.label, metric.percent)}`}>{comparisonPercent(metric.percent)}</span></td></tr>)}</tbody></table></div>}
     </section>
   );
 }

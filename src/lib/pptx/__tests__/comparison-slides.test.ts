@@ -1,3 +1,4 @@
+import { buildComparisonExtraSlide } from "../comparison-extra-slide";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, beforeAll } from "vitest";
@@ -125,10 +126,12 @@ describe("buildComparisonCampaignSlideXml", () => {
     expect(xml).toContain("39");
   });
 
-  it("renders an up badge (green, ↑, rounded percent) for a positive change", () => {
+  it("keeps spend changes neutral while preserving their numerical direction", () => {
     const xml = buildComparisonCampaignSlideXml(campaign({ changes: { ...campaign().changes, spend: change(12.4, "up") } }), "A", "B", BACKGROUND);
     expect(xml).toContain("+12% ↑");
-    expect(xml).toContain('srgbClr val="68d391"'); // CHANGE_UP_BG
+    const shapes = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]);
+    const badge = shapes.findIndex(shape => shape.includes(">+12% ↑<"));
+    expect(shapes[badge - 1]).toContain('srgbClr val="64748b"');
   });
 
   it("renders a down badge (red, ↓, rounded percent) for a negative change", () => {
@@ -147,6 +150,37 @@ describe("buildComparisonCampaignSlideXml", () => {
     const xml = buildComparisonCampaignSlideXml(campaign({ changes: { ...campaign().changes, results: change(null, "new") } }), "A", "B", BACKGROUND);
     expect(xml).toContain("NEW");
     expect(xml).toContain('srgbClr val="f6ad55"'); // CHANGE_NEW_BG
+  });
+});
+
+describe.each([false, true])("metric-aware comparison badges (light=%s)", light => {
+  it("applies the same semantic colours to additional cost and CTR metrics", () => {
+    const metric = { valueA: 20, valueB: 9, formattedA: "$20", formattedB: "$9" };
+    const xml = buildComparisonExtraSlide({ campaignName: "Example", metrics: [{ ...metric, key: "cost_per_lpv", label: "COST PER LPV", percent: 120 }, { ...metric, key: "ctr", label: "CTR", percent: 30 }], periodALabel: "A", periodBLabel: "B", page: 0, pages: 1, background: BACKGROUND, isLightTemplate: light });
+    const shapes = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]);
+    expect(shapes.find(shape => shape.includes(">+120%<"))).toContain(`srgbClr val="${light ? "b91c1c" : "fc8181"}"`);
+    expect(shapes.find(shape => shape.includes(">+30%<"))).toContain(`srgbClr val="${light ? "15803d" : "68d391"}"`);
+  });
+  it.each([[120, "up", "fc8181"], [-50, "down", "68d391"]] as const)("uses the correct cost-per-result colour for %s percent", (percent, direction, color) => {
+    const xml = buildComparisonCampaignSlideXml(campaign({ changes: { ...campaign().changes, cpr: change(percent, direction) } }), "A", "B", BACKGROUND, light);
+    const shapes = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]);
+    const text = percent > 0 ? "+120% ↑" : "-50% ↓";
+    const badge = shapes.findIndex(shape => shape.includes(`>${text}<`));
+    expect(badge).toBeGreaterThan(0);
+    expect(shapes[badge - 1]).toContain(`srgbClr val="${color}"`);
+  });
+});
+
+describe.each(["dark.pptx", "meta-ads-light.pptx"])("single-line comparison dates in %s", file => {
+  it("widens only the date shape and disables wrapping, including long cross-year ranges", async () => {
+    const source = await loadTemplate(fs.readFileSync(path.resolve(__dirname, "../../../../templates", file)));
+    const data = comparisonData({ periodALabel: "December 1 - December 31, 2026", periodBLabel: "November 1 - November 30, 2025" });
+    const xml = buildComparisonCoverSlideXml(source.cover, data, { agencyName: "Example agency" });
+    const dateShape = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]).find(shape => shape.includes(data.periodALabel))!;
+    expect(dateShape).toContain(data.periodBLabel);
+    expect(dateShape).toContain('wrap="none"');
+    expect(dateShape).toContain('cx="11176000"');
+    expect(xml).toContain("Prepared by Example agency");
   });
 });
 
@@ -182,11 +216,11 @@ describe("buildComparisonSummarySlideXml", () => {
     expect(xml).not.toContain(longName);
   });
 
-  it("colors positive Δ% green and negative Δ% red", () => {
+  it("colours results changes by performance while leaving spend changes neutral", () => {
     const data = comparisonData({
       campaigns: [
         campaign({ campaignName: "Up Campaign", changes: { ...campaign().changes, spend: change(12, "up") } }),
-        campaign({ campaignName: "Down Campaign", changes: { ...campaign().changes, spend: change(-8, "down") } }),
+        campaign({ campaignName: "Down Campaign", changes: { ...campaign().changes, spend: change(-8, "down"), results: change(-11, "down") } }),
       ],
     });
     const xml = buildComparisonSummarySlideXml(data, BACKGROUND);

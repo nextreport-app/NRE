@@ -10,6 +10,8 @@
  * layout for.
  */
 
+import { comparisonTone, comparisonPercent } from "../nre/comparison-presentation";
+import { setShapeExtCx, setShapeWrap } from "./ooxml";
 import { backgroundImage, buildBlankSlideXml, rectangle, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
 import type { TemplateBackgroundImage, TemplateSlide } from "./package";
 import { buildCoverSlideXml } from "./fill-tags";
@@ -24,26 +26,18 @@ const CHANGE_DOWN_BG = "fc8181";
 const CHANGE_FLAT_BG = "64748b";
 const CHANGE_NEW_BG = "f6ad55";
 
-function changeBadgeColors(change: ComparisonChange, palette: SlideSurfacePalette): { bg: string; text: string } {
-  switch (change.direction) {
-    case "up":
-      return { bg: CHANGE_UP_BG, text: palette.changeDarkText };
-    case "down":
-      return { bg: CHANGE_DOWN_BG, text: palette.changeDarkText };
-    case "new":
-      return { bg: CHANGE_NEW_BG, text: palette.changeDarkText };
-    case "flat":
-    default:
-      return { bg: CHANGE_FLAT_BG, text: palette.changeFlatText };
-  }
+function changeBadgeColors(change: ComparisonChange, palette: SlideSurfacePalette, metric: string, label: string): { bg: string; text: string } {
+  if (change.direction === "new") return { bg: CHANGE_NEW_BG, text: palette.changeDarkText };
+  const tone = comparisonTone(metric, label, change.percent);
+  if (tone === "positive") return { bg: CHANGE_UP_BG, text: palette.changeDarkText };
+  if (tone === "negative") return { bg: CHANGE_DOWN_BG, text: palette.changeDarkText };
+  return { bg: CHANGE_FLAT_BG, text: "FFFFFF" };
 }
 
 function changeBadgeText(change: ComparisonChange): string {
   if (change.direction === "new") return "NEW";
   const arrow = change.direction === "up" ? "↑" : change.direction === "down" ? "↓" : "→";
-  const pct = change.percent ?? 0;
-  const sign = pct > 0 ? "+" : "";
-  return `${sign}${Math.round(pct)}% ${arrow}`;
+  return `${comparisonPercent(change.percent)} ${arrow}`;
 }
 
 /**
@@ -63,11 +57,12 @@ export function buildComparisonCoverSlideXml(
   comparison: ComparisonReportData,
   options: { agencyName?: string | null; reportTitle?: string | null } = {},
 ): string {
-  return buildCoverSlideXml(
+  const dates = `${comparison.periodALabel} vs ${comparison.periodBLabel}`;
+  const xml = buildCoverSlideXml(
     template,
     {
       accountName: comparison.accountName,
-      reportDate: `${comparison.periodALabel}   vs   ${comparison.periodBLabel}`,
+      reportDate: dates,
       dateRange: "",
       healthBadge: "",
       healthScore: 0,
@@ -75,12 +70,14 @@ export function buildComparisonCoverSlideXml(
     },
     { agencyName: options.agencyName, reportTitle: options.reportTitle, reportType: "COMPARISON" },
   );
+  return setShapeWrap(setShapeExtCx(xml, dates, 880 * 12700), dates, "none");
 }
 
 const W = 960;
 const H = 540;
 
 interface MetricRowSpec {
+  key: string;
   label: string;
   valueA: string;
   valueB: string;
@@ -154,10 +151,10 @@ export function buildComparisonCampaignSlideXml(
   const CARD_PAD_X = 16;
 
   const rows: MetricRowSpec[] = [
-    { label: "AD SPEND", valueA: campaign.metricsA.spend.formatted, valueB: campaign.metricsB.spend.formatted, change: campaign.changes.spend },
-    { label: "REACH", valueA: campaign.metricsA.reach.formatted, valueB: campaign.metricsB.reach.formatted, change: campaign.changes.reach },
-    { label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
-    { label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
+    { key: "spend", label: "AD SPEND", valueA: campaign.metricsA.spend.formatted, valueB: campaign.metricsB.spend.formatted, change: campaign.changes.spend },
+    { key: "reach", label: "REACH", valueA: campaign.metricsA.reach.formatted, valueB: campaign.metricsB.reach.formatted, change: campaign.changes.reach },
+    { key: "results", label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
+    { key: "cpr", label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
   ];
 
   rows.forEach((row, i) => {
@@ -194,7 +191,7 @@ export function buildComparisonCampaignSlideXml(
       );
     }
 
-    const { bg, text } = changeBadgeColors(row.change, palette);
+    const { bg, text } = changeBadgeColors(row.change, palette, row.key, row.label);
     const BADGE_H = 30;
     const badgeY = y + (CARD_H - BADGE_H) / 2;
     shapes.push(roundedCard({ x: badgeX, y: badgeY, w: BADGE_W, h: BADGE_H, fillHex: bg, strokeHex: bg, radiusPt: 15 }));
@@ -217,20 +214,14 @@ export function buildComparisonCampaignSlideXml(
 
 // ─────────────────────────── Summary table slide ────────────────────────────
 
-const DELTA_UP_TEXT = "68d391";
-const DELTA_DOWN_TEXT = "fc8181";
-
 function deltaText(change: ComparisonChange): string {
-  if (change.direction === "new") return "NEW";
-  const pct = change.percent ?? 0;
-  const sign = pct > 0 ? "+" : "";
-  return `${sign}${Math.round(pct)}%`;
+  return change.direction === "new" ? "NEW" : comparisonPercent(change.percent);
 }
 
-function deltaColor(change: ComparisonChange, palette: SlideSurfacePalette): string {
-  if (change.direction === "up") return DELTA_UP_TEXT;
-  if (change.direction === "down") return DELTA_DOWN_TEXT;
-  return palette.text;
+function deltaColor(change: ComparisonChange, palette: SlideSurfacePalette, metric: string): string {
+  const tone = comparisonTone(metric, metric, change.percent);
+  const light = palette.text === "0d1b2e";
+  return tone === "positive" ? (light ? "15803d" : "68d391") : tone === "negative" ? (light ? "b91c1c" : "fc8181") : palette.label;
 }
 
 interface TableCol {
@@ -303,7 +294,7 @@ export function buildComparisonSummarySlideXml(
   let y = tableTop;
   let x = tableX;
   TABLE_COLS.forEach((col) => {
-    shapes.push(tableCellXml(x, y, col.widthPt, rowH, col.header, palette.tableHeaderFill, palette.text, true, col.align));
+    shapes.push(tableCellXml(x, y, col.widthPt, rowH, col.header, palette.tableHeaderFill, isLightTemplate ? palette.tableHeaderLabel : palette.text, true, col.align));
     x += col.widthPt;
   });
   y += rowH;
@@ -322,7 +313,7 @@ export function buildComparisonSummarySlideXml(
     cells.forEach(([text, fill, align], i) => {
       const col = TABLE_COLS[i];
       const isDeltaCol = i === 3 || i === 6;
-      const textColor = isDeltaCol ? deltaColor(i === 3 ? c.changes.spend : c.changes.results, palette) : palette.text;
+      const textColor = isDeltaCol ? deltaColor(i === 3 ? c.changes.spend : c.changes.results, palette, i === 3 ? "spend" : "results") : palette.text;
       shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, fill, textColor, isDeltaCol, align));
       x += col.widthPt;
     });
@@ -344,7 +335,7 @@ export function buildComparisonSummarySlideXml(
   totalCells.forEach(([text, align], i) => {
     const col = TABLE_COLS[i];
     const isDeltaCol = i === 3 || i === 6;
-    const textColor = isDeltaCol ? deltaColor(i === 3 ? totals.changes.spend : totals.changes.results, palette) : palette.text;
+    const textColor = isDeltaCol ? deltaColor(i === 3 ? totals.changes.spend : totals.changes.results, palette, i === 3 ? "spend" : "results") : palette.text;
     shapes.push(tableCellXml(x, y, col.widthPt, rowH, text, palette.tableTotalFill, textColor, true, align));
     x += col.widthPt;
   });

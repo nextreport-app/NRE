@@ -1,3 +1,4 @@
+import { comparisonTone, comparisonPercent } from "../nre/comparison-presentation";
 import { backgroundImage, buildBlankSlideXml, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
 import { slideSurfacePalette } from "./slide-surface-palette";
 import type { TemplateBackgroundImage } from "./package";
@@ -19,8 +20,10 @@ export function buildComparisonExtraSlide(input: { campaignName: string; metrics
   input.metrics.forEach((metric, index) => {
     const y = top + index * height;
     shapes.push(roundedCard({ x: 40, y, w: 880, h: height - 6, radiusPt: 5, fillHex: palette.cardFill, strokeHex: palette.cardStroke }));
-    const percent = metric.percent === null ? "N/A" : `${metric.percent > 0 ? "+" : ""}${metric.percent.toFixed(1)}%`;
-    [metric.label, metric.formattedA, metric.formattedB, percent].forEach((text, column) => shapes.push(textBox({ x: columns[column].x + 10, y: y + (height - 6) / 2 - 12, w: columns[column].w - 20, h: 30, text, sizePt: column === 0 ? 12 : 17, bold: column > 0, colorHex: palette.text })));
+    const percent = comparisonPercent(metric.percent);
+    const tone = comparisonTone(metric.key, metric.label, metric.percent);
+    const trendColor = tone === "positive" ? (input.isLightTemplate ? "15803d" : "68d391") : tone === "negative" ? (input.isLightTemplate ? "b91c1c" : "fc8181") : palette.label;
+    [metric.label, metric.formattedA, metric.formattedB, percent].forEach((text, column) => shapes.push(textBox({ x: columns[column].x + 10, y: y + (height - 6) / 2 - 12, w: columns[column].w - 20, h: 30, text, sizePt: column === 0 ? 12 : 17, bold: column > 0, colorHex: column === 3 ? trendColor : palette.text })));
   });
   shapes.push(textBox({ x: 40, y: 505, w: 880, h: 17, text: `Additional metrics · ${input.page + 1} of ${input.pages} · N/A: unavailable value or zero comparison baseline`, sizePt: 10, colorHex: palette.label }));
   return buildBlankSlideXml(shapes);
