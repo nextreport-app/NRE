@@ -190,6 +190,8 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "meta lead",
       "meta leads",
       "instant form leads",
+      "on-facebook leads",
+      "on-facebook lead",
       "onsite_conversion.lead_grouped",
       "onsite_conversion.lead",
       "leadgen_grouped",
