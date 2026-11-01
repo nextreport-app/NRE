@@ -1178,12 +1178,6 @@ export function useReportUploadWizard({
     setCustomStart(normalizedSelection.customStart || savedSelection.customStart || "");
     setCustomEnd(normalizedSelection.customEnd || savedSelection.customEnd || "");
     }
-    if (reportType === "DAY_BREAKDOWN" && !preserve) {
-      const yesterday = reportCalendarYesterday(new Date(), clientTimezone);
-      const last = json.dateBounds?.maxIso && json.dateBounds.maxIso < yesterday ? json.dateBounds.maxIso : yesterday;
-      const valid = dateMode === "custom" && customStart && customEnd && customStart >= (json.dateBounds?.minIso ?? "") && customEnd <= last;
-      setDateMode("custom"); setCustomStart(valid ? customStart : last); setCustomEnd(valid ? customEnd : last);
-    }
     if (["MONTHLY", "HISTORICAL"].includes(reportType) && !preserve && !(dateMode === "custom" && customStart && customEnd && customStart >= (json.dateBounds?.minIso ?? "") && customEnd <= (json.dateBounds?.maxIso ?? "") && customStart <= customEnd)) {
       const selection = monthlySelectionFromBounds(json.dateBounds, new Date(), clientTimezone);
       setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY");
@@ -1669,9 +1663,18 @@ export function useReportUploadWizard({
       campaigns?: string[];
       headers?: string[];
       adSetGroups?: AdSetGroup[];
+      dateBounds?: { minIso: string; maxIso: string } | null;
     },
     _adsPlatform: "META" | "GOOGLE" | "TIKTOK",
   ) {
+    if (reportType === "DAY_BREAKDOWN") {
+      const bounds = _analyzeJson.dateBounds;
+      if (!customStart || !customEnd || customStart > customEnd || !bounds || customStart < bounds.minIso || customEnd > bounds.maxIso) {
+        setAnalyzeStatus("invalid");
+        setAnalyzeErrors([{ field: "dateSelection", message: "Your CSV does not cover the selected daily report dates. Export a Day-wise breakdown CSV covering the entire selected range, or change your dates above." }]);
+        return;
+      }
+    }
     setStep(2);
   }
 

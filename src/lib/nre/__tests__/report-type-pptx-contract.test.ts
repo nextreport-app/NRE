@@ -130,6 +130,9 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     expect(output.join("\n")).not.toMatch(/MONTHLY CAMPAIGN|WEEKLY PERFORMANCE|Last 30 Days/);
     expect(output[1]).toContain("Date");
+    expect(output[1]).toContain("(1/2)");
+    expect(output[2]).toContain("(2/2)");
+    expect(output[0]).toContain(data.rangeLabel);
   }, 30_000);
   it.each([
     ["2025-09-01", "2025-09-07", "2025-08-01", "2025-08-07", "$70"],
