@@ -1,3 +1,4 @@
+import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
 import { guardReportGeneration } from "@/lib/quality-agents/generation-guard";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { createReportWithinCapacity } from "@/lib/report-capacity";
@@ -198,6 +199,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
   const { parsed: mtdParsed, uploadSessionId, metaCampaignPeriodReach, metaAdAccountId, fileHash } = resolved.data;
+  alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
   const platform = mtdParsed.platform;
 
   if (reportType === "COMPARISON") {
@@ -226,6 +228,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const comparisonEngine = createReportEngine(platform);
     const comparisonData = comparisonEngine.buildComparison({
+      now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
@@ -298,13 +301,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       formData ? parseJsonFormField(formData, "historicalMonthCount", historicalMonthCountSchema) : undefined;
     const resolvedMonthCount = monthCount ?? 4;
     const historicalSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
-    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, new Date(), client.timezone, historicalSelection);
+    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, csvReportNow(mtdParsed.rows, new Date(), client.timezone), client.timezone, historicalSelection);
     if (!coverage.valid) {
       return NextResponse.json({ error: coverage.error ?? "CSV does not cover the selected months." }, { status: 400 });
     }
 
     const historicalEngine = createReportEngine(platform);
     const historicalData = historicalEngine.buildHistorical({
+      now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,

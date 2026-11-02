@@ -266,6 +266,8 @@ export interface ResultColumnData {
 }
 
 export interface TableRowData {
+  /** Daily report source date; absent on older archives and monthly rows. */
+  dateIso?: string;
   /** Numeric snapshot kept separate from the presentation columns. */
   accounting?: Record<string, { spendBasis: number; resultCount: number; rate: number | null }>;
   hasData: boolean;

@@ -1,3 +1,4 @@
+import { alignCsvReportFormData, csvReportNow } from "./csv-reporting-calendar";
 /**
  * Shared CSV verification inputs for preview + generate (must stay in sync).
  */
@@ -29,7 +30,8 @@ export function verifyStandardWizardReportAgainstCsv(input: {
   periodRows?: NreRow[] | null;
 }): CsvVerificationResult {
   const { client, mtdRows, report, reportType, formData, platform } = input;
-  let now = input.now ?? new Date();
+  alignCsvReportFormData(formData, mtdRows, client.timezone, input.now ?? new Date());
+  let now = report.calculationContext ? new Date(report.calculationContext.asOf) : csvReportNow(mtdRows, input.now ?? new Date(), client.timezone);
   let sourceRows = mtdRows;
   const csvAlign = resolveCsvAlignResults(formData);
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;

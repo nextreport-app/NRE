@@ -45,12 +45,14 @@ describe("selected report output", () => {
     expect(data.slides.at(-1)?.performanceHeader).toContain("MTD");
     expect(() => buildHistoricalReportData({ accountName: "Test", currencySymbol: "$", timezone: "UTC", monthlyBudget: null, mtdDailyRows: [...rowsForMonth(8), ...rowsForMonth(10).slice(0, 26)], monthCount: 3, dateSelection: selection, now })).toThrow(/September/);
   });
-  it("rejects a truncated selected month before building a report", async () => {
+  it("uses available rows in the latest CSV month without fabricating missing days", async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-27T12:00:00Z"));
     const form = new FormData(); form.set("reportType", JSON.stringify("MONTHLY"));
     form.set("dateSelection", JSON.stringify({ mode: "custom", customStart: "2026-09-01", customEnd: "2026-09-30" }));
     const result = await buildStandardReportForWizard({ client, platform: "META", mtdParsed: { colMap: {} as ColumnMap, rows: rowsForMonth(9).slice(5), headers: ["Day"] }, formData: form });
-    expect(result).toEqual({ error: expect.stringContaining("CSV must cover 2026-09-01 through 2026-09-30") });
+    if (!("data" in result)) throw new Error(result.error);
+    expect(result.data.mtdRow.spend).toBe("$225");
+    expect(result.data.campaignSlides[0].metrics.spend).toBe("$225");
   });
 
 });

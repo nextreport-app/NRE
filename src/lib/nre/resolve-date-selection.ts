@@ -1,3 +1,4 @@
+import { alignCsvSelection, csvReportNow, completeCsvBounds } from "./csv-reporting-calendar";
 /**
  * Resolves the report upload wizard's date-range step choice ("last7" /
  * "prev7" / "custom") into a concrete weekly DateRangeIso against the
@@ -24,6 +25,8 @@ export function resolveDateSelection(
   now: Date = new Date(),
   timezone = "UTC",
 ): ResolveDateSelectionResult {
+  selection = alignCsvSelection(selection, completeCsvBounds(rows, now, timezone), "DAY_BREAKDOWN", now, timezone);
+  now = csvReportNow(rows, now, timezone);
   if (!selection) return { ok: true };
 
   if (selection.mode === "custom") {
