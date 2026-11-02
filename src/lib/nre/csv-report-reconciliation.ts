@@ -300,6 +300,8 @@ function scopedChecks(params: {
   cprCsvSpend?: number;
   /** Combined Total: one Amount spent row per scope, then one check block per objective column. */
   skipSpendCheck?: boolean;
+  /** Daily tables display per-day CPR, not a weighted period CPR. */
+  skipCprCheck?: boolean;
   cprTolerance?: number;
 }): CsvVerificationCheck[] {
   const {
@@ -323,6 +325,7 @@ function scopedChecks(params: {
     cprReportSpend,
     cprCsvSpend,
     skipSpendCheck = false,
+    skipCprCheck = false,
     cprTolerance = CPR_TOLERANCE,
   } = params;
 
@@ -358,7 +361,7 @@ function scopedChecks(params: {
   }
 
   if (
-    shouldVerifyCostPerResult(costLabel, resultLabel) &&
+    !skipCprCheck && shouldVerifyCostPerResult(costLabel, resultLabel) &&
     (reportResults > 0 || csvResults > 0)
   ) {
     const spendForReportCpr = cprReportSpend ?? reportSpend;
@@ -1316,22 +1319,15 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
 
   let reportSpend = 0;
   let reportResults = 0;
-  let weightedCpr = 0;
-  let resultWeight = 0;
   for (const day of input.report.dayRows) {
     if (!day.hasData) continue;
-    const dayCol = day.resultColumns.find((c) => c.label === col.label) ?? primaryResultColumnFromTableRow(day);
-    if (!dayCol) continue;
     reportSpend += parseCellNum(day.spend);
+    const dayCol = day.resultColumns.find((c) => c.label === col.label);
+    if (!dayCol) continue;
     const r = parseCellNum(dayCol.value);
     reportResults += r;
-    const cpr = parseCellNum(dayCol.cprValue);
-    if (r > 0 && cpr > 0) {
-      weightedCpr += cpr * r;
-      resultWeight += r;
-    }
   }
-  const reportCpr = resultWeight > 0 ? weightedCpr / resultWeight : 0;
+  const reportCpr = reportResults > 0 ? reportSpend / reportResults : 0;
 
   const csvSpend = sumSpend(rowsInRange as MetricRow[]);
   const csvStdResults = sumResultsForLabelFromRawDailyRows(rowsInRange, objectiveMap, col.label, "standard");
@@ -1352,6 +1348,7 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
 
   const checks = scopedChecks({
     scope: "Selected date range",
+    skipCprCheck: true,
     currencySymbol: input.currencySymbol,
     reportSpend,
     csvSpend,
@@ -1370,5 +1367,28 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
     countingMode,
   });
 
+  // Validate the CPR actually printed on each day. A synthetic weighted
+  // period average drops spend on zero-result days and is not shown in this deck.
+  for (const day of input.report.dayRows) {
+    if (!day.hasData) continue;
+    const timestamp = Date.parse(day.dateIso ? `${day.dateIso}T00:00:00Z` : `${day.fullMonthLabel || day.monthLabel} 00:00:00 GMT`);
+    if (!Number.isFinite(timestamp)) { checks.push({ metric: "Date", scope: day.monthLabel, reportDisplay: day.monthLabel, csvDisplay: "A valid CSV day", status: "mismatch" }); continue; }
+    const iso = new Date(timestamp).toISOString().slice(0, 10);
+    const source = filterNreRowsByDateRange(rowsInRange, { startIso: iso, endIso: iso });
+    day.resultColumns.forEach((column, index) => {
+      const results = sumResultsForLabelFromRawDailyRows(source, objectiveMap, column.label, countingMode);
+      const spend = attributedSpendForLabelFromRawDailyRows(source, objectiveMap, column.label, countingMode);
+      const cpr = objectiveRate(spend, results, column.label) ?? 0;
+      checks.push(...scopedChecks({
+        scope: day.fullMonthLabel || day.monthLabel, currencySymbol: input.currencySymbol,
+        reportSpend: parseCellNum(day.spend), csvSpend: sumSpend(source as MetricRow[]), reportSpendDisplay: day.spend,
+        resultLabel: column.label, costLabel: column.costLabel, reportResults: parseCellNum(column.value), csvResults: results, reportResultsDisplay: column.value,
+        reportCpr: parseCellNum(column.cprValue), csvCpr: cpr, reportCprDisplay: column.cprValue,
+        cprReportSpend: spend, cprCsvSpend: spend, skipSpendCheck: index > 0,
+        csvStandardResults: sumResultsForLabelFromRawDailyRows(source, objectiveMap, column.label, "standard"),
+        csvExportResults: sumResultsForLabelFromRawDailyRows(source, objectiveMap, column.label, "meta-csv-export"), canAlignRef, countingMode,
+      }));
+    });
+  }
   return finalizeVerificationResult({ checks, primaryResultLabel: col.label, canAlignRef, countingMode });
 }

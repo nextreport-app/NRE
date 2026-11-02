@@ -1,3 +1,4 @@
+import { alignCsvReportFormData } from "@/lib/nre/csv-reporting-calendar";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
@@ -78,6 +79,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const platform = platformOverride ?? detectedPlatform;
 
     const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
+    alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
     const metaAdAccountIdEarly = formData
       ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema)
       : undefined;
@@ -157,6 +159,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!coverage.valid) return NextResponse.json({ valid: false, errors: [{ field: "comparisonPeriod", message: `${coverage.error} Export one Day-wise breakdown CSV covering both selected periods, or change the dates above.` }], warnings: [], detectedPlatform, platform });
       }
     }
+    const requestedDates = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
+    if (requestedDates) dateSelection = requestedDates;
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
     const csvDateGuidance = (requestedReportType ?? "WEEKLY") === "WEEKLY" && !mtdParsed.rows.some(row => row._reportPeriod) ? analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone) : null;
 

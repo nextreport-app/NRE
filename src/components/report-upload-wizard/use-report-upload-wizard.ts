@@ -1,4 +1,5 @@
 "use client";
+import { alignCsvRange, alignCsvSelection, alignCsvComparison, csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
 import { dailyExtraMetricGuide, dailyOptionalMetrics } from "@/lib/nre/daily-extra-metrics";
 import { comparisonSummaryPages } from "@/lib/nre/comparison-summary-pagination";
 import { comparisonOptionalMetrics, isComparisonCoreMetric, paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
@@ -583,7 +584,7 @@ export function useReportUploadWizard({
     setCustomEnd("");
     if (next === "DAY_BREAKDOWN" && isLaunchReportTypeEnabled(next)) {
       setDateMode("custom");
-      const yesterday = reportCalendarYesterday(new Date(), clientTimezone);
+      const yesterday = csvReportingCalendar(dateBounds, new Date(), clientTimezone).endIso;
       setCustomStart(yesterday); setCustomEnd(yesterday);
     }
     if (next === "MONTHLY" && dateBounds) {
@@ -647,7 +648,7 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     setComparisonPreset(preset === "thisMonth" ? "custom" : preset);
     if (preset !== "custom" && preset !== "thisMonth") {
-      const periods = comparisonPresetPeriods(preset, new Date(), clientTimezone);
+      const periods = comparisonPresetPeriods(preset, csvReportingCalendar(dateBounds, new Date(), clientTimezone).now, clientTimezone);
       setComparisonPeriodA(periods.periodA);
       setComparisonPeriodB(periods.periodB);
     }
@@ -943,9 +944,10 @@ export function useReportUploadWizard({
           setComparisonPeriodB(draft.comparisonPeriodB);
         }
         setHistoricalMonthCount(restoredMonthCount(draft.historicalMonthCount, draft.reportType, draft.customStart, draft.customEnd));
-        setDateMode(draft.dateMode);
-        setCustomStart(draft.customStart);
-        setCustomEnd(draft.customEnd);
+        const restoredDates = alignCsvSelection({ mode: draft.dateMode, customStart: draft.customStart, customEnd: draft.customEnd }, ctx.dateBounds ?? draft.dateBounds, draft.reportType, new Date(), clientTimezone);
+        setDateMode(restoredDates?.mode ?? draft.dateMode);
+        setCustomStart(restoredDates?.customStart ?? draft.customStart);
+        setCustomEnd(restoredDates?.customEnd ?? draft.customEnd);
         setCampaigns(draft.campaigns);
         setSelectedCampaigns(
           new Set(draft.selectedCampaigns.filter((name) => draft!.campaigns.includes(name))),
@@ -960,8 +962,10 @@ export function useReportUploadWizard({
         setDailyRange(ctx.dailyRange ?? draft.dailyRange ?? null);
         const last7 = ctx.weeklyOptions?.last7 ?? draft.weeklyOptions?.last7 ?? null;
         const prev7 = ctx.weeklyOptions?.prev7 ?? draft.weeklyOptions?.prev7 ?? null;
-        setComparisonPeriodA(draft.comparisonPeriodA ?? last7);
-        setComparisonPeriodB(draft.comparisonPeriodB ?? prev7);
+        const a = draft.comparisonPeriodA ?? last7, b = draft.comparisonPeriodB ?? prev7;
+        const restoredPeriods = a && b ? alignCsvComparison(a, b, ctx.dateBounds ?? draft.dateBounds, new Date(), clientTimezone) : { periodA: a, periodB: b };
+        setComparisonPeriodA(restoredPeriods.periodA);
+        setComparisonPeriodB(restoredPeriods.periodB);
         setPreviewKind(draft.previewKind);
         setPreviewStatus(draft.previewStatus);
         setData(draft.data);
@@ -1188,11 +1192,19 @@ export function useReportUploadWizard({
     setCustomStart(normalizedSelection.customStart || savedSelection.customStart || "");
     setCustomEnd(normalizedSelection.customEnd || savedSelection.customEnd || "");
     }
-    if (["MONTHLY", "HISTORICAL"].includes(reportType) && !preserve && !(dateMode === "custom" && customStart && customEnd && customStart >= (json.dateBounds?.minIso ?? "") && customEnd <= (json.dateBounds?.maxIso ?? "") && customStart <= customEnd)) {
-      const selection = monthlySelectionFromBounds(json.dateBounds, new Date(), clientTimezone);
-      setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY");
-      setHistoricalMonthCount(selection.count);
-      setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);
+    if (["DAY_BREAKDOWN", "DAILY", "MONTHLY", "HISTORICAL"].includes(reportType) && !preserve) {
+      const selected = alignCsvSelection(currentDateSelection(), json.dateBounds, reportType, new Date(), clientTimezone);
+      if (selected?.mode === "custom") {
+        setDateMode("custom"); setCustomStart(selected.customStart ?? ""); setCustomEnd(selected.customEnd ?? "");
+      } else if (["MONTHLY", "HISTORICAL"].includes(reportType)) {
+        const selection = monthlySelectionFromBounds(json.dateBounds, new Date(), clientTimezone);
+        setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY"); setHistoricalMonthCount(selection.count);
+        setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);
+      }
+    }
+    if (reportType === "COMPARISON" && comparisonPeriodA && comparisonPeriodB && !preserve) {
+      const periods = alignCsvComparison(comparisonPeriodA, comparisonPeriodB, json.dateBounds, new Date(), clientTimezone);
+      setComparisonPeriodA(periods.periodA); setComparisonPeriodB(periods.periodB);
     }
     setLongRangeConfirmed(false);
     // Keep the periods chosen before uploading; CSV dates must not silently replace them.
@@ -1278,7 +1290,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { reportType, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
+      body: buildUploadFormData(mtdFile, { reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
 
@@ -1350,7 +1362,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform, reportType, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
+      body: buildUploadFormData(mtdFile, { platform, reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
     setReanalyzeSessionStatus("idle");
@@ -1500,7 +1512,7 @@ export function useReportUploadWizard({
 
     const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
-      body: buildUploadFormData(mtdFile, { platform: selectedPlatformCard, reportType, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
+      body: buildUploadFormData(mtdFile, { platform: selectedPlatformCard, reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
     setContinueStatus("idle");
@@ -1685,7 +1697,8 @@ export function useReportUploadWizard({
   ) {
     if (reportType === "DAY_BREAKDOWN") {
       const bounds = _analyzeJson.dateBounds;
-      if (!customStart || !customEnd || customStart > customEnd || !bounds || customStart < bounds.minIso || customEnd > bounds.maxIso) {
+      const range = alignCsvRange({ startIso: customStart, endIso: customEnd }, bounds, reportType, new Date(), clientTimezone);
+      if (!customStart || !customEnd || range.startIso > range.endIso || !bounds || range.startIso < bounds.minIso || range.endIso > bounds.maxIso) {
         setAnalyzeStatus("invalid");
         setAnalyzeErrors([{ field: "dateSelection", message: "Your CSV does not cover the selected daily report dates. Export a Day-wise breakdown CSV covering the entire selected range, or change your dates above." }]);
         return;

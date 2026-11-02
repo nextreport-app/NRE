@@ -1,5 +1,6 @@
+import { csvReportNow } from "./csv-reporting-calendar";
 import { buildDailyExtraTables, type DailyExtraTable } from "./daily-extra-metrics";
-import { dailyPeriodLabel, dailyRangeLabel } from "./daily-period-selection";
+import { dailyPeriodLabel, dailyRangeLabel, dailyPresetRange } from "./daily-period-selection";
 /**
  * Day-by-Day Performance reports — account-level totals per calendar day in a
  * custom date range, rendered as paginated Combined Total table slides.
@@ -160,7 +161,7 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
     const row = buildAggregatedTableRow(aggRows[index] ?? [], currencySymbol, objectiveMap, timezone);
     const dayLabel = formatIsoDayLabel(dayIso);
     return row.hasData
-      ? { ...row, monthLabel: dayLabel, fullMonthLabel: dayLabel, monthName: null, sameMonthAsCurrentMTD: false }
+      ? { ...row, dateIso: dayIso, monthLabel: dayLabel, fullMonthLabel: dayLabel, monthName: null, sameMonthAsCurrentMTD: false }
       : row;
   });
 
@@ -189,7 +190,7 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
     accountName,
     reportDate: `${reportDateParts.month}-${reportDateParts.day}-${reportDateParts.year}`,
     rangeLabel: dailyRangeLabel(dateRange),
-    periodLabel: dailyPeriodLabel(dateRange, now, timezone),
+    periodLabel: dailyPeriodLabel(dateRange, csvReportNow(mtdDailyRows, now, timezone), timezone).replace(/^Yesterday$/, dateRange.endIso === dailyPresetRange(1, now, timezone).endIso ? "Yesterday" : "Latest CSV day"),
     dateRange,
     dayCount: dayRows.filter((row) => row.hasData).length,
     dayRows,

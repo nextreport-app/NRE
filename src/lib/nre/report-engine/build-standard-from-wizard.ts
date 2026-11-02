@@ -1,3 +1,5 @@
+import { getCalendarDateInTimezone } from "../dates";
+import { alignCsvReportFormData, csvReportNow, csvReportingCalendar } from "../csv-reporting-calendar";
 import { prepareMonthlyCsvFacts, monthlyFactSelectionError } from "../monthly-csv-grain";
 /**
  * Shared standard-report input assembly for generate + preview routes.
@@ -100,6 +102,9 @@ export async function buildStandardReportForWizard(
   let now = input.now ?? new Date();
   const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
     input;
+  const sourceNow = now;
+  alignCsvReportFormData(formData, mtdParsed.rows, client.timezone, now);
+  now = csvReportNow(mtdParsed.rows, now, client.timezone);
   const engine = createReportEngine(platform);
 
   const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
@@ -142,7 +147,8 @@ export async function buildStandardReportForWizard(
     const factError = monthlyFactSelectionError(sourceRows, range);
     if (factError) return { error: factError };
     const bounds = computeCsvDateBounds(sourceRows);
-    if (!bounds || bounds.minIso > range.startIso || bounds.maxIso < range.endIso) return { error: `CSV must cover ${range.startIso} through ${range.endIso}. Export the full selected period, including zero-delivery days where available.` };
+    const partialFallbackMonth = reportType === "MONTHLY" && csvReportingCalendar(bounds, sourceNow, client.timezone).adjusted && bounds?.minIso.slice(0, 7) === range.startIso.slice(0, 7);
+    if (!bounds || (!partialFallbackMonth && bounds.minIso > range.startIso) || bounds.maxIso < range.endIso) return { error: `CSV must cover ${range.startIso} through ${range.endIso}. Export the full selected period, including zero-delivery days where available.` };
     sourceRows = filterNreRowsByDateRange(sourceRows, range);
     if (reportType === "MONTHLY") now = reportPeriodAnchor(range.endIso, client.timezone);
     else weeklyRange = range;
@@ -215,5 +221,7 @@ export async function buildStandardReportForWizard(
     metaCampaignPeriodReach,
   });
 
+  const generated = getCalendarDateInTimezone(sourceNow, client.timezone);
+  data.cover.reportDate = `${String(generated.month).padStart(2, "0")}-${String(generated.day).padStart(2, "0")}-${generated.year}`;
   return { data };
 }

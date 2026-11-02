@@ -1,5 +1,6 @@
 "use client";
 
+import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { SavedSetupBanner } from "./ui/saved-setup-banner";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
@@ -174,6 +175,7 @@ function ReportUploadWizardBody() {
         <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
       ) : null}
 
+      {!generateSuccessScreen && <CsvReportingDateNote bounds={w.dateBounds} timezone={w.clientTimezone} />}
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
           message={w.uploadSessionRecovery}

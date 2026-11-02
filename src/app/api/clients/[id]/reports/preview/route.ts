@@ -1,3 +1,4 @@
+import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
 import { recoveryContextKey, buildPrivateDiagnostics } from "@/lib/quality-agents/recovery-diagnostics";
 import { captureCsvQualityIncident } from "@/lib/quality-agents/incidents";
 import { assertReportComplexity } from "@/lib/report-complexity";
@@ -79,6 +80,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
   const { parsed: mtdParsed, metaCampaignPeriodReach, metaAdAccountId, uploadSessionId, fileHash } = resolved.data;
+  alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
   const platform = mtdParsed.platform;
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform, undefined, parsedReportType);
@@ -133,6 +135,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const comparisonEngine = createReportEngine(platform);
     const data = comparisonEngine.buildComparison({
+      now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
@@ -179,7 +182,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       formData ? parseJsonFormField(formData, "historicalMonthCount", historicalMonthCountSchema) : undefined;
     const resolvedMonthCount = monthCount ?? 4;
     const historicalSelection = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
-    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, new Date(), client.timezone, historicalSelection);
+    const coverage = validateHistoricalReportInput(mtdParsed.rows, resolvedMonthCount, csvReportNow(mtdParsed.rows, new Date(), client.timezone), client.timezone, historicalSelection);
     if (!coverage.valid) {
       return NextResponse.json(
         {
@@ -193,6 +196,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const historicalEngine = createReportEngine(platform);
     const data = historicalEngine.buildHistorical({
+      now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
       currencySymbol: CURRENCY_SYMBOLS[client.currency],
       timezone: client.timezone,
