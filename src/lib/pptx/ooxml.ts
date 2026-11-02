@@ -496,7 +496,22 @@ function cardSlotRange(xml: string, valueLocatorText: string, otherValueTags: re
     const [start, end] = containing[i];
     const slice = xml.slice(start, end);
     if (otherValueTags.every((tag) => !slice.includes(tag))) {
-      return { start, end };
+      let rangeStart = start;
+      // Light templates may store background, icon group and label/value
+      // group as three siblings instead of one enclosing card group.
+      if (!slice.includes("<p:pic>")) {
+        const iconStart = [...groupStarts].reverse().find(candidate => {
+          const iconEnd = matchingGrpSpEnd(xml, candidate);
+          return iconEnd <= start && !xml.slice(iconEnd, start).trim() && xml.slice(candidate, iconEnd).includes("<p:pic>");
+        });
+        if (iconStart !== undefined) {
+          rangeStart = iconStart;
+          const bgEnd = xml.lastIndexOf("</p:sp>", iconStart) + "</p:sp>".length;
+          const bgStart = xml.lastIndexOf("<p:sp>", bgEnd);
+          if (bgStart >= 0 && !xml.slice(bgEnd, iconStart).trim() && !/<a:t>[^<]+<\/a:t>/.test(xml.slice(bgStart, bgEnd))) rangeStart = bgStart;
+        }
+      }
+      return { start: rangeStart, end };
     }
   }
 

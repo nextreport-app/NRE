@@ -1,7 +1,6 @@
 import { dailyMainTablePages } from "../nre/daily-report-presentation";
-import { buildDailySummarySlide, buildDailyTrendSlide } from "./daily-presentation-slides";
+import { buildDailySummarySlide } from "./daily-presentation-slides";
 import { dailyExtraMetricGuide } from "../nre/daily-extra-metrics";
-import { buildDailyExtraSlide } from "./daily-extra-slide";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
 import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildComparisonExtraSlide } from "./comparison-extra-slide";
@@ -32,7 +31,7 @@ import { DEFAULT_WEBSITE_BREAKDOWNS, normalizeBreakdowns } from "../nre/website-
 import type { ShareVisibility, ShareChartData } from "../nre/share-report";
 import { adSetVisibilityKey } from "../nre/share-report";
 import { CHART_BG_REL_ID } from "./chart-slide-constants";
-import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildDayBreakdownTableSlideXml, buildHistoricalTableSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
+import { buildCampaignOrAdSetSlideXml, buildCoverSlideXml, buildDailyTableGridSlideXml, buildHistoricalTableSlideXml, buildPausedSlideXml, buildTableSlideXml, presentedToTopY, type AiCopy } from "./fill-tags";
 import { embedImageInSlide, ensureContentTypeDefault, SLIDE_HEIGHT_EMU, type ImageAsset, type ImageFrameStyle } from "./embed-image";
 import { assemblePptx, loadTemplate, type SlideToInsert, type LoadedTemplate } from "./package";
 import { buildLegendSlideXml, type LegendEntry } from "./legend-slide";
@@ -561,7 +560,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     },
   ];
 
-  if (!data.isPaused) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(metrics,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,data.presentation!.note,index,pages.length,template.background,isLightTemplate),rels:buildChartSlideRels(template.background.mediaTarget)}));
+  if (!data.isPaused) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,data.presentation!.note,index,pages.length,isLightTemplate),rels:template.campaign.rels}));
 
   if (data.isPaused) {
     slides.push({
@@ -581,26 +580,12 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     const slideCount = pages.length;
     pages.forEach((page, index) => {
       slides.push({
-        xml: buildDayBreakdownTableSlideXml(
-          template.table,
-          page.rows,
-          data.tableHeaderLabels,
-          isLightTemplate,
-          data.platform,
-          index,
-          slideCount,
-          data.dailyExcludedMetricKeys,
-          page.columns,
-        ),
+        xml: buildDailyTableGridSlideXml(template.table, page.grid, isLightTemplate, index, slideCount, page.columnPage, page.columnPages),
         rels: template.table.rels,
       });
     });
   }
 
-  if (!data.isPaused) (data.additionalTables ?? []).forEach((table, index, tables) => {
-    slides.push({ xml: buildDailyExtraSlide(table, `${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`, index, tables.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) });
-  });
-  if (!data.isPaused) (data.presentation?.trendPages ?? []).forEach((page,index,pages)=>slides.push({xml:buildDailyTrendSlide(page,`${data.periodLabel ?? "Daily report"} · ${page.startIso === data.dateRange.startIso && page.endIso === data.dateRange.endIso ? data.rangeLabel : `${page.startIso} – ${page.endIso}`}`,index,pages.length,data.currencySymbol ?? "$",template.background,isLightTemplate),rels:buildChartSlideRels(template.background.mediaTarget)}));
   appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys));
   return assemblePptx(template, slides);
 }

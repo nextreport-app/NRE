@@ -26,7 +26,7 @@ const metrics = (data: ReturnType<typeof buildDayBreakdownReportData>) =>
       .presentation!.summaryPages.flat()
       .map((metric) => [metric.label, metric.value]),
   );
-describe("Daily period totals and trend", () => {
+describe("Daily period totals and uniform tables", () => {
   it("includes spend on zero-result days and recomputes weighted rates", () => {
     const data = buildDayBreakdownReportData(base),
       totals = metrics(data);
@@ -36,13 +36,6 @@ describe("Daily period totals and trend", () => {
     expect(totals["CTR (ALL)"]).toBe("9.55%");
     expect(totals["CPC (ALL)"]).toBe("$1.43");
     expect(totals.REACH).toBe("N/A");
-    const trend = data.presentation!.trendPages[0];
-    expect(
-      trend.series.map((series) => series.points.map((point) => point.value)),
-    ).toEqual([
-      [100, 50],
-      [5, 0],
-    ]);
     expect(buildDayBreakdownShareReportData(data).dailyPresentation).toEqual(
       data.presentation,
     );
@@ -67,7 +60,7 @@ describe("Daily period totals and trend", () => {
       }).status,
     ).toBe("mismatch");
   });
-  it("keeps missing calendar days as gaps, preserves explicit zero and omits removed metrics", () => {
+  it("omits removed metrics from period totals and does not create trends", () => {
     const rows = source.rows.map((row, index) =>
       index
         ? {
@@ -85,11 +78,8 @@ describe("Daily period totals and trend", () => {
       dailyExcludedMetricKeys: ["spend", "reach"],
     });
     expect(metrics(data)["AD SPEND"]).toBeUndefined();
-    expect(
-      data.presentation!.trendPages[0].series[0].points.map(
-        (point) => point.value,
-      ),
-    ).toEqual([5, null, 0]);
+    expect(Object.keys(metrics(data))).not.toContain("REACH");
+    expect("trendPages" in data.presentation!).toBe(false);
   });
   it("avoids duplicate totals and one-point charts for single-day reports", () => {
     expect(
@@ -99,7 +89,7 @@ describe("Daily period totals and trend", () => {
       }).presentation,
     ).toBeUndefined();
   });
-  it("paginates days, mixed-objective columns, cards and long trends without dropping metrics", () => {
+  it("paginates days, mixed-objective columns and cards without dropping metrics", () => {
     const parsed = parseCsvText(
       `Campaign name,Day,Amount spent (USD),Results,Result type,Reach,Impressions,Clicks (all)\n${Array.from({ length: 35 }, (_, day) => ["website submission", "Purchases", "Link clicks"].map((goal, index) => `Campaign${index},${new Date(Date.UTC(2026, 8, 1 + day)).toISOString().slice(0, 10)},10,2,${goal},100,1000,40`).join("\n")).join("\n")}`,
     );
@@ -126,14 +116,6 @@ describe("Daily period totals and trend", () => {
     expect(
       data.presentation!.summaryPages.every((page) => page.length <= 8),
     ).toBe(true);
-    expect(data.presentation!.trendPages).toHaveLength(4);
-    expect(
-      data.presentation!.trendPages.every(
-        (page) =>
-          page.series.length <= 2 &&
-          page.series.every((series) => series.points.length <= 31),
-      ),
-    ).toBe(true);
     expect(metrics(data)["COST PER PURCHASE"]).toBe("$5.00");
     expect(metrics(data)["WEBSITE LEADS"]).toBe("70");
     const hidden = buildDayBreakdownReportData({
@@ -142,12 +124,10 @@ describe("Daily period totals and trend", () => {
         dailyObjectiveMetricKey("objective_results", "WEBSITE LEADS"),
       ],
     });
-    expect(
-      hidden.presentation!.trendPages[0].series.map((series) => series.key),
-    ).toEqual(["spend"]);
+    expect(metrics(hidden)["WEBSITE LEADS"]).toBeUndefined();
   });
   it.each(["dark.pptx", "meta-ads-light.pptx"])(
-    "exports editable totals and separate-scale charts within %s bounds",
+    "uses Weekly native cards and removes chart slides in %s",
     async (template) => {
       const data = buildDayBreakdownReportData(base);
       const zip = await JSZip.loadAsync(
@@ -167,19 +147,13 @@ describe("Daily period totals and trend", () => {
       const slides = await Promise.all(
         paths.map((path) => zip.file(path)!.async("string")),
       );
-      expect(slides).toHaveLength(5);
+      expect(slides).toHaveLength(4);
       expect(slides[1]).toContain("SELECTED PERIOD TOTALS");
-      expect(slides[3]).toContain("DAILY PERFORMANCE TREND");
-      expect(slides[3]).toContain("WEBSITE LEADS");
-      expect(slides[4]).toContain("METRIC ABBREVIATION GUIDE");
-      for (const xml of [slides[1], slides[3]])
-        for (const match of xml.matchAll(
-          /<a:off x="(\d+)" y="(\d+)"\s*\/>\s*<a:ext cx="(\d+)" cy="(\d+)"\s*\/>/g,
-        )) {
-          const [x, y, w, h] = match.slice(1).map(Number);
-          expect(x + w).toBeLessThanOrEqual(960 * 12700);
-          expect(y + h).toBeLessThanOrEqual(540 * 12700);
-        }
+      expect(slides[1]).toContain("CAMPAIGN SUMMARY");
+      expect(slides[1]).toContain("KEY INSIGHTS");
+      expect(slides[1]).toContain("WEBSITE LEADS");
+      expect(slides[3]).toContain("METRIC ABBREVIATION GUIDE");
+      expect(slides.join("\n")).not.toMatch(/DAILY PERFORMANCE TREND|ADDITIONAL DAILY METRICS|\{\{/);
     },
     30_000,
   );

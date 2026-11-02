@@ -438,7 +438,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             isPaused: dayBreakdownData.isPaused,
             rangeLabel: dayBreakdownData.rangeLabel,
             dayCount: dayBreakdownData.dayCount,
-            tableSlideCount: dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.additionalTables?.length ?? 0),
+            tableSlideCount: dailyMainTablePages(dayBreakdownData).length,
           }),
           jobPayload: serializeReportGenerationJob(jobPayload),
         },
