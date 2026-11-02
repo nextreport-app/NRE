@@ -478,13 +478,10 @@ export function useReportUploadWizard({
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
-  const [wizardDraftBootstrapping, setWizardDraftBootstrapping] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const draft = loadWizardDraft(clientId);
-    return Boolean(
-      draft && isLaunchReportTypeEnabled(draft.reportType) && draft.step >= 2 && draft.uploadSessionId && !isWizardServerDraftExpired(draft),
-    );
-  });
+  const [wizardDraftBootstrapping, setWizardDraftBootstrapping] = useState(false);
+  const [savedWizardDraftAvailable, setSavedWizardDraftAvailable] = useState(false);
+  const [wizardDraftResumeRequested, setWizardDraftResumeRequested] = useState(false);
+  const draftOfferDismissedRef = useRef(false);
   const draftRestoringRef = useRef(false);
   const draftRestorePreviewPendingRef = useRef(false);
   const draftPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -894,7 +891,8 @@ export function useReportUploadWizard({
         }
       }
 
-      if (cancelled || !draft || isWizardServerDraftExpired(draft)) {
+      if (cancelled || draftOfferDismissedRef.current) return;
+      if (!draft || isWizardServerDraftExpired(draft)) {
         if (draft && isWizardServerDraftExpired(draft)) clearWizardDraft(clientId);
         return;
       }
@@ -902,6 +900,13 @@ export function useReportUploadWizard({
       if (!isLaunchPlatformEnabled(draft.platform) || !isLaunchReportTypeEnabled(draft.reportType)) return;
       if (draft.step < 2 || !draft.uploadSessionId) return;
 
+      // Discovery never applies CSVs, selections, previews or a later step.
+      // A new visit stays on Import until the customer explicitly resumes.
+      if (!wizardDraftResumeRequested) {
+        setSavedWizardDraftAvailable(true);
+        return;
+      }
+      setSavedWizardDraftAvailable(false);
       setWizardDraftBootstrapping(true);
       draftRestoringRef.current = true;
 
@@ -991,8 +996,8 @@ export function useReportUploadWizard({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restore on mount
-  }, [clientId, resumeReportId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- discover on entry; restore only after the explicit resume request
+  }, [clientId, resumeReportId, wizardDraftResumeRequested]);
 
   useEffect(() => {
     if (wizardDraftBootstrapping || draftRestoringRef.current) return;
@@ -1200,6 +1205,8 @@ export function useReportUploadWizard({
   }
 
   function clearAllWizardDrafts() {
+    draftOfferDismissedRef.current = true;
+    setSavedWizardDraftAvailable(false);
     clearWizardDraft(clientId);
     void fetch(`/api/clients/${clientId}/wizard-draft`, { method: "DELETE" }).catch(() => undefined);
   }
@@ -1375,6 +1382,10 @@ export function useReportUploadWizard({
   }
 
   function handleMtdFileSelected(file: File | null) {
+    if (file) {
+      draftOfferDismissedRef.current = true;
+      setSavedWizardDraftAvailable(false);
+    }
     if (file !== mtdFile) {
       setUploadSessionId(null);
       setUploadSessionRecovery(null);
@@ -3132,6 +3143,8 @@ export function useReportUploadWizard({
     handleGenerateAnother,
     resumeBootstrapping,
     wizardDraftBootstrapping,
+    savedWizardDraftAvailable,
+    resumeSavedWizardDraft: () => setWizardDraftResumeRequested(true),
     spanDays,
     needsLongRangeConfirm,
     weeklyRangeIso,

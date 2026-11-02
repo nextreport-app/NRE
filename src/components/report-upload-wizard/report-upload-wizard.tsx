@@ -1,5 +1,6 @@
 "use client";
 
+import { SavedSetupBanner } from "./ui/saved-setup-banner";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
@@ -182,6 +183,7 @@ function ReportUploadWizardBody() {
         />
       ) : null}
 
+      {w.step === 1 && w.savedWizardDraftAvailable && !w.mtdFile && !w.uploadSessionId && <SavedSetupBanner onResume={w.resumeSavedWizardDraft} />}
       <WizardImportStep />
       <WizardCampaignsStep />
       <WizardMetricsStep />
