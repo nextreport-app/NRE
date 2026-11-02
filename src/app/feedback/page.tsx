@@ -30,11 +30,11 @@ export default async function FeedbackPage() {
           </p>
           <p className="mt-3 text-sm text-ink-muted">
             Need account or billing help?{" "}
-            <Link href="/contact" className="text-[#f5b45a] hover:underline">
+            <Link href="/contact" className="text-accent-orange underline underline-offset-4 hover:decoration-2">
               Contact &amp; support
             </Link>{" "}
             or{" "}
-            <Link href="/support" className="text-[#f5b45a] hover:underline">
+            <Link href="/support" className="text-accent-orange underline underline-offset-4 hover:decoration-2">
               open a support ticket
             </Link>
             .

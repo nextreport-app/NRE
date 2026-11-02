@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const SLIDE_BG = "#0d1b2e";
+const SLIDE_BG = "#14161c";
 const ACCENT = "#f6ad55";
 
 interface ExplainerFrame {
@@ -157,7 +157,7 @@ export function ProductExplainerAnimation() {
             aria-label={`Show step ${i + 1}: ${f.title}`}
             aria-current={i === index}
             className="h-2 w-2 rounded-full transition-colors"
-            style={{ background: i === index ? ACCENT : "#1e3a5f" }}
+            style={{ background: i === index ? ACCENT : "#383e4c" }}
           />
         ))}
       </div>

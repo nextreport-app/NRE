@@ -19,7 +19,7 @@ export function MetaWalkthroughStepGuide({
     ? "border-navy-border bg-navy-panel/90 text-ink-secondary hover:border-accent-orange/40 hover:text-white"
     : "border-dash-border bg-dash-panel/90 text-dash-ink-secondary hover:text-dash-ink";
   const panelClass = isDark
-    ? "border-navy-border bg-[#0f1a2e] text-ink-secondary shadow-2xl"
+    ? "border-navy-border bg-navy-panel text-ink-secondary shadow-2xl"
     : "border-dash-border bg-dash-popover nre-dash-surface text-dash-ink-secondary shadow-xl";
 
   return (

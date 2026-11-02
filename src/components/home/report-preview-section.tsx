@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 import type { HomeCopy } from "@/lib/home-i18n";
 
-const SLIDE_BG = "#0d1b2e";
+const SLIDE_BG = "#14161c";
 const ACCENT = "#f6ad55";
 
 function SlideHeader({ label }: { label: string }) {
@@ -88,7 +88,7 @@ function DonutCircle({ percent, color }: { percent: number; color: string }) {
   return (
     <div
       className="mx-auto h-20 w-20 rounded-full sm:h-24 sm:w-24"
-      style={{ background: `conic-gradient(${color} 0% ${percent}%, #1e3a5f ${percent}% 100%)` }}
+      style={{ background: `conic-gradient(${color} 0% ${percent}%, #383e4c ${percent}% 100%)` }}
       aria-hidden="true"
     >
       <div className="flex h-full w-full items-center justify-center">
@@ -269,7 +269,7 @@ function SlideCarousel({
             aria-label={`Show slide ${i + 1}: ${slide.name}`}
             aria-current={i === index}
             className="h-2 w-2 rounded-full transition-colors"
-            style={{ background: i === index ? ACCENT : "#1e3a5f" }}
+            style={{ background: i === index ? ACCENT : "#383e4c" }}
           />
         ))}
       </div>

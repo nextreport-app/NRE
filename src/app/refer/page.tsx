@@ -41,7 +41,7 @@ export default async function ReferPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <a
             href="mailto:hello@nextreport.in?subject=Agency%20referral"
-            className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
+            className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-navy hover:bg-accent-hover"
           >
             Refer by email
           </a>
