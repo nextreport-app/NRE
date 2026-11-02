@@ -1,4 +1,5 @@
 "use client";
+import { DAILY_BASE_METRIC_KEYS } from "@/lib/nre/daily-metric-selection";
 import { alignCsvRange, alignCsvSelection, alignCsvComparison, csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
 import { dailyExtraMetricGuide, dailyOptionalMetrics } from "@/lib/nre/daily-extra-metrics";
 import { comparisonSummaryPages } from "@/lib/nre/comparison-summary-pagination";
@@ -415,6 +416,7 @@ export function useReportUploadWizard({
   const clientPrefsHydratedRef = useRef(false);
 
   // Comparison dates are chosen before upload and preserved across analysis.
+  const [dailyExcludedMetricKeys, setDailyExcludedMetricKeys] = useState<string[]>([]);
   const [dailyMetricKeys, setDailyMetricKeys] = useState<string[]>([]);
   const [comparisonMetricKeys, setComparisonMetricKeys] = useState<string[]>([]);
   const [comparisonPreset, setComparisonPreset] = useState<ComparisonPreset>("thisWeek");
@@ -695,6 +697,7 @@ export function useReportUploadWizard({
   function resetMetricsState() {
     setComparisonMetricKeys([]);
     setDailyMetricKeys([]);
+    setDailyExcludedMetricKeys([]);
     metricsFetchedKeyRef.current = null;
     metricsFetchInFlightRef.current = null;
     setMetricsFetchedForSelection(null);
@@ -756,7 +759,7 @@ export function useReportUploadWizard({
       weeklyOptions,
       mtdRange,
       monthComparisonOptions,
-      comparisonPreset, comparisonMetricKeys, dailyMetricKeys, csvHeaders,
+      comparisonPreset, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders,
       comparisonPeriodA,
       comparisonPeriodB,
       previewKind,
@@ -777,6 +780,7 @@ export function useReportUploadWizard({
     setReportId(snapshot.reportId);
     setComparisonMetricKeys(snapshot.comparisonMetricKeys ?? []);
     setDailyMetricKeys(snapshot.dailyMetricKeys ?? []);
+    setDailyExcludedMetricKeys(snapshot.dailyExcludedMetricKeys ?? []);
     if (snapshot.csvHeaders) setCsvHeaders(snapshot.csvHeaders);
     setDownloadUrl(snapshot.downloadUrl);
     setShareToken(snapshot.shareToken);
@@ -937,6 +941,7 @@ export function useReportUploadWizard({
         setReportType(draft.reportType as ReportTypeValue);
         setComparisonMetricKeys(draft.comparisonMetricKeys ?? []);
         setDailyMetricKeys(draft.dailyMetricKeys ?? []);
+        setDailyExcludedMetricKeys(draft.dailyExcludedMetricKeys ?? []);
         setCsvHeaders(ctx.headers ?? draft.csvHeaders ?? []);
         if (draft.comparisonPeriodA && draft.comparisonPeriodB) {
           setComparisonPreset(draft.comparisonPreset === "thisMonth" ? "custom" : draft.comparisonPreset ?? "custom");
@@ -1025,7 +1030,7 @@ export function useReportUploadWizard({
       platform,
       reportType,
       historicalMonthCount,
-      comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, csvHeaders,
+      comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders,
       dateMode,
       customStart,
       customEnd,
@@ -1086,7 +1091,7 @@ export function useReportUploadWizard({
     mtdRange,
     weeklyOptions,
     dateBounds,
-    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, csvHeaders,
+    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders,
     generateStatus,
   ]);
 
@@ -2149,6 +2154,7 @@ export function useReportUploadWizard({
           dateSelection,
           reportType,
           platform,
+          dailyExcludedMetricKeys: reportType === "DAY_BREAKDOWN" ? dailyExcludedMetricKeys : undefined,
           dailyMetricKeys: reportType === "DAY_BREAKDOWN" ? dailyMetricKeys : undefined,
           comparisonMetricKeys: reportType === "COMPARISON" ? comparisonMetricKeys : undefined,
           comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
@@ -2276,6 +2282,7 @@ export function useReportUploadWizard({
     comparisonPreset,
     comparisonMetricKeys,
     dailyMetricKeys,
+    dailyExcludedMetricKeys,
     comparisonPeriodA?.startIso,
     comparisonPeriodA?.endIso,
     comparisonPeriodB?.startIso,
@@ -2336,6 +2343,7 @@ export function useReportUploadWizard({
           reportTitle: defaultReportTitleFor(reportType),
           reportType,
           platform,
+          dailyExcludedMetricKeys: reportType === "DAY_BREAKDOWN" ? dailyExcludedMetricKeys : undefined,
           dailyMetricKeys: reportType === "DAY_BREAKDOWN" ? dailyMetricKeys : undefined,
           comparisonMetricKeys: reportType === "COMPARISON" ? comparisonMetricKeys : undefined,
           comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined,
@@ -2917,7 +2925,7 @@ export function useReportUploadWizard({
       return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
-      return dayBreakdownData.isPaused ? 3 : 1 + Math.max(1, Math.ceil(dailyExtraMetricGuide(dayBreakdownData.additionalTables, dayBreakdownData.tableHeaderLabels.resultColumns).length / METRIC_GUIDE_ENTRIES_PER_SLIDE)) + dayBreakdownData.tableSlides.length + (dayBreakdownData.additionalTables?.length ?? 0);
+      return dayBreakdownData.isPaused ? 3 : 1 + Math.max(1, Math.ceil(dailyExtraMetricGuide(dayBreakdownData.additionalTables, dayBreakdownData.tableHeaderLabels.resultColumns, dayBreakdownData.dailyExcludedMetricKeys).length / METRIC_GUIDE_ENTRIES_PER_SLIDE)) + dayBreakdownData.tableSlides.length + (dayBreakdownData.additionalTables?.length ?? 0);
     }
     if (data) {
       const slides = [...data.campaignSlides, ...data.adSetSlides];
@@ -3081,6 +3089,13 @@ export function useReportUploadWizard({
     comparisonPreset,
     comparisonMetricKeys,
     dailyMetricKeys,
+    dailyExcludedMetricKeys,
+    toggleDailyBaseMetric: (key: string) => {
+      if (!DAILY_BASE_METRIC_KEYS.some(item => item === key)) return;
+      if (!dailyExcludedMetricKeys.includes(key) && dailyExcludedMetricKeys.length >= DAILY_BASE_METRIC_KEYS.length - 1) { showToast("Keep at least one main daily metric."); return; }
+      acknowledgePostGenerateEdit();
+      setDailyExcludedMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < DAILY_BASE_METRIC_KEYS.length - 1 ? [...previous, key] : previous);
+    },
     dailyOptionalMetrics: dailyOptionalMetrics(csvHeaders, [...selectedCampaigns].flatMap(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? [objective] : []; })),
     toggleDailyMetric: (key: string) => { acknowledgePostGenerateEdit(); setDailyMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < MAX_TOTAL_METRICS ? [...previous, key] : previous); },
     comparisonOptionalMetrics: comparisonOptionalMetrics(csvHeaders, platform).filter(metric => ![...selectedCampaigns].length || ![...selectedCampaigns].every(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? isComparisonCoreMetric(metric, objective.resultLabel, objective.costLabel) : false; })),

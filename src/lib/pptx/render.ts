@@ -584,6 +584,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
           data.platform,
           index,
           slideCount,
+          data.dailyExcludedMetricKeys,
         ),
         rels: template.table.rels,
       });
@@ -593,7 +594,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
   if (!data.isPaused) (data.additionalTables ?? []).forEach((table, index, tables) => {
     slides.push({ xml: buildDailyExtraSlide(table, `${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`, index, tables.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) });
   });
-  appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns));
+  appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys));
   return assemblePptx(template, slides);
 }
 

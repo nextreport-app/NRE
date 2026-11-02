@@ -3,6 +3,7 @@ import {
   buildHistoricalComparisonTableGrid,
   shouldUseStackedCombinedTotalLayout,
 } from "@/lib/nre/report-data";
+import { projectDailyGrid } from "@/lib/nre/daily-metric-selection";
 import { buildGoogleCombinedTotalTableGrid } from "@/lib/nre/google-combined-total";
 import type { ShareReportData, ShareCampaignData, ShareAdSetData, ShareChartData } from "@/lib/nre/share-report";
 import { applyShareVisibility } from "@/lib/nre/share-report";
@@ -494,11 +495,13 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
   const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
 
-  const grid = isHistoricalMultiMonth
+  const rawGrid = isHistoricalMultiMonth
     ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows!, data.tableHeaderLabels)
     : data.platform === "GOOGLE"
       ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions)
       : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);
+
+  const grid = data.reportType === "DAY_BREAKDOWN" ? projectDailyGrid(rawGrid, data.tableHeaderLabels.resultColumns.length, data.dailyExcludedMetricKeys) : rawGrid;
 
   const stacked = !isHistoricalMultiMonth && shouldUseStackedCombinedTotalLayout(data.tableHeaderLabels.resultColumns.length);
 

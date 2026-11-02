@@ -19,7 +19,12 @@ describe.each(["WEEKLY", "MONTHLY", "COMPARISON", "DAY_BREAKDOWN"])("uniform met
     expect(html).not.toContain("Metrics are fixed");
     if (["COMPARISON", "DAY_BREAKDOWN"].includes(type)) {
       expect(html).toContain('aria-label="Remove LINK CLICKS"');
-      expect(html).not.toContain('aria-label="Remove Ad spend"');
+      if (type === "DAY_BREAKDOWN") {
+        expect(html).toContain('aria-label="Remove Ad spend"');
+        expect(html).not.toContain(">Included</span>");
+        expect(html).not.toContain("Extras appear on additional daily tables.");
+        expect(html).not.toContain("Missing values show N/A;");
+      } else expect(html).not.toContain('aria-label="Remove Ad spend"');
     }
   });
 });

@@ -1,4 +1,5 @@
 "use client";
+import { DAILY_BASE_METRICS } from "@/lib/nre/daily-metric-selection";
 import { paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 
 import { MetricChipPicker } from "../ui/metric-chip-picker";
@@ -101,14 +102,15 @@ export function WizardMetricsStep() {
     const optional = daily ? w.dailyOptionalMetrics : w.comparisonOptionalMetrics;
     const keys = daily ? w.dailyMetricKeys : w.comparisonMetricKeys;
     const toggle = daily ? w.toggleDailyMetric : w.toggleComparisonMetric;
-    const included = (daily ? ["Ad spend", "Reach", "Impressions", "CTR (All)", "CPC (All)", "Objective-specific results", "Cost per result"] : ["Ad spend", "Reach", "Results for campaign objective", "Cost per result"]).map((label, index) => ({ key: `included-${index}`, label }));
+    const included = daily ? DAILY_BASE_METRICS.filter(metric => !(w.dailyExcludedMetricKeys ?? []).includes(metric.key)) : ["Ad spend", "Reach", "Results for campaign objective", "Cost per result"].map((label, index) => ({ key: `included-${index}`, label }));
+    const toggleMetric = (key: string) => daily && DAILY_BASE_METRICS.some(metric => metric.key === key) ? w.toggleDailyBaseMetric(key) : toggle(key);
     const extras = optional.filter(metric => keys.includes(metric.key));
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your CSV. Add or remove optional metrics below.</p>
       <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "3px solid #38bdf8" }}>
         <h3 className="text-[15px] font-bold text-dash-ink">{daily ? "Daily tables · selected campaigns" : "Comparison · selected campaigns"}</h3>
-        <p className="mt-1 text-sm text-dash-ink-secondary">{daily ? "The same metrics are shown for each day, combined across selected campaigns. Extras appear on additional daily tables." : "The same metrics are compared for every selected campaign. Extras appear on additional comparison slides."}</p>
-        <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={optional} lockedKeys={included.map(metric => metric.key)} onAdd={metric => toggle(metric.key)} onRemove={toggle} limit={MAX_TOTAL_METRICS + included.length} hint="Only supported metrics from your CSV are shown. Missing values show N/A; existing included metrics are not repeated." />
+        <p className="mt-1 text-sm text-dash-ink-secondary">{daily ? "The same metrics are shown for each day, combined across selected campaigns." : "The same metrics are compared for every selected campaign. Extras appear on additional comparison slides."}</p>
+        <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={daily ? [...DAILY_BASE_METRICS, ...optional] : optional} lockedKeys={daily ? [] : included.map(metric => metric.key)} onAdd={metric => toggleMetric(metric.key)} onRemove={toggleMetric} limit={MAX_TOTAL_METRICS + included.length} hint="Only supported metrics from your CSV are shown." />
       </div>
       <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-[#0b1728]">{copy.continueToGenerate}</button></div>
       <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />

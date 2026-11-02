@@ -1,3 +1,4 @@
+import { dailyHiddenColumns } from "../nre/daily-metric-selection";
 /**
  * Slide-level {{TAG}} filling — sits on top of ooxml.ts's single-tag
  * replaceTagRun to fill a whole slide's tag set, plus the specific style
@@ -810,11 +811,12 @@ export function buildDayBreakdownTableSlideXml(
   platform: Platform = "META",
   slideIndex = 0,
   slideCount = 1,
+  excludedMetricKeys: string[] = [],
 ): string {
   const grid = buildHistoricalComparisonTableGrid(rows, headers);
   grid[0][0] = "Date";
   const xml = fillCombinedTotalTable(template.xml, grid, {
-    hideColIndexes: headers.resultColumns.length <= 1 ? [8, 9] : [],
+    hideColIndexes: [...(headers.resultColumns.length <= 1 ? [8, 9] : []), ...dailyHiddenColumns(headers.resultColumns.length, excludedMetricKeys)],
     isLightTemplate,
   });
   const headerText = `DAILY PERFORMANCE OVERVIEW${slideCount > 1 ? ` (${slideIndex + 1}/${slideCount})` : ""}`;
