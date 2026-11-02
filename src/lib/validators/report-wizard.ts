@@ -1,3 +1,4 @@
+import { DAILY_BASE_METRIC_KEYS } from "../nre/daily-metric-selection";
 import { z } from "zod";
 import { MAX_TOTAL_METRICS, MAX_METRIC_UNION } from "@/lib/nre/metric-pagination";
 
@@ -198,3 +199,5 @@ export function parseJsonFormField<T>(formData: FormData, field: string, schema:
     return undefined;
   }
 }
+
+export const dailyExcludedMetricKeysSchema = z.array(z.enum(DAILY_BASE_METRIC_KEYS)).max(DAILY_BASE_METRIC_KEYS.length - 1);

@@ -170,6 +170,7 @@ export interface ShareReportData {
   /** Multi-Month Historical — one row per calendar month for the final comparison table. */
   historicalComparisonRows?: TableRowData[];
   dailyAdditionalTables?: DailyExtraTable[];
+  dailyExcludedMetricKeys?: string[];
   /** Optional one-line Combined Total story (older share JSON omits this). */
   combinedTotalStory?: string;
   metricGuide: LegendEntry[];
@@ -378,7 +379,8 @@ export function buildDayBreakdownShareReportData(
     mtdRow: EMPTY_TABLE_ROW,
     historicalComparisonRows: data.dayRows,
     dailyAdditionalTables: data.additionalTables,
-    metricGuide: dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns),
+    dailyExcludedMetricKeys: data.dailyExcludedMetricKeys,
+    metricGuide: dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys),
     agencyName: extras.agencyName ?? null,
     reportBranding: extras.reportBranding,
     generatedAt: now.toISOString(),

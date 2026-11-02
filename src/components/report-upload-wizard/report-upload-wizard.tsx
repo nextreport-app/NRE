@@ -175,7 +175,7 @@ function ReportUploadWizardBody() {
         <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
       ) : null}
 
-      {!generateSuccessScreen && <CsvReportingDateNote bounds={w.dateBounds} timezone={w.clientTimezone} />}
+      {w.step === 2 && <CsvReportingDateNote bounds={w.dateBounds} timezone={w.clientTimezone} />}
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
           message={w.uploadSessionRecovery}

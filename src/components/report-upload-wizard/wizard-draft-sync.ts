@@ -19,6 +19,7 @@ export type WizardDraftPersistInput = {
   historicalMonthCount?: number;
   comparisonMetricKeys?: string[];
   dailyMetricKeys?: string[];
+  dailyExcludedMetricKeys?: string[];
   csvHeaders?: string[];
   comparisonPreset?: WizardDraftSnapshot["comparisonPreset"];
   comparisonPeriodA?: WizardDraftSnapshot["comparisonPeriodA"];
@@ -56,6 +57,7 @@ export function buildWizardDraftSnapshot(input: WizardDraftPersistInput): Wizard
     comparisonPreset: input.comparisonPreset,
     comparisonMetricKeys: input.comparisonMetricKeys,
     dailyMetricKeys: input.dailyMetricKeys,
+    dailyExcludedMetricKeys: input.dailyExcludedMetricKeys,
     csvHeaders: input.csvHeaders,
     comparisonPeriodA: input.comparisonPeriodA,
     comparisonPeriodB: input.comparisonPeriodB,

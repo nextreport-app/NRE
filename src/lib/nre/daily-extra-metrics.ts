@@ -27,7 +27,7 @@ export function buildDailyExtraTables(byDay: Map<string, NreRow[]>, headers: str
   return pages;
 }
 
-export function dailyExtraMetricGuide(tables: DailyExtraTable[] = [], objectives: { label: string; costLabel: string }[] = []) {
-  const metrics = [{ key: "spend", label: "AD SPEND" }, { key: "reach", label: "REACH" }, { key: "impressions", label: "IMPRESSIONS" }, { key: "ctr", label: "CTR (ALL)" }, { key: "cpc_all", label: "CPC (ALL)" }, ...objectives.flatMap(column => { const keys = objectiveMetricKeys(column.label); return [{ key: keys.resultKey ?? column.label, label: column.label }, { key: keys.costKey ?? column.costLabel, label: column.costLabel }]; }), ...tables.flatMap(table => table.metrics)];
+export function dailyExtraMetricGuide(tables: DailyExtraTable[] = [], objectives: { label: string; costLabel: string }[] = [], excluded: string[] = []) {
+  const metrics = [...[{ key: "spend", label: "AD SPEND" }, { key: "reach", label: "REACH" }, { key: "impressions", label: "IMPRESSIONS" }, { key: "ctr", label: "CTR (ALL)" }, { key: "cpc_all", label: "CPC (ALL)" }].filter(metric => !excluded.includes(metric.key)), ...objectives.flatMap(column => { const keys = objectiveMetricKeys(column.label); return [...(excluded.includes("objective_results") ? [] : [{ key: keys.resultKey ?? column.label, label: column.label }]), ...(excluded.includes("objective_cost") ? [] : [{ key: keys.costKey ?? column.costLabel, label: column.costLabel }])]; }), ...tables.flatMap(table => table.metrics)];
   return [...new Map(metrics.map(metric => [metric.key, { term: metric.label, explanation: findMetaMetricByKey(metric.key)?.explanation ?? metric.label }])).values()];
 }

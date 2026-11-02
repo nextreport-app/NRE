@@ -38,6 +38,7 @@ export interface DayBreakdownReportData {
   rangeLabel: string;
   periodLabel?: string;
   additionalTables?: DailyExtraTable[];
+  dailyExcludedMetricKeys?: string[];
   dateRange: DateRangeIso;
   dayCount: number;
   /** One row per day, oldest first. */
@@ -57,6 +58,7 @@ export interface BuildDayBreakdownReportDataInput {
   selectedCampaigns?: string[] | null;
   selectedMetrics?: SelectedMetric[];
   dailyMetricKeys?: string[];
+  dailyExcludedMetricKeys?: string[];
   csvHeaders?: string[];
   campaignObjectives?: Record<string, { resultLabel: string; costLabel: string }>;
   campaignMetricOverrides?: Record<string, string[]>;
@@ -197,6 +199,7 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
     tableSlides,
     additionalTables: buildDailyExtraTables(byDay, input.csvHeaders ?? [...new Set(mtdDailyRows.flatMap(row => Object.keys(row._raw ?? {})))], input.dailyMetricKeys, tableHeaderLabels.resultColumns.map(column => ({ resultLabel: column.label, costLabel: column.costLabel })), currencySymbol),
     tableHeaderLabels,
+    dailyExcludedMetricKeys: input.dailyExcludedMetricKeys,
     platform,
   };
 }
