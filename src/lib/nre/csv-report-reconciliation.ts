@@ -1,3 +1,4 @@
+import { dailyObjectiveMetricKey } from "./daily-metric-selection";
 /**
  * Cross-check generated report totals against independent sums from the uploaded CSV.
  *
@@ -1389,6 +1390,28 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
         csvExportResults: sumResultsForLabelFromRawDailyRows(source, objectiveMap, column.label, "meta-csv-export"), canAlignRef, countingMode,
       }));
     });
+  }
+  const periodRates=combinedCtrCpcFromRows(rowsInRange as MetricRow[]);
+  for (const metric of input.report.presentation?.summaryPages.flat() ?? []) {
+    let expected:number|null|undefined;
+    let tolerance=.02;
+    if(metric.key==="spend"){expected=csvSpend;tolerance=.51;}
+    else if(metric.key==="impressions")expected=rowsInRange.reduce((sum,row)=>sum+parseCellNum(row.impressions),0);
+    else if(metric.key==="ctr")expected=periodRates.ctr;
+    else if(metric.key==="cpc_all")expected=periodRates.cpc;
+    else if(metric.key==="reach")expected=null;
+    else {
+      const column=input.report.tableHeaderLabels.resultColumns.find(column=>dailyObjectiveMetricKey("objective_results",column.label)===metric.key || dailyObjectiveMetricKey("objective_cost",column.label)===metric.key);
+      if(column){
+        const results=sumResultsForLabelFromRawDailyRows(rowsInRange,objectiveMap,column.label,countingMode);
+        const spend=attributedSpendForLabelFromRawDailyRows(rowsInRange,objectiveMap,column.label,countingMode);
+        expected=column.label==="REACH"?null:metric.key.startsWith("objective_results:")?results:objectiveRate(spend,results,column.label);
+      }
+    }
+    if(expected===undefined)continue;
+    const unavailable=metric.value==="N/A"||metric.value==="—";
+    const ok=expected===null?unavailable:closeEnough(parseCellNum(metric.value),expected,tolerance);
+    checks.push({metric:metric.label,scope:"Selected period totals",reportDisplay:metric.value,csvDisplay:expected===null?"N/A":String(expected),status:ok?"ok":"mismatch"});
   }
   return finalizeVerificationResult({ checks, primaryResultLabel: col.label, canAlignRef, countingMode });
 }

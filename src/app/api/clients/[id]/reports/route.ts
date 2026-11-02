@@ -1,3 +1,4 @@
+import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
 import { guardReportGeneration } from "@/lib/quality-agents/generation-guard";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
@@ -437,7 +438,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             isPaused: dayBreakdownData.isPaused,
             rangeLabel: dayBreakdownData.rangeLabel,
             dayCount: dayBreakdownData.dayCount,
-            tableSlideCount: dayBreakdownData.tableSlides.length + (dayBreakdownData.additionalTables?.length ?? 0),
+            tableSlideCount: dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.additionalTables?.length ?? 0),
           }),
           jobPayload: serializeReportGenerationJob(jobPayload),
         },

@@ -812,12 +812,14 @@ export function buildDayBreakdownTableSlideXml(
   slideIndex = 0,
   slideCount = 1,
   excludedMetricKeys: string[] = [],
+  visibleColumns?: number[],
 ): string {
   const grid = buildHistoricalComparisonTableGrid(rows, headers);
   grid[0][0] = "Date";
   const xml = fillCombinedTotalTable(template.xml, grid, {
-    hideColIndexes: [...(headers.resultColumns.length <= 1 ? [8, 9] : []), ...dailyHiddenColumns(headers.resultColumns, excludedMetricKeys)],
+    hideColIndexes: [...(headers.resultColumns.length <= 1 ? [8, 9] : []), ...dailyHiddenColumns(headers.resultColumns, excludedMetricKeys), ...(visibleColumns ? grid[0].map((_,index)=>index).filter(index=>!visibleColumns.includes(index)) : [])],
     isLightTemplate,
+    preserveHeaderLabels: true,
   });
   const headerText = `DAILY PERFORMANCE OVERVIEW${slideCount > 1 ? ` (${slideIndex + 1}/${slideCount})` : ""}`;
   let out = forceRunStyle(xml, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", {
@@ -826,6 +828,15 @@ export function buildDayBreakdownTableSlideXml(
     color: reportHeaderColor(isLightTemplate),
   });
   out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", headerText);
+  // A cloned eighth daily row must fit above the slide footer. Table row
+  // heights, rather than the graphic frame extent, control its rendered size.
+  out = out.replace(/<p:graphicFrame\b[\s\S]*?<\/p:graphicFrame>/g, frame => {
+    if (!frame.includes("<a:tbl>")) return frame;
+    const top = Number(frame.match(/<a:off\b[^>]*y="(\d+)"/)?.[1] ?? 0);
+    const rowCount = [...frame.matchAll(/<a:tr\b/g)].length;
+    const maxHeight = Math.floor((540 * 12700 - top - 16 * 12700) / Math.max(1, rowCount));
+    return frame.replace(/<a:tr\b([^>]*?)h="(\d+)"/g, (_, prefix, height) => `<a:tr${prefix}h="${Math.min(Number(height), maxHeight)}"`);
+  });
   void platform;
   return out;
 }

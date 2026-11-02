@@ -122,16 +122,17 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     for (const month of ["JULY", "AUGUST", "SEPTEMBER"]) expect(output.join("\n")).toContain(`YOUR ${month} PERFORMANCE REPORT`);
   }, 30_000);
-  it("day-by-day output is tables only, with a row per selected day", async () => {
+  it("day-by-day output includes period totals, daily rows and trend", async () => {
     const data = buildDayBreakdownReportData({ ...base, dateRange: { startIso: "2025-09-01", endIso: "2025-09-10" } });
     expect(data.dayRows).toHaveLength(10);
     const output = await texts(await renderDayBreakdownPptx({ ...theme, data }));
-    expect(output).toHaveLength(2 + data.tableSlides.length);
+    expect(output).toHaveLength(4 + data.tableSlides.length);
     expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     expect(output.join("\n")).not.toMatch(/MONTHLY CAMPAIGN|WEEKLY PERFORMANCE|Last 30 Days/);
-    expect(output[1]).toContain("Date");
-    expect(output[1]).toContain("(1/2)");
-    expect(output[2]).toContain("(2/2)");
+    expect(output[1]).toContain("SELECTED PERIOD TOTALS");
+    expect(output[2]).toContain("Date");
+    expect(output[2]).toContain("(1/2)");
+    expect(output[3]).toContain("(2/2)");
     expect(output[0]).toContain(data.rangeLabel);
   }, 30_000);
   it.each([

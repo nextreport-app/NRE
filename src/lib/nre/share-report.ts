@@ -1,3 +1,4 @@
+import type { DailyPresentation } from "./daily-report-presentation";
 import { dailyExtraMetricGuide } from "./daily-extra-metrics";
 import type { DailyExtraTable } from "./daily-extra-metrics";
 import { allSlideMetrics } from "./metric-pagination";
@@ -170,6 +171,7 @@ export interface ShareReportData {
   /** Multi-Month Historical — one row per calendar month for the final comparison table. */
   historicalComparisonRows?: TableRowData[];
   dailyAdditionalTables?: DailyExtraTable[];
+  dailyPresentation?: DailyPresentation;
   dailyExcludedMetricKeys?: string[];
   /** Optional one-line Combined Total story (older share JSON omits this). */
   combinedTotalStory?: string;
@@ -350,7 +352,7 @@ function historicalSlideReportTypeLabel(performanceHeader?: string): string | un
     .replace(/^([A-Z]+)/, (word) => word.charAt(0) + word.slice(1).toLowerCase());
 }
 
-/** Share-page payload for Day-by-Day reports — table-only, reuses historicalComparisonRows shape. */
+/** Daily share payload: period totals, daily tables and trend; retains legacy row compatibility. */
 export function buildDayBreakdownShareReportData(
   data: DayBreakdownReportData,
   now: Date = new Date(),
@@ -379,6 +381,7 @@ export function buildDayBreakdownShareReportData(
     mtdRow: EMPTY_TABLE_ROW,
     historicalComparisonRows: data.dayRows,
     dailyAdditionalTables: data.additionalTables,
+    dailyPresentation: data.presentation,
     dailyExcludedMetricKeys: data.dailyExcludedMetricKeys,
     metricGuide: dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys),
     agencyName: extras.agencyName ?? null,

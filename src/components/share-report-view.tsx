@@ -1,3 +1,4 @@
+import { DailyTrendChart } from "./share-daily-trend";
 import {
   buildCombinedTotalTableGrid,
   buildHistoricalComparisonTableGrid,
@@ -866,6 +867,13 @@ export function ShareReportView({
           </section>
         )}
 
+        {showCombinedTotal && visibleData.dailyPresentation?.summaryPages.map((metrics, index) => <section key={`daily-summary-${index}`} className={slideClass}><SlideCard>
+          <h2 className="mb-4 text-[22px] font-bold text-ink">Selected period totals{visibleData.dailyPresentation!.summaryPages.length > 1 ? ` · ${index + 1} of ${visibleData.dailyPresentation!.summaryPages.length}` : ""}</h2>
+          <p className="mb-4 text-ink-muted">{visibleData.fileDateRange}</p>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">{metrics.map(metric => <div key={metric.key} className="rounded-xl border border-ink/10 p-4"><p className="text-sm text-ink-muted">{metric.label}</p><p className="mt-3 text-2xl font-bold text-ink">{metric.value}</p></div>)}</div>
+          <p className="mt-4 text-sm text-ink-muted">{visibleData.dailyPresentation!.note}</p>
+        </SlideCard></section>)}
+
         {showCombinedTotal && (
         <section className={slideClass}>
           <SlideCard>
@@ -878,6 +886,12 @@ export function ShareReportView({
         {showCombinedTotal && visibleData.dailyAdditionalTables?.map((table, index) => <section key={`daily-extra-${index}`} className={slideClass}><SlideCard>
           <h2 className="mb-4 text-[22px] font-bold text-ink">Additional daily metrics · {index + 1} of {visibleData.dailyAdditionalTables!.length}</h2>
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{["Date", ...table.metrics.map(metric => metric.label)].map((label, column) => <th key={column} className="p-3 text-left">{label}</th>)}</tr></thead><tbody>{table.rows.map(row => <tr key={row.date}>{[row.date, ...row.values].map((value, column) => <td key={column} className="border-t border-ink/10 p-3">{value}</td>)}</tr>)}</tbody></table></div>
+        </SlideCard></section>)}
+
+        {showCombinedTotal && visibleData.dailyPresentation?.trendPages.map((page, index) => <section key={`daily-trend-${index}`} className={slideClass}><SlideCard>
+          <h2 className="mb-4 text-[22px] font-bold text-ink">Daily performance trend</h2>
+          <p className="mb-4 text-ink-muted">{page.startIso} – {page.endIso}</p>
+          <DailyTrendChart page={page} />
         </SlideCard></section>)}
 
         {showMetricGuide && (

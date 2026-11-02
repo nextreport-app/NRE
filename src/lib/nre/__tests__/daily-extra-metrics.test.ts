@@ -66,7 +66,13 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("daily extra exports: %s", t
     const zip = await JSZip.loadAsync(buffer);
     const paths = Object.keys(zip.files).filter(path => /^ppt\/slides\/slide\d+\.xml$/.test(path)).sort((a,b) => Number(a.match(/slide(\d+)/)![1]) - Number(b.match(/slide(\d+)/)![1]));
     const slides = await Promise.all(paths.map(path => zip.file(path)!.async("string")));
-    expect(slides).toHaveLength(10);
+    expect(slides).toHaveLength(13);
+    for (const xml of slides.filter(slide => slide.includes("DAILY PERFORMANCE OVERVIEW"))) {
+      const table = xml.match(/<p:graphicFrame\b[\s\S]*?<\/p:graphicFrame>/)![0];
+      const top = Number(table.match(/<a:off\b[^>]*y="(\d+)"/)![1]);
+      const height = [...table.matchAll(/<a:tr\b[^>]*h="(\d+)"/g)].reduce((sum, row) => sum + Number(row[1]), 0);
+      expect(top + height).toBeLessThanOrEqual((540 - 16) * 12700);
+    }
     expect(slides.filter(xml => xml.includes("ADDITIONAL DAILY METRICS"))).toHaveLength(4);
     expect(slides.join("\n")).toContain("Oct 30, 2026");
     expect(slides.at(-1)).toContain("METRIC ABBREVIATION GUIDE");

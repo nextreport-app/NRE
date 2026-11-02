@@ -1,3 +1,5 @@
+import { dailyMainTablePages } from "../nre/daily-report-presentation";
+import { buildDailySummarySlide, buildDailyTrendSlide } from "./daily-presentation-slides";
 import { dailyExtraMetricGuide } from "../nre/daily-extra-metrics";
 import { buildDailyExtraSlide } from "./daily-extra-slide";
 import { findMetaMetricByKey } from "../nre/meta-dictionary";
@@ -559,6 +561,8 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     },
   ];
 
+  if (!data.isPaused) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(metrics,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,data.presentation!.note,index,pages.length,template.background,isLightTemplate),rels:buildChartSlideRels(template.background.mediaTarget)}));
+
   if (data.isPaused) {
     slides.push({
       xml: buildPausedSlideXml(
@@ -573,18 +577,20 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
       rels: template.campaign.rels,
     });
   } else {
-    const slideCount = data.tableSlides.length;
-    data.tableSlides.forEach((chunk, index) => {
+    const pages = dailyMainTablePages(data);
+    const slideCount = pages.length;
+    pages.forEach((page, index) => {
       slides.push({
         xml: buildDayBreakdownTableSlideXml(
           template.table,
-          chunk,
+          page.rows,
           data.tableHeaderLabels,
           isLightTemplate,
           data.platform,
           index,
           slideCount,
           data.dailyExcludedMetricKeys,
+          page.columns,
         ),
         rels: template.table.rels,
       });
@@ -594,6 +600,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
   if (!data.isPaused) (data.additionalTables ?? []).forEach((table, index, tables) => {
     slides.push({ xml: buildDailyExtraSlide(table, `${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`, index, tables.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) });
   });
+  if (!data.isPaused) (data.presentation?.trendPages ?? []).forEach((page,index,pages)=>slides.push({xml:buildDailyTrendSlide(page,`${data.periodLabel ?? "Daily report"} · ${page.startIso === data.dateRange.startIso && page.endIso === data.dateRange.endIso ? data.rangeLabel : `${page.startIso} – ${page.endIso}`}`,index,pages.length,data.currencySymbol ?? "$",template.background,isLightTemplate),rels:buildChartSlideRels(template.background.mediaTarget)}));
   appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys));
   return assemblePptx(template, slides);
 }
