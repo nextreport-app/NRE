@@ -14,6 +14,7 @@ import { getCalendarDateInTimezone } from "@/lib/nre/dates";
 export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
   const w = useWizardContext();
   const [customDaily, setCustomDaily] = useState(false);
+  const [datesExpanded, setDatesExpanded] = useState(false);
   if (w.reportType === "COMPARISON") return <ComparisonPeriodControls stage={stage} />;
   if (!["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN"].includes(w.reportType)) return null;
   const calendar = csvReportingCalendar(w.dateBounds, new Date(), w.clientTimezone);
@@ -22,12 +23,12 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
   const today = getCalendarDateInTimezone(now, w.clientTimezone);
   const currentMonth = `${today.year}-${String(today.month).padStart(2, "0")}`;
   const custom = w.dateMode === "custom";
-  const changeDates = <button type="button" onClick={() => w.setStep(1)} className="shrink-0 text-sm font-medium text-dash-accent hover:underline">Change dates</button>;
+  const changeDates = <button type="button" aria-expanded={datesExpanded} onClick={() => setDatesExpanded(value => !value)} className="shrink-0 text-sm font-medium text-dash-accent hover:underline">{datesExpanded ? "Hide date options" : "Change dates"}</button>;
   if (stage === "generate" && ["DAILY", "DAY_BREAKDOWN"].includes(w.reportType)) {
     const start = custom && w.customStart ? w.customStart : yesterday;
     const end = custom && w.customEnd ? w.customEnd : yesterday;
     const label = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"));
-    return <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-dash-border bg-dash-card p-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{w.reportType === "DAY_BREAKDOWN" && <span className="block font-semibold">{dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone).replace(/^Yesterday$/, calendar.adjusted ? "Latest CSV day" : "Yesterday")}</span>}{label}</p></div>{changeDates}</section>;
+    return <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-dash-border bg-dash-card p-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{w.reportType === "DAY_BREAKDOWN" && <span className="block font-semibold">{dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone).replace(/^Yesterday$/, calendar.adjusted ? "Latest CSV day" : "Yesterday")}</span>}{label}</p></div>{changeDates}{datesExpanded && <div className="w-full border-t border-dash-border pt-4"><ReportPeriodControls /></div>}</section>;
   }
   function chooseRange(start: string, end: string) { w.editDateMode("custom"); w.editCustomStart(start); w.editCustomEnd(end); }
   if (w.reportType === "DAILY") return <WizardDatePicker label="Report day" value={custom ? w.customStart : yesterday} maxIso={yesterday} onChange={day => chooseRange(day, day)} />;
@@ -42,7 +43,7 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
         return <button key={days} type="button" aria-pressed={active} onClick={() => { setCustomDaily(false); chooseRange(range.startIso, range.endIso); }} className={`rounded-lg border px-3 py-2 text-xs font-medium ${active ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink hover:bg-dash-card"}`}>{days === 1 ? calendar.adjusted ? "Latest CSV day" : "Yesterday" : `Last ${days} days`}</button>;
       })}<button type="button" aria-pressed={customDaily || dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone) === "Custom date range"} onClick={() => setCustomDaily(true)} className={`rounded-lg border px-3 py-2 text-xs font-medium ${customDaily || dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone) === "Custom date range" ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink"}`}>Custom date range</button></div>
       <WizardDateRangeFields startIso={start} endIso={end} maxIso={yesterday} onStartChange={day => { setCustomDaily(true); chooseRange(day, end < day ? day : end); }} onEndChange={day => { setCustomDaily(true); chooseRange(start > day ? day : start, day); }} />
-      <p className="text-xs text-dash-ink-secondary">CSV coverage needed: {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"))}. Upload a CSV with Day-wise breakdown covering this entire range. Each table row combines your selected campaigns for one day; missing days are not treated as zero delivery.</p>
+      <p className="text-xs text-dash-ink-secondary">CSV coverage needed: {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"))}. Your CSV must have Day-wise breakdown covering this entire range. Each table row combines your selected campaigns for one day; missing days are not treated as zero delivery.</p>
       {w.customRangeError && <p className="text-sm text-red-400">{w.customRangeError}</p>}
     </section>;
   }
@@ -86,6 +87,7 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{rangeLabel}</p></div>{changeDates}</div>
     <p className="mt-3 text-xs text-dash-ink-secondary">{count === 1 ? "1 month" : `${count} months, shown separately`}</p>
     <ul className="mt-2 grid gap-1.5 text-xs text-dash-ink-secondary sm:grid-cols-2">{periods.map((period, index) => <li key={period.startIso}>{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(period.startIso + "T12:00:00Z"))}: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).formatRange(new Date(period.startIso + "T12:00:00Z"), new Date((index === periods.length - 1 ? end : period.endIso) + "T12:00:00Z"))}{period.startIso.slice(0, 7) === currentMonth ? " (MTD)" : " (full month)"}</li>)}</ul>
+    {datesExpanded && <div className="mt-4 border-t border-dash-border pt-4"><ReportPeriodControls /></div>}
   </section>;
   return <section className="space-y-4 rounded-xl border border-dash-border bg-dash-bg/40 p-4">
     <div><h3 className="text-sm font-semibold text-dash-ink">Which months would you like to report?</h3><p className="mt-1 text-xs text-dash-ink-secondary">Choose one month or a range of up to 12 months. Each month is shown separately.</p></div>
@@ -98,6 +100,6 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
       <p className="text-xs font-semibold text-dash-ink">{count === 1 ? "1 month selected" : `${count} months selected`}</p>
       <ul className="mt-2 grid gap-1.5 text-xs text-dash-ink-secondary sm:grid-cols-2">{periods.map((period, index) => <li key={period.startIso}>{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(period.startIso + "T12:00:00Z"))}: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).formatRange(new Date(period.startIso + "T12:00:00Z"), new Date((index === periods.length - 1 ? end : period.endIso) + "T12:00:00Z"))}{period.startIso.slice(0, 7) === currentMonth ? " (MTD)" : " (full month)"}</li>)}</ul>
     </div>
-    <p className="text-xs leading-relaxed text-dash-ink-secondary">CSV coverage needed: {rangeLabel}. Upload a CSV with Day-wise breakdown for this entire date range.</p>
+    <p className="text-xs leading-relaxed text-dash-ink-secondary">CSV coverage needed: {rangeLabel}. Your CSV must have Day-wise breakdown for this entire date range.</p>
   </section>;
 }
