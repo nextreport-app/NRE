@@ -1,6 +1,6 @@
 /**
  * Cursor-style site theme: same pages and layout; only the marketing palette swaps
- * (dark navy ↔ light gray/white, text inverted for contrast). Accent orange unchanged.
+ * (dark graphite ↔ light gray/white, text inverted for contrast). Amber accents unchanged.
  * Logged-in app shell ({@link APP_SHELL_CLASS}) follows the same light/dark preference as marketing.
  */
 

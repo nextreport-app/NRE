@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-/* Marketing site palette — default dark; light via html[data-site-theme="light"].
+/* Marketing site palette — graphite by default; light via html[data-site-theme="light"].
    Logged-in wizard/dashboard uses .nre-app-shell dash tokens (also swap on light). */
 :root {
-  --background: #0d1b2e;
-  --foreground: #ffffff;
+  --background: #101217;
+  --foreground: #eff0f5;
 
   /* Logged-in dashboard / wizard — referenced by Tailwind dash-* utilities via @theme. */
   --nre-dash-bg: #101217;
@@ -69,8 +69,8 @@ html[data-site-theme="light"] body {
   color-scheme: dark;
 }
 
-/* Approved dark workspace: graphite page, lifted workspace, amber actions.
-   Marketing and light-mode surfaces retain their own existing palettes. */
+/* Approved graphite dark theme with lifted workspace and amber actions.
+   Existing light-mode surfaces and fixed report mockups retain their palettes. */
 html:not([data-site-theme="light"]) .nre-app-shell .nre-report-wizard {
   background-color: var(--nre-dash-workspace);
   border: 1px solid var(--nre-dash-border);
@@ -115,9 +115,10 @@ html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-client-bar {
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 
-  --color-navy: #0d1b2e;
-  --color-navy-panel: #111f35;
-  --color-navy-border: #1e3a5f;
+  /* Legacy navy utility names now resolve to the graphite brand surfaces. */
+  --color-navy: #101217;
+  --color-navy-panel: #1d2028;
+  --color-navy-border: #383e4c;
   --color-ink: #ffffff;
   --color-ink-secondary: #e2e8f0;
   --color-ink-muted: #94a3b8;
@@ -135,12 +136,8 @@ html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-client-bar {
   --color-accent-orange: #f5b45a;
   --color-accent-orange-hover: #ed8936;
 
-  /* Dashboard (logged-in product) palette — deliberately distinct from the
-     public marketing site's navy tokens above, so the two feel like
-     different surfaces rather than one continuous page. Used ONLY by
-     components rendered inside src/app/(dashboard) (Nav, client
-     list/detail/new, account, billing, the report wizard, ...) — every
-     public-facing page keeps using the tokens above, unchanged. */
+  /* Logged-in surfaces share the graphite/amber identity with the public
+     website, using independent tokens for workspace and control states. */
   --color-dash-bg: var(--nre-dash-bg, #101217);
   --color-dash-sidebar: var(--nre-dash-sidebar, #14161c);
   --color-dash-card: var(--nre-dash-card, #1d2028);
@@ -149,11 +146,11 @@ html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-client-bar {
   --color-dash-ink-secondary: var(--nre-dash-ink-secondary, #adb3c0);
   --color-dash-accent: var(--nre-dash-accent, #f5b45a);
   --color-dash-accent-hover: var(--nre-dash-accent-hover, #ed8936);
-  --color-dash-secondary: var(--nre-dash-secondary, #1e3a5f);
+  --color-dash-secondary: var(--nre-dash-secondary, #292d37);
   --color-dash-success: var(--nre-dash-success, #68d391);
   --color-dash-error: var(--nre-dash-error, #fc8181);
-  --color-dash-inset: var(--nre-dash-inset, #151f33);
-  --color-dash-popover: var(--nre-dash-popover, #0a1628);
+  --color-dash-inset: var(--nre-dash-inset, #191c24);
+  --color-dash-popover: var(--nre-dash-popover, #191c24);
 }
 
 html {
@@ -167,10 +164,10 @@ html {
   letter-spacing: -0.011em;
 }
 
-/* Marketing canvas — flat gradient (no dot grid); light theme overrides below. */
+/* Flat graphite marketing canvas; light theme overrides below. */
 body {
   background-color: var(--background);
-  background-image: linear-gradient(180deg, #0f2239 0%, #0d1b2e 48%, #0a1628 100%);
+  background-image: none;
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
 }
@@ -201,11 +198,21 @@ html[data-site-theme="light"] .bg-navy-panel\/70 {
   background-color: color-mix(in srgb, var(--color-navy-panel) 70%, transparent);
 }
 
-/* Hero CTAs — dark: white primary on navy; light: black primary, white secondary on cream. */
+/* Hero CTAs — dark: amber on graphite; light retains black/white on cream. */
 .nre-hero-cta-primary {
+  background-color: var(--color-accent);
+  color: #0b1728;
+  transition: opacity 0.15s ease;
+}
+
+html[data-site-theme="light"] .nre-public-primary {
   background-color: #ffffff;
   color: #0d1b2e;
-  transition: opacity 0.15s ease;
+}
+
+html:not([data-site-theme="light"]) .nre-public-primary {
+  background-color: var(--color-accent);
+  color: #0b1728;
 }
 
 .nre-hero-cta-primary:hover {
