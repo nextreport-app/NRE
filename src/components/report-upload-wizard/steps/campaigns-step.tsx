@@ -172,7 +172,7 @@ export function WizardCampaignsStep() {
       <section aria-labelledby="wizard-campaigns-section-heading" className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-dash-border pb-4">
           <div className="flex items-start gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">1</span>
+            <span className="nre-wizard-section-marker flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">1</span>
             <div><h3 id="wizard-campaigns-section-heading" className="text-[16px] font-semibold text-dash-ink">Campaign selection</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">Choose which campaigns to include in this report.</p></div>
           </div>
           <p className="rounded-full border border-dash-border bg-dash-bg px-2.5 py-1 text-xs text-dash-ink-secondary" role="status">{selectedCampaigns.size} of {campaigns.length} included{campaigns.length > selectedCampaigns.size ? ` · ${campaigns.length - selectedCampaigns.size} excluded` : ""}</p>
@@ -372,7 +372,7 @@ export function WizardCampaignsStep() {
             className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
           >
           <div className="flex items-start gap-3 border-b border-dash-border pb-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">2</span>
+            <span className="nre-wizard-section-marker flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">2</span>
             <div><h3 id="wizard-objectives-section-heading" className="text-[16px] font-semibold text-dash-ink">{copy.campaignObjectives}</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.objectivesIntro}</p></div>
           </div>
 

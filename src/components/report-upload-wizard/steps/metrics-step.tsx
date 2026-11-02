@@ -71,7 +71,7 @@ export function WizardMetricsStep() {
       <div
         key={name}
         className="mb-4 rounded-lg bg-dash-card nre-dash-surface p-4 last:mb-0"
-        style={{ borderTop: `3px solid ${accent.borderHex}` }}
+        style={{ borderTop: `var(--nre-wizard-section-border, 3px solid ${accent.borderHex})` }}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="truncate text-[15px] font-bold text-dash-ink" title={name}>
@@ -109,7 +109,7 @@ export function WizardMetricsStep() {
     const extras = optional.filter(metric => keys.includes(metric.key));
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your CSV. Add or remove optional metrics below.</p>
-      <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "3px solid #38bdf8" }}>
+      <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "var(--nre-wizard-section-border, 3px solid #38bdf8)" }}>
         <h3 className="text-[15px] font-bold text-dash-ink">{daily ? "Daily tables · selected campaigns" : "Comparison · selected campaigns"}</h3>
         <p className="mt-1 text-sm text-dash-ink-secondary">{daily ? "The same metrics are shown for each day, combined across selected campaigns." : "Each campaign uses its confirmed objective for both periods. Extras appear on additional comparison slides."}</p>
         <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={daily ? [...baseMetrics, ...optional] : optional} lockedKeys={daily ? [] : included.map(metric => metric.key)} onAdd={metric => toggleMetric(metric.key)} onRemove={toggleMetric} limit={MAX_TOTAL_METRICS + included.length} hint="Only supported metrics from your CSV are shown." />
