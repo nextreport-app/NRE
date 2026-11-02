@@ -48,7 +48,7 @@ function WizardClientLine({
       <Link
         href="/clients"
         onClick={onChangeClientClick}
-        className="nre-wizard-client-bar__link shrink-0 text-[13px] font-medium underline underline-offset-[3px]"
+        className="nre-wizard-client-bar__link shrink-0 text-[13px] font-medium no-underline"
       >
         {copy.changeClient}
       </Link>
