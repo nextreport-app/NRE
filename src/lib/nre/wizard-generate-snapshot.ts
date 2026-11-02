@@ -1,3 +1,4 @@
+import type { CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import type { ComparisonReportData, ReportData } from "@/lib/nre/report-data";
 import type { HistoricalReportData } from "@/lib/nre/historical-report-data";
 import type { DayBreakdownReportData } from "@/lib/nre/day-breakdown-report-data";
@@ -28,6 +29,7 @@ export interface WizardGenerateSnapshot {
   dailyMetricKeys?: string[];
   dailyExcludedMetricKeys?: string[];
   csvHeaders?: string[];
+  metricHeaderProfile?: CsvMetricHeaderProfile | null;
   comparisonPreset: "thisWeek" | "last15" | "last30" | "thisMonth" | "custom";
   comparisonPeriodA: { startIso: string; endIso: string } | null;
   comparisonPeriodB: { startIso: string; endIso: string } | null;

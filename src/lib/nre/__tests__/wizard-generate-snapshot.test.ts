@@ -30,6 +30,7 @@ const snapshot: WizardGenerateSnapshot = {
   dailyMetricKeys: ["landing_page_views"],
   dailyExcludedMetricKeys: ["reach"],
   comparisonMetricKeys: ["impressions", "cpc_all"],
+  metricHeaderProfile: { all: ["Link clicks"], campaigns: { example: ["Link clicks"] } },
   csvHeaders: ["Impressions", "CPC (all)"],
   comparisonPreset: "thisWeek",
   comparisonPeriodA: null,

@@ -1,3 +1,4 @@
+import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
@@ -52,6 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({
       ok: true,
       headers: payload.headers,
+      metricHeaderProfile: buildCsvMetricHeaderProfile(payload.headers,payload.rows),
       ...context,
     });
   } catch (err) {

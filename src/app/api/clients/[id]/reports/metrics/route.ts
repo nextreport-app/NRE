@@ -1,3 +1,4 @@
+import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
@@ -106,6 +107,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ? Object.fromEntries(buildCampaignCsvResultTypeMap(rowsForObjective, metaCustomConversionResultTypes))
         : {};
 
+    const metricHeaderProfile = buildCsvMetricHeaderProfile(mtdParsed.headers,mtdParsed.rows);
     const perCampaignSelection: Record<string, SelectedMetric[]> = {};
     const perCampaignAvailable: Record<string, SelectedMetric[]> = {};
 
@@ -116,12 +118,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         info.resultLabel,
         info.costLabel,
         googleObjectiveKey,
+        metricHeaderProfile.campaigns[normalizedName] ?? [],
       );
       perCampaignSelection[normalizedName] = bundle.selection;
       perCampaignAvailable[normalizedName] = bundle.available;
     }
 
     return NextResponse.json({
+      metricHeaderProfile,
       perCampaignSelection,
       perCampaignAvailable,
       campaignObjectives,

@@ -1,3 +1,4 @@
+import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { alignCsvReportFormData } from "@/lib/nre/csv-reporting-calendar";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -202,6 +203,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
       uploadSessionId,
       headers: mtdParsed.headers,
+      metricHeaderProfile: buildCsvMetricHeaderProfile(mtdParsed.headers,mtdParsed.rows),
       campaigns,
       campaignSpend,
       selectedCampaigns,

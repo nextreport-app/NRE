@@ -1,3 +1,4 @@
+import type { CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { ObjectiveInfo } from "@/lib/nre/result-type-map";
 import type { WizardDraftSnapshot } from "@/lib/nre/wizard-draft";
@@ -21,6 +22,7 @@ export type WizardDraftPersistInput = {
   dailyMetricKeys?: string[];
   dailyExcludedMetricKeys?: string[];
   csvHeaders?: string[];
+  metricHeaderProfile?: CsvMetricHeaderProfile | null;
   comparisonPreset?: WizardDraftSnapshot["comparisonPreset"];
   comparisonPeriodA?: WizardDraftSnapshot["comparisonPeriodA"];
   comparisonPeriodB?: WizardDraftSnapshot["comparisonPeriodB"];
@@ -59,6 +61,7 @@ export function buildWizardDraftSnapshot(input: WizardDraftPersistInput): Wizard
     dailyMetricKeys: input.dailyMetricKeys,
     dailyExcludedMetricKeys: input.dailyExcludedMetricKeys,
     csvHeaders: input.csvHeaders,
+    metricHeaderProfile: input.metricHeaderProfile,
     comparisonPeriodA: input.comparisonPeriodA,
     comparisonPeriodB: input.comparisonPeriodB,
     dateMode: input.dateMode,
