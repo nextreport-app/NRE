@@ -200,4 +200,4 @@ export function parseJsonFormField<T>(formData: FormData, field: string, schema:
   }
 }
 
-export const dailyExcludedMetricKeysSchema = z.array(z.enum(DAILY_BASE_METRIC_KEYS)).max(DAILY_BASE_METRIC_KEYS.length - 1);
+export const dailyExcludedMetricKeysSchema = z.array(z.string().max(256).refine(key => DAILY_BASE_METRIC_KEYS.some(item => item === key) || /^objective_(results|cost):.+$/.test(key))).max(128).refine(keys => !DAILY_BASE_METRIC_KEYS.every(key => keys.includes(key)), { message: "Keep at least one main daily metric." });

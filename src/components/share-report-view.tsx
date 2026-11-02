@@ -501,7 +501,7 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
       ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions)
       : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);
 
-  const grid = data.reportType === "DAY_BREAKDOWN" ? projectDailyGrid(rawGrid, data.tableHeaderLabels.resultColumns.length, data.dailyExcludedMetricKeys) : rawGrid;
+  const grid = data.reportType === "DAY_BREAKDOWN" ? projectDailyGrid(rawGrid, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys) : rawGrid;
 
   const stacked = !isHistoricalMultiMonth && shouldUseStackedCombinedTotalLayout(data.tableHeaderLabels.resultColumns.length);
 

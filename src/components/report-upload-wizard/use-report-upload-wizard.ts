@@ -1,5 +1,5 @@
 "use client";
-import { DAILY_BASE_METRIC_KEYS } from "@/lib/nre/daily-metric-selection";
+import { dailyBaseMetrics, dailyMetricIsExcluded, expandDailyExclusions } from "@/lib/nre/daily-metric-selection";
 import { alignCsvRange, alignCsvSelection, alignCsvComparison, csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
 import { dailyExtraMetricGuide, dailyOptionalMetrics } from "@/lib/nre/daily-extra-metrics";
 import { comparisonSummaryPages } from "@/lib/nre/comparison-summary-pagination";
@@ -3091,10 +3091,11 @@ export function useReportUploadWizard({
     dailyMetricKeys,
     dailyExcludedMetricKeys,
     toggleDailyBaseMetric: (key: string) => {
-      if (!DAILY_BASE_METRIC_KEYS.some(item => item === key)) return;
-      if (!dailyExcludedMetricKeys.includes(key) && dailyExcludedMetricKeys.length >= DAILY_BASE_METRIC_KEYS.length - 1) { showToast("Keep at least one main daily metric."); return; }
+      const metrics = dailyBaseMetrics([...selectedCampaigns].flatMap(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? [objective] : []; }));
+      if (!metrics.some(metric => metric.key === key)) return;
+      if (!dailyMetricIsExcluded(key,dailyExcludedMetricKeys) && metrics.filter(metric => !dailyMetricIsExcluded(metric.key,dailyExcludedMetricKeys)).length <= 1) { showToast("Keep at least one main daily metric."); return; }
       acknowledgePostGenerateEdit();
-      setDailyExcludedMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < DAILY_BASE_METRIC_KEYS.length - 1 ? [...previous, key] : previous);
+      setDailyExcludedMetricKeys(previous => { const expanded = expandDailyExclusions(previous,metrics); return expanded.includes(key) ? expanded.filter(item => item !== key) : metrics.filter(metric => !dailyMetricIsExcluded(metric.key,expanded)).length > 1 ? [...expanded,key] : expanded; });
     },
     dailyOptionalMetrics: dailyOptionalMetrics(csvHeaders, [...selectedCampaigns].flatMap(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? [objective] : []; })),
     toggleDailyMetric: (key: string) => { acknowledgePostGenerateEdit(); setDailyMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < MAX_TOTAL_METRICS ? [...previous, key] : previous); },
