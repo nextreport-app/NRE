@@ -7,13 +7,13 @@ import { MAX_TOTAL_METRICS } from "./metric-pagination";
 import { dailyRangeLabel } from "./daily-period-selection";
 
 export interface DailyExtraTable { metrics: { key: string; label: string }[]; rows: { date: string; values: string[] }[] }
-export function dailyOptionalMetrics(headers: string[], objectives: { resultLabel: string; costLabel: string }[] = []) {
-  return comparisonOptionalMetrics(headers, "META").filter(metric => !["impressions", "ctr", "cpc", "cpc_all"].includes(metric.key) && !objectives.some(objective => isComparisonCoreMetric(metric, objective.resultLabel, objective.costLabel)));
+export function dailyOptionalMetrics(headers: string[], objectives: { resultLabel: string; costLabel: string }[] = [], rows?: NreRow[]) {
+  return comparisonOptionalMetrics(headers, "META", rows).filter(metric => !["impressions", "ctr", "cpc", "cpc_all"].includes(metric.key) && !objectives.some(objective => isComparisonCoreMetric(metric, objective.resultLabel, objective.costLabel)));
 }
 /** At most four metric columns and eight day rows per page. Never average daily rates. */
 export function buildDailyExtraTables(byDay: Map<string, NreRow[]>, headers: string[], keys: string[] | undefined, objectives: { resultLabel: string; costLabel: string }[], currencySymbol: string): DailyExtraTable[] {
   const selected = new Set(keys ?? []);
-  const metrics = dailyOptionalMetrics(headers, objectives).filter(metric => selected.has(metric.key)).slice(0, MAX_TOTAL_METRICS);
+  const metrics = dailyOptionalMetrics(headers, objectives, [...byDay.values()].flat()).filter(metric => selected.has(metric.key)).slice(0, MAX_TOTAL_METRICS);
   const pages: DailyExtraTable[] = [];
   const days = [...byDay.keys()].sort();
   for (const metricPage of paginateComparisonMetrics(metrics)) {

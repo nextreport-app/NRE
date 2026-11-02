@@ -1,4 +1,5 @@
 "use client";
+import { selectedMetricHeaders, type CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { dailyBaseMetrics, dailyMetricIsExcluded, expandDailyExclusions } from "@/lib/nre/daily-metric-selection";
 import { alignCsvRange, alignCsvSelection, alignCsvComparison, csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
 import { dailyExtraMetricGuide, dailyOptionalMetrics } from "@/lib/nre/daily-extra-metrics";
@@ -297,6 +298,7 @@ export function useReportUploadWizard({
   // pre-checked default (everything, for a first-ever upload; last time's
   // saved selection, for a returning one) without ever skipping the step.
   /** CSV column headers from /analyze — used to recompute metric cards when objective changes. */
+  const [metricHeaderProfile, setMetricHeaderProfile] = useState<CsvMetricHeaderProfile | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
@@ -759,7 +761,7 @@ export function useReportUploadWizard({
       weeklyOptions,
       mtdRange,
       monthComparisonOptions,
-      comparisonPreset, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders,
+      comparisonPreset, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders, metricHeaderProfile,
       comparisonPeriodA,
       comparisonPeriodB,
       previewKind,
@@ -782,6 +784,7 @@ export function useReportUploadWizard({
     setDailyMetricKeys(snapshot.dailyMetricKeys ?? []);
     setDailyExcludedMetricKeys(snapshot.dailyExcludedMetricKeys ?? []);
     if (snapshot.csvHeaders) setCsvHeaders(snapshot.csvHeaders);
+    setMetricHeaderProfile(snapshot.metricHeaderProfile ?? null);
     setDownloadUrl(snapshot.downloadUrl);
     setShareToken(snapshot.shareToken);
     setPlatform(coerceLaunchPlatform(snapshot.platform));
@@ -943,6 +946,7 @@ export function useReportUploadWizard({
         setDailyMetricKeys(draft.dailyMetricKeys ?? []);
         setDailyExcludedMetricKeys(draft.dailyExcludedMetricKeys ?? []);
         setCsvHeaders(ctx.headers ?? draft.csvHeaders ?? []);
+        setMetricHeaderProfile(ctx.metricHeaderProfile ?? draft.metricHeaderProfile ?? null);
         if (draft.comparisonPeriodA && draft.comparisonPeriodB) {
           setComparisonPreset(draft.comparisonPreset === "thisMonth" ? "custom" : draft.comparisonPreset ?? "custom");
           setComparisonPeriodA(draft.comparisonPeriodA);
@@ -1030,7 +1034,7 @@ export function useReportUploadWizard({
       platform,
       reportType,
       historicalMonthCount,
-      comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders,
+      comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders, metricHeaderProfile,
       dateMode,
       customStart,
       customEnd,
@@ -1091,7 +1095,7 @@ export function useReportUploadWizard({
     mtdRange,
     weeklyOptions,
     dateBounds,
-    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders,
+    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders, metricHeaderProfile,
     generateStatus,
   ]);
 
@@ -1145,6 +1149,7 @@ export function useReportUploadWizard({
 
     setUploadSessionId(typeof json.uploadSessionId === "string" ? json.uploadSessionId : null);
     setCsvHeaders(Array.isArray(json.headers) ? json.headers : []);
+    setMetricHeaderProfile(json.metricHeaderProfile ?? null);
     setCampaigns(campaignList);
     setCampaignSpend(json.campaignSpend || {});
     setLowSpendCampaigns(json.lowSpendCampaigns || []);
@@ -1675,6 +1680,7 @@ export function useReportUploadWizard({
       return { ok: false };
     }
 
+    if (json.metricHeaderProfile) setMetricHeaderProfile(json.metricHeaderProfile);
     setPerCampaignMetrics(new Map(Object.entries(json.perCampaignSelection || {})));
     setPerCampaignAvailablePool(new Map(Object.entries(json.perCampaignAvailable || {})));
     const { objectives, confidence, requiresConfirmation } = campaignObjectivesFromJson(json.campaignObjectives);
@@ -1820,7 +1826,7 @@ export function useReportUploadWizard({
   /** Recompute this campaign's metric card defaults when its objective changes. */
   function refreshCampaignMetrics(normalized: string, info: ObjectiveInfo) {
     if (csvHeaders.length === 0) return;
-    const bundle = buildCampaignMetricBundle(platform, csvHeaders, info.resultLabel, info.costLabel);
+    const bundle = buildCampaignMetricBundle(platform, csvHeaders, info.resultLabel, info.costLabel, undefined, metricHeaderProfile?.campaigns[normalized] ?? []);
     setPerCampaignMetrics((prev) => new Map(prev).set(normalized, bundle.selection));
     setPerCampaignAvailablePool((prev) => new Map(prev).set(normalized, bundle.available));
   }
@@ -3097,9 +3103,9 @@ export function useReportUploadWizard({
       acknowledgePostGenerateEdit();
       setDailyExcludedMetricKeys(previous => { const expanded = expandDailyExclusions(previous,metrics); return expanded.includes(key) ? expanded.filter(item => item !== key) : metrics.filter(metric => !dailyMetricIsExcluded(metric.key,expanded)).length > 1 ? [...expanded,key] : expanded; });
     },
-    dailyOptionalMetrics: dailyOptionalMetrics(csvHeaders, [...selectedCampaigns].flatMap(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? [objective] : []; })),
+    dailyOptionalMetrics: dailyOptionalMetrics(selectedMetricHeaders(metricHeaderProfile,selectedCampaigns), [...selectedCampaigns].flatMap(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? [objective] : []; })),
     toggleDailyMetric: (key: string) => { acknowledgePostGenerateEdit(); setDailyMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < MAX_TOTAL_METRICS ? [...previous, key] : previous); },
-    comparisonOptionalMetrics: comparisonOptionalMetrics(csvHeaders, platform).filter(metric => ![...selectedCampaigns].length || ![...selectedCampaigns].every(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? isComparisonCoreMetric(metric, objective.resultLabel, objective.costLabel) : false; })),
+    comparisonOptionalMetrics: comparisonOptionalMetrics(selectedMetricHeaders(metricHeaderProfile,selectedCampaigns), platform).filter(metric => ![...selectedCampaigns].length || ![...selectedCampaigns].every(name => { const objective = campaignObjectives.get(normalizeCampaignName(name)); return objective ? isComparisonCoreMetric(metric, objective.resultLabel, objective.costLabel) : false; })),
     toggleComparisonMetric: (key: string) => { acknowledgePostGenerateEdit(); setComparisonMetricKeys(previous => previous.includes(key) ? previous.filter(item => item !== key) : previous.length < MAX_TOTAL_METRICS ? [...previous, key] : previous); },
     handleComparisonPresetSelect,
     comparisonPeriodA,

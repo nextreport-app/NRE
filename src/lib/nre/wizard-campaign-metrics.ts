@@ -30,10 +30,11 @@ export function buildCampaignMetricBundle(
   resultLabel: string,
   costLabel: string,
   googleObjectiveKey?: GoogleObjectiveKey,
+  observedHeaders?: string[],
 ): CampaignMetricBundle {
   const metricsPlatform = metricsDictionaryPlatform(platform);
   const googleKey = platform === "GOOGLE" ? (googleObjectiveKey ?? googleObjectiveKeyFromHeaders(headers)) : undefined;
-  const fullPool = listSelectableMetrics(headers, metricsPlatform);
+  const fullPool = listSelectableMetrics(observedHeaders ?? headers, metricsPlatform);
   const objectiveKey = usesMetaObjectiveEngine(platform) ? objectiveKeyFor(resultLabel) : undefined;
 
   const selection = defaultMetricSelectionForCampaign(platform, {

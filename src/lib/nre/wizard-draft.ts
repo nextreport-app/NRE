@@ -1,3 +1,4 @@
+import type { CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import type { SelectedMetric } from "@/lib/nre/available-metrics";
 import type { ObjectiveInfo } from "@/lib/nre/result-type-map";
 import type { ReportData, ComparisonReportData } from "@/lib/nre/report-data";
@@ -43,6 +44,7 @@ export type WizardDraftSnapshot = {
   dailyMetricKeys?: string[];
   dailyExcludedMetricKeys?: string[];
   csvHeaders?: string[];
+  metricHeaderProfile?: CsvMetricHeaderProfile | null;
   comparisonPreset?: ComparisonPreset;
   comparisonPeriodA?: DateRangeIso | null;
   comparisonPeriodB?: DateRangeIso | null;
