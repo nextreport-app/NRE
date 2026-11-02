@@ -63,8 +63,8 @@ describe.each(["dark.pptx","meta-ads-light.pptx"])("objective-specific Daily col
     const data=buildDayBreakdownReportData({...base,mtdDailyRows:parsed.rows,dateRange:{startIso:"2026-10-31",endIso:"2026-10-31"},dailyExcludedMetricKeys:[dailyObjectiveMetricKey("objective_results",lead.resultLabel)]});
     const output=await renderDayBreakdownPptx({templateBuffer:readFileSync(`templates/${template}`),data,isLightTemplate:template.includes("light")});
     const zip=await JSZip.loadAsync(output);
-    const xml=await zip.file("ppt/slides/slide2.xml")!.async("string");
-    const header=xml.match(/<a:tr\b[^>]*>[\s\S]*?<\/a:tr>/)![0];
+    const tables=await Promise.all(Object.keys(zip.files).filter(path=>/^ppt\/slides\/slide\d+\.xml$/.test(path)).map(path=>zip.file(path)!.async("string")));
+    const header=tables.map(xml=>xml.match(/<a:tr\b[^>]*>[\s\S]*?<\/a:tr>/)?.[0] ?? "").join("");
     const labels=[...header.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(match=>match[1]);
     expect(labels).not.toContain(lead.resultLabel);expect(labels).toContain(lead.costLabel);expect(labels).toContain(purchase.resultLabel);expect(labels).toContain(purchase.costLabel);
   });

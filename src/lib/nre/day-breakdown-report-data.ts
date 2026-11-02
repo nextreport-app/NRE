@@ -1,3 +1,4 @@
+import { buildDailyPresentation, type DailyPresentation } from "./daily-report-presentation";
 import { csvReportNow } from "./csv-reporting-calendar";
 import { buildDailyExtraTables, type DailyExtraTable } from "./daily-extra-metrics";
 import { dailyPeriodLabel, dailyRangeLabel, dailyPresetRange } from "./daily-period-selection";
@@ -34,11 +35,13 @@ export interface DayBreakdownReportData {
   isPaused: boolean;
   accountName: string;
   reportDate: string;
+  currencySymbol?: string;
   /** e.g. "Jun 20 - Jun 26, 2026" */
   rangeLabel: string;
   periodLabel?: string;
   additionalTables?: DailyExtraTable[];
   dailyExcludedMetricKeys?: string[];
+  presentation?: DailyPresentation;
   dateRange: DateRangeIso;
   dayCount: number;
   /** One row per day, oldest first. */
@@ -190,6 +193,7 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
   return {
     isPaused: dayRows.every((row) => !row.hasData),
     accountName,
+    currencySymbol,
     reportDate: `${reportDateParts.month}-${reportDateParts.day}-${reportDateParts.year}`,
     rangeLabel: dailyRangeLabel(dateRange),
     periodLabel: dailyPeriodLabel(dateRange, csvReportNow(mtdDailyRows, now, timezone), timezone).replace(/^Yesterday$/, dateRange.endIso === dailyPresetRange(1, now, timezone).endIso ? "Yesterday" : "Latest CSV day"),
@@ -200,6 +204,7 @@ export function buildDayBreakdownReportData(input: BuildDayBreakdownReportDataIn
     additionalTables: buildDailyExtraTables(byDay, input.csvHeaders ?? [...new Set(mtdDailyRows.flatMap(row => Object.keys(row._raw ?? {})))], input.dailyMetricKeys, tableHeaderLabels.resultColumns.map(column => ({ resultLabel: column.label, costLabel: column.costLabel })), currencySymbol),
     tableHeaderLabels,
     dailyExcludedMetricKeys: input.dailyExcludedMetricKeys,
+    presentation: buildDailyPresentation({byDay,dayRows,summaryRow:buildAggregatedTableRow(aggregateRows(rowsInRange),currencySymbol,objectiveMap,timezone),headers:input.csvHeaders ?? [...new Set(mtdDailyRows.flatMap(row=>Object.keys(row._raw ?? {})))],metricKeys:input.dailyMetricKeys,excluded:input.dailyExcludedMetricKeys,range:dateRange,currencySymbol}),
     platform,
   };
 }

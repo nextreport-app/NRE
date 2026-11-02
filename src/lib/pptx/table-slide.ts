@@ -267,6 +267,8 @@ function rescaleGridColumnsToWidth(tblGridXml: string, targetTotalWidth: number)
 }
 
 export interface TableVisibilityOptions {
+  /** Paginated Daily tables retain full objective names. */
+  preserveHeaderLabels?: boolean;
   /** 0-indexed row(s) to remove entirely after filling — e.g. the Period row when there's no Previous Month Data. */
   hideRowIndexes?: number[];
   /** 0-indexed column(s) to remove entirely after filling, with freed width redistributed across what remains — e.g. the second result-type columns when there's only one objective. Mutually exclusive with growing (see the file header) — only meaningful when the grid is narrower than NATIVE_COLS. */
@@ -381,7 +383,7 @@ export function fillCombinedTotalTable(
   for (let r = grid.length - 1; r >= 0; r--) {
     const row = rowsToFill[r];
     const isHeaderRow = r === 0;
-    const rowValues = isHeaderRow && objectivePairCount >= 3 ? abbreviateHeaderRow(grid[r]) : grid[r];
+    const rowValues = isHeaderRow && objectivePairCount >= 3 && !options.preserveHeaderLabels ? abbreviateHeaderRow(grid[r]) : grid[r];
     const fontSizeForCol = isHeaderRow
       ? () => headerFontSizeHundredths
       : (c: number) => (c === 0 ? ROW_LABEL_FONT_SIZE : DATA_VALUE_FONT_SIZE);
