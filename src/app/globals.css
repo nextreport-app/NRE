@@ -5,6 +5,12 @@
 :root {
   --background: #101217;
   --foreground: #eff0f5;
+  --nre-site-canvas: #101217;
+  --nre-site-panel: #1d2028;
+  --nre-site-border: #383e4c;
+  --nre-site-ink: #eff0f5;
+  --nre-site-secondary: #cbd0db;
+  --nre-site-muted: #adb3c0;
 
   /* Logged-in dashboard / wizard — referenced by Tailwind dash-* utilities via @theme. */
   --nre-dash-bg: #101217;
@@ -32,6 +38,12 @@ html[data-site-theme="light"] {
   /* Cursor.com marketing light canvas (see cursor.com — #f7f7f4). */
   --background: #f7f7f4;
   --foreground: #000000;
+  --nre-site-canvas: #f7f7f4;
+  --nre-site-panel: #ffffff;
+  --nre-site-border: #d1d0cb;
+  --nre-site-ink: #000000;
+  --nre-site-secondary: #334155;
+  --nre-site-muted: #475569;
   --color-navy: #f7f7f4;
   --color-navy-panel: #ffffff;
   --color-navy-border: #d1d0cb;
@@ -116,12 +128,12 @@ html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-client-bar {
   --font-mono: var(--font-geist-mono);
 
   /* Legacy navy utility names now resolve to the graphite brand surfaces. */
-  --color-navy: #101217;
-  --color-navy-panel: #1d2028;
-  --color-navy-border: #383e4c;
-  --color-ink: #ffffff;
-  --color-ink-secondary: #e2e8f0;
-  --color-ink-muted: #94a3b8;
+  --color-navy: var(--nre-site-canvas);
+  --color-navy-panel: var(--nre-site-panel);
+  --color-navy-border: var(--nre-site-border);
+  --color-ink: var(--nre-site-ink);
+  --color-ink-secondary: var(--nre-site-secondary);
+  --color-ink-muted: var(--nre-site-muted);
   /* Brand lock — one accent color, amber only (#f5b45a). Both the public
      site's own "accent" token (formerly blue, #4a90d9) and the
      "accent-orange" token (already amber, a slightly different shade)
@@ -196,6 +208,12 @@ html[data-site-theme="light"] .bg-navy-panel {
 
 html[data-site-theme="light"] .bg-navy-panel\/70 {
   background-color: color-mix(in srgb, var(--color-navy-panel) 70%, transparent);
+}
+
+/* A text-navy label on a solid amber control is action ink, not a surface
+   colour. It must remain dark when the page canvas switches to light. */
+:is(.bg-accent, .bg-accent-orange).text-navy {
+  color: #0b1728;
 }
 
 /* Hero CTAs — dark: amber on graphite; light retains black/white on cream. */
@@ -285,7 +303,7 @@ html[data-site-theme="light"] main .text-red-400 {
 
 html[data-site-theme="light"] main .nre-marketing-accent-phrase,
 html[data-site-theme="light"] main h2.text-accent-orange {
-  color: var(--color-accent-orange);
+  color: #925b12;
 }
 
 html[data-site-theme="light"] .nre-bottom-cta .nre-hero-cta-primary {
@@ -293,25 +311,36 @@ html[data-site-theme="light"] .nre-bottom-cta .nre-hero-cta-primary {
   color: #ffffff;
 }
 
-/* Keep fixed dark marketing mockups (hero slide, carousel) on their own contrast. */
-html[data-site-theme="light"] .nre-keep-dark-surface,
-html[data-site-theme="light"] .nre-keep-dark-surface * {
-  --color-ink: #ffffff;
-  --color-ink-secondary: #e2e8f0;
-  --color-ink-muted: #94a3b8;
+/* Explicit fixed-dark demos keep coherent graphite surfaces and readable text
+   in either theme. Ordinary sections must not opt into this exception. */
+.nre-keep-dark-surface {
+  --nre-site-canvas: #14161c;
+  --nre-site-panel: #1d2028;
+  --nre-site-border: #383e4c;
+  --nre-site-ink: #eff0f5;
+  --nre-site-secondary: #cbd0db;
+  --nre-site-muted: #adb3c0;
+  --color-navy: #14161c;
+  --color-navy-panel: #1d2028;
+  --color-navy-border: #383e4c;
+  --color-ink: #eff0f5;
+  --color-ink-secondary: #cbd0db;
+  --color-ink-muted: #adb3c0;
+  background-color: #14161c;
 }
 
-html[data-site-theme="light"] .nre-keep-dark-surface .text-accent-orange,
-html[data-site-theme="light"] .nre-keep-dark-surface .text-accent {
-  color: var(--color-accent-orange);
+html[data-site-theme="light"] .nre-keep-dark-surface :is(.text-accent-orange, .text-accent) {
+  color: #f5b45a;
 }
 
-html[data-site-theme="light"] .nre-keep-dark-surface .bg-navy {
-  background-color: #0d1b2e;
+.nre-announcement {
+  background-color: #191c24;
+  border-bottom: 1px solid #383e4c;
+  color: #eff0f5;
 }
-
-html[data-site-theme="light"] .nre-keep-dark-surface .bg-navy-panel {
-  background-color: #111f35;
+.nre-announcement :is(a, button):focus-visible {
+  outline: 2px solid #f5b45a;
+  outline-offset: 3px;
 }
 
 /* Contact / public inset panels — dark on navy theme, white card on light theme. */

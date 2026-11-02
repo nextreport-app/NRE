@@ -50,7 +50,7 @@ export function LoomVideoEmbed({
   }, [loadStrategy, active]);
 
   const shellClass =
-    `relative aspect-video min-h-[200px] w-full overflow-hidden rounded-lg border border-navy-border bg-[#0d1b2e] sm:min-h-[240px] ${className}`.trim();
+    `nre-keep-dark-surface relative aspect-video min-h-[200px] w-full overflow-hidden rounded-lg border border-navy-border bg-[#14161c] sm:min-h-[240px] ${className}`.trim();
 
   if (!active) {
     return (
@@ -58,7 +58,7 @@ export function LoomVideoEmbed({
         <button
           type="button"
           onClick={() => setActive(true)}
-          className="group absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center transition-colors hover:bg-[#111f35]"
+          className="group absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center transition-colors hover:bg-[#1d2028]"
           aria-label={`Play video: ${title}`}
         >
           <span
@@ -83,7 +83,7 @@ export function LoomVideoEmbed({
         title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
-        className="absolute inset-0 h-full w-full border-0 bg-[#0d1b2e]"
+        className="absolute inset-0 h-full w-full border-0 bg-[#14161c]"
       />
     </div>
   );

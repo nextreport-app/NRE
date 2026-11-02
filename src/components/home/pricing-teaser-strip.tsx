@@ -16,7 +16,7 @@ export function PricingTeaserStrip() {
 
   return (
     <section
-      className="nre-keep-dark-surface border-y border-navy-border bg-navy-panel px-4 py-8 sm:px-6 sm:py-10"
+      className="border-y border-navy-border bg-navy-panel px-4 py-8 sm:px-6 sm:py-10"
       aria-labelledby="pricing-teaser-heading"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -28,7 +28,7 @@ export function PricingTeaserStrip() {
         </div>
 
         <div className="flex flex-col items-center gap-5 lg:items-end">
-          <p className="text-center text-sm text-ink-secondary lg:text-right [&_span]:text-white">
+          <p className="text-center text-sm text-ink-secondary lg:text-right">
             <span className="font-medium text-white">{getPlanDisplayName("starter")}</span>
             {" from "}
             <span className="font-semibold text-white">

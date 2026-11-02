@@ -27,14 +27,14 @@ export default async function ContactPage() {
           <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
             Have a question, feedback, or need help with your NextReport account? We will respond
             within one business day. Want a live product walkthrough?{" "}
-            <Link href="/book-demo" className="text-[#f5b45a] hover:underline">
+            <Link href="/book-demo" className="text-accent-orange underline underline-offset-4 hover:decoration-2">
               Book a demo
             </Link>{" "}
             instead.
           </p>
           <p className="mt-3 text-sm text-ink-muted">
             Or email us directly:{" "}
-            <a href="mailto:hello@nextreport.in" className="text-[#f5b45a] hover:underline">
+            <a href="mailto:hello@nextreport.in" className="text-accent-orange underline underline-offset-4 hover:decoration-2">
               hello@nextreport.in
             </a>
           </p>
@@ -49,7 +49,7 @@ export default async function ContactPage() {
           <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
             Ideas, UX notes, or &quot;I wish the tool could…&quot; — use subject{" "}
             <span className="font-medium text-white">Product Feedback</span> below, or{" "}
-            <Link href="/feedback" className="text-[#f5b45a] hover:underline">
+            <Link href="/feedback" className="text-accent-orange underline underline-offset-4 hover:decoration-2">
               open the feedback page
             </Link>
             .

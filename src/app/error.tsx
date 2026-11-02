@@ -28,7 +28,7 @@ export default function RootError({
       <div className="flex gap-3">
         <button
           onClick={() => reset()}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-navy hover:bg-accent-hover"
         >
           Try again
         </button>

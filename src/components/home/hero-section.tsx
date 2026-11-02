@@ -8,7 +8,7 @@ import { HERO_SAMPLE_VALUES } from "@/lib/marketing-report-sample";
 /** One of the 8 metric cards in the hero's slide mockup — amber uppercase label, bold white value, matching the real PPTX campaign slide's own card style. */
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[#1e3a5f] bg-[#111f35] px-3 py-2.5">
+    <div className="rounded-lg border border-navy-border bg-navy-panel px-3 py-2.5">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[#f5b45a]">{label}</p>
       <p className="mt-1 text-base font-bold text-white sm:text-lg">{value}</p>
     </div>
@@ -25,7 +25,7 @@ function SlideMockup({
   metrics: { label: string; value: string }[];
 }) {
   return (
-    <div className="nre-keep-dark-surface w-full max-w-sm rounded-xl border border-[#1e3a5f] bg-[#0d1b2e] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
+    <div className="nre-keep-dark-surface w-full max-w-sm rounded-xl border border-navy-border bg-navy p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] sm:max-w-md">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">{campaign}</span>
         <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">

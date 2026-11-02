@@ -54,7 +54,7 @@ export function YouTubeVideoEmbed({
   }, [loadStrategy, active]);
 
   const shellClass =
-    `relative aspect-video min-h-[200px] w-full overflow-hidden rounded-lg border border-navy-border bg-[#0d1b2e] sm:min-h-[240px] ${className}`.trim();
+    `nre-keep-dark-surface relative aspect-video min-h-[200px] w-full overflow-hidden rounded-lg border border-navy-border bg-[#14161c] sm:min-h-[240px] ${className}`.trim();
 
   if (!active) {
     return (
@@ -103,7 +103,7 @@ export function YouTubeVideoEmbed({
         title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
-        className="absolute inset-0 h-full w-full border-0 bg-[#0d1b2e]"
+        className="absolute inset-0 h-full w-full border-0 bg-[#14161c]"
       />
     </div>
   );
