@@ -237,7 +237,7 @@ export function SupportTicketForm({
           multiple
           accept=".csv,.xlsx,.xls,.tsv,.txt,image/*,.pdf,.pptx"
           onChange={(e) => setAttachments(Array.from(e.target.files ?? []))}
-          className="block w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-dash-ink hover:file:bg-dash-accent-hover"
+          className="block w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#0b1728] hover:file:bg-dash-accent-hover"
         />
         {attachments.length > 0 ? (
           <p className="mt-1 text-xs text-dash-ink-muted">{attachments.map((f) => f.name).join(", ")}</p>
@@ -251,7 +251,7 @@ export function SupportTicketForm({
       <button
         type="submit"
         disabled={status === "loading"}
-        className="rounded-md bg-dash-accent px-5 py-2.5 text-sm font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-60"
+        className="rounded-md bg-dash-accent px-5 py-2.5 text-sm font-semibold text-[#0b1728] hover:bg-dash-accent-hover disabled:opacity-60"
       >
         {status === "loading" ? "Submitting…" : "Submit support ticket"}
       </button>
