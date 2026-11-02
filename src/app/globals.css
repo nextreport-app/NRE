@@ -7,20 +7,25 @@
   --foreground: #ffffff;
 
   /* Logged-in dashboard / wizard — referenced by Tailwind dash-* utilities via @theme. */
-  --nre-dash-bg: #0f172a;
-  --nre-dash-sidebar: #0d1b2e;
-  --nre-dash-card: #1e293b;
-  --nre-dash-border: #334155;
-  --nre-dash-ink: #f1f5f9;
-  --nre-dash-ink-secondary: #94a3b8;
+  --nre-dash-bg: #101217;
+  --nre-dash-sidebar: #14161c;
+  --nre-dash-card: #1d2028;
+  --nre-dash-border: #383e4c;
+  --nre-dash-ink: #eff0f5;
+  --nre-dash-ink-secondary: #adb3c0;
   --nre-dash-accent: #f5b45a;
-  --nre-dash-accent-hover: #ed8936;
-  --nre-dash-secondary: #1e3a5f;
-  --nre-dash-success: #68d391;
-  --nre-dash-error: #fc8181;
+  --nre-dash-accent-hover: #e9a447;
+  --nre-dash-secondary: #292d37;
+  --nre-dash-success: #8ac9ae;
+  --nre-dash-error: #f0b2ba;
   /* Inset panels (wizard callouts, nested boxes) — not pure white on dark. */
-  --nre-dash-inset: #151f33;
-  --nre-dash-popover: #0a1628;
+  --nre-dash-inset: #191c24;
+  --nre-dash-popover: #191c24;
+  --nre-dash-workspace: #14161c;
+  --nre-wizard-current-bg: #372d20;
+  --nre-wizard-current-ink: #f5d49e;
+  --nre-wizard-current-border: #927348;
+  --nre-wizard-section-border: 1px solid var(--nre-dash-border);
 }
 
 html[data-site-theme="light"] {
@@ -45,6 +50,14 @@ html[data-site-theme="light"] {
   --nre-dash-secondary: #e8e7e2;
   --nre-dash-inset: #efeeea;
   --nre-dash-popover: #ffffff;
+  --nre-dash-accent-hover: #ed8936;
+  --nre-dash-success: #68d391;
+  --nre-dash-error: #fc8181;
+  --nre-dash-workspace: #ffffff;
+  --nre-wizard-current-bg: #f5b45a;
+  --nre-wizard-current-ink: #000000;
+  --nre-wizard-current-border: #f5b45a;
+  --nre-wizard-section-border: initial;
 }
 
 html[data-site-theme="light"] body {
@@ -54,6 +67,36 @@ html[data-site-theme="light"] body {
 
 .nre-app-shell {
   color-scheme: dark;
+}
+
+/* Approved dark workspace: graphite page, lifted workspace, amber actions.
+   Marketing and light-mode surfaces retain their own existing palettes. */
+html:not([data-site-theme="light"]) .nre-app-shell .nre-report-wizard {
+  background-color: var(--nre-dash-workspace);
+  border: 1px solid var(--nre-dash-border);
+  border-radius: 1rem;
+  padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.nre-wizard-step-current {
+  background-color: var(--nre-wizard-current-bg);
+  border-color: var(--nre-wizard-current-border);
+  color: var(--nre-wizard-current-ink);
+}
+
+.nre-app-shell .nre-report-wizard :is(button, a, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--nre-dash-accent);
+  outline-offset: 3px;
+}
+
+html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-section-marker {
+  background-color: var(--nre-dash-inset);
+  border-color: var(--nre-dash-border);
+  color: var(--nre-dash-ink-secondary);
+}
+
+html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-client-bar {
+  background-color: var(--nre-dash-inset);
 }
 
 /* Brand lock — button corner radius is 8px everywhere, buttons and cards
@@ -98,12 +141,12 @@ html[data-site-theme="light"] body {
      components rendered inside src/app/(dashboard) (Nav, client
      list/detail/new, account, billing, the report wizard, ...) — every
      public-facing page keeps using the tokens above, unchanged. */
-  --color-dash-bg: var(--nre-dash-bg, #0f172a);
-  --color-dash-sidebar: var(--nre-dash-sidebar, #0d1b2e);
-  --color-dash-card: var(--nre-dash-card, #1e293b);
-  --color-dash-border: var(--nre-dash-border, #334155);
-  --color-dash-ink: var(--nre-dash-ink, #f1f5f9);
-  --color-dash-ink-secondary: var(--nre-dash-ink-secondary, #94a3b8);
+  --color-dash-bg: var(--nre-dash-bg, #101217);
+  --color-dash-sidebar: var(--nre-dash-sidebar, #14161c);
+  --color-dash-card: var(--nre-dash-card, #1d2028);
+  --color-dash-border: var(--nre-dash-border, #383e4c);
+  --color-dash-ink: var(--nre-dash-ink, #eff0f5);
+  --color-dash-ink-secondary: var(--nre-dash-ink-secondary, #adb3c0);
   --color-dash-accent: var(--nre-dash-accent, #f5b45a);
   --color-dash-accent-hover: var(--nre-dash-accent-hover, #ed8936);
   --color-dash-secondary: var(--nre-dash-secondary, #1e3a5f);
@@ -322,7 +365,7 @@ html[data-site-theme="light"] .public-site-header {
 
 .nre-app-shell {
   background-color: var(--nre-dash-bg);
-  background-image: linear-gradient(180deg, #0f172a 0%, #0d1b2e 100%);
+  background-image: none;
   color: var(--nre-dash-ink);
 }
 
@@ -634,7 +677,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-warn__body {
 
 .nre-wizard-callout-neutral {
   border: 1px solid rgb(100 116 139 / 0.45);
-  background-color: rgb(15 23 42 / 0.35);
+  background-color: var(--nre-dash-inset);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral {
@@ -677,13 +720,13 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-callout-neutral__icon {
 }
 
 .nre-wizard-client-bar__link {
-  color: #7dd3fc;
-  text-decoration-color: rgb(125 211 252 / 0.6);
+  color: #e7bd72;
+  text-decoration-color: rgb(231 189 114 / 0.6);
 }
 
 .nre-wizard-client-bar__link:hover {
-  color: #bae6fd;
-  text-decoration-color: #bae6fd;
+  color: #f5d49e;
+  text-decoration-color: #f5d49e;
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar {
@@ -714,7 +757,7 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
 }
 
 .nre-wizard-generate-success__header {
-  background: #122035;
+  background: var(--nre-dash-inset);
 }
 
 .nre-wizard-generate-success__check {
@@ -964,7 +1007,7 @@ body:has(#light-preview-page) .whatsapp-float {
 /* A distinct sharing workspace after the report is ready. */
 .nre-wizard-success-share {
   border-color: rgb(246 173 85 / 0.24);
-  background: radial-gradient(ellipse at 100% 0%, rgb(246 173 85 / 0.09), transparent 60%), linear-gradient(135deg, #152a40, #142235);
+  background: var(--nre-dash-inset);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
 }
 .nre-wizard-success-share__icon { background: rgb(246 173 85 / 0.12); color: var(--nre-dash-accent); }
@@ -986,14 +1029,14 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
 /* Wizard-wide contrast includes all four steps, mobile footers and dialogs.
    Match solid amber only; tinted selections and warning surfaces keep their ink. */
 .nre-app-shell .nre-report-wizard [class~="bg-dash-accent"] {
-  color: #0d1b2e;
+  color: #0b1728;
 }
 .nre-app-shell .nre-report-wizard button[class~="bg-dash-accent"] {
   border-radius: 0.5rem;
 }
 .nre-app-shell .nre-report-wizard button[class~="bg-dash-accent"]:disabled {
   background-color: color-mix(in srgb, var(--nre-dash-accent) 75%, var(--nre-dash-card));
-  color: #0d1b2e;
+  color: #0b1728;
   opacity: 1;
   cursor: not-allowed;
 }

@@ -30,7 +30,7 @@ export function StepIndicator({
                 onClick={() => onNavigate(s)}
                 className="flex w-full items-center justify-center gap-1.5 rounded-full px-2 py-1.5 font-medium text-dash-ink-secondary hover:text-dash-ink sm:w-auto sm:px-3"
               >
-                <span className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-[#68d391] sm:block" aria-hidden="true" />
+                <span className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-dash-success sm:block" aria-hidden="true" />
                 <span className="min-w-0 break-words">{wizardStepLabel(s, locale)}</span>
               </button>
             ) : (
@@ -38,7 +38,7 @@ export function StepIndicator({
                 aria-current={s === step ? "step" : undefined}
                 className={
                   s === step
-                    ? "block rounded-full bg-dash-accent px-2 py-1.5 text-center sm:px-3 font-semibold text-dash-ink"
+                    ? "nre-wizard-step-current block rounded-full border px-2 py-1.5 text-center sm:px-3 font-semibold"
                     : "block rounded-full border border-dash-border px-2 py-1.5 text-center sm:px-3 text-dash-ink-secondary"
                 }
               >
