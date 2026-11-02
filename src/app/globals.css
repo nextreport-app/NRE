@@ -1062,9 +1062,9 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
   color: #0d1b2e;
 }
 
-/* Wizard-wide contrast includes all four steps, mobile footers and dialogs.
-   Match solid amber only; tinted selections and warning surfaces keep their ink. */
-.nre-app-shell .nre-report-wizard [class~="bg-dash-accent"] {
+/* All solid amber app actions use dark ink, including new/edit client forms,
+   support, wizard footers and dialogs. Tinted selections keep their own ink. */
+.nre-app-shell [class~="bg-dash-accent"] {
   color: #0b1728;
 }
 .nre-app-shell .nre-report-wizard button[class~="bg-dash-accent"] {
