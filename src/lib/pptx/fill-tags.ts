@@ -24,6 +24,7 @@ import {
   ensureCardLabelValueGap,
   enforceMinFontSize,
   findCardIconRelId,
+  hideCardSlot,
   forceRunStyle,
   insertShapeBeforeSpTreeClose,
   ptToEmu,
@@ -39,7 +40,7 @@ import {
   setShapeWrap,
   type StyleOverride,
 } from "./ooxml";
-import { textBox } from "./shapes";
+import { textBox, resetShapeIdCounter } from "./shapes";
 import { fillCombinedTotalTable } from "./table-slide";
 import type { TemplateSlide } from "./package";
 import { emuToPt, estimateTextWidthPt, fitCardLabel, fitFontSizePt } from "./text-fit";
@@ -486,6 +487,7 @@ export function buildCampaignOrAdSetSlideXml(
   /** Website Traffic reports — hide the "(Campaign)" badge and use website header chrome. */
   websiteMode = false,
   isLightTemplate = false,
+  hideUnusedMetrics = false,
 ): string {
   const adGroupOrSetLabel =
     platform === "GOOGLE" || platform === "TIKTOK" ? " (Ad Group)" : " (Ad Set)";
@@ -612,6 +614,10 @@ export function buildCampaignOrAdSetSlideXml(
       // otherwise it would render as a raw, unfilled {{RESULT_LABEL}}/
       // {{COST_LABEL}}/{{METRIC_8_LABEL}} placeholder.
       if (!metric) {
+        if (hideUnusedMetrics) {
+          xml = hideCardSlot(xml, tag, CARD_SLOT_TAGS.filter(other => other !== tag));
+          return;
+        }
         // Card label/value spacing fix — applied to every slot
         // unconditionally, including this dashed-out one, while `tag` is
         // still present in the xml to locate the value shape by (it gets
@@ -815,9 +821,21 @@ export function buildDayBreakdownTableSlideXml(
   visibleColumns?: number[],
 ): string {
   const grid = buildHistoricalComparisonTableGrid(rows, headers);
-  grid[0][0] = "Date";
-  const xml = fillCombinedTotalTable(template.xml, grid, {
-    hideColIndexes: [...(headers.resultColumns.length <= 1 ? [8, 9] : []), ...dailyHiddenColumns(headers.resultColumns, excludedMetricKeys), ...(visibleColumns ? grid[0].map((_,index)=>index).filter(index=>!visibleColumns.includes(index)) : [])],
+  const hidden = new Set(dailyHiddenColumns(headers.resultColumns, excludedMetricKeys));
+  const columns = visibleColumns ?? grid[0].map((_, index) => index).filter(index => !hidden.has(index));
+  void platform;
+  return buildDailyTableGridSlideXml(template, grid.map((row, index) => columns.map(column => index === 0 && column === 0 ? "Date" : row[column])), isLightTemplate, slideIndex, slideCount);
+}
+
+/** Fill any selected daily metric columns using the existing colored table template. */
+export function buildDailyTableGridSlideXml(template: TemplateSlide, grid: string[][], isLightTemplate = false, slideIndex = 0, slideCount = 1, columnPage = 1, columnPages = 1): string {
+  const width = grid[0]?.length ?? 0;
+  if (width < 2 || width > 8) throw new Error("Daily table pages require Date and up to seven metrics.");
+  // The shared template filler expects its six base columns plus a result pair.
+  // Pad internally, then remove empty slots; the visible grid is arbitrary.
+  const padded = grid.map(row => [...row, ...Array(8 - row.length).fill("")]);
+  const xml = fillCombinedTotalTable(template.xml, padded, {
+    hideColIndexes: Array.from({length: 10 - width}, (_, index) => width + index),
     isLightTemplate,
     preserveHeaderLabels: true,
   });
@@ -828,6 +846,14 @@ export function buildDayBreakdownTableSlideXml(
     color: reportHeaderColor(isLightTemplate),
   });
   out = replaceLiteralText(out, "MONTHLY CAMPAIGN PERFORMANCE OVERVIEW", headerText);
+  if (columnPages > 1) {
+    resetShapeIdCounter(Math.max(1, ...[...out.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => Number(match[1]))));
+    out = insertShapeBeforeSpTreeClose(out, textBox({
+    x: 40, y: 85, w: 880, h: 20,
+    text: `${grid[1]?.[0] ?? ""} – ${grid.at(-1)?.[0] ?? ""} · Metrics ${columnPage}/${columnPages}`,
+    sizePt: 11, colorHex: reportHeaderColor(isLightTemplate),
+    }));
+  }
   // A cloned eighth daily row must fit above the slide footer. Table row
   // heights, rather than the graphic frame extent, control its rendered size.
   out = out.replace(/<p:graphicFrame\b[\s\S]*?<\/p:graphicFrame>/g, frame => {
@@ -837,7 +863,6 @@ export function buildDayBreakdownTableSlideXml(
     const maxHeight = Math.floor((540 * 12700 - top - 16 * 12700) / Math.max(1, rowCount));
     return frame.replace(/<a:tr\b([^>]*?)h="(\d+)"/g, (_, prefix, height) => `<a:tr${prefix}h="${Math.min(Number(height), maxHeight)}"`);
   });
-  void platform;
   return out;
 }
 

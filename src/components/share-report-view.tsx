@@ -1,4 +1,6 @@
-import { DailyTrendChart } from "./share-daily-trend";
+import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
+import { paginateDayBreakdownRows } from "@/lib/nre/day-breakdown-report-data";
+import { dailySummaryMetrics } from "@/lib/nre/daily-summary-metrics";
 import {
   buildCombinedTotalTableGrid,
   buildHistoricalComparisonTableGrid,
@@ -733,6 +735,8 @@ export function ShareReportView({
   const chart = visibleData.chart ?? null;
   const metricGuide = visibleData.metricGuide ?? [];
   const showCombinedTotal = visibleData.visibility?.combinedTotal !== false;
+  const dailyPages = visibleData.reportType === "DAY_BREAKDOWN" ? dailyMainTablePages({tableSlides: paginateDayBreakdownRows(visibleData.historicalComparisonRows ?? []), tableHeaderLabels: visibleData.tableHeaderLabels, dailyExcludedMetricKeys: visibleData.dailyExcludedMetricKeys, additionalTables: visibleData.dailyAdditionalTables}) : [];
+
   const showMetricGuide = visibleData.visibility?.metricGuide !== false;
   const showOverview = visibleData.visibility?.overview !== false;
   const showCover = visibleData.visibility?.cover !== false;
@@ -868,31 +872,25 @@ export function ShareReportView({
         )}
 
         {showCombinedTotal && visibleData.dailyPresentation?.summaryPages.map((metrics, index) => <section key={`daily-summary-${index}`} className={slideClass}><SlideCard>
-          <h2 className="mb-4 text-[22px] font-bold text-ink">Selected period totals{visibleData.dailyPresentation!.summaryPages.length > 1 ? ` · ${index + 1} of ${visibleData.dailyPresentation!.summaryPages.length}` : ""}</h2>
-          <p className="mb-4 text-ink-muted">{visibleData.fileDateRange}</p>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">{metrics.map(metric => <div key={metric.key} className="rounded-xl border border-ink/10 p-4"><p className="text-sm text-ink-muted">{metric.label}</p><p className="mt-3 text-2xl font-bold text-ink">{metric.value}</p></div>)}</div>
-          <p className="mt-4 text-sm text-ink-muted">{visibleData.dailyPresentation!.note}</p>
+          <CardReportTypeLabel label={`Selected period totals${visibleData.dailyPresentation!.summaryPages.length > 1 ? ` · ${index + 1} of ${visibleData.dailyPresentation!.summaryPages.length}` : ""}`} />
+          <h3 className="text-[22px] font-bold text-ink sm:text-[28px]">Selected campaigns · {visibleData.accountName}</h3>
+          <DateAndFrequency dateRange={visibleData.fileDateRange} adFrequency="" />
+          <div className="mt-5"><MetricGrid metrics={dailySummaryMetrics(metrics)} assetBaseUrl={assetBaseUrl} /></div>
+          <AiCopyBlock heading="Campaign Summary" text={`Performance totals for the selected campaigns across ${visibleData.fileDateRange}.`} />
+          <AiCopyBlock heading="Key Insights & Updates" text={visibleData.dailyPresentation!.note} />
         </SlideCard></section>)}
 
-        {showCombinedTotal && (
-        <section className={slideClass}>
-          <SlideCard>
-            <h2 className="mb-4 text-[22px] font-bold text-ink sm:text-[28px]">{visibleData.reportType === "DAY_BREAKDOWN" ? "Daily Performance Overview" : "Monthly Campaign Performance Overview"}</h2>
+        {showCombinedTotal && visibleData.reportType === "DAY_BREAKDOWN" && dailyPages.map((page, index) => <section key={`daily-table-${index}`} className={slideClass}><SlideCard>
+          <h2 className="mb-4 text-[22px] font-bold text-ink">Daily Performance Overview · {index + 1} of {dailyPages.length}{page.columnPages > 1 ? ` · Metrics ${page.columnPage}/${page.columnPages}` : ""}</h2>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{page.grid[0].map((label, column) => <th key={column} className="p-3 text-left">{label}</th>)}</tr></thead><tbody>{page.grid.slice(1).map((row, rowIndex) => <tr key={rowIndex}>{row.map((value, column) => <td key={column} className="border-t border-ink/10 p-3">{value}</td>)}</tr>)}</tbody></table></div>
+        </SlideCard></section>)}
+
+        {showCombinedTotal && visibleData.reportType !== "DAY_BREAKDOWN" && (
+          <section className={slideClass}><SlideCard>
+            <h2 className="mb-4 text-[22px] font-bold text-ink sm:text-[28px]">Monthly Campaign Performance Overview</h2>
             <CombinedTotalTable data={visibleData} compact={isPrint} />
-          </SlideCard>
-        </section>
+          </SlideCard></section>
         )}
-
-        {showCombinedTotal && visibleData.dailyAdditionalTables?.map((table, index) => <section key={`daily-extra-${index}`} className={slideClass}><SlideCard>
-          <h2 className="mb-4 text-[22px] font-bold text-ink">Additional daily metrics · {index + 1} of {visibleData.dailyAdditionalTables!.length}</h2>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{["Date", ...table.metrics.map(metric => metric.label)].map((label, column) => <th key={column} className="p-3 text-left">{label}</th>)}</tr></thead><tbody>{table.rows.map(row => <tr key={row.date}>{[row.date, ...row.values].map((value, column) => <td key={column} className="border-t border-ink/10 p-3">{value}</td>)}</tr>)}</tbody></table></div>
-        </SlideCard></section>)}
-
-        {showCombinedTotal && visibleData.dailyPresentation?.trendPages.map((page, index) => <section key={`daily-trend-${index}`} className={slideClass}><SlideCard>
-          <h2 className="mb-4 text-[22px] font-bold text-ink">Daily performance trend</h2>
-          <p className="mb-4 text-ink-muted">{page.startIso} – {page.endIso}</p>
-          <DailyTrendChart page={page} />
-        </SlideCard></section>)}
 
         {showMetricGuide && (
         <section className={slideClass}>

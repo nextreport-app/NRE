@@ -2932,7 +2932,7 @@ export function useReportUploadWizard({
       return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
-      return dayBreakdownData.isPaused ? 3 : 1 + Math.max(1, Math.ceil(dailyExtraMetricGuide(dayBreakdownData.additionalTables, dayBreakdownData.tableHeaderLabels.resultColumns, dayBreakdownData.dailyExcludedMetricKeys).length / METRIC_GUIDE_ENTRIES_PER_SLIDE)) + dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.additionalTables?.length ?? 0) + (dayBreakdownData.presentation?.summaryPages.length ?? 0) + (dayBreakdownData.presentation?.trendPages.length ?? 0);
+      return dayBreakdownData.isPaused ? 3 : 1 + Math.max(1, Math.ceil(dailyExtraMetricGuide(dayBreakdownData.additionalTables, dayBreakdownData.tableHeaderLabels.resultColumns, dayBreakdownData.dailyExcludedMetricKeys).length / METRIC_GUIDE_ENTRIES_PER_SLIDE)) + dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.presentation?.summaryPages.length ?? 0);
     }
     if (data) {
       const slides = [...data.campaignSlides, ...data.adSetSlides];

@@ -261,6 +261,16 @@ describe("findCardIconRelId / replaceCardIcon", () => {
 });
 
 describe("hideCardSlot", () => {
+  it("removes all three light-template siblings, leaving adjacent cards intact", () => {
+    const xml = '<p:sp><p:nvSpPr><p:cNvPr name="Kept"/></p:nvSpPr><a:t>Kept</a:t></p:sp>' +
+      '<p:sp><p:nvSpPr><p:cNvPr name="BlankBackground"/></p:nvSpPr></p:sp>' +
+      '<p:grpSp><p:pic><r:embed>icon</r:embed></p:pic></p:grpSp>' +
+      '<p:grpSp><p:sp><a:t>Unused label</a:t></p:sp><p:sp><a:t>{{UNUSED}}</a:t></p:sp></p:grpSp>';
+    const out = hideCardSlot(xml, "{{UNUSED}}");
+    expect(out).toContain('name="Kept"');
+    expect(out).not.toMatch(/BlankBackground|Unused label|icon|UNUSED/);
+  });
+
   it("removes the enclosing full-card group so unused chrome does not render", () => {
     const out = hideCardSlot(FULL_CARD_XML, "{{METRIC_SPEND}}");
     expect(out).not.toContain("{{METRIC_SPEND}}");

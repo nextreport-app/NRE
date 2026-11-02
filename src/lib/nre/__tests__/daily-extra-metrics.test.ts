@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseCsvText } from "../parse-csv";
 import { buildDayBreakdownReportData } from "../day-breakdown-report-data";
 import { dailyOptionalMetrics } from "../daily-extra-metrics";
+import { dailyMainTablePages } from "../daily-report-presentation";
 import { buildDayBreakdownShareReportData } from "../share-report";
 import { readFileSync } from "node:fs";
 import JSZip from "jszip";
@@ -50,6 +51,18 @@ describe("daily optional metrics", () => {
     expect(data.additionalTables!.flatMap(table => table.metrics.map(metric => metric.key))).toEqual(selected);
     expect(data.additionalTables!.every(table => table.rows.length === 2)).toBe(true);
   });
+  it("puts an eleven-column selection on matching daily-table continuation pages", () => {
+    const data = buildDayBreakdownReportData({ ...base, dailyMetricKeys: keys });
+    const pages = dailyMainTablePages(data);
+    expect(pages).toHaveLength(2);
+    expect(pages.map(page => page.grid[0].length)).toEqual([8, 4]);
+    expect(pages[0].grid.slice(1).map(row => row[0])).toEqual(pages[1].grid.slice(1).map(row => row[0]));
+    expect(pages[1].grid[0]).toEqual(["Date", "LINK CLICKS", "LANDING PAGE VIEWS", "COST PER LPV"]);
+    expect(pages[1].grid[1].slice(1)).toEqual(["60", "40", "$7.50"]);
+    expect(pages[1].grid[2].slice(1)).toEqual(["0", "0", "N/A"]);
+    expect(pages.map(page => page.columnPage)).toEqual([1, 2]);
+    expect(pages.every(page => page.columnPages === 2)).toBe(true);
+  });
   it("keeps old reports compatible without extras", () => {
     expect(buildDayBreakdownReportData(base).additionalTables).toEqual([]);
   });
@@ -66,14 +79,24 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("daily extra exports: %s", t
     const zip = await JSZip.loadAsync(buffer);
     const paths = Object.keys(zip.files).filter(path => /^ppt\/slides\/slide\d+\.xml$/.test(path)).sort((a,b) => Number(a.match(/slide(\d+)/)![1]) - Number(b.match(/slide(\d+)/)![1]));
     const slides = await Promise.all(paths.map(path => zip.file(path)!.async("string")));
-    expect(slides).toHaveLength(13);
+    expect(slides).toHaveLength(12);
     for (const xml of slides.filter(slide => slide.includes("DAILY PERFORMANCE OVERVIEW"))) {
       const table = xml.match(/<p:graphicFrame\b[\s\S]*?<\/p:graphicFrame>/)![0];
       const top = Number(table.match(/<a:off\b[^>]*y="(\d+)"/)![1]);
       const height = [...table.matchAll(/<a:tr\b[^>]*h="(\d+)"/g)].reduce((sum, row) => sum + Number(row[1]), 0);
       expect(top + height).toBeLessThanOrEqual((540 - 16) * 12700);
     }
-    expect(slides.filter(xml => xml.includes("ADDITIONAL DAILY METRICS"))).toHaveLength(4);
+    expect(slides.join("\n")).not.toMatch(/ADDITIONAL DAILY METRICS|DAILY PERFORMANCE TREND/);
+    expect(slides.filter(xml => xml.includes("DAILY PERFORMANCE OVERVIEW"))).toHaveLength(8);
+    const tables = slides.filter(xml => xml.includes("DAILY PERFORMANCE OVERVIEW"));
+    expect(tables.filter(xml => xml.includes("LINK CLICKS"))).toHaveLength(4);
+    for (const xml of tables) {
+      const header = xml.match(/<a:tr\b[^>]*>[\s\S]*?<\/a:tr>/)![0];
+      expect([...header.matchAll(/<a:tc>/g)].length).toBeLessThanOrEqual(8);
+      expect(header).toContain("Date");
+      const ids = [...xml.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => match[1]);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
     expect(slides.join("\n")).toContain("Oct 30, 2026");
     expect(slides.at(-1)).toContain("METRIC ABBREVIATION GUIDE");
     expect(slides.join("\n")).not.toContain("{{");
