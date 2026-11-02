@@ -33,7 +33,7 @@ describe("client-facing Daily copy", () => {
       "Daily website leads peaked at 5 on Oct 1, 2026.",
     );
     expect(copy.insights).toContain(
-      "Total reach is unavailable for this period.",
+      "Reach is an estimate of the people reached during this period.",
     );
     expect(copy.summary.length).toBeLessThanOrEqual(300);
     expect(copy.insights.length).toBeLessThanOrEqual(400);

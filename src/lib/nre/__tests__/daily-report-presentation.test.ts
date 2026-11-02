@@ -35,7 +35,7 @@ describe("Daily period totals and uniform tables", () => {
     expect(totals["COST PER WEBSITE LEAD"]).toBe("$30.00");
     expect(totals["CTR (ALL)"]).toBe("9.55%");
     expect(totals["CPC (ALL)"]).toBe("$1.43");
-    expect(totals.REACH).toBe("N/A");
+    expect(totals["REACH (EST.)"]).toBe("129");
     expect(buildDayBreakdownShareReportData(data).dailyPresentation).toEqual(
       data.presentation,
     );
