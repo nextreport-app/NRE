@@ -1,3 +1,4 @@
+import { dailyPeriodReach } from "./daily-period-reach";
 import { dailyObjectiveMetricKey } from "./daily-metric-selection";
 /**
  * Cross-check generated report totals against independent sums from the uploaded CSV.
@@ -1399,7 +1400,7 @@ export function reconcileDayBreakdownReportWithCsv(input: ReconcileDayBreakdownR
     else if(metric.key==="impressions")expected=rowsInRange.reduce((sum,row)=>sum+parseCellNum(row.impressions),0);
     else if(metric.key==="ctr")expected=periodRates.ctr;
     else if(metric.key==="cpc_all")expected=periodRates.cpc;
-    else if(metric.key==="reach")expected=null;
+    else if(metric.key==="reach"){expected=dailyPeriodReach(rowsInRange);tolerance=.51;}
     else {
       const column=input.report.tableHeaderLabels.resultColumns.find(column=>dailyObjectiveMetricKey("objective_results",column.label)===metric.key || dailyObjectiveMetricKey("objective_cost",column.label)===metric.key);
       if(column){

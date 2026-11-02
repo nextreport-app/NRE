@@ -89,6 +89,8 @@ export function dailyClientCopy(
         `No ${goal.label.toLowerCase()} were recorded during this period.`,
       );
   }
+  const reach = byKey.get("reach");
+  if (reach && available(reach.value) && reach.label.includes("(EST.)")) insights.push("Reach is an estimate of the people reached during this period.");
   const missing = metrics
     .filter(
       (metric) =>

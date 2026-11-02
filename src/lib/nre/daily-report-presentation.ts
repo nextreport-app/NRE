@@ -1,3 +1,5 @@
+import { dailyPeriodReach } from "./daily-period-reach";
+import { fmtNumber } from "./format";
 import { buildHistoricalComparisonTableGrid } from "./report-data";
 import type { DailyExtraTable } from "./daily-extra-metrics";
 import { dailyOptionalMetrics } from "./daily-extra-metrics";
@@ -126,8 +128,9 @@ export function buildDailyPresentation(input: {
       summary.push({ key, label, value });
   };
   add("spend", "AD SPEND", input.summaryRow.spend);
-  if (!excluded.includes("reach")) uniqueUnavailable = true;
-  add("reach", "REACH", "N/A");
+  const periodReach = dailyPeriodReach([...input.byDay.values()].flat());
+  if (!excluded.includes("reach") && periodReach === null) uniqueUnavailable = true;
+  add("reach", periodReach === null ? "REACH" : "REACH (EST.)", periodReach === null ? "N/A" : fmtNumber(periodReach));
   add("impressions", "IMPRESSIONS", input.summaryRow.impressions);
   add("ctr", "CTR (ALL)", input.summaryRow.ctr);
   add("cpc_all", "CPC (ALL)", input.summaryRow.cpc);
