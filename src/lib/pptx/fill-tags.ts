@@ -816,7 +816,7 @@ export function buildDayBreakdownTableSlideXml(
   const grid = buildHistoricalComparisonTableGrid(rows, headers);
   grid[0][0] = "Date";
   const xml = fillCombinedTotalTable(template.xml, grid, {
-    hideColIndexes: [...(headers.resultColumns.length <= 1 ? [8, 9] : []), ...dailyHiddenColumns(headers.resultColumns.length, excludedMetricKeys)],
+    hideColIndexes: [...(headers.resultColumns.length <= 1 ? [8, 9] : []), ...dailyHiddenColumns(headers.resultColumns, excludedMetricKeys)],
     isLightTemplate,
   });
   const headerText = `DAILY PERFORMANCE OVERVIEW${slideCount > 1 ? ` (${slideIndex + 1}/${slideCount})` : ""}`;
