@@ -1,3 +1,4 @@
+import { dailyClientCopy } from "../nre/daily-client-copy";
 import { dailyMainTablePages } from "../nre/daily-report-presentation";
 import { buildDailySummarySlide } from "./daily-presentation-slides";
 import { dailyExtraMetricGuide } from "../nre/daily-extra-metrics";
@@ -560,7 +561,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     },
   ];
 
-  if (!data.isPaused) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,data.presentation!.note,index,pages.length,isLightTemplate),rels:template.campaign.rels}));
+  if (!data.isPaused) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,dailyClientCopy(data.presentation!.summaryPages.flat(),data.dayRows),index,pages.length,isLightTemplate),rels:template.campaign.rels}));
 
   if (data.isPaused) {
     slides.push({

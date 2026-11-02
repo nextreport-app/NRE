@@ -183,7 +183,7 @@ export function buildDailyPresentation(input: {
   return {
     summaryPages: paginateExtraMetrics(summary),
     note: uniqueUnavailable
-      ? "Rates are calculated for the whole period. Unique Reach and Frequency cannot be totaled from daily CSV rows; N/A means unavailable."
-      : "Rates are calculated for the whole period, rather than averaged from daily rates.",
+      ? "N/A indicates that a period total is unavailable."
+      : "Figures cover the selected reporting period.",
   };
 }

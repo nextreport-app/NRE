@@ -1,3 +1,4 @@
+import { dailyClientCopy } from "@/lib/nre/daily-client-copy";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { paginateDayBreakdownRows } from "@/lib/nre/day-breakdown-report-data";
 import { dailySummaryMetrics } from "@/lib/nre/daily-summary-metrics";
@@ -735,6 +736,7 @@ export function ShareReportView({
   const chart = visibleData.chart ?? null;
   const metricGuide = visibleData.metricGuide ?? [];
   const showCombinedTotal = visibleData.visibility?.combinedTotal !== false;
+  const dailyCopy = dailyClientCopy(visibleData.dailyPresentation?.summaryPages.flat() ?? [], visibleData.historicalComparisonRows ?? []);
   const dailyPages = visibleData.reportType === "DAY_BREAKDOWN" ? dailyMainTablePages({tableSlides: paginateDayBreakdownRows(visibleData.historicalComparisonRows ?? []), tableHeaderLabels: visibleData.tableHeaderLabels, dailyExcludedMetricKeys: visibleData.dailyExcludedMetricKeys, additionalTables: visibleData.dailyAdditionalTables}) : [];
 
   const showMetricGuide = visibleData.visibility?.metricGuide !== false;
@@ -876,8 +878,8 @@ export function ShareReportView({
           <h3 className="text-[22px] font-bold text-ink sm:text-[28px]">Selected campaigns · {visibleData.accountName}</h3>
           <DateAndFrequency dateRange={visibleData.fileDateRange} adFrequency="" />
           <div className="mt-5"><MetricGrid metrics={dailySummaryMetrics(metrics)} assetBaseUrl={assetBaseUrl} /></div>
-          <AiCopyBlock heading="Campaign Summary" text={`Performance totals for the selected campaigns across ${visibleData.fileDateRange}.`} />
-          <AiCopyBlock heading="Key Insights & Updates" text={visibleData.dailyPresentation!.note} />
+          <AiCopyBlock heading="Campaign Summary" text={dailyCopy.summary} />
+          <AiCopyBlock heading="Key Insights & Updates" text={dailyCopy.insights} />
         </SlideCard></section>)}
 
         {showCombinedTotal && visibleData.reportType === "DAY_BREAKDOWN" && dailyPages.map((page, index) => <section key={`daily-table-${index}`} className={slideClass}><SlideCard>
