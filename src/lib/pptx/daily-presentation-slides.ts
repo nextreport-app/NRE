@@ -1,3 +1,4 @@
+import type { AiCopy } from "./fill-tags";
 import type { DailySummaryMetric } from "../nre/daily-report-presentation";
 import type { CampaignSlideData } from "../nre/report-data";
 import { dailySummaryMetrics } from "../nre/daily-summary-metrics";
@@ -10,7 +11,7 @@ export function buildDailySummarySlide(
   metrics: DailySummaryMetric[],
   accountName: string,
   heading: string,
-  note: string,
+  copy: AiCopy,
   page: number,
   pages: number,
   light = false,
@@ -52,10 +53,7 @@ export function buildDailySummarySlide(
   return buildCampaignOrAdSetSlideXml(
     template,
     slide,
-    {
-      summary: `Performance totals for the selected campaigns across ${heading}.`,
-      insights: note,
-    },
+    copy,
     "WEEKLY",
     "META",
     false,
