@@ -116,7 +116,7 @@ function ReportUploadWizardBody() {
         <div>
           {clientLine}
           <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Choose report type and generate</h1>
-          <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
+          <p className="text-[14px] text-dash-ink-secondary">{w.wizardDraftBootstrapping ? "Restoring your saved setup…" : "Loading your report…"}</p>
         </div>
       </div>
     );
@@ -179,6 +179,7 @@ function ReportUploadWizardBody() {
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
           message={w.uploadSessionRecovery}
+          hasOriginalFile={!!w.mtdFile}
           reanalyzing={w.reanalyzeSessionStatus === "loading"}
           onReanalyze={() => void w.handleReanalyzeSession()}
           onStartOver={w.handleGenerateAnother}
