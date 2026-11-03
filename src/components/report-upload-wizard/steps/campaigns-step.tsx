@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import {
   campaignCsvSummaryHasWizardSignal,
@@ -76,6 +76,8 @@ function csvObjectiveStatusLine(
 
 export function WizardCampaignsStep() {
   const w = useWizardContext();
+  const [zeroSpendExpanded, setZeroSpendExpanded] = useState(false);
+  const zeroSpendListId = useId();
   const copy = useWizardCopy();
   const { locale } = useSiteTheme();
   const stepActive = w.step === 2;
@@ -199,6 +201,7 @@ export function WizardCampaignsStep() {
             value={campaignSearch}
             onChange={(e) => setCampaignSearch(e.target.value)}
             placeholder="Search campaigns"
+            aria-label="Search campaigns"
             className="w-full max-w-xs rounded-md border border-dash-border bg-dash-bg px-3 py-1.5 text-[14px] text-dash-ink outline-none focus:border-dash-accent sm:w-56"
           />
         )}
@@ -213,18 +216,18 @@ export function WizardCampaignsStep() {
         </div>
       )}
 
-      <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
+      <div className="space-y-3">
         {(() => {
           const query = campaignSearch.trim().toLowerCase();
           const visible = query ? campaigns.filter((name) => name.toLowerCase().includes(query)) : campaigns;
           if (visible.length === 0) {
             return (
-              <li className="px-4 py-3 text-[14px] text-dash-ink-secondary">
+              <p className="px-4 py-3 text-[14px] text-dash-ink-secondary">
                 No campaigns match “{campaignSearch.trim()}”.
-              </li>
+              </p>
             );
           }
-          return visible.map((name) => {
+          const renderCampaigns = (names: string[]) => names.map((name) => {
             const isSelected = selectedCampaigns.has(name);
             const group = adSetGroups.find((g) => g.campaignName === name);
             const isExpanded = expandedCampaigns.has(name);
@@ -361,8 +364,43 @@ export function WizardCampaignsStep() {
               </li>
             );
           });
+          const listClass = "divide-y divide-dash-border rounded-lg border border-dash-border";
+          // Search includes every campaign, even when the zero-spend group is collapsed.
+          if (query) return <ul className={listClass}>{renderCampaigns(visible)}</ul>;
+          const zeroSpend = visible.filter(name => campaignSpend[name] === 0);
+          const withSpend = visible.filter(name => campaignSpend[name] !== 0);
+          const zeroSpendSelected = zeroSpend.filter(name => selectedCampaigns.has(name)).length;
+          return (
+            <>
+              {withSpend.length > 0 ? <ul className={listClass}>{renderCampaigns(withSpend)}</ul> : null}
+              {zeroSpend.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border border-dash-border">
+                  <button
+                    type="button"
+                    aria-expanded={zeroSpendExpanded}
+                    aria-controls={zeroSpendListId}
+                    onClick={() => setZeroSpendExpanded(open => !open)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-dash-accent"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[14px] font-semibold text-dash-ink">Zero-spend campaigns ({zeroSpend.length.toLocaleString("en-US")})</span>
+                      <span className="mt-1 block text-[13px] text-dash-ink-secondary">{zeroSpendSelected} included · {zeroSpendExpanded ? "Hide campaigns" : "Expand to review or include"}</span>
+                    </span>
+                    <span aria-hidden="true" className="shrink-0 text-dash-ink-secondary">{zeroSpendExpanded ? "▲" : "▼"}</span>
+                  </button>
+                  <div id={zeroSpendListId} hidden={!zeroSpendExpanded}>
+                    {zeroSpendExpanded ? (
+                      <div role="region" aria-label="Zero-spend campaigns" tabIndex={0} className="max-h-96 overflow-y-auto overscroll-contain border-t border-dash-border focus-visible:outline-2 focus-visible:outline-dash-accent">
+                        <ul className="divide-y divide-dash-border">{renderCampaigns(zeroSpend)}</ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          );
         })()}
-      </ul>
+      </div>
       </section>
 
       {selectedCampaigns.size > 0 ? (
