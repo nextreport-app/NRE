@@ -929,8 +929,11 @@ export function useReportUploadWizard({
         const ctx = await ctxRes.json().catch(() => null);
         if (cancelled) return;
 
-        if (!ctx?.ok || ctx.uploadSessionExpired) {
-          handleUploadSessionExpired(ctx?.error);
+        const completeCampaignContext = Array.isArray(ctx?.campaigns) && ctx.campaigns.length > 0
+          && ctx.campaignSpend && Array.isArray(ctx.adSetGroups)
+          && ctx.campaigns.every((name: unknown) => typeof name === "string" && typeof ctx.campaignSpend[name] === "number" && Number.isFinite(ctx.campaignSpend[name]));
+        if (!ctxRes.ok || !ctx?.ok || ctx.uploadSessionExpired || !completeCampaignContext) {
+          handleUploadSessionExpired(ctx?.error || "Saved setup could not be restored completely. Upload and analyze your CSV again to continue.");
           stepRef.current = 1;
           setStepState(1);
           setVisitedSteps(new Set([1]));
@@ -959,11 +962,20 @@ export function useReportUploadWizard({
         setDateMode(restoredDates?.mode ?? draft.dateMode);
         setCustomStart(restoredDates?.customStart ?? draft.customStart);
         setCustomEnd(restoredDates?.customEnd ?? draft.customEnd);
-        setCampaigns(draft.campaigns);
-        setSelectedCampaigns(
-          new Set(draft.selectedCampaigns.filter((name) => draft!.campaigns.includes(name))),
-        );
-        setSelectedAdSets(new Set(draft.selectedAdSets));
+        const restoredCampaigns: string[] = ctx.campaigns;
+        setCampaigns(restoredCampaigns);
+        setCampaignSpend(ctx.campaignSpend);
+        setLowSpendCampaigns(ctx.lowSpendCampaigns ?? []);
+        const restoredGroups: AdSetGroup[] = ctx.adSetGroups;
+        setAdSetGroups(restoredGroups);
+        setExpandedCampaigns(new Set());
+        setMetaCsvExportProfile(ctx.metaCsvExportProfile ?? null);
+        setHasAdLevelCsv(!!ctx.hasAdLevelCsv);
+        setCsvDateGuidance(ctx.csvDateGuidance ?? null);
+        const restoredSelection = draft.selectedCampaigns.filter(name => restoredCampaigns.includes(name));
+        setSelectedCampaigns(new Set(restoredSelection));
+        const validAdSets = new Set(restoredGroups.flatMap(group => group.adSetNames.map(name => adSetKey(group.campaignName, name))));
+        setSelectedAdSets(new Set(draft.selectedAdSets.filter(key => validAdSets.has(key))));
         setPerCampaignMetrics(perCampaignMetricsFromDraft(draft.perCampaignMetrics));
         setCampaignObjectives(campaignObjectivesFromDraft(draft.campaignObjectives));
         setWeeklyOptions(ctx.weeklyOptions ?? draft.weeklyOptions ?? null);
@@ -987,7 +999,7 @@ export function useReportUploadWizard({
 
         if (draft.step >= 3) {
           setObjectivesLockedForReport(true);
-          const selectionKey = draft.selectedCampaigns.slice().sort().join("|");
+          const selectionKey = restoredSelection.slice().sort().join("\0");
           setMetricsFetchedForSelection(selectionKey);
           metricsFetchedKeyRef.current = selectionKey;
         }
@@ -1000,6 +1012,13 @@ export function useReportUploadWizard({
           draft.data || draft.comparisonData || draft.historicalData || draft.dayBreakdownData;
         if (draft.step >= 4 && !hasPreviewPayload) {
           draftRestorePreviewPendingRef.current = true;
+        }
+      } catch {
+        if (!cancelled) {
+          handleUploadSessionExpired("Could not restore your saved setup. Upload and analyze your CSV again to continue.");
+          stepRef.current = 1;
+          setStepState(1);
+          setVisitedSteps(new Set([1]));
         }
       } finally {
         draftRestoringRef.current = false;

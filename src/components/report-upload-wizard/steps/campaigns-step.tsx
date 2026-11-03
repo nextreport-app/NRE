@@ -235,8 +235,9 @@ export function WizardCampaignsStep() {
             const isSingleAdSet = w.reportType !== "DAY_BREAKDOWN" && !!group && group.adSetNames.length === 1;
             const allAdSetsDeselected =
               !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
-            const spend = campaignSpend[name] ?? 0;
-            const lowSpend = isLowSpendCampaign(name, campaignSpend);
+            const spend = campaignSpend[name];
+            const spendKnown = typeof spend === "number" && Number.isFinite(spend);
+            const lowSpend = spendKnown && isLowSpendCampaign(name, campaignSpend);
             return (
               <li key={name} className="px-4 py-2.5">
                 <div className="flex items-center gap-3">
@@ -254,6 +255,7 @@ export function WizardCampaignsStep() {
                   >
                     {name}
                   </label>
+                  {!spendKnown ? <span className="shrink-0 text-[13px] text-dash-ink-secondary">Spend unavailable</span> : null}
                   {lowSpend ? (
                     <span className="shrink-0 text-[14px] font-semibold tabular-nums text-amber-400">
                       Last 30 days spend detected · {currencySymbol}

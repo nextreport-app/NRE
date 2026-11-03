@@ -3,11 +3,13 @@
 export function UploadSessionRecoveryBanner({
   message,
   reanalyzing,
+  hasOriginalFile = true,
   onReanalyze,
   onStartOver,
 }: {
   message: string;
   reanalyzing?: boolean;
+  hasOriginalFile?: boolean;
   onReanalyze: () => void;
   onStartOver?: () => void;
 }) {
@@ -21,7 +23,7 @@ export function UploadSessionRecoveryBanner({
           disabled={reanalyzing}
           className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-[#0b1728] hover:bg-dash-accent-hover disabled:opacity-50"
         >
-          {reanalyzing ? "Re-analyzing…" : "Re-analyze same file"}
+          {reanalyzing ? "Re-analyzing…" : hasOriginalFile ? "Re-analyze same file" : "Upload CSV again"}
         </button>
         {onStartOver ? (
           <button

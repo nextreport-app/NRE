@@ -1,3 +1,8 @@
+import { extractCampaignNames, extractCampaignSpend, isLowSpendCampaign, sortCampaignsBySpend } from "@/lib/nre/campaigns";
+import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
+import { hasAdLevelData } from "@/lib/nre/ad-level";
+import { detectMetaCsvExportProfile } from "@/lib/nre/meta-csv-export-profile";
+import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -10,14 +15,15 @@ import { loadWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import { computeWizardUploadDateContext } from "@/lib/nre/wizard-upload-date-context";
 import { uploadSessionIdSchema } from "@/lib/validators/report-wizard";
 
+export const maxDuration = 300;
+
 const bodySchema = z.object({
   uploadSessionId: uploadSessionIdSchema,
 });
 
 /**
- * Rehydrate weekly/MTD date options from a cached analyze upload session
- * after a page refresh — the wizard draft stores selections but needs these
- * computed ranges to render Last 7 days and comparison presets.
+ * Rehydrate CSV-backed facts from the authenticated upload session. Drafts
+ * store user choices; spend and ad-set data must come from the original rows.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -50,8 +56,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const context = computeWizardUploadDateContext(payload.rows, client.timezone);
 
+    const campaignSpend = extractCampaignSpend(payload.rows);
+    const campaigns = sortCampaignsBySpend(extractCampaignNames(payload.rows), campaignSpend);
     return NextResponse.json({
       ok: true,
+      campaigns,
+      campaignSpend,
+      lowSpendCampaigns: campaigns.filter(name => isLowSpendCampaign(name, campaignSpend)),
+      adSetGroups: extractSpendingAdSetGroups(payload.rows),
+      hasAdLevelCsv: hasAdLevelData(payload.headers),
+      metaCsvExportProfile: payload.platform === "META" ? detectMetaCsvExportProfile(payload.colMap, payload.rows, payload.headers) : null,
+      csvDateGuidance: payload.rows.some(row => row._reportPeriod) ? null : analyzeCsvDateGuidance(payload.rows, new Date(), client.timezone),
       headers: payload.headers,
       metricHeaderProfile: buildCsvMetricHeaderProfile(payload.headers,payload.rows),
       ...context,
