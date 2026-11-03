@@ -125,7 +125,7 @@ describe("CSV-first reporting cutoff", () => {
   });
   it("shows the amber cutoff note only when the CSV ends before yesterday", () => {
     const html=renderToStaticMarkup(<CsvReportingDateNote bounds={bounds} timezone={timezone} now={now}/>);
-    expect(html).toContain("October 31, 2026");expect(html).toContain("November 1, 2026");expect(html).toContain("missing days are not treated as zero");
+    expect(html).toContain("October 31, 2026");expect(html).toContain("November 1, 2026");expect(html).toContain("Review the reporting dates shown or continue anyway.");
     expect(renderToStaticMarkup(<CsvReportingDateNote bounds={{...bounds,maxIso:"2026-11-01"}} timezone={timezone} now={now}/>)).toBe("");
   });
 });
