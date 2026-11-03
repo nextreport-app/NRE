@@ -4,6 +4,7 @@ import { resultBarLayout } from "../../pptx/chart-slide-layout";
 import { estimateTextWidthPt } from "../../pptx/text-fit";
 import {
   buildCampaignShortLabels,
+  buildCampaignBarLabels,
   fitCampaignNameForSingleBarLine,
   formatCampaignDisplayName,
   formatRankedCampaignLabel,
@@ -94,5 +95,28 @@ describe("buildCampaignShortLabels", () => {
     expect(fitted).toMatch(/…$/);
     const line = `1. ${fitted}`;
     expect(estimateTextWidthPt(line, layout.nameSizePt)).toBeLessThanOrEqual(labelWidthPt);
+  });
+});
+
+describe("client-facing campaign bar identities", () => {
+  it("keeps the purpose and audience/date rather than only the final underscore token", () => {
+    const traffic = "SouthavenRV&Marine_Traffic_LinkClicks";
+    const reach = "SouthavenRV_Reach_Retargeting_April 9";
+    const labels = buildCampaignBarLabels([traffic, reach]);
+    expect(labels.get(traffic)).toBe("Traffic_LinkClicks Campaign");
+    expect(labels.get(reach)).toBe("Retargeting_April 9 Campaign");
+    for (const [rank, name] of [...labels.values()].entries()) {
+      expect(fitCampaignNameForSingleBarLine(name, rank + 1, resultBarColumns(true).trackW - 96, resultBarLayout(2).nameSizePt)).toBe(name);
+    }
+  });
+  it("restores context for colliding suffixes and avoids repeating Campaign", () => {
+    const labels = buildCampaignBarLabels(["BrandA_Traffic_LinkClicks", "BrandB_Traffic_LinkClicks", "Summer Campaign"]);
+    expect(labels.get("BrandA_Traffic_LinkClicks")).not.toBe(labels.get("BrandB_Traffic_LinkClicks"));
+    expect(labels.get("Summer Campaign")).toBe("Summer Campaign");
+  });
+  it("keeps Campaign visible when a long identity must be shortened", () => {
+    const fitted = fitCampaignNameForSingleBarLine("A very long retargeting campaign identity with many words Campaign", 1, 356, 18);
+    expect(fitted).toMatch(/… Campaign$/);
+    expect(estimateTextWidthPt(`1. ${fitted}`, 18)).toBeLessThanOrEqual(356 * 0.96);
   });
 });

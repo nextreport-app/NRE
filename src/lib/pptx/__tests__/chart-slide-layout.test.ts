@@ -11,7 +11,16 @@ describe("MTD visual chart slide layout", () => {
     const header = MTD_VISUAL.panelHeadingH + 8;
     const available = MTD_VISUAL.panelH - header;
     expect(layout.rowH * 5).toBeLessThanOrEqual(available);
-    expect(layout.nameSizePt).toBeLessThanOrEqual(15);
+    expect(layout.nameSizePt).toBe(16);
+    expect(layout.metricsSizePt).toBeGreaterThanOrEqual(14);
+  });
+
+  it.each([1, 2, 3, 4, 5, 6])("fits readable donut labels and values for %i objectives", count => {
+    const layout = groupedDonutLayout(count, MTD_VISUAL.panelY);
+    const bottom = layout.blockTopY + layout.donutD + 16 + count * (layout.legendRowH + layout.legendRowGap) - layout.legendRowGap;
+    expect(bottom).toBeLessThanOrEqual(MTD_VISUAL.panelY + MTD_VISUAL.panelH);
+    expect(layout.legendSizePt).toBeGreaterThanOrEqual(14);
+    expect(layout.legendValueSizePt).toBeGreaterThanOrEqual(12.5);
   });
 
   it("keeps grouped donut block inside the left panel for five segments", () => {

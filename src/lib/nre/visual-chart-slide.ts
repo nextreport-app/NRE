@@ -9,7 +9,7 @@ import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive, parseCellNum } from "
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import {
-  buildCampaignShortLabels,
+  buildCampaignBarLabels,
   CHART_CAMPAIGN_DISPLAY_MAX,
   fitCampaignNameForSingleBarLine,
   formatCampaignDisplayName,
@@ -409,7 +409,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     const colors = new Map(ordered.map(c => [c.name,
       groupedDonut.find(segment => segment.name === toTitleCaseChartLabel(c.resLabel.trim().toUpperCase()))?.color ?? "64748b",
     ]));
-    const labels = buildCampaignShortLabels(ordered.map(c => c.name), 28);
+    const labels = buildCampaignBarLabels(ordered.map(c => c.name));
     const shown = ordered.slice(0, MAX_ROWS);
     const primaryResLabel = ordered[0]!.resLabel;
     const resultLabel = toTitleCaseChartLabel(primaryResLabel);
@@ -508,6 +508,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       includeSpend: false,
       includeResultsShare: false,
       showValues: true,
+      displayLabels: buildCampaignBarLabels(barSource.map(c => c.name)),
       barScale: "results",
       ...(splitNameLayout
         ? {

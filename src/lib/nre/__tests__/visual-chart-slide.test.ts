@@ -113,7 +113,7 @@ describe("buildVisualChartSlideModel", () => {
     const fourth = model.resultBars.find((b) => b.rank === 4);
     expect(fourth).toBeTruthy();
     expect(fourth!.name.length).toBeLessThan(longFourth.length);
-    expect(fourth!.name).toMatch(/…$/);
+    expect(fourth!.name).toMatch(/… Campaign$/);
   });
 
   it("keeps a short campaign name untruncated on split-panel bars", () => {
@@ -129,7 +129,7 @@ describe("buildVisualChartSlideModel", () => {
       "A$",
     );
     expect(model.useSplitPanel).toBe(true);
-    expect(model.resultBars.find((b) => b.name === shortName)?.name).toBe(shortName);
+    expect(model.resultBars.find((b) => b.fullName === shortName)?.name).toBe(`${shortName} Campaign`);
   });
 
   it("uses spend donut + results bars when two or more campaigns report", () => {
@@ -236,7 +236,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.useSplitPanel).toBe(true);
     expect(model.groupedDonut).not.toBeNull();
     expect(model.resultBars).toHaveLength(2);
-    expect(model.resultBars.map((b) => b.name)).toEqual(["Alpha", "Beta"]);
+    expect(model.resultBars.map((b) => b.name)).toEqual(["Alpha Campaign", "Beta Campaign"]);
     expect(model.panelSubheading).toContain("Bars show spend (different goals)");
     expect(model.summaryLine).not.toContain("Budget Used");
   });
@@ -399,7 +399,7 @@ describe("buildVisualChartSlideModel", () => {
     );
 
     expect(model.resultBars.map((b) => b.name)).toEqual([
-      "Traffic Campaign", "Tractor", "UTV", "CFMOTO", "September",
+      "DC - Traffic Campaign", "Traffic - Tractor Campaign", "Traffic - UTV Campaign", "Traffic - CFMOTO Campaign", "Traffic_September Campaign",
     ]);
     expect(model.resultBars[0]!.barPct).toBe(100);
     expect(model.resultBars[1]!.barPct).toBeLessThan(100);

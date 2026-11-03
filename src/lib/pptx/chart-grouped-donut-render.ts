@@ -74,7 +74,7 @@ export function appendGroupedDonutOoxml(
   let legendY = donutY + layout.donutD + 16;
   const legendTextW = opts.leftW - 80;
   for (const seg of opts.segments) {
-    const nameSize = fitFontSizePt(seg.name, legendTextW, [layout.legendSizePt, 11, 10, 9]);
+    const nameSize = fitFontSizePt(seg.name, legendTextW, [layout.legendSizePt, 14, 12]);
     const swatchX = opts.leftX + opts.leftW / 2 - estimateTextWidthPt(seg.name, nameSize) / 2 - LEGEND_SWATCH_PT - 6;
     shapes.push(
       rectangle({
@@ -88,7 +88,7 @@ export function appendGroupedDonutOoxml(
         x: opts.leftX + 40,
         y: legendY,
         w: legendTextW,
-        h: 15,
+        h: layout.legendNameH,
         text: seg.name,
         bold: true,
         sizePt: nameSize,
@@ -99,8 +99,8 @@ export function appendGroupedDonutOoxml(
         nowrap: false,
       }),
     );
-    shapes.push(textBox({ x: opts.leftX, y: legendY + 15, w: opts.leftW, h: 13,
-      text: formatGroupedDonutLegendValue(seg), sizePt: 10.5, colorHex: opts.colors.inkMuted,
+    shapes.push(textBox({ x: opts.leftX, y: legendY + layout.legendNameH, w: opts.leftW, h: layout.legendValueH,
+      text: formatGroupedDonutLegendValue(seg), sizePt: layout.legendValueSizePt, colorHex: opts.colors.inkMuted,
       align: "ctr", anchor: "t", nowrap: true }));
     legendY += layout.legendRowH + layout.legendRowGap;
   }
@@ -160,13 +160,13 @@ export function buildGroupedDonutSvg(opts: {
   let legendY = donutY + layout.donutD + 16;
   const legendTextX = opts.leftX + opts.leftW / 2;
   for (const seg of opts.segments) {
-    const nameSize = fitFontSizePt(seg.name, opts.leftW - 80, [layout.legendSizePt, 11, 10, 9]);
+    const nameSize = fitFontSizePt(seg.name, opts.leftW - 80, [layout.legendSizePt, 14, 12]);
     const swatchY = legendY + 3;
     const swatchX = legendTextX - estimateTextWidthPt(seg.name, nameSize) / 2 - LEGEND_SWATCH_PT - 6;
     parts.push(
       `<rect x="${swatchX}" y="${swatchY}" width="${LEGEND_SWATCH_PT}" height="${LEGEND_SWATCH_PT}" rx="2" fill="#${seg.color}"/>`,
-      `<text x="${legendTextX}" text-anchor="middle" y="${legendY + 12}" fill="#cbd5e1" font-family="Poppins, Arial, sans-serif" font-size="${nameSize}" font-weight="600">${escapeXml(seg.name)}</text>`,
-      `<text x="${legendTextX}" text-anchor="middle" y="${legendY + 26}" fill="#94a3b8" font-family="Poppins, Arial, sans-serif" font-size="10.5">${escapeXml(formatGroupedDonutLegendValue(seg))}</text>`,
+      `<text x="${legendTextX}" text-anchor="middle" y="${legendY + nameSize}" fill="#cbd5e1" font-family="Poppins, Arial, sans-serif" font-size="${nameSize}" font-weight="600">${escapeXml(seg.name)}</text>`,
+      `<text x="${legendTextX}" text-anchor="middle" y="${legendY + layout.legendNameH + layout.legendValueSizePt}" fill="#94a3b8" font-family="Poppins, Arial, sans-serif" font-size="${layout.legendValueSizePt}">${escapeXml(formatGroupedDonutLegendValue(seg))}</text>`,
     );
     legendY += layout.legendRowH + layout.legendRowGap;
   }
