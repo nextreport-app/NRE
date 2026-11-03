@@ -1087,3 +1087,22 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
 .nre-app-shell .nre-clients-page [class~="bg-dash-accent"] {
   color: #0d1b2e;
 }
+
+/* Client-facing reports have a stable graphite presentation regardless of the viewer's site theme. */
+.nre-client-report {
+  color-scheme: dark;
+  --nre-site-canvas: #101217;
+  --nre-site-panel: #1d2028;
+  --nre-site-border: #383e4c;
+  --nre-site-ink: #eff0f5;
+  --nre-site-secondary: #cbd0db;
+  --nre-site-muted: #adb3c0;
+  --color-navy: #101217;
+  --color-navy-panel: #1d2028;
+  --color-navy-border: #383e4c;
+  --color-ink: #eff0f5;
+  --color-ink-secondary: #cbd0db;
+  --color-ink-muted: #adb3c0;
+  background-color: #101217;
+  color: #eff0f5;
+}

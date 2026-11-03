@@ -123,11 +123,11 @@ export function ShareComparisonReportView({
   return (
     <div
       id={isPrint ? "share-report-print" : "share-report-page"}
-      className={isPrint ? "bg-navy" : "min-h-screen"}
+      className={isPrint ? "bg-navy" : "nre-client-report min-h-screen"}
       style={{
         fontFamily: "var(--font-inter), sans-serif",
-        backgroundColor: "#0d1b2e",
-        backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
+        backgroundColor: isPrint ? "#0d1b2e" : undefined,
+        backgroundImage: isPrint ? "radial-gradient(circle, #1e3a5f 1px, transparent 1px)" : undefined,
         backgroundSize: "32px 32px",
       }}
     >
@@ -140,10 +140,10 @@ export function ShareComparisonReportView({
             shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
-                className="inline-flex items-center justify-center rounded-md border border-accent-orange px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-accent-orange/10 sm:px-3.5 sm:py-2 sm:text-[14px]"
-                style={{ backgroundColor: "#1e293b" }}
+                aria-label="Download PowerPoint report"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#f5b45a] bg-[#f5b45a] px-3 py-2 text-[12px] font-semibold leading-none text-[#0b1728] transition-colors hover:bg-[#e9a447] sm:px-4 sm:py-2.5 sm:text-[14px]"
               >
-                <span className="hidden min-[400px]:inline">Download </span>PPTX
+                <span className="hidden min-[400px]:inline">Download</span><span>PPTX</span>
               </a>
             ) : null
           }
@@ -154,7 +154,7 @@ export function ShareComparisonReportView({
         <section className="mb-8 break-inside-avoid rounded-xl border border-navy-border bg-navy-panel px-4 py-6 text-center sm:px-8 sm:py-9">
           <div
             className="mx-auto inline-flex items-center gap-2 rounded-full"
-            style={{ backgroundColor: "#1e293b", border: "1px solid #334155", padding: "3px 10px" }}
+            style={{ backgroundColor: "#292d37", border: "1px solid #383e4c", padding: "3px 10px" }}
           >
             <span className="text-[11px] font-semibold uppercase text-[#94a3b8] sm:text-[13px]" style={{ letterSpacing: "0.08em" }}>
               {sharePlatformBadge(data.platform).label} · COMPARISON
