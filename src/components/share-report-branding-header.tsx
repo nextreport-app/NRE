@@ -17,7 +17,7 @@ export function ShareReportBrandingHeader({
   return (
     <header
       className="sticky top-0 z-10 border-b border-navy-border px-3 py-2 sm:px-6 sm:py-0"
-      style={{ backgroundColor: "#0d1b2e" }}
+      style={{ backgroundColor: "#14161c" }}
     >
       <div className="mx-auto flex max-w-[960px] items-center justify-between gap-2 sm:min-h-[56px] sm:gap-3">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">

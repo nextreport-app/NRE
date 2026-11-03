@@ -313,27 +313,26 @@ function VisualSpendDonut({
     stops: [...acc.stops, `#${seg.color} ${acc.end}% ${acc.end + seg.percentage}%`],
   }), { stops: [], end: 0 }).stops.join(", ");
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex w-full flex-col items-center">
       <div
         className="relative flex h-[188px] w-[188px] items-center justify-center rounded-full"
         style={{ background: `conic-gradient(${gradient})` }}
       >
         <div
           className="flex h-[122px] w-[122px] items-center justify-center rounded-full text-center text-[18px] font-bold text-[#f1f5f9]"
-          style={{ backgroundColor: "#111f35" }}
+          style={{ backgroundColor: "#191c24" }}
         >
           <div><span className="block">{centerLabel}</span><span className="mt-1 block text-[9px] font-medium tracking-wide text-[#94a3b8]">TOTAL SPEND</span></div>
         </div>
       </div>
-      <ul className="mt-4 w-full space-y-3 text-center text-[15px] text-[#94a3b8]">
+      <ul className="mt-5 w-full space-y-3 text-center text-[14px] text-[#adb3c0]">
         {segments.map((seg, i) => (
-          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="relative mx-auto flex w-fit max-w-full min-w-0 items-start justify-center gap-2">
-            <span
-              className="absolute -left-4 top-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: `#${seg.color}` }}
-              aria-hidden="true"
-            />
-            <span className="min-w-0"><span className="block text-[16px] font-semibold text-[#cbd5e1]">{seg.name}</span><span className="block text-[14px]">{formatGroupedDonutLegendValue(seg)}</span></span>
+          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <span className="inline-flex items-center gap-2 whitespace-nowrap text-[16px] font-semibold text-[#eff0f5]">
+              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: `#${seg.color}` }} aria-hidden="true" />
+              {seg.name}
+            </span>
+            <span className="whitespace-nowrap tabular-nums">{formatGroupedDonutLegendValue(seg)}</span>
           </li>
         ))}
       </ul>
@@ -381,7 +380,7 @@ function VisualResultBar({
         ) : null}
       </div>
       <div
-        className={`relative mt-2 w-full overflow-hidden rounded-full bg-[#2a3441] ${compact ? "h-[6px]" : "h-[7px]"}`}
+        className={`relative mt-2 w-full overflow-hidden rounded-full bg-[#383e4c] ${compact ? "h-[6px]" : "h-[7px]"}`}
       >
         <div
           className="absolute inset-y-0 left-0 rounded-full"
@@ -413,21 +412,21 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
         <div
           className="mt-5 flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4 sm:p-5"
-          style={{ backgroundColor: "#111f35" }}
+          style={{ backgroundColor: "#191c24" }}
         >
           {splitPanel ? (
-            <div className="grid min-h-[320px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.2fr)] lg:items-center">
-              <div className="min-w-0">
-                <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.leftHeading}</p>
-                <div className="mt-4 flex justify-center lg:justify-start">
+            <div className="grid min-h-[320px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.2fr)] lg:items-stretch">
+              <div className="flex min-w-0 flex-col">
+                <p className="text-[16px] font-bold uppercase tracking-wide text-[#adb3c0]">{model.leftHeading}</p>
+                <div className="mt-5 flex justify-center">
                   <VisualSpendDonut segments={model.groupedDonut!} centerLabel={model.groupedDonutCenterLabel} />
                 </div>
               </div>
-              <div className="hidden h-[280px] w-px bg-[#1e3a5f] lg:block" aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.rightHeading}</p>
+              <div className="hidden w-px self-stretch bg-[#383e4c] lg:block" aria-hidden="true" />
+              <div className="flex min-w-0 flex-col">
+                <p className="text-[16px] font-bold uppercase tracking-wide text-[#adb3c0]">{model.rightHeading}</p>
                 {model.panelSubheading ? <p className="mt-1 text-[12px] leading-snug text-[#94a3b8]">{model.panelSubheading}</p> : null}
-                <div className={`mt-3 ${barGapClass}`}>
+                <div className={`mt-5 flex flex-1 flex-col justify-center ${barGapClass}`}>
                   {model.resultBars.map((bar) => (
                     <VisualResultBar
                       key={`${bar.rank}-${bar.name}`}
@@ -749,7 +748,7 @@ export function ShareReportView({
   return (
     <div
       id={isPrint ? "share-report-print" : "share-report-page"}
-      className={isPrint ? "bg-navy" : "min-h-screen"}
+      className={isPrint ? "bg-navy" : "nre-client-report min-h-screen"}
       style={
         isPrint
           ? {
@@ -758,12 +757,7 @@ export function ShareReportView({
               backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
               backgroundSize: "32px 32px",
             }
-          : {
-              fontFamily: "var(--font-inter), sans-serif",
-              backgroundColor: "#0d1b2e",
-              backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
-              backgroundSize: "32px 32px",
-            }
+          : { fontFamily: "var(--font-inter), sans-serif" }
       }
     >
       {!isPrint ? (
@@ -775,10 +769,10 @@ export function ShareReportView({
             shareToken ? (
               <a
                 href={`/api/r/${shareToken}/download`}
-                className="inline-flex items-center justify-center rounded-md border border-accent-orange px-2.5 py-1.5 text-[12px] font-semibold leading-none text-white hover:bg-accent-orange/10 sm:px-3.5 sm:py-2 sm:text-[14px]"
-                style={{ backgroundColor: "#1e293b" }}
+                aria-label="Download PowerPoint report"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#f5b45a] bg-[#f5b45a] px-3 py-2 text-[12px] font-semibold leading-none text-[#0b1728] transition-colors hover:bg-[#e9a447] sm:px-4 sm:py-2.5 sm:text-[14px]"
               >
-                <span className="hidden min-[400px]:inline">Download </span>PPTX
+                <span className="hidden min-[400px]:inline">Download</span><span>PPTX</span>
               </a>
             ) : null
           }
@@ -795,7 +789,7 @@ export function ShareReportView({
             <div className="flex min-h-0 flex-col items-center justify-center px-1 text-center sm:h-full">
               <div
                 className="inline-flex max-w-full items-center gap-2 rounded-full"
-                style={{ backgroundColor: "#1e293b", border: "1px solid #334155", padding: "3px 10px" }}
+                style={{ backgroundColor: "#292d37", border: "1px solid #383e4c", padding: "3px 10px" }}
               >
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2"
