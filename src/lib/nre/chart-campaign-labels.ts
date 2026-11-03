@@ -92,6 +92,25 @@ export function buildCampaignShortLabels(names: string[], max = CHART_CAMPAIGN_L
   return result;
 }
 
+/** Keep campaign context rather than reducing an underscore name to a single token. */
+export function buildCampaignBarLabels(names: string[]): Map<string, string> {
+  const unique = [...new Set(names.map(name => name.trim()).filter(Boolean))];
+  const parts = unique.map(name => name.split(/_| \| | - | – | — | \/ |: | · /).map(part => part.trim()).filter(Boolean));
+  const labels = new Map<string, string>();
+  unique.forEach((name, index) => {
+    const tokens = parts[index]!;
+    let count = Math.min(2, tokens.length);
+    const separator = name.includes("_") ? "_" : " - ";
+    let label = tokens.slice(-count).join(separator);
+    // Restore more of the original identity when short suffixes collide.
+    while (count < tokens.length && parts.some((other, otherIndex) => otherIndex !== index && other.slice(-count).join(separator).toLowerCase() === label.toLowerCase())) {
+      label = tokens.slice(-++count).join(separator);
+    }
+    labels.set(name, /\bcampaign\b/i.test(label) ? label : `${label} Campaign`);
+  });
+  return labels;
+}
+
 /** Rank-prefixed label for color matching between donut legend and result bars. */
 export function formatRankedCampaignLabel(rank: number, shortLabel: string): string {
   return `${rank}. ${shortLabel}`;
@@ -150,7 +169,10 @@ export function fitCampaignNameForSingleBarLine(
   }
 
   for (let maxChars = trimmed.length - 1; maxChars >= 8; maxChars--) {
-    const candidate = formatCampaignDisplayName(trimmed, maxChars);
+    const suffix = / Campaign$/i.test(trimmed) ? " Campaign" : "";
+    const candidate = suffix
+      ? `${formatCampaignDisplayName(trimmed.slice(0, -suffix.length), Math.max(2, maxChars - suffix.length))}${suffix}`
+      : formatCampaignDisplayName(trimmed, maxChars);
     if (estimateTextWidthPt(rankedBarLine(rank, candidate), fontSizePt) <= maxW) {
       return candidate;
     }

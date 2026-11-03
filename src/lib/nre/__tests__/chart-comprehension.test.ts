@@ -47,10 +47,32 @@ describe("client-readable chart identity and metric contracts", () => {
     }
   });
 
+  it("keeps meaningful Southaven identities and larger supporting type in PPT and SVG", () => {
+    const data = projectChartSlideToShareChart(chart([
+      campaign("SouthavenRV_Reach_Retargeting_April 9", 1821.11, 328769, "REACH", "COST PER 1000 PEOPLE REACHED"),
+      campaign("SouthavenRV&Marine_Traffic_LinkClicks", 1806.61, 5642, "LINK CLICKS", "COST PER LINK CLICK"),
+    ]), "$");
+    const svg = buildMtdOverviewSvg(data);
+    for (const light of [false, true]) {
+      const xml = buildMtdOverviewSlideXml(data, background, light);
+      for (const name of ["Retargeting_April 9 Campaign", "Traffic_LinkClicks Campaign"]) {
+        expect(xml).toContain(name);
+        expect(svg).toContain(name);
+      }
+      const runs = [...xml.matchAll(/<a:r>[\s\S]*?<\/a:r>/g)].map(match => match[0]);
+      const results = runs.find(run => run.includes("5,642 link clicks"));
+      const spend = runs.find(run => run.includes("50.2% of spend"));
+      expect(results).toContain('sz="1600"');
+      expect(spend).toContain('sz="1400"');
+    }
+    expect(svg).toMatch(/font-size="16"[^>]*>5,642 link clicks/);
+    expect(svg).toMatch(/font-size="14"[^>]*>50.2% of spend/);
+  });
+
   it("aggregates repeated objectives into one slice while preserving campaign bars", () => {
     const model = buildVisualChartSlideModel(chart(rows), "$");
     expect(model.leftHeading).toBe("Spend by Objective");
-    expect(model.resultBars.map(bar => bar.name)).toEqual(["September", "Alpha", "Gamma", "Beta", "Delta"]);
+    expect(model.resultBars.map(bar => bar.name)).toEqual(["Traffic_September Campaign", "Traffic - Alpha Campaign", "Traffic - Gamma Campaign", "Traffic - Beta Campaign", "Traffic - Delta Campaign"]);
     for (const bar of model.resultBars) {
       expect(rows.map(row => row.name)).toContain(bar.fullName);
     }
@@ -69,8 +91,8 @@ describe("client-readable chart identity and metric contracts", () => {
     const data = projectChartSlideToShareChart(chart(rows), "$");
     for (const output of [buildMtdOverviewSlideXml(data, background, false), buildMtdOverviewSlideXml(data, background, true), buildMtdOverviewSvg(data)]) {
       expect(output).toContain("SPEND BY OBJECTIVE");
-      expect(output).toContain("1. September");
-      expect(output).toContain("5. Delta");
+      expect(output).toContain("1. Traffic_September Campaign");
+      expect(output).toContain("5. Traffic - Delta Campaign");
       expect(output).toContain("2,200");
       expect(output).toContain("$2,700.00");
       expect(output).not.toContain("SPEND BY CAMPAIGN");
@@ -84,10 +106,10 @@ describe("client-readable chart identity and metric contracts", () => {
     ]), "$");
     expect(model.isMultiObjective).toBe(true);
     for (const bar of model.resultBars) {
-      expect(bar.color).toBe(model.groupedDonut!.find(segment => segment.name === bar.name || segment.name === "Link Clicks")?.color);
+      expect(bar.color).toBe(model.groupedDonut!.find(segment => segment.name === (bar.fullName === "Purchases" ? "Purchases" : "Link Clicks"))?.color);
     }
     expect(model.panelSubheading).toContain("spend (different goals)");
-    expect(model.resultBars[0]).toMatchObject({ name: "Purchases", valueLabel: "$200", barPct: 100 });
+    expect(model.resultBars[0]).toMatchObject({ name: "Purchases Campaign", valueLabel: "$200", barPct: 100 });
     expect(model.resultBars[1].barPct).toBe(50);
     expect(model.summaryLine).not.toContain("1,002");
     expect(model.summaryLine).not.toContain("Average");

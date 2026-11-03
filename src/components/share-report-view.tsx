@@ -333,7 +333,7 @@ function VisualSpendDonut({
               style={{ backgroundColor: `#${seg.color}` }}
               aria-hidden="true"
             />
-            <span className="min-w-0"><span className="block text-[13px] font-medium text-[#cbd5e1]">{seg.name}</span><span className="block text-[12px]">{formatGroupedDonutLegendValue(seg)}</span></span>
+            <span className="min-w-0"><span className="block text-[16px] font-semibold text-[#cbd5e1]">{seg.name}</span><span className="block text-[14px]">{formatGroupedDonutLegendValue(seg)}</span></span>
           </li>
         ))}
       </ul>
@@ -368,14 +368,14 @@ function VisualResultBar({
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-3">
         <p
-          className={`min-w-0 flex-1 truncate whitespace-nowrap font-medium leading-snug text-white ${compact ? "text-[13px]" : "text-[14px]"}`}
+          className={`min-w-0 flex-1 break-words font-medium leading-snug text-white sm:truncate sm:whitespace-nowrap ${compact ? "text-[16px]" : "text-[17px]"}`}
           title={`${rank}. ${fullName ?? name}`}
         >
           <span className="mr-1 text-[#94a3b8]">{rank}.</span>
           {name}
         </p>
         {rightLabel ? (
-          <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[12px]" : "text-[13px]"}`}>
+          <p className={`shrink-0 font-medium tabular-nums text-white ${compact ? "text-[16px]" : "text-[17px]"}`}>
             {rightLabel}
           </p>
         ) : null}
@@ -388,7 +388,7 @@ function VisualResultBar({
           style={{ width: `${widthPct}%`, backgroundColor: `#${color}` }}
         />
       </div>
-      <p className={`mt-1.5 leading-snug text-[#8a8a8a] ${compact ? "text-[12px]" : "text-[14px]"}`}>{statLine}</p>
+      <p className={`mt-1.5 leading-snug text-[#cbd5e1] ${compact ? "text-[14px]" : "text-[16px]"}`}>{statLine}</p>
     </div>
   );
 }

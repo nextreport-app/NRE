@@ -158,14 +158,14 @@ export function resultBarLayout(barCount: number, hasSubheading = true): ResultB
   const barH = Math.max(12, Math.round(MTD_VISUAL.barH * scale));
   const nameBarGap = Math.max(2, Math.round(4 * scale));
   const barFooterGap = Math.max(2, Math.round(4 * scale));
-  const nameSizePt = scale <= 0.72 ? 12 : scale <= 0.82 ? 13 : scale <= 0.92 ? 14 : 15;
-  const metricsSizePt = scale <= 0.72 ? 11 : scale <= 0.82 ? 12 : scale <= 0.92 ? 13 : 14;
+  const nameSizePt = barCount >= 4 ? 16 : 17;
+  const metricsSizePt = barCount >= 4 ? 14 : 16;
   const nameHFit = Math.max(nameH, Math.ceil(nameSizePt * 1.28));
   // Poppins needs more line height than its point size in native Office shapes.
   const metricsHFit = Math.max(metricsH, Math.ceil(metricsSizePt * 1.4) + 2);
 
   const contentH = nameHFit + nameBarGap + barH + barFooterGap + metricsHFit;
-  const rowHAdjusted = Math.max(rowH, contentH + Math.max(4, Math.round(MTD_VISUAL.barRowGap * scale * 0.5)));
+  const rowHAdjusted = Math.max(rowH, contentH + (barCount >= 4 ? 6 : 8));
 
   const blockH = barCount * rowHAdjusted;
   const startY = MTD_VISUAL.panelY + header + Math.max(0, (available - blockH) / 2);
@@ -193,6 +193,9 @@ export interface GroupedDonutLayout {
   legendRowH: number;
   legendRowGap: number;
   legendSizePt: number;
+  legendValueSizePt: number;
+  legendNameH: number;
+  legendValueH: number;
   blockTopY: number;
 }
 
@@ -201,17 +204,20 @@ export function groupedDonutLayout(segmentCount: number, panelTopY: number): Gro
   const header = MTD_VISUAL.panelHeadingH + 8;
   const available = MTD_VISUAL.panelH - header;
 
-  const donutD = segmentCount >= 6 ? 124 : segmentCount >= 5 ? 144 : segmentCount >= 4 ? 164 : MTD_VISUAL.groupedDonutD;
-  // Two readable lines per campaign: its identity, then spend/share.
-  const legendRowH = 28;
-  const legendRowGap = 4;
-  const legendSizePt = 12;
-
+  const dense = segmentCount >= 5;
+  const legendSizePt = dense ? 14 : 16;
+  const legendValueSizePt = dense ? 12.5 : 14;
+  const legendNameH = dense ? 20 : 22;
+  const legendValueH = dense ? 18 : 20;
+  const legendRowH = legendNameH + legendValueH;
+  const legendRowGap = dense ? 4 : 6;
   const legendH = segmentCount * (legendRowH + legendRowGap) - legendRowGap;
+  const preferredD = segmentCount >= 5 ? 144 : segmentCount >= 4 ? 164 : MTD_VISUAL.groupedDonutD;
+  const donutD = Math.min(preferredD, available - 16 - legendH);
   const blockH = donutD + 16 + legendH;
   const blockTopY = panelTopY + header + Math.max(0, (available - blockH) / 2);
 
-  return { donutD, legendRowH, legendRowGap, legendSizePt, blockTopY };
+  return { donutD, legendRowH, legendRowGap, legendSizePt, legendValueSizePt, legendNameH, legendValueH, blockTopY };
 }
 
 /** Vertically center the grouped donut + legend block inside the left panel. */
