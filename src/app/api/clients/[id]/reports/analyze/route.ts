@@ -33,6 +33,9 @@ import { parseMtdCsvForAdPlatform } from "@/lib/nre/tiktok-columns";
 import { tryFetchMetaCustomConversionResultTypesForUser } from "@/lib/nre/meta-custom-conversion-catalog";
 import { hashUploadBuffer, saveWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 
+// Large day-wise exports need time for validation and parsed-session storage.
+export const maxDuration = 300;
+
 const DEFAULT_DATE_SELECTION: DateSelection = { mode: "last7" };
 
 /**
