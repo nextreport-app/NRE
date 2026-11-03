@@ -40,7 +40,20 @@ export function sourceNumericIssues(rows: NreRow[], map: ColumnMap, platform: "M
 export function duplicateDailyFacts(rows: NreRow[]): string[] {
   const seen = new Set<string>();
   const duplicates: string[] = [];
+  const numericHeaderCache = new Map<string, boolean>();
   for (const row of rows) {
+    // Identically named inactive entities are common in Meta exports without IDs.
+    // They cannot duplicate delivered facts, but remain available for selection.
+    const mappedActivity = [row.spend, row.results, row.reach, row.impressions, row.ctr, row.cpc, row.cpr, row.frequency, row.link_clicks, row.purchases, row.website_leads, row.meta_leads, row.leads, row.landing_page_views];
+    const hasValue = (value: string | undefined) => !!value?.trim() && !/^(?:0+(?:\.0+)?|—|-|n\/?a)$/i.test(value.trim());
+    const active = mappedActivity.some(hasValue) || Object.entries(row._raw).some(([header, value]) => {
+      if (!numericHeaderCache.has(header)) {
+        const definition = findMetaMetric(header) || findGoogleMetric(header);
+        numericHeaderCache.set(header, !!definition && ["primary", "secondary"].includes(definition.type) && !!definition.format && ["currency", "number", "percentage", "ratio"].includes(definition.format));
+      }
+      return numericHeaderCache.get(header) && hasValue(value);
+    });
+    if (!active) continue;
     const raw = Object.fromEntries(Object.entries(row._raw).map(([h, v]) => [h.trim().toLowerCase(), v.trim()]));
     const parsed = parseDate(getRowDate(row));
     const day = parsed ? `${parsed.year}-${String(parsed.month).padStart(2, "0")}-${String(parsed.day).padStart(2, "0")}` : "";

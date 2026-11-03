@@ -1,4 +1,5 @@
 "use client";
+import { fetchWizardUpload, uploadFailureMessage } from "./upload-transport";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { selectedMetricHeaders, type CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { dailyBaseMetrics, dailyMetricIsExcluded, expandDailyExclusions } from "@/lib/nre/daily-metric-selection";
@@ -1299,7 +1300,7 @@ export function useReportUploadWizard({
     setAnalyzeMessage(null);
     setMismatchWarning(false);
 
-    const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
@@ -1307,7 +1308,7 @@ export function useReportUploadWizard({
 
     if (!res?.ok || !json) {
       setAnalyzeStatus("error");
-      setAnalyzeMessage("Something went wrong analyzing the CSV. Please try again.");
+      setAnalyzeMessage(uploadFailureMessage(res, json, "Something went wrong analyzing the CSV. Please try again."));
       return;
     }
 
@@ -1371,7 +1372,7 @@ export function useReportUploadWizard({
     setAnalyzeStatus("loading");
     setAnalyzeMessage(null);
 
-    const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { platform, reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
@@ -1381,7 +1382,7 @@ export function useReportUploadWizard({
     if (!res?.ok || !json?.valid) {
       setAnalyzeStatus("error");
       setAnalyzeMessage(
-        json?.errors?.[0]?.message || "Could not re-analyze your file. Try uploading again from step 1.",
+        json?.error || json?.errors?.[0]?.message || "Could not re-analyze your file. Try uploading again from step 1.",
       );
       return;
     }
@@ -1467,7 +1468,7 @@ export function useReportUploadWizard({
     setAnalyzeMessage(null);
     setMismatchWarning(false);
 
-    const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(file, {
         platform: selectedPlatformCard,
@@ -1521,7 +1522,7 @@ export function useReportUploadWizard({
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
 
-    const res = await fetch(`/api/clients/${clientId}/reports/analyze`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/analyze`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { platform: selectedPlatformCard, reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined }),
     }).catch(() => null);
@@ -1531,7 +1532,7 @@ export function useReportUploadWizard({
 
     if (!res?.ok || !json) {
       setAnalyzeStatus("error");
-      setAnalyzeMessage("Something went wrong analyzing the CSV. Please try again.");
+      setAnalyzeMessage(uploadFailureMessage(res, json, "Something went wrong analyzing the CSV. Please try again."));
       return;
     }
 
@@ -1642,7 +1643,7 @@ export function useReportUploadWizard({
     const campaignsForRequest = options?.selectedCampaignsOverride ?? Array.from(selectedCampaigns);
     const platformForRequest = options?.platformOverride ?? platform;
 
-    const res = await fetch(`/api/clients/${clientId}/reports/metrics`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/metrics`, {
       method: "POST",
       body: buildUploadFormData(
         mtdFile,
@@ -2148,7 +2149,7 @@ export function useReportUploadWizard({
     setPreviewErrors([]);
     setPreviewMessage(null);
 
-    const res = await fetch(`/api/clients/${clientId}/reports/preview`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/preview`, {
       method: "POST",
       body: buildUploadFormData(
         mtdFile,
@@ -2331,7 +2332,7 @@ export function useReportUploadWizard({
     setCopied(false);
     setShareToken(null);
 
-    const res = await fetch(`/api/clients/${clientId}/reports`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports`, {
       method: "POST",
       body: buildUploadFormData(
         mtdFile,
@@ -2433,7 +2434,7 @@ export function useReportUploadWizard({
     setPmsStatus("loading");
     setPmsError(null);
 
-    const res = await fetch(`/api/clients/${clientId}/reports`, {
+    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports`, {
       method: "POST",
       body: buildUploadFormData(mtdFile, { platform, reportType: "PREVIOUS_MONTH_SUMMARY" }, uploadSessionId),
     }).catch(() => null);
