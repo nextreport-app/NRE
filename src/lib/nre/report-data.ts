@@ -971,6 +971,7 @@ export function buildPausedAccountMessage(accountName: string, reportType: Repor
 
 function buildLast30DaysChartSlide(params: {
   filteredMtdDailyRows: NreRow[];
+  dateBoundsRows?: NreRow[];
   chartRange: DateRangeIso;
   now: Date;
   timezone: string;
@@ -988,7 +989,7 @@ function buildLast30DaysChartSlide(params: {
   const resultCountingMode = params.resultCountingMode ?? "standard";
   const chartRange = capRangeToData(
     params.chartRange,
-    params.filteredMtdDailyRows,
+    params.dateBoundsRows ?? params.filteredMtdDailyRows,
     params.now,
     params.timezone,
   );
@@ -1172,9 +1173,10 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // When the CSV ends before calendar yesterday, capRangeToData shifts the labeled
   // week back (e.g. Oct 11–17). Aggregation must use that same window — not the
   // uncapped calendar last7 (Oct 12–18), or deck totals drop the first day.
+  // Date bounds use the full upload; campaign selection filters financial observations only.
   const effectiveWeeklyRange =
     resolvedWeeklyRange && !isCalendarSpanReport
-      ? capRangeToData(resolvedWeeklyRange, filteredMtdDailyRows, now, timezone)
+      ? capRangeToData(resolvedWeeklyRange, mtdDailyRows, now, timezone)
       : resolvedWeeklyRange;
   const split = splitMtdDaily(filteredMtdDailyRows, now, {
     ...(effectiveWeeklyRange ? { weeklyRange: effectiveWeeklyRange } : {}),
@@ -1366,7 +1368,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   let globalWeekDateRange = "";
   let displayWeeklyRange: DateRangeIso | undefined;
   const displayCalendarRange = isCalendarSpanReport
-    ? capRangeToData(mtdCalendarRange, filteredMtdDailyRows, now, timezone)
+    ? capRangeToData(mtdCalendarRange, mtdDailyRows, now, timezone)
     : undefined;
   if (isCalendarSpanReport && displayCalendarRange) {
     globalWeekDateRange = getDateRangeShortLabel(displayCalendarRange.startIso, displayCalendarRange.endIso);
@@ -1394,11 +1396,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       ? fileStartDate + " to " + fileEndDate
       : "Date range unavailable";
 
-  const reportDateStr = formatCoverReportDate(filteredMtdDailyRows, now, timezone);
+  const reportDateStr = formatCoverReportDate(mtdDailyRows, now, timezone);
 
   const chartRange = resolveStandardChartRange({
     reportType,
-    rows: filteredMtdDailyRows,
+    rows: mtdDailyRows,
     now,
     timezone,
     primaryRange: displayWeeklyRange ?? resolvedWeeklyRange ?? null,
@@ -1554,6 +1556,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
     const chart = buildLast30DaysChartSlide({
       filteredMtdDailyRows,
+      dateBoundsRows: mtdDailyRows,
       chartRange,
       now,
       timezone,
@@ -2074,6 +2077,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // ── Visual chart slide (last 30 days) ───────────────────────────────────
   const chart = buildLast30DaysChartSlide({
     filteredMtdDailyRows,
+    dateBoundsRows: mtdDailyRows,
     chartRange,
     now,
     timezone,

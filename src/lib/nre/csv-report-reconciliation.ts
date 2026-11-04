@@ -36,7 +36,7 @@ import {
   resolveStandardChartRange,
   type DateRangeIso,
 } from "./date-range";
-import { validateWeeklyCsvDayRowsPresent } from "./weekly-csv-coverage";
+import { eachDayInWeeklyRange, validateWeeklyCsvDayRowsPresent } from "./weekly-csv-coverage";
 import { filterRawRowsToRange } from "./creative-report-data";
 import { objectiveRate } from "./objective-rate";
 import { resolveObjectiveFromResultType } from "./result-type-map";
@@ -210,10 +210,18 @@ function attributedSpendForLabelFromRawDailyRows(
 }
 
 function primaryResultColumn(report: ReportData): { label: string; costLabel: string; value: string; cprValue: string } | null {
-  const cols = report.mtdRow.resultColumns.filter((c) => c.label !== "RESULTS");
-  if (cols.length === 0) return null;
-  const sorted = [...cols].sort((a, b) => parseCellNum(b.value) - parseCellNum(a.value));
-  return sorted[0] ?? null;
+  // An empty new month must not suppress verification of the week or rolling chart.
+  const sources = [
+    report.mtdRow.resultColumns,
+    report.campaignSlides.map(slide => ({ label: slide.resultLabel, costLabel: slide.costLabel, value: slide.metrics.results, cprValue: slide.metrics.cpr })),
+    (report.chart?.snapshot.objectives ?? []).map(objective => ({ label: objective.label, costLabel: objective.cprLabel, value: objective.resultsValue, cprValue: objective.cprValue })),
+    report.periodRow.resultColumns,
+  ];
+  for (const source of sources) {
+    const cols = source.filter(column => column.label !== "RESULTS");
+    if (cols.length) return [...cols].sort((a, b) => parseCellNum(b.value) - parseCellNum(a.value))[0];
+  }
+  return null;
 }
 
 function primaryResultColumnFromTableRow(row: TableRowData): { label: string; costLabel: string; value: string; cprValue: string } | null {
@@ -769,7 +777,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     (reportType === "WEEKLY" ? computeWeeklyRangeOptions(filtered, now, timezone)?.last7 : undefined);
   const effectiveWeeklyForSplit =
     resolvedWeeklyForSplit && reportType === "WEEKLY"
-      ? capRangeToData(resolvedWeeklyForSplit, filtered, now, timezone)
+      ? capRangeToData(resolvedWeeklyForSplit, mtdDailyRows, now, timezone)
       : resolvedWeeklyForSplit;
   const split = splitMtdDaily(filtered, now, {
     ...(effectiveWeeklyForSplit ? { weeklyRange: effectiveWeeklyForSplit } : {}),
@@ -781,7 +789,7 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
 
   const primaryCol = primaryResultColumn(report);
   if (!primaryCol) {
-    return { status: "skipped", checks: [] };
+    return { status: "skipped", checks: [], skipReason: "The selected campaigns have no objective data in the report periods to compare. No zero-delivery result has been verified. Choose an earlier period or review the CSV coverage before sharing." };
   }
 
   const resultLabel = primaryCol.label;
@@ -856,6 +864,20 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
       ? filterNreRowsByDateRange(filtered, displayWeeklyRange)
       : (split.weeklyRawRows ?? []);
 
+  if (weeklyCoverage && displayWeeklyRange && weeklyRawRows.length === 0) {
+    coverageWarnings.push({
+      scope: `Report week (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`,
+      missingDays: eachDayInWeeklyRange(displayWeeklyRange),
+      message: "There are no CSV rows for the selected campaigns in the confirmed report week. Only the available chart or other period totals were cross-checked; missing days were not verified as zero. Choose an earlier week if you intended to report the campaign’s earlier activity.",
+    });
+  } else if (weeklyCoverage && !weeklyCoverage.ok && weeklyCoverage.missingDays.length > 0) {
+    coverageWarnings.push({
+      scope: `Report week (${getDateRangeAbbrLabel(displayWeeklyRange!.startIso, displayWeeklyRange!.endIso)})`,
+      missingDays: weeklyCoverage.missingDays,
+      message: "Some dates have no rows for the selected campaigns. Meta exports can omit dates without delivery; this cross-check does not verify those missing days as zero. Confirm that the export covers your intended reporting window.",
+    });
+  }
+
   if (weeklyRawRows.length > 0 && report.campaignSlides.length > 0 && (reportType === "WEEKLY" || reportType === "DAILY")) {
     const csvWeeklySpend = sumSpend(weeklyRawRows as MetricRow[]);
     const csvStdWeeklyResults = sumResultsForLabelFromRawDailyRows(
@@ -894,14 +916,6 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
         : displayWeeklyRange
           ? `Report week (${getDateRangeAbbrLabel(displayWeeklyRange.startIso, displayWeeklyRange.endIso)})`
           : "Report week";
-
-    if (weeklyCoverage && !weeklyCoverage.ok && weeklyCoverage.missingDays.length > 0) {
-      coverageWarnings.push({
-        scope: weeklyScope,
-        missingDays: weeklyCoverage.missingDays,
-        message: "Some dates have no rows for the selected campaigns. Meta exports can omit dates without delivery; confirm that the export covers your intended reporting window.",
-      });
-    }
 
     checks.push(
       ...scopedChecks({
@@ -977,13 +991,13 @@ export function reconcileStandardReportWithCsv(input: ReconcileStandardReportInp
     const mtdCalendarRange = computeMtdRangeIso(filtered, now, timezone);
     const chartRange = resolveStandardChartRange({
       reportType,
-      rows: filtered,
+      rows: mtdDailyRows,
       now,
       timezone,
       primaryRange: input.weeklyRange ?? null,
       calendarRange: mtdCalendarRange,
     });
-    const capped = capRangeToData(chartRange, filtered, now, timezone);
+    const capped = capRangeToData(chartRange, mtdDailyRows, now, timezone);
     const chartRaw = filterRawRowsToRange(filtered, capped.startIso, capped.endIso);
     const chartRows: MetricRow[] = aggregateRows(chartRaw);
     const chartObjectiveMap = buildChartWindowObjectiveMap(reportObjectiveMap, chartRaw, pinned);
