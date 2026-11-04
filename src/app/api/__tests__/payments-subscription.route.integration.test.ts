@@ -60,6 +60,18 @@ describe("POST /api/payments/create-subscription", () => {
     expect(body.useOrders).toBe(true);
   });
 
+  it.each([
+    ["INR", "monthly"], ["INR", "annual"], ["USD", "monthly"], ["USD", "annual"],
+  ] as const)("accepts Agency Plus %s %s checkout", async (currency, interval) => {
+    vi.stubEnv(`RAZORPAY_PLAN_AGENCY_PLUS_${currency}_${interval.toUpperCase()}`, "plan_plus");
+    mockRouteAuth(auth).mockResolvedValue(mockSession("user_1", "pay@example.com"));
+    vi.mocked(isRazorpaySubscriptionsConfigured).mockReturnValue(true);
+    vi.mocked(createRazorpaySubscription).mockResolvedValue({ subscriptionId: "sub_plus", planId: "agency_plus", currency, interval });
+    const res = await createSubscription(new Request("http://localhost/api/payments/create-subscription", { method: "POST", body: JSON.stringify({ planId: "agency_plus", currency, interval }) }));
+    expect(res.status).toBe(200);
+    expect(createRazorpaySubscription).toHaveBeenCalledWith(expect.objectContaining({ planId: "agency_plus", currency, interval }));
+  });
+
   it("creates a subscription for authenticated users", async () => {
     mockRouteAuth(auth).mockResolvedValue(mockSession("user_1", "pay@example.com"));
     vi.mocked(isRazorpaySubscriptionsConfigured).mockReturnValue(true);

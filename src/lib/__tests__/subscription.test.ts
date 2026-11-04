@@ -79,6 +79,14 @@ describe("getSubscriptionStatus", () => {
     expect(status.clientLimit).toBe(50);
   });
 
+  it("grants Agency Plus exactly 100 clients only while paid access is active", () => {
+    const base = { email: NON_ADMIN_EMAIL, planId: "agency_plus", trialEndsAt: new Date(Date.now() - DAY) };
+    const active = getSubscriptionStatus({ ...base, paidThrough: new Date(Date.now() + DAY) });
+    expect(active).toMatchObject({ planId: "agency_plus", isSubscribed: true, isBlocked: false, clientLimit: 100 });
+    expect(getSubscriptionStatus(base).isBlocked).toBe(true);
+    expect(getSubscriptionStatus({ ...base, paidThrough: new Date(Date.now() - DAY) }).isBlocked).toBe(true);
+  });
+
   it("always blocks a cancelled subscription, regardless of trialEndsAt", () => {
     const status = getSubscriptionStatus({ email: NON_ADMIN_EMAIL, planId: "cancelled", trialEndsAt: new Date(Date.now() + 30 * DAY) });
     expect(status.isBlocked).toBe(true);

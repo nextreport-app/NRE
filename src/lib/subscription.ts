@@ -1,4 +1,4 @@
-import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, TRIAL_CLIENT_LIMIT } from "./launch-limits";
+import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, AGENCY_PLUS_CLIENT_LIMIT, TRIAL_CLIENT_LIMIT } from "./launch-limits";
 /**
  * Single source of truth for what a user's subscription plan allows —
  * every page/route that needs to know "can this user do X" computes it
@@ -20,7 +20,7 @@ import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, TRIAL_CLIENT_LIMIT } fr
  * planId/trialEndsAt for that row.
  */
 
-export type PlanId = "trial" | "starter" | "professional" | "cancelled";
+export type PlanId = "trial" | "starter" | "professional" | "agency_plus" | "cancelled";
 
 function parseAdminEmails(): Set<string> {
   return new Set(
@@ -37,7 +37,7 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   return parseAdminEmails().has(email.trim().toLowerCase());
 }
 
-const KNOWN_PLAN_IDS: readonly PlanId[] = ["trial", "starter", "professional", "cancelled"];
+const KNOWN_PLAN_IDS: readonly PlanId[] = ["trial", "starter", "professional", "agency_plus", "cancelled"];
 
 function normalizePlanId(planId: string): PlanId {
   return (KNOWN_PLAN_IDS as readonly string[]).includes(planId) ? (planId as PlanId) : "trial";
@@ -46,7 +46,7 @@ function normalizePlanId(planId: string): PlanId {
 // Launch limits apply to active client rows, with the trial additionally time-gated. "cancelled"
 // has no meaningful limit of its own since isBlocked already blocks the
 // actions a limit would otherwise apply to.
-const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: AGENCY_CLIENT_LIMIT, professional: PROFESSIONAL_CLIENT_LIMIT, trial: TRIAL_CLIENT_LIMIT };
+const CLIENT_LIMITS: Partial<Record<PlanId, number>> = { starter: AGENCY_CLIENT_LIMIT, professional: PROFESSIONAL_CLIENT_LIMIT, agency_plus: AGENCY_PLUS_CLIENT_LIMIT, trial: TRIAL_CLIENT_LIMIT };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -67,7 +67,7 @@ export interface SubscriptionUser {
 
 export interface SubscriptionStatus {
   planId: PlanId;
-  /** starter or professional, currently active (not cancelled). */
+  /** Any paid tier, currently active (not cancelled). */
   isSubscribed: boolean;
   isTrialing: boolean;
   /** Whole calendar days until trialEndsAt (UTC dates); 1 on the last day while still active. 0 when not trialing or expired. */
@@ -98,7 +98,7 @@ export function getSubscriptionStatus(user: SubscriptionUser): SubscriptionStatu
 
   const planId = normalizePlanId(user.planId);
   const isTrialing = planId === "trial";
-  const paidPlan = planId === "starter" || planId === "professional";
+  const paidPlan = planId === "starter" || planId === "professional" || planId === "agency_plus";
   const isSubscribed = paidPlan && !!user.paidThrough && user.paidThrough.getTime() > Date.now();
 
   const now = new Date();

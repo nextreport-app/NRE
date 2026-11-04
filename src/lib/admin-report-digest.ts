@@ -64,7 +64,7 @@ export interface DigestStats {
 
 const PLATFORM_LABELS: Record<string, string> = { META: "Meta Ads", GOOGLE: "Google Ads", TIKTOK: "TikTok Ads", GA4: "GA4" };
 const REPORT_LABELS: Record<string, string> = { WEEKLY: "Weekly", MONTHLY: "Monthly", DAILY: "Daily", COMPARISON: "Comparison", WEBSITE: "Website", HISTORICAL: "Historical", DAY_BREAKDOWN: "Day breakdown", QUARTER: "Quarterly", YTD: "Year to date", CREATIVE: "Creative" };
-const PLAN_LABELS: Record<string, string> = { trial: "Trial", starter: "Agency", professional: "Professional", admin: "Owner / admin testing", cancelled: "Cancelled" };
+const PLAN_LABELS: Record<string, string> = { trial: "Trial", starter: "Freelancer", professional: "Agency", agency_plus: "Agency Plus", admin: "Owner / admin testing", cancelled: "Cancelled" };
 
 export async function buildDailyReportDigestStats(bounds: IstDayBounds): Promise<DigestStats> {
   const events = await prisma.reportGenerationEvent.findMany({ where: { occurredAt: { gte: bounds.start, lt: bounds.end } }, orderBy: { occurredAt: "asc" } });

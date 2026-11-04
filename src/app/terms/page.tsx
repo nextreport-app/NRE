@@ -82,7 +82,7 @@ export default async function TermsPage() {
 
         <section>
           <h2 className="mb-2 text-lg font-medium text-white">Plans, billing and fair use</h2>
-          <p>The seven-day trial includes up to 3 active client workspaces and 10 generated reports. Agency includes up to 10 active clients; Professional includes up to 50. Each workspace represents one brand. Deleting a client frees a slot and removes its report history and live links.</p>
+          <p>The seven-day trial includes up to 3 active client workspaces and 10 generated reports. Freelancer includes up to 10 active clients, Agency up to 50, and Agency Plus up to 100. Each workspace represents one brand. Deleting a client frees a slot and removes its report history and live links.</p>
           <p className="mt-2">Paid plans have no monthly report quota, subject to the technical limits shown on <Link href="/pricing" className="text-accent underline">Pricing</Link>. Generation is limited to one report at a time per account and shared service capacity. Account resale, sharing a subscription across unrelated agencies, automated bulk generation and attempts to evade safeguards are not included. Contact us for larger workloads.</p>
           <p className="mt-2">Recurring subscriptions renew until cancelled. A checkout described as a one-time payment purchases only its stated period and does not renew automatically. Cancelling renewal preserves already paid access until the paid-through date. Contact hello@nextreport.in for billing errors or plan changes.</p>
           <p className="mt-2">Report storage defaults to 7 days, with available retention settings depending on plan. Download reports you need to retain. Verify your account email before adding clients or generating reports.</p>

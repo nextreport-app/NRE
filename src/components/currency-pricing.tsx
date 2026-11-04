@@ -5,7 +5,13 @@ import { BillingIntervalToggle } from "@/components/billing-interval-toggle";
 import { SubscribeButton } from "./subscribe-button";
 import { usePricingCurrency } from "@/components/pricing-currency-provider";
 import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
-import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
+import {
+  AGENCY_CLIENT_LIMIT,
+  PROFESSIONAL_CLIENT_LIMIT,
+  AGENCY_PLUS_CLIENT_LIMIT,
+  getPlanDisplayName,
+  type BillablePlanId,
+} from "@/lib/plan-labels";
 import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import type { BillingInterval } from "@/lib/razorpay";
 import { useSiteCopy } from "@/hooks/use-site-copy";
@@ -53,7 +59,7 @@ function PlanCard({
   const monthlyPrice = formattedPlanPrice(planId, currency);
   const annualPrice = formattedPlanPrice(planId, currency, "annual");
   const displayPrice = interval === "annual" ? annualPrice : monthlyPrice;
-  const ctaClassName = `mt-8 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
+  const ctaClassName = `min-h-11 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
     highlighted
       ? "bg-accent text-[#0d1b2e] hover:bg-accent-hover"
       : "border border-navy-border text-white hover:bg-navy"
@@ -61,9 +67,9 @@ function PlanCard({
 
   return (
     <div
-      className={`relative flex flex-col rounded-xl border p-8 ${
+      className={`relative flex flex-col rounded-xl border p-6 ${
         highlighted
-          ? "border-accent bg-navy-panel shadow-[0_0_0_1px_rgba(74,144,217,0.4)]"
+          ? "border-accent bg-navy-panel shadow-[0_0_0_1px_rgba(249,177,77,0.25)]"
           : "border-navy-border bg-navy-panel"
       }`}
     >
@@ -74,39 +80,57 @@ function PlanCard({
       )}
 
       <h3 className="text-lg font-semibold text-white">{name}</h3>
-      <p className="mt-1 text-sm text-ink-muted">{planCopy.bestFor}</p>
+      <p className="mt-1 text-sm text-ink-muted lg:min-h-10">
+        {planCopy.bestFor}
+      </p>
       <p className="mt-3 text-base font-semibold text-accent-orange">
-        {planId === "starter" ? `Up to ${AGENCY_CLIENT_LIMIT} client workspaces` : `Up to ${PROFESSIONAL_CLIENT_LIMIT} client workspaces`}
+        {planId === "starter"
+          ? `Up to ${AGENCY_CLIENT_LIMIT} client workspaces`
+          : `Up to ${planId === "agency_plus" ? AGENCY_PLUS_CLIENT_LIMIT : PROFESSIONAL_CLIENT_LIMIT} client workspaces`}
       </p>
 
       <div className="mt-5 flex items-baseline gap-1">
-        <span className="text-4xl font-semibold text-white">{displayPrice}</span>
-        <span className="text-sm text-ink-muted">{interval === "annual" ? p.perYear : p.perMonth}</span>
+        <span className="text-4xl font-semibold text-white">
+          {displayPrice}
+        </span>
+        <span className="text-sm text-ink-muted">
+          {interval === "annual" ? p.perYear : p.perMonth}
+        </span>
       </div>
-      {interval === "annual" && <p className="mt-1 text-xs font-medium text-emerald-400">{p.saveAnnual}</p>}
-      <p className="mt-1 text-[11px] text-ink-muted/80">{currency === "INR" ? p.exclGst : p.exclTax}</p>
+      {interval === "annual" && (
+        <p className="mt-1 text-xs font-medium text-emerald-400">
+          {p.saveAnnual}
+        </p>
+      )}
+      <p className="mt-1 text-[11px] text-ink-muted/80">
+        {currency === "INR" ? p.exclGst : p.exclTax}
+      </p>
 
-      <ul className="mt-8 space-y-3 text-left text-sm text-ink-secondary">
+      <ul className="mb-8 mt-8 space-y-3 text-left text-sm text-ink-secondary">
         {planCopy.features.map((feature) => (
           <li key={feature} className="flex items-start gap-2 text-left">
             <CheckIcon />
-            <span className="min-w-0 flex-1 text-left leading-snug">{feature}</span>
+            <span className="min-w-0 flex-1 text-left leading-snug">
+              {feature}
+            </span>
           </li>
         ))}
       </ul>
 
-      <SubscribeButton
-        planId={planId}
-        currency={currency}
-        interval={interval}
-        loggedIn={loggedIn}
-        userEmail={userEmail}
-        userName={userName}
-        className={ctaClassName}
-        label={`${p.subscribeToPrefix} ${name}`}
-        loadingLabel={p.redirecting}
-      />
-      <CtaTrustBadges className="mt-3" />
+      <div className="mt-auto">
+        <SubscribeButton
+          planId={planId}
+          currency={currency}
+          interval={interval}
+          loggedIn={loggedIn}
+          userEmail={userEmail}
+          userName={userName}
+          className={ctaClassName}
+          label={`${p.subscribeToPrefix} ${name}`}
+          loadingLabel={p.redirecting}
+        />
+        <CtaTrustBadges className="mt-3" />
+      </div>
     </div>
   );
 }
@@ -132,11 +156,15 @@ export function CurrencyPricing({
           interval={interval}
           onChange={setInterval}
           variant="pricing"
-          labels={{ aria: p.billingPeriodAria, monthly: p.monthly, annual: p.annual }}
+          labels={{
+            aria: p.billingPeriodAria,
+            monthly: p.monthly,
+            annual: p.annual,
+          }}
         />
       </div>
 
-      <div className="mt-4 grid gap-8 sm:grid-cols-2">
+      <div className="mt-4 grid gap-6 lg:grid-cols-3">
         <PlanCard
           planId="starter"
           currency={currency}
@@ -154,10 +182,20 @@ export function CurrencyPricing({
           userEmail={userEmail}
           userName={userName}
         />
+        <PlanCard
+          planId="agency_plus"
+          currency={currency}
+          interval={interval}
+          loggedIn={loggedIn}
+          userEmail={userEmail}
+          userName={userName}
+        />
       </div>
 
       <div className="mx-auto mt-8 flex max-w-xl flex-col items-center gap-3">
-        <p className="text-center text-xs text-ink-muted">{PRICING_CURRENCY_NOTE[currency]}</p>
+        <p className="text-center text-xs text-ink-muted">
+          {PRICING_CURRENCY_NOTE[currency]}
+        </p>
       </div>
     </>
   );

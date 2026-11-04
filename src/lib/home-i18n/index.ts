@@ -25,6 +25,9 @@ export function homeCopy(locale: SiteLocaleId): HomeCopy {
   // Commercial promises must not retain obsolete limits/tax/automation claims in old translations.
   copy.pricing.plans.starter.features = HOME_EN.pricing.plans.starter.features;
   copy.pricing.plans.professional.features = HOME_EN.pricing.plans.professional.features;
+  copy.pricing.plans.agency_plus = HOME_EN.pricing.plans.agency_plus;
+  copy.pricing.annual = HOME_EN.pricing.annual;
+  copy.pricing.saveAnnual = HOME_EN.pricing.saveAnnual;
   copy.pricing.mostPopular = HOME_EN.pricing.mostPopular;
   copy.pricing.exclGst = HOME_EN.pricing.exclGst;
   copy.pricing.exclTax = HOME_EN.pricing.exclTax;

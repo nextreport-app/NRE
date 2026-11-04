@@ -17,20 +17,20 @@ import {
 } from "../razorpay";
 
 describe("PLANS", () => {
-  it("prices Starter at ₹799/month in paise", () => {
-    expect(PLANS.starter.amountPaise).toBe(79_900);
+  it("prices Starter at ₹399/month in paise", () => {
+    expect(PLANS.starter.amountPaise).toBe(39_900);
   });
 
-  it("prices Professional at ₹1,299/month in paise", () => {
-    expect(PLANS.professional.amountPaise).toBe(129_900);
+  it("prices Professional at ₹999/month in paise", () => {
+    expect(PLANS.professional.amountPaise).toBe(99_900);
   });
 
-  it("prices Starter at $9/month in cents", () => {
-    expect(PLANS.starter.amountUsdCents).toBe(900);
+  it("prices Starter at $5/month in cents", () => {
+    expect(PLANS.starter.amountUsdCents).toBe(500);
   });
 
-  it("prices Professional at $15/month in cents", () => {
-    expect(PLANS.professional.amountUsdCents).toBe(1_500);
+  it("prices Professional at $12/month in cents", () => {
+    expect(PLANS.professional.amountUsdCents).toBe(1_200);
   });
 });
 
@@ -50,13 +50,13 @@ describe("isPricingCurrency", () => {
 
 describe("amountForCurrency", () => {
   it("returns the paise amount for INR", () => {
-    expect(amountForCurrency("starter", "INR")).toBe(79_900);
-    expect(amountForCurrency("professional", "INR")).toBe(129_900);
+    expect(amountForCurrency("starter", "INR")).toBe(39_900);
+    expect(amountForCurrency("professional", "INR")).toBe(99_900);
   });
 
   it("returns the cents amount for USD", () => {
-    expect(amountForCurrency("starter", "USD")).toBe(900);
-    expect(amountForCurrency("professional", "USD")).toBe(1_500);
+    expect(amountForCurrency("starter", "USD")).toBe(500);
+    expect(amountForCurrency("professional", "USD")).toBe(1_200);
   });
 });
 
@@ -64,6 +64,7 @@ describe("isPlanId", () => {
   it("accepts starter and professional", () => {
     expect(isPlanId("starter")).toBe(true);
     expect(isPlanId("professional")).toBe(true);
+    expect(isPlanId("agency_plus")).toBe(true);
   });
 
   it("rejects anything else, including a trial/cancelled planId or garbage input", () => {
@@ -148,34 +149,41 @@ describe("verifyWebhookSignature", () => {
 });
 
 describe("planIdForAmount", () => {
-  it("maps ₹799 in paise, INR, to starter", () => {
-    expect(planIdForAmount(79_900, "INR")).toBe("starter");
+  it("recognizes all twelve current prices and rejects the previous new-purchase price", () => {
+    for (const plan of ["starter", "professional", "agency_plus"] as const)
+      for (const currency of ["INR", "USD"] as const)
+        for (const interval of ["monthly", "annual"] as const)
+          expect(planIdForAmount(amountForCurrency(plan, currency, interval), currency)).toBe(plan);
+    expect(planIdForAmount(900, "USD")).toBeNull();
+  });
+  it("maps ₹399 in paise, INR, to starter", () => {
+    expect(planIdForAmount(39_900, "INR")).toBe("starter");
   });
 
-  it("maps ₹1,299 in paise, INR, to professional", () => {
-    expect(planIdForAmount(129_900, "INR")).toBe("professional");
+  it("maps ₹999 in paise, INR, to professional", () => {
+    expect(planIdForAmount(99_900, "INR")).toBe("professional");
   });
 
   it("returns null for an amount that doesn't match either plan exactly", () => {
     expect(planIdForAmount(50_000, "INR")).toBeNull();
-    expect(planIdForAmount(79_901, "INR")).toBeNull();
+    expect(planIdForAmount(39_901, "INR")).toBeNull();
   });
 
   it("returns null for a non-matching currency even if the amount matches a plan price numerically in the other currency", () => {
-    expect(planIdForAmount(79_900, "USD")).toBeNull();
+    expect(planIdForAmount(39_900, "USD")).toBeNull();
     expect(planIdForAmount(900, "INR")).toBeNull();
   });
 
-  it("maps $9 in cents, USD, to starter", () => {
-    expect(planIdForAmount(900, "USD")).toBe("starter");
+  it("maps $5 in cents, USD, to starter", () => {
+    expect(planIdForAmount(500, "USD")).toBe("starter");
   });
 
-  it("maps $15 in cents, USD, to professional", () => {
-    expect(planIdForAmount(1_500, "USD")).toBe("professional");
+  it("maps $12 in cents, USD, to professional", () => {
+    expect(planIdForAmount(1_200, "USD")).toBe("professional");
   });
 
   it("returns null for an unrecognized currency entirely", () => {
-    expect(planIdForAmount(79_900, "GBP")).toBeNull();
+    expect(planIdForAmount(39_900, "GBP")).toBeNull();
   });
 });
 
@@ -208,6 +216,16 @@ describe("getRazorpayPlanId / planIdFromRazorpayPlan", () => {
     vi.stubEnv("RAZORPAY_PLAN_STARTER_INR_MONTHLY", "");
     expect(getRazorpayPlanId("starter", "INR", "monthly")).toBeNull();
     expect(isRazorpaySubscriptionsConfigured()).toBe(false);
+  });
+
+  it.each(["INR", "USD"] as const)("round-trips Agency Plus %s provider plans for both intervals", currency => {
+    for (const interval of ["monthly", "annual"] as const) {
+      const id = `plan_plus_${currency}_${interval}`;
+      vi.stubEnv(`RAZORPAY_PLAN_AGENCY_PLUS_${currency}_${interval.toUpperCase()}`, id);
+      expect(getRazorpayPlanId("agency_plus", currency, interval)).toBe(id);
+      expect(planIdFromRazorpayPlan(id)).toBe("agency_plus");
+      expect(isRazorpaySubscriptionsConfigured()).toBe(true);
+    }
   });
 
   it("round-trips configured plan ids", () => {

@@ -14,7 +14,7 @@ import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta Ads reporting. Agency plan from ₹799/mo ($9), Professional up to 50 clients from ₹1,299/mo ($15). 7-day free trial.",
+    "Simple pricing for Meta Ads reporting. Freelancer: $5/₹399 for 10 clients, Agency: $12/₹999 for 50, Agency Plus: $20/₹1,699 for 100. 7-day free trial.",
   path: "/pricing",
 });
 
@@ -38,10 +38,10 @@ export default async function PricingPage() {
       />
       <BetaBanner />
       <PublicNav loggedIn={loggedIn} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
         <Breadcrumbs current="Pricing" />
         <div className="text-center">
-          <h1 className="text-3xl font-semibold text-white sm:text-4xl">Simple, Transparent Pricing</h1>
+          <h1 className="text-3xl font-semibold text-white sm:text-4xl">Launch pricing for agencies of every size</h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
             {PLATFORM_LIST_SHORT} — share PowerPoint (.pptx), live links, or Google Slides.
           </p>
@@ -63,7 +63,7 @@ export default async function PricingPage() {
           <a href="mailto:hello@nextreport.in" className="text-accent hover:underline">
             Email us
           </a>{" "}
-          for more than 50 clients, high-volume reporting, or custom onboarding.
+          for more than 100 clients, high-volume reporting, or custom onboarding.
         </p>
 
         <div className="mt-20">

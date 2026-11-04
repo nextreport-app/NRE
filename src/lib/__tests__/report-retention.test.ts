@@ -38,6 +38,7 @@ describe("report retention options", () => {
 
   it("allows professional accounts up to 90 days", () => {
     expect(maxReportRetentionDaysForPlan("professional")).toBe(90);
+    expect(maxReportRetentionDaysForPlan("agency_plus")).toBe(90);
     expect(allowedReportRetentionOptions("professional")).toEqual([7, 14, 30, 60, 90]);
   });
 

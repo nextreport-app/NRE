@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
-import { amountForCurrency, isBillingInterval, isPlanId, isPricingCurrency, getRazorpayPlanId, razorpayClient } from "./razorpay";
+import { isBillingInterval, isPlanId, isPricingCurrency, getRazorpayPlanId, razorpayClient } from "./razorpay";
+import { isSupportedCheckoutAmount } from "./plan-pricing";
 import { ServiceError } from "./service-error";
 
 /** Calendar billing period, clamped at month-end rather than spilling into the next month. */
@@ -21,13 +22,20 @@ export async function applyCapturedPayment(paymentId: string, checkoutId: string
   const interval = checkout.interval;
   const payment = await razorpayClient().payments.fetch(paymentId);
   if (payment.status !== "captured" || payment.currency !== checkout.currency || Number(payment.amount) !== checkout.amount) throw new ServiceError("Payment is not captured for the expected amount and currency.", 409);
-  if (checkout.amount !== amountForCurrency(checkout.planId, checkout.currency, checkout.interval)) throw new ServiceError("Checkout price no longer matches the catalogue. Contact support.", 409);
+  if (!isSupportedCheckoutAmount(checkout.planId, checkout.currency, checkout.interval, checkout.amount)) throw new ServiceError("Checkout price no longer matches the catalogue. Contact support.", 409);
 
   let providerEnd: Date | null = null;
   if (checkout.kind === "subscription") {
     const sub = await razorpayClient().subscriptions.fetch(checkoutId);
     const expectedPlan = getRazorpayPlanId(checkout.planId, checkout.currency, checkout.interval);
-    if (sub.plan_id !== expectedPlan || !["active", "pending"].includes(sub.status)) throw new ServiceError("Subscription is not active for the expected plan.", 409);
+    if (!["active", "pending"].includes(sub.status)) throw new ServiceError("Subscription is not active for the expected plan.", 409);
+    if (sub.plan_id !== expectedPlan) {
+      // Environment IDs change for new prices; existing subscriptions retain their original provider plan.
+      const plan = await razorpayClient().plans.fetch(sub.plan_id);
+      if (Number(plan.item.amount) !== checkout.amount || plan.item.currency !== checkout.currency || plan.interval !== 1 || plan.period !== (interval === "annual" ? "yearly" : "monthly")) {
+        throw new ServiceError("Subscription plan does not match this checkout.", 409);
+      }
+    }
     // A payment from another subscription must never renew this entitlement.
     if (!payment.invoice_id) throw new ServiceError("Subscription invoice is not available yet. Please retry.", 409);
     const invoice = await razorpayClient().invoices.fetch(payment.invoice_id) as { subscription_id?: string; billing_end?: number | null };

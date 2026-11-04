@@ -232,15 +232,15 @@ export const HOME_JSON_LD = {
       offers: [
         {
           "@type": "Offer",
-          price: "799",
+          price: "399",
           priceCurrency: "INR",
-          description: `${getPlanDisplayName("starter")} plan from ₹799/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from ₹399/month with 7-day free trial`,
         },
         {
           "@type": "Offer",
-          price: "9",
+          price: "5",
           priceCurrency: "USD",
-          description: `${getPlanDisplayName("starter")} plan from $9/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from $5/month with 7-day free trial`,
         },
       ],
       description:
@@ -334,12 +334,12 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional supports up to 50 client workspaces. Meta API sync is available for testing in the wizard.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. Freelancer includes up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100, with Meta Ads reporting today. Meta API sync is available for testing in the wizard.",
   },
   {
     question: "Can I white-label reports for my clients?",
     answer:
-      "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
+      "Yes — included on the free trial and all three paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
   },
 ];
 

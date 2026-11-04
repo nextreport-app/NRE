@@ -9,11 +9,13 @@ import { getPlanDisplayName, type BillablePlanId } from "@/lib/plan-labels";
 import type { PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
 
+import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, AGENCY_PLUS_CLIENT_LIMIT } from "@/lib/launch-limits";
 import { formattedPlanPrice } from "@/lib/plan-pricing";
 
 const PLAN_OPTIONS: { id: BillablePlanId; highlighted?: boolean }[] = [
   { id: "starter" },
   { id: "professional", highlighted: true },
+  { id: "agency_plus" },
 ];
 
 function PlanPrice({
@@ -36,7 +38,7 @@ function PlanPrice({
         </span>
       </p>
       {interval === "annual" && (
-        <p className="text-[12px] font-medium text-emerald-400">Save 20% vs paying monthly</p>
+        <p className="text-[12px] font-medium text-emerald-400">Two months free vs paying monthly</p>
       )}
     </>
   );
@@ -47,7 +49,7 @@ export function SubscribePlanCards({
   userEmail,
   userName,
 }: {
-  /** Defaults to both Agency and Professional. */
+  /** Defaults to all three paid plans. */
   planIds?: BillablePlanId[];
   userEmail?: string | null;
   userName?: string | null;
@@ -60,7 +62,7 @@ export function SubscribePlanCards({
   return (
     <div>
       <SubscribeCheckoutControls interval={interval} onIntervalChange={setInterval} className="mb-6" />
-      <div className={`grid gap-4 ${plans.length > 1 ? "sm:grid-cols-2" : ""}`}>
+      <div className={`grid gap-4 ${plans.length > 1 ? "sm:grid-cols-2 xl:grid-cols-3" : ""}`}>
         {plans.map((plan) => (
           <div
             key={plan.id}
@@ -69,6 +71,7 @@ export function SubscribePlanCards({
             }`}
           >
             <p className="font-medium text-dash-ink">{getPlanDisplayName(plan.id)}</p>
+            <p className="mt-1 text-sm text-dash-ink-secondary">Up to {{ starter: AGENCY_CLIENT_LIMIT, professional: PROFESSIONAL_CLIENT_LIMIT, agency_plus: AGENCY_PLUS_CLIENT_LIMIT }[plan.id]} client workspaces</p>
             <PlanPrice planId={plan.id} currency={currency} interval={interval} />
             <SubscribeButton
               planId={plan.id}

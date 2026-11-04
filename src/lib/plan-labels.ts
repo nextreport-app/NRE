@@ -4,12 +4,13 @@
  */
 export const PLAN_DISPLAY_NAMES = {
   trial: "Free Trial",
-  starter: "Agency",
-  professional: "Professional",
+  starter: "Freelancer",
+  professional: "Agency",
+  agency_plus: "Agency Plus",
   cancelled: "Cancelled",
 } as const;
 
-export type BillablePlanId = "starter" | "professional";
+export type BillablePlanId = "starter" | "professional" | "agency_plus";
 
 export function getPlanDisplayName(planId: string): string {
   return PLAN_DISPLAY_NAMES[planId as keyof typeof PLAN_DISPLAY_NAMES] ?? planId;
@@ -23,8 +24,8 @@ export const PLATFORM_LIST_SHORT =
 export const PLATFORM_LIST_API =
   "Meta Marketing API (testing)";
 
-/** Agency (starter) plan — max client workspaces; enforced in lib/subscription.ts. */
-export { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT } from "./launch-limits";
+/** Freelancer (starter) plan — max client workspaces; enforced in lib/subscription.ts. */
+export { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, AGENCY_PLUS_CLIENT_LIMIT } from "./launch-limits";
 
 /** Pricing feature bullets — one client workspace = one brand; all platforms included in that slot. */
 export const AGENCY_CLIENT_LIMIT_FEATURE =
@@ -38,3 +39,5 @@ export { WHITE_LABEL_FEATURE } from "@/lib/report-branding";
 /** Short explainer for paywall / upgrade screens. */
 export const CLIENT_LIMIT_EXPLAINER =
   "Each client is one brand workspace. Meta Ads CSV reporting uses one client slot today. Meta API sync is available for testing in the wizard.";
+
+export const AGENCY_PLUS_CLIENT_LIMIT_FEATURE = "Up to 100 client workspaces — Meta Ads reporting live today";
