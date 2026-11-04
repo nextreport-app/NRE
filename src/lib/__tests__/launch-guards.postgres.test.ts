@@ -42,17 +42,17 @@ describe.skipIf(!enabled)("launch guards with real PostgreSQL", () => {
     await prisma.verificationToken.deleteMany({ where: { identifier: { in: ids.map(id => `verify-email:${id}`) } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
   });
-  it("allows exactly one simultaneous create/duplicate into the tenth Agency slot", async () => {
-    const { user } = await account("starter", 9);
+  it.each([["starter", 9, 10], ["agency_plus", 99, 100]] as const)("allows exactly one simultaneous create into the final %s slot", async (plan, existing, limit) => {
+    const { user } = await account(plan, existing);
     const attempts = await Promise.allSettled(Array.from({length: 8}, () => createClientWithinCapacity(user.id, {accountName: "New"})));
     expect(attempts.filter(r => r.status === "fulfilled")).toHaveLength(1);
-    expect(await prisma.client.count({ where: { userId: user.id } })).toBe(10);
+    expect(await prisma.client.count({ where: { userId: user.id } })).toBe(limit);
     const client = await prisma.client.findFirstOrThrow({ where: { userId: user.id } });
     await prisma.client.delete({ where: { id: client.id } });
     await expect(createClientWithinCapacity(user.id, {accountName:"Replacement"})).resolves.toBeTruthy();
   }, 20000);
-  it("enforces 3 trial clients, 50 Professional clients, and verified email", async () => {
-    for (const [plan, limit] of [["trial",3],["professional",50]] as const) {
+  it("enforces 3 trial clients, 50 Agency clients, 100 Agency Plus clients, and verified email", async () => {
+    for (const [plan, limit] of [["trial",3],["professional",50],["agency_plus",100]] as const) {
       const {user} = await account(plan,limit);
       await expect(createClientWithinCapacity(user.id,{accountName:"Too many"})).rejects.toThrow(/active clients/);
     }
@@ -92,11 +92,26 @@ describe.skipIf(!enabled)("launch guards with real PostgreSQL", () => {
     const token=randomUUID(); await prisma.verificationToken.create({data:{identifier:`verify-email:${user.id}`,token:createHash("sha256").update(token).digest("hex"),expires:new Date(Date.now()+10000)}});
     expect((await Promise.all([verifyEmailToken(token),verifyEmailToken(token)])).filter(Boolean)).toHaveLength(1);
   });
+  it("applies an existing subscription renewal after replacing environment plan IDs", async () => {
+    const {user} = await account("starter");
+    const sub=`sub_${randomUUID()}`; const payment=`pay_${randomUUID()}`;
+    const end=Math.floor(Date.now()/1000)+86400;
+    await prisma.billingCheckout.create({data:{id:sub,userId:user.id,kind:"subscription",planId:"starter",amount:900,currency:"USD",interval:"monthly"}});
+    vi.stubEnv("RAZORPAY_PLAN_STARTER_USD_MONTHLY","plan_new_price");
+    provider.subscriptions.fetch.mockResolvedValue({plan_id:"plan_original_price",status:"active",current_end:end});
+    provider.plans.fetch.mockResolvedValue({item:{amount:900,currency:"USD"},period:"monthly",interval:1});
+    provider.invoices.fetch.mockResolvedValue({subscription_id:sub,billing_end:end});
+    provider.payments.fetch.mockResolvedValue({status:"captured",amount:900,currency:"USD",invoice_id:"invoice_old",created_at:Math.floor(Date.now()/1000)});
+    await expect(applyCapturedPayment(payment,sub,user.id)).resolves.toMatchObject({planId:"starter",newlyApplied:true});
+    await expect(applyCapturedPayment(payment,sub,user.id)).resolves.toMatchObject({newlyApplied:false});
+    provider.plans.fetch.mockResolvedValue({item:{amount:500,currency:"USD"},period:"monthly",interval:1});
+    await expect(applyCapturedPayment(`pay_${randomUUID()}`,sub,user.id)).rejects.toThrow(/does not match this checkout/);
+  });
   it("does not cancel a paid subscription when starting another checkout", async () => {
     const {user} = await account("starter");
     await prisma.user.update({where:{id:user.id},data:{razorpaySubscriptionId:"sub_existing"}});
     vi.stubEnv("RAZORPAY_PLAN_PROFESSIONAL_INR_MONTHLY","plan_pro");
-    provider.plans.fetch.mockResolvedValue({item:{amount:129900,currency:"INR"},interval:1,period:"monthly"});
+    provider.plans.fetch.mockResolvedValue({item:{amount:99900,currency:"INR"},interval:1,period:"monthly"});
     provider.subscriptions.cancel.mockClear();
     await expect(createRazorpaySubscription({userId:user.id,email:user.email,planId:"professional",currency:"INR",interval:"monthly"})).rejects.toThrow(/paid access/);
     expect(provider.subscriptions.cancel).not.toHaveBeenCalled();

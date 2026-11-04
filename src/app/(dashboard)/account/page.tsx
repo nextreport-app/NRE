@@ -24,6 +24,7 @@ const PLAN_LABELS: Record<string, string> = {
   trial: getPlanDisplayName("trial"),
   starter: getPlanDisplayName("starter"),
   professional: getPlanDisplayName("professional"),
+  agency_plus: getPlanDisplayName("agency_plus"),
   cancelled: getPlanDisplayName("cancelled"),
 };
 

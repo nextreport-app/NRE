@@ -50,7 +50,7 @@ const EN: MarketingCopy = {
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",
   heroNoCard: "No credit card required.",
-  pricingTitle: "Simple pricing for growing agencies",
+  pricingTitle: "Launch pricing for freelancers and agencies",
   pricingSubtitle: "Start free for 7 days. No credit card required.",
   pricingCurrencyLabel: "Show prices in",
   tryCtaTitle: "Try NextReport now.",

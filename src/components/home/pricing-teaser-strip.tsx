@@ -11,8 +11,11 @@ export function PricingTeaserStrip() {
   const { marketing, home } = useSiteCopy();
   const { currency } = usePricingCurrency();
   const perMonth = home.pricing.perMonth;
-  const agencyFrom = formattedPlanPrice("starter", currency);
-  const proFrom = formattedPlanPrice("professional", currency);
+  const plans = [
+    { id: "starter", clients: 10 },
+    { id: "professional", clients: 50 },
+    { id: "agency_plus", clients: 100 },
+  ] as const;
 
   return (
     <section
@@ -28,25 +31,15 @@ export function PricingTeaserStrip() {
         </div>
 
         <div className="flex flex-col items-center gap-5 lg:items-end">
-          <p className="text-center text-sm text-ink-secondary lg:text-right">
-            <span className="font-medium text-white">{getPlanDisplayName("starter")}</span>
-            {" from "}
-            <span className="font-semibold text-white">
-              {agencyFrom}
-              {perMonth}
-            </span>
-            <span className="mx-2 hidden text-ink-muted sm:inline" aria-hidden="true">
-              ·
-            </span>
-            <span className="mt-1 block sm:mt-0 sm:inline">
-              <span className="font-medium text-white">{getPlanDisplayName("professional")}</span>
-              {" from "}
-              <span className="font-semibold text-white">
-                {proFrom}
-                {perMonth}
-              </span>
-            </span>
-          </p>
+          <div className="space-y-2 text-center text-sm text-ink-secondary lg:text-right">
+            {plans.map(plan => (
+              <p key={plan.id}>
+                <span className="font-medium text-white">{getPlanDisplayName(plan.id)}</span>{" · "}
+                <span className="font-semibold text-white">{formattedPlanPrice(plan.id, currency)}{perMonth}</span>{" · "}
+                {plan.clients} client workspaces
+              </p>
+            ))}
+          </div>
 
           <Link
             href="/pricing"

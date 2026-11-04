@@ -13,7 +13,7 @@ export function UpgradePrompt({
     <div className="mx-auto max-w-md rounded-lg border border-dash-border bg-dash-card p-8 text-center">
       <h1 className="text-xl font-semibold text-dash-ink">Client limit reached</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        You have reached your plan’s {clientLimit}-client limit. {CLIENT_LIMIT_EXPLAINER} Delete an unused client to add a different brand. Agency includes 10 clients; Professional includes 50. Contact us for more than 50 clients or for a paid-plan change.
+        You have reached your plan’s {clientLimit}-client limit. {CLIENT_LIMIT_EXPLAINER} Delete an unused client to add a different brand. Freelancer includes 10 clients, Agency 50, and Agency Plus 100. Contact us for more than 100 clients or for a paid-plan change.
 
       </p>
       <div className="mt-6">

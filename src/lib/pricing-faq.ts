@@ -9,8 +9,8 @@ export const PRICING_FAQS = [
     a: "Correct. Sign up and get 7 days to try reporting with up to 3 clients and 10 generated reports with no payment details required. You only need to subscribe when your trial ends and you want to continue.",
   },
   {
-    q: "What's the difference between Agency and Professional?",
-    a: "Both plans include unlimited report generation subject to fair use and generation concurrency safeguards, Meta CSV reporting today, white-label options, Slack/Zapier webhooks, and client sharing tools. Agency supports up to 10 client workspaces; Professional supports up to 50 client workspaces; contact us for larger rosters. Priority email support is on Professional.",
+    q: "What's the difference between Freelancer, Agency and Agency Plus?",
+    a: "All three plans include unlimited report generation subject to fair use and generation concurrency safeguards, Meta CSV reporting today, white-label options, Slack/Zapier webhooks, and client sharing tools. Freelancer supports up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100. All three are available through self-service checkout. Priority email support is included on Agency and Agency Plus. Contact us for more than 100 clients.",
   },
   {
     q: "Do you charge my card automatically each month?",
@@ -30,7 +30,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "Can I white-label reports for my clients?",
-    a: "Yes — included on the free trial and both paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
+    a: "Yes — included on the free trial and all three paid plans. In Account settings, show NextReport (default), replace it with your agency name on shared links and client emails, or hide third-party branding entirely.",
   },
   {
     q: "What currencies do you support?",

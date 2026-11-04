@@ -13,7 +13,7 @@ export async function createClientWithinCapacity(userId: string, data: Omit<Pris
     if (status.isBlocked) throw new ServiceError("Your trial or paid access has ended. Visit Billing to continue.", 403);
     const count = await tx.client.count({ where: { userId } });
     if (status.clientLimit !== null && count >= status.clientLimit) {
-      throw new ServiceError(`Your plan allows ${status.clientLimit} active clients. Delete an unused client or visit Billing. For more than 50 clients, contact hello@nextreport.in.`, 403);
+      throw new ServiceError(`Your plan allows ${status.clientLimit} active clients. Delete an unused client or visit Billing. For more than 100 clients, contact hello@nextreport.in.`, 403);
     }
     const client = await tx.client.create({ data: { ...data, userId } });
     await tx.user.update({ where: { id: userId }, data: { clientsCreatedCount: { increment: 1 } } });

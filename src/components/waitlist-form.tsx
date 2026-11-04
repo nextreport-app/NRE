@@ -14,7 +14,7 @@ export function WaitlistForm({
   country,
   className,
 }: {
-  planId: "starter" | "professional";
+  planId: "starter" | "professional" | "agency_plus";
   /** The detected country code, if ipapi.co resolved one — passed through as metadata even if the visitor manually switched the displayed currency to USD. */
   country?: string | null;
   className?: string;

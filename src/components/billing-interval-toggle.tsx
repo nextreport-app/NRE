@@ -20,7 +20,7 @@ export function BillingIntervalToggle({
   labels,
 }: BillingIntervalToggleProps) {
   const monthlyLabel = labels?.monthly ?? "Monthly";
-  const annualLabel = labels?.annual ?? "Annual (save 20%)";
+  const annualLabel = labels?.annual ?? "Annual (2 months free)";
   const ariaLabel = labels?.aria ?? "Billing period";
   const isDashboard = variant === "dashboard";
   const shell = isDashboard

@@ -11,6 +11,7 @@ const RAZORPAY_CHECKOUT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 const PLAN_NAMES: Record<BillablePlanId, string> = {
   starter: getPlanDisplayName("starter"),
   professional: getPlanDisplayName("professional"),
+  agency_plus: getPlanDisplayName("agency_plus"),
 };
 
 interface RazorpaySuccessResponse {

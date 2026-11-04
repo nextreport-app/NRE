@@ -109,6 +109,7 @@ export type HomeCopy = {
     plans: {
       starter: HomePricingPlanCopy;
       professional: HomePricingPlanCopy;
+      agency_plus: HomePricingPlanCopy;
     };
   };
 };

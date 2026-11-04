@@ -19,7 +19,8 @@ import Razorpay from "razorpay";
 import crypto from "node:crypto";
 import type { PricingCurrency } from "@/lib/currency";
 
-export type PlanId = "starter" | "professional";
+export type { BillablePlanId as PlanId } from "./plan-labels";
+import type { BillablePlanId as PlanId } from "./plan-labels";
 import type { BillingInterval } from "./plan-pricing";
 
 import { amountForCurrency } from "./plan-pricing";
@@ -27,7 +28,7 @@ export { PLANS, amountForCurrency } from "./plan-pricing";
 export type { BillingInterval } from "./plan-pricing";
 
 export function isPlanId(value: unknown): value is PlanId {
-  return value === "starter" || value === "professional";
+  return value === "starter" || value === "professional" || value === "agency_plus";
 }
 
 export function isPricingCurrency(value: unknown): value is PricingCurrency {
@@ -41,7 +42,7 @@ export function isBillingInterval(value: unknown): value is BillingInterval {
 /** Reverse of PLANS: which plan (if any) costs exactly this much, in this currency — used by the payments webhook to derive planId from the amount actually captured rather than trusting a client- or notes-supplied planId. */
 export function planIdForAmount(amount: number, currency: string): PlanId | null {
   if (!isPricingCurrency(currency)) return null;
-  for (const planId of ["starter", "professional"] as const) {
+  for (const planId of ["starter", "professional", "agency_plus"] as const) {
     if (amount === amountForCurrency(planId, currency as PricingCurrency, "monthly")) return planId;
     if (amount === amountForCurrency(planId, currency as PricingCurrency, "annual")) return planId;
   }
@@ -120,14 +121,14 @@ export function getRazorpayPlanId(
 }
 
 export function isRazorpaySubscriptionsConfigured(): boolean {
-  return (["starter", "professional"] as const).some(plan =>
+  return (["starter", "professional", "agency_plus"] as const).some(plan =>
     (["INR", "USD"] as const).some(currency =>
       (["monthly", "annual"] as const).some(interval => getRazorpayPlanId(plan, currency, interval) !== null)));
 }
 
 /** Reverse lookup from a Razorpay plan id back to our planId — used by webhooks. */
 export function planIdFromRazorpayPlan(razorpayPlanId: string): PlanId | null {
-  for (const planId of ["starter", "professional"] as const) {
+  for (const planId of ["starter", "professional", "agency_plus"] as const) {
     for (const currency of ["INR", "USD"] as const) {
       for (const interval of ["monthly", "annual"] as const) {
         if (getRazorpayPlanId(planId, currency, interval) === razorpayPlanId) return planId;

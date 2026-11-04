@@ -15,7 +15,7 @@ const BATCH_SIZE = 50;
 
 /** Starter/trial accounts cap at 30 days; Professional may keep reports up to 90 days. */
 export function maxReportRetentionDaysForPlan(planId: PlanId): number {
-  return planId === "professional" ? 90 : 30;
+  return (planId === "professional" || planId === "agency_plus") ? 90 : 30;
 }
 
 export function allowedReportRetentionOptions(planId: PlanId): ReportRetentionDaysOption[] {

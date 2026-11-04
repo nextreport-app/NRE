@@ -113,8 +113,8 @@ export const HOME_EN: HomeCopy = {
   socialProofLiveHint: "Live",
   pricingComparison: {
     featureColumn: "Compare plans",
-    agencyColumn: "Agency",
-    proColumn: "Professional",
+    agencyColumn: "Freelancer",
+    proColumn: "Agency",
     clientWorkspaces: "Client workspaces",
     agencyClients: "Up to {n} brands",
     unlimitedClients: "Up to 50 brands",
@@ -168,11 +168,11 @@ export const HOME_EN: HomeCopy = {
   pricing: {
     billingPeriodAria: "Billing period",
     monthly: "Monthly",
-    annual: "Annual (save 20%)",
+    annual: "Annual (2 months free)",
     mostPopular: "For growing agencies",
     perMonth: "/month",
     perYear: "/year",
-    saveAnnual: "Save 20% vs paying monthly",
+    saveAnnual: "Two months free vs paying monthly",
     exclGst: "Checkout total · billed in INR",
     exclTax: "Checkout total · billed in USD",
     payInr: "Pay securely with UPI, Cards, Net Banking",
@@ -180,13 +180,13 @@ export const HOME_EN: HomeCopy = {
     subscribeToPrefix: "Subscribe to",
     redirecting: "Redirecting…",
     plans: {
+      agency_plus: { bestFor: "Established agencies managing larger client rosters", features: ["Up to 100 client workspaces — Meta Ads reporting live today", "Everything in Agency", "Priority email support", "Early access to new features"] },
       starter: {
         bestFor: "Freelancers and boutique agencies",
         features: [
           AGENCY_CLIENT_LIMIT_FEATURE,
           "Unlimited reports with fair-use safeguards",
           "Meta Ads — CSV upload (live)",
-          "Google, TikTok, GA4 & Meta API sync — launching soon",
           "AI-written campaign summaries & insights",
           "PowerPoint, Google Slides & live browser share",
           "Save to Google Drive",
@@ -199,9 +199,8 @@ export const HOME_EN: HomeCopy = {
         bestFor: "Growing agencies with larger client rosters",
         features: [
           PROFESSIONAL_CLIENT_LIMIT_FEATURE,
-          "Everything in Agency",
-          "Meta CSV reporting for every client; more platforms as we launch",
-          "Quarterly, YTD & creative reports — Meta CSV today; others launching soon",
+          "Everything in Freelancer",
+          "Quarterly, YTD & creative Meta CSV reports",
           "Priority email support",
           "Early access to new features",
         ],
