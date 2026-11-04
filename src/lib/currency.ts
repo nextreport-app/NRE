@@ -91,9 +91,9 @@ export function resolveInitialPricingCurrency(
 ): PricingCurrency {
   const pref = readPricingCurrencyPreference(storage);
   if (pref) return pref;
+  if (visitorCountryFromServer) return countryCodeToCurrency(visitorCountryFromServer);
   const cached = readCachedCountry(storage);
   if (cached) return countryCodeToCurrency(cached.countryCode);
-  if (visitorCountryFromServer) return countryCodeToCurrency(visitorCountryFromServer);
   return "USD";
 }
 

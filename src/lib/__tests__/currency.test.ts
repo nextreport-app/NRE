@@ -44,6 +44,12 @@ describe("countryCodeToCurrency", () => {
     },
   );
 
+  it("uses a current non-India edge location ahead of a stale cached India country", () => {
+    const storage = fakeStorage(); writeCachedCountry("IN", storage);
+    for (const country of ["US", "AU", "GB", "FR", "CA", "NZ", "BR"]) expect(resolveInitialPricingCurrency(storage, country)).toBe("USD");
+    writePricingCurrencyPreference("INR", storage);
+    expect(resolveInitialPricingCurrency(storage, "AU")).toBe("INR"); // Explicit user choice.
+  });
   it("defaults to USD when the country cannot be detected (null, undefined, or empty)", () => {
     expect(countryCodeToCurrency(null)).toBe("USD");
     expect(countryCodeToCurrency(undefined)).toBe("USD");

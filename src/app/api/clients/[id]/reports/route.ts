@@ -1,3 +1,4 @@
+import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "@/lib/nre/csv-currency";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
 import { guardReportGeneration } from "@/lib/quality-agents/generation-guard";
@@ -142,7 +143,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Previous Month Data has no usable rows." }, { status: 400 });
     }
 
-    const currencySymbol = CURRENCY_SYMBOLS[client.currency];
+    const currencySymbol = resolveReportCurrencySymbol(sourceHeaders(periodRows), periodRows, CURRENCY_SYMBOLS[client.currency]);
     const summaryEngine = createReportEngine(platform);
     const summaryData = summaryEngine.buildPreviousMonthSummary({
       accountName: client.accountName,
@@ -152,6 +153,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
+    summaryData.currencySymbol = currencySymbol;
     const fileName = `Previous Month Summary - ${summaryData.periodRow.fullMonthLabel}.pptx`.replace(/[\s/]/g, "_");
     const shareToken = generateShareToken();
 
@@ -217,6 +219,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const supplementalRows = includePreviousMonthComparison
       ? await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null)
       : undefined;
+    const currencyCheck = detectCsvCurrency([...mtdParsed.headers, ...sourceHeaders(supplementalRows ?? [])], [...mtdParsed.rows, ...(supplementalRows ?? [])]);
+    if (currencyCheck.error) return NextResponse.json({ error: currencyCheck.error }, { status: 400 });
     const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
     const coverage = validateComparisonReportCoverage(
       { startIso: periodA.startIso, endIso: periodA.endIso },
@@ -232,7 +236,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const comparisonData = comparisonEngine.buildComparison({
       now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       timezone: client.timezone,
       mtdDailyRows: mtdParsed.rows,
       periodBSupplementalRows: supplementalRows,
@@ -312,7 +316,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const historicalData = historicalEngine.buildHistorical({
       now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       timezone: client.timezone,
       monthlyBudget: client.monthlyBudget,
       mtdDailyRows: mtdParsed.rows,
@@ -393,7 +397,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const dayBreakdownEngine = createReportEngine(platform);
     const dayBreakdownData = dayBreakdownEngine.buildDayBreakdown({
       accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       timezone: client.timezone,
       mtdDailyRows: mtdParsed.rows,
       dateRange: dateResolution.weeklyRange,

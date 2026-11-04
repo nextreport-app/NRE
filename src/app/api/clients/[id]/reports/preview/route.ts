@@ -1,3 +1,4 @@
+import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "@/lib/nre/csv-currency";
 import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
 import { recoveryContextKey, buildPrivateDiagnostics } from "@/lib/quality-agents/recovery-diagnostics";
 import { captureCsvQualityIncident } from "@/lib/quality-agents/incidents";
@@ -111,6 +112,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const supplementalRows = includePreviousMonthComparison
       ? await loadPreviousMonthDataRowsForCampaigns(client, selectedCampaigns ?? null)
       : undefined;
+    const currencyCheck = detectCsvCurrency([...mtdParsed.headers, ...sourceHeaders(supplementalRows ?? [])], [...mtdParsed.rows, ...(supplementalRows ?? [])]);
+    if (currencyCheck.error) return NextResponse.json({ error: currencyCheck.error }, { status: 400 });
     const supplementalBounds = supplementalRows?.length ? computeCsvDateBounds(supplementalRows) : null;
     const coverage = validateComparisonReportCoverage(
       { startIso: periodA.startIso, endIso: periodA.endIso },
@@ -138,7 +141,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const data = comparisonEngine.buildComparison({
       now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       timezone: client.timezone,
       mtdDailyRows: mtdParsed.rows,
       periodBSupplementalRows: supplementalRows,
@@ -159,7 +162,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       selectedCampaigns: selectedCampaigns ?? null,
       periodA: { startIso: periodA.startIso, endIso: periodA.endIso },
       periodB: { startIso: periodB.startIso, endIso: periodB.endIso },
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
       campaignObjectives: campaignObjectives ?? null,
       platform,
@@ -199,7 +202,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const data = historicalEngine.buildHistorical({
       now: csvReportNow(mtdParsed.rows, new Date(), client.timezone),
       accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       timezone: client.timezone,
       monthlyBudget: client.monthlyBudget,
       mtdDailyRows: mtdParsed.rows,
@@ -219,7 +222,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       report: data,
       mtdDailyRows: mtdParsed.rows,
       selectedCampaigns: selectedCampaigns ?? null,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
       campaignObjectives: campaignObjectives ?? null,
       platform,
@@ -278,7 +281,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const dayBreakdownEngine = createReportEngine(platform);
     const data = dayBreakdownEngine.buildDayBreakdown({
       accountName: client.accountName,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       timezone: client.timezone,
       mtdDailyRows: mtdParsed.rows,
       dateRange: dateResolution.weeklyRange,
@@ -298,7 +301,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       report: data,
       mtdDailyRows: mtdParsed.rows,
       selectedCampaigns: selectedCampaigns ?? null,
-      currencySymbol: CURRENCY_SYMBOLS[client.currency],
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
       campaignObjectives: campaignObjectives ?? null,
       platform,

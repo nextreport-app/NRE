@@ -18,6 +18,10 @@ const PUBLIC_PATHS = [
   "/about",
   "/pricing",
   "/help/download",
+  "/help/metrics",
+  "/help/objectives",
+  "/download",
+  "/opengraph-image",
   "/how-it-works",
   "/case-studies",
   "/refer",
@@ -81,7 +85,9 @@ export default auth((req) => {
     // signed_request, no NextAuth session (see api/meta/data-deletion).
     pathname === "/api/meta/data-deletion";
 
-  if (!req.auth && !isPublic) {
+  // Unknown document URLs must reach Next's genuine 404, not a login redirect.
+  const protectedPath = ["/clients", "/account", "/billing", "/support", "/admin", "/dashboard"].some(path => pathname === path || pathname.startsWith(`${path}/`)) || pathname.startsWith("/api/");
+  if (!req.auth && !isPublic && protectedPath) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);

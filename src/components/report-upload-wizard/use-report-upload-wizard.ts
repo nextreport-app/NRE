@@ -119,7 +119,7 @@ export function useReportUploadWizard({
   clientId,
   clientName,
   clientTimezone,
-  currencySymbol,
+  currencySymbol: initialCurrencySymbol,
   hasGoogleDriveConnected,
   initialLastDriveFolderId,
   initialLastDriveFolderName,
@@ -147,6 +147,7 @@ export function useReportUploadWizard({
   accountDisplayName = null,
 }: ReportUploadWizardProps) {
   const { locale } = useSiteTheme();
+  const [currencySymbol, setCurrencySymbol] = useState(initialCurrencySymbol);
   const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
   const [step, setStepState] = useState<Step>(1);
@@ -965,6 +966,8 @@ export function useReportUploadWizard({
         const restoredCampaigns: string[] = ctx.campaigns;
         setCampaigns(restoredCampaigns);
         setCampaignSpend(ctx.campaignSpend);
+        setCurrencySymbol(ctx.currencySymbol ?? initialCurrencySymbol);
+        if (ctx.currencySymbol && ctx.currencySymbol !== initialCurrencySymbol) setClientMonthlyBudget(null);
         setLowSpendCampaigns(ctx.lowSpendCampaigns ?? []);
         const restoredGroups: AdSetGroup[] = ctx.adSetGroups;
         setAdSetGroups(restoredGroups);
@@ -1173,6 +1176,8 @@ export function useReportUploadWizard({
     setMetricHeaderProfile(json.metricHeaderProfile ?? null);
     setCampaigns(campaignList);
     setCampaignSpend(json.campaignSpend || {});
+    setCurrencySymbol(json.currencySymbol ?? initialCurrencySymbol);
+    if (json.currencySymbol && json.currencySymbol !== initialCurrencySymbol) setClientMonthlyBudget(null);
     setLowSpendCampaigns(json.lowSpendCampaigns || []);
 
     if (preserve) {

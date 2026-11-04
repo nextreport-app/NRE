@@ -203,9 +203,15 @@ describe("TIMEZONE_GROUPS", () => {
     expect(TIMEZONES).toContain("Australia/Perth");
   });
 
-  it("labels the Calgary option 'Calgary (MST)' even though its value is the canonical America/Edmonton zone", () => {
+  it("labels the Calgary option 'Calgary (MST/MDT)' even though its value is the canonical America/Edmonton zone", () => {
     const canada = TIMEZONE_GROUPS.find((g) => g.region === "Canada")!;
     const calgary = canada.zones.find((z) => z.value === "America/Edmonton")!;
-    expect(calgary.label).toBe("Calgary (MST)");
+    expect(calgary.label).toBe("Calgary (MST/MDT)");
   });
+});
+
+it("accepts real IANA timezone settings and rejects placeholders/fixed offsets before report generation", () => {
+  const base = { accountName: "Example", currency: "USD", template: "DARK" };
+  for (const timezone of ["UTC", "Asia/Kolkata", "Australia/Sydney", "Australia/Brisbane", "Europe/Paris"]) expect(clientSchema.safeParse({ ...base, timezone }).success).toBe(true);
+  for (const timezone of ["Not/AZone", "Australia/NotSydney", "yesterday", "+10:00"]) expect(clientSchema.safeParse({ ...base, timezone }).success).toBe(false);
 });

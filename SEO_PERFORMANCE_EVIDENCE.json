@@ -1,0 +1,318 @@
+{
+  "date": "2026-11-04",
+  "timezone": "Asia/Calcutta",
+  "production": "NEEDS ACCESS: outbound gateway blocks nextreport.in, www, PageSpeed API, and Google documentation with 403; not an origin failure diagnosis",
+  "measurementNotes": "Local website GA is unconfigured for Lighthouse; no real vendor/consented-returning-user workload or field INP is claimed. A busy shared-machine run scored 96; final idle runs scored 99, 99, 98. All runs retained for transparency.",
+  "summary": {
+    "mobileIdleMedianScores": {
+      "performance": 99,
+      "accessibility": 100,
+      "seo": 100
+    },
+    "mobileIdlePerformanceRange": [
+      98,
+      99
+    ],
+    "mobileAllOptimizedPerformanceRange": [
+      96,
+      99
+    ],
+    "mobileIdleMedianMetrics": {
+      "first-contentful-paint": 980.99595,
+      "largest-contentful-paint": 980.99595,
+      "total-blocking-time": 131.31307500000003,
+      "cumulative-layout-shift": 0.04891197630693504,
+      "speed-index": 980.99595
+    }
+  },
+  "runs": [
+    {
+      "platform": "mobile",
+      "revision": "before",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 98,
+        "accessibility": 93,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "1.1\u00a0s",
+          "numeric": 1052.34605
+        },
+        "largest-contentful-paint": {
+          "display": "1.1\u00a0s",
+          "numeric": 1052.34605
+        },
+        "total-blocking-time": {
+          "display": "130\u00a0ms",
+          "numeric": 125.5
+        },
+        "cumulative-layout-shift": {
+          "display": "0.049",
+          "numeric": 0.04891197630693504
+        },
+        "speed-index": {
+          "display": "2.5\u00a0s",
+          "numeric": 2463.158006870249
+        }
+      }
+    },
+    {
+      "platform": "desktop",
+      "revision": "before",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 100,
+        "accessibility": 93,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "0.3\u00a0s",
+          "numeric": 264.00525
+        },
+        "largest-contentful-paint": {
+          "display": "0.3\u00a0s",
+          "numeric": 264.00525
+        },
+        "total-blocking-time": {
+          "display": "10\u00a0ms",
+          "numeric": 6
+        },
+        "cumulative-layout-shift": {
+          "display": "0.025",
+          "numeric": 0.02453950513985178
+        },
+        "speed-index": {
+          "display": "0.3\u00a0s",
+          "numeric": 288.0543288774683
+        }
+      }
+    },
+    {
+      "platform": "mobile",
+      "revision": "after_trial",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 99,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 1011.49935
+        },
+        "largest-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 1011.49935
+        },
+        "total-blocking-time": {
+          "display": "140\u00a0ms",
+          "numeric": 135.25032499999998
+        },
+        "cumulative-layout-shift": {
+          "display": "0.049",
+          "numeric": 0.04891197630693504
+        },
+        "speed-index": {
+          "display": "1.0\u00a0s",
+          "numeric": 1011.49935
+        }
+      }
+    },
+    {
+      "platform": "desktop",
+      "revision": "after_trial",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "0.3\u00a0s",
+          "numeric": 269.4842
+        },
+        "largest-contentful-paint": {
+          "display": "0.3\u00a0s",
+          "numeric": 269.4842
+        },
+        "total-blocking-time": {
+          "display": "0\u00a0ms",
+          "numeric": 1
+        },
+        "cumulative-layout-shift": {
+          "display": "0.025",
+          "numeric": 0.02453950513985178
+        },
+        "speed-index": {
+          "display": "0.3\u00a0s",
+          "numeric": 279.7852716297283
+        }
+      }
+    },
+    {
+      "platform": "mobile",
+      "revision": "after_final_busy",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 96,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 1012.08665
+        },
+        "largest-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 1012.08665
+        },
+        "total-blocking-time": {
+          "display": "230\u00a0ms",
+          "numeric": 228.5
+        },
+        "cumulative-layout-shift": {
+          "display": "0.049",
+          "numeric": 0.04891197630693504
+        },
+        "speed-index": {
+          "display": "1.0\u00a0s",
+          "numeric": 1012.08665
+        }
+      }
+    },
+    {
+      "platform": "desktop",
+      "revision": "after_final",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "0.3\u00a0s",
+          "numeric": 312.76644999999996
+        },
+        "largest-contentful-paint": {
+          "display": "0.3\u00a0s",
+          "numeric": 312.76644999999996
+        },
+        "total-blocking-time": {
+          "display": "10\u00a0ms",
+          "numeric": 7.5
+        },
+        "cumulative-layout-shift": {
+          "display": "0.025",
+          "numeric": 0.02453950513985178
+        },
+        "speed-index": {
+          "display": "0.4\u00a0s",
+          "numeric": 391.5997494616395
+        }
+      }
+    },
+    {
+      "platform": "mobile",
+      "revision": "after_idle_1",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 99,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 975.82895
+        },
+        "largest-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 975.82895
+        },
+        "total-blocking-time": {
+          "display": "120\u00a0ms",
+          "numeric": 120.58552499999985
+        },
+        "cumulative-layout-shift": {
+          "display": "0.049",
+          "numeric": 0.04891197630693504
+        },
+        "speed-index": {
+          "display": "1.0\u00a0s",
+          "numeric": 975.82895
+        }
+      }
+    },
+    {
+      "platform": "mobile",
+      "revision": "after_idle_2",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 99,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 998.37385
+        },
+        "largest-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 998.37385
+        },
+        "total-blocking-time": {
+          "display": "130\u00a0ms",
+          "numeric": 131.31307500000003
+        },
+        "cumulative-layout-shift": {
+          "display": "0.049",
+          "numeric": 0.04891197630693504
+        },
+        "speed-index": {
+          "display": "1.0\u00a0s",
+          "numeric": 998.37385
+        }
+      }
+    },
+    {
+      "platform": "mobile",
+      "revision": "after_idle_3",
+      "kind": "Local production-build Lighthouse 13.6.0 lab; NOT field CWV",
+      "scores": {
+        "performance": 98,
+        "accessibility": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "first-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 980.99595
+        },
+        "largest-contentful-paint": {
+          "display": "1.0\u00a0s",
+          "numeric": 980.99595
+        },
+        "total-blocking-time": {
+          "display": "150\u00a0ms",
+          "numeric": 149.502025
+        },
+        "cumulative-layout-shift": {
+          "display": "0.049",
+          "numeric": 0.04891197630693504
+        },
+        "speed-index": {
+          "display": "1.0\u00a0s",
+          "numeric": 980.99595
+        }
+      }
+    }
+  ]
+}

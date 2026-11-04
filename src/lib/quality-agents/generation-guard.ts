@@ -1,3 +1,4 @@
+import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import {NextResponse} from 'next/server';
 import type {Client} from '@/generated/prisma/client';
 import type {WizardParsedMtd} from '@/lib/nre/wizard-upload-session';
@@ -16,7 +17,7 @@ type Candidate={kind:'STANDARD';data:ReportData}|{kind:'COMPARISON';data:Compari
 /** Run before capacity/credit reservation. Never trust client-side verification or a cached preview. */
 export async function guardReportGeneration(input:{client:Client;userId:string;parsed:WizardParsedMtd;formData:FormData|null;sourceKey:string;candidate:Candidate}){
  const {client,parsed,formData,candidate}=input;
- const common={report:candidate.data,mtdDailyRows:parsed.rows,selectedCampaigns:formData?parseJsonFormField(formData,'selectedCampaigns',selectedCampaignsSchema):undefined,campaignObjectives:formData?parseJsonFormField(formData,'campaignObjectives',campaignObjectivesSchema):undefined,currencySymbol:CURRENCY_SYMBOLS[client.currency],resultCountingMode:resolveCsvAlignResults(formData)?'meta-csv-export' as const:'standard' as const,platform:parsed.platform};
+ const common={report:candidate.data,mtdDailyRows:parsed.rows,selectedCampaigns:formData?parseJsonFormField(formData,'selectedCampaigns',selectedCampaignsSchema):undefined,campaignObjectives:formData?parseJsonFormField(formData,'campaignObjectives',campaignObjectivesSchema):undefined,currencySymbol:resolveReportCurrencySymbol(parsed.headers,parsed.rows,CURRENCY_SYMBOLS[client.currency]),resultCountingMode:resolveCsvAlignResults(formData)?'meta-csv-export' as const:'standard' as const,platform:parsed.platform};
  let check;
  if(candidate.kind==='COMPARISON'){
   const periodA=formData?parseJsonFormField(formData,'comparisonPeriodA',comparisonPeriodSchema):undefined;const periodB=formData?parseJsonFormField(formData,'comparisonPeriodB',comparisonPeriodSchema):undefined;

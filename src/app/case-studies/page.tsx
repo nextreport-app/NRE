@@ -1,13 +1,11 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { PublicNav } from "@/components/public-nav";
 import { BetaBanner } from "@/components/beta-banner";
 import { auth } from "@/lib/auth";
 
-export const metadata: Metadata = {
-  title: "Case Studies — NextReport",
-  description: "How agencies use NextReport to automate Meta Ads client reporting.",
-};
+// These are explicitly labelled placeholder examples, not published customer evidence.
+export const metadata = pageMetadata({ title: "Case Studies", description: "Illustrative NextReport reporting workflows. Customer case studies are not yet published.", path: "/case-studies", noIndex: true });
 
 const CASE_STUDIES = [
   {

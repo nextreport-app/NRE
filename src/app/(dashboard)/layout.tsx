@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { Nav } from "@/components/nav";
 import { TrialBanner } from "@/components/trial-banner";
@@ -9,6 +12,7 @@ import { APP_SHELL_CLASS } from "@/lib/site-theme";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  if (!session?.user) redirect("/login");
   const user = session?.user
     ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true } })
     : null;

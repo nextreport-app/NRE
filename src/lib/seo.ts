@@ -42,6 +42,8 @@ export const PUBLIC_SITEMAP_ROUTES: SitemapEntry[] = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/how-it-works", changeFrequency: "monthly", priority: 0.9 },
   { path: "/help/download", changeFrequency: "monthly", priority: 0.85 },
+  { path: "/help/metrics", changeFrequency: "monthly", priority: 0.65 },
+  { path: "/help/objectives", changeFrequency: "monthly", priority: 0.65 },
   { path: "/pricing", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
@@ -84,11 +86,6 @@ export function pageMetadata({
     publisher: SITE_NAME,
     alternates: {
       canonical: url,
-      languages: {
-        "en-IN": url,
-        en: url,
-        "x-default": url,
-      },
     },
     openGraph: {
       type: "website",
@@ -139,11 +136,6 @@ export const ROOT_METADATA: Metadata = {
   category: "Business",
   alternates: {
     canonical: SITE_URL,
-    languages: {
-      "en-IN": SITE_URL,
-      en: SITE_URL,
-      "x-default": SITE_URL,
-    },
   },
   openGraph: {
     type: "website",
@@ -181,7 +173,7 @@ export const ROOT_METADATA: Metadata = {
     apple: "/favicon-large.png",
   },
   other: {
-    "theme-color": "#0d1b2e",
+    "theme-color": "#101217",
   },
 };
 
@@ -342,7 +334,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional is unlimited. Meta API sync is available for testing in the wizard.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. The Agency plan includes up to 10 client workspaces with Meta Ads reporting today; Professional supports up to 50 client workspaces. Meta API sync is available for testing in the wizard.",
   },
   {
     question: "Can I white-label reports for my clients?",

@@ -1,3 +1,4 @@
+import { detectCsvCurrency } from "./csv-currency";
 import { prepareMonthlyCsvFacts } from "./monthly-csv-grain";
 /**
  * NRE v1 — Pillar 5: pre-generation validation.
@@ -114,6 +115,8 @@ export function validateMtdDailyCsv(
     platform === "GOOGLE" ? "Cost" : platform === "TIKTOK" ? "Cost or Amount spent" : "Amount Spent";
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
+  const currency = detectCsvCurrency(headers, rows);
+  if (currency.error) errors.push({ field: "currency", message: currency.error });
   const periodInput = platform === "META" ? prepareMonthlyCsvFacts(rows) : { aggregate: false, errors: [] };
   const allowMonthlyTotals = reportType === "MONTHLY" || reportType === "HISTORICAL";
   if (periodInput.aggregate && (allowMonthlyTotals || csvHasDailyGranularity(rows))) for (const message of periodInput.errors) errors.push({ field: "monthly_grain", message });

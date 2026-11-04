@@ -42,7 +42,7 @@ export const TEMPLATE_LABELS: Record<(typeof TEMPLATES)[number], string> = {
 
 export interface TimezoneOption {
   value: string;
-  /** City + local abbreviation, e.g. "New York (EST)" — the region/flag is shown via the enclosing TimezoneGroup, not repeated per option. */
+  /** City + local abbreviation, e.g. "New York (EST/EDT)" — the region/flag is shown via the enclosing TimezoneGroup, not repeated per option. */
   label: string;
 }
 
@@ -59,25 +59,25 @@ export const TIMEZONE_GROUPS: TimezoneGroup[] = [
     flag: "🇺🇸",
     region: "United States",
     zones: [
-      { value: "America/New_York", label: "New York (EST)" },
-      { value: "America/Chicago", label: "Chicago (CST)" },
-      { value: "America/Denver", label: "Denver (MST)" },
-      { value: "America/Los_Angeles", label: "Los Angeles (PST)" },
+      { value: "America/New_York", label: "New York (EST/EDT)" },
+      { value: "America/Chicago", label: "Chicago (CST/CDT)" },
+      { value: "America/Denver", label: "Denver (MST/MDT)" },
+      { value: "America/Los_Angeles", label: "Los Angeles (PST/PDT)" },
       { value: "America/Phoenix", label: "Phoenix (AZ)" },
-      { value: "America/Anchorage", label: "Anchorage (AKT)" },
+      { value: "America/Anchorage", label: "Anchorage (AKST/AKDT)" },
     ],
   },
   {
     flag: "🇨🇦",
     region: "Canada",
     zones: [
-      { value: "America/Toronto", label: "Toronto (EST)" },
+      { value: "America/Toronto", label: "Toronto (EST/EDT)" },
       // Calgary has no zone of its own in the IANA tz database — Mountain
       // Time Alberta (Calgary, Edmonton) is canonically America/Edmonton,
       // which is what Intl/date libraries actually recognize.
-      { value: "America/Edmonton", label: "Calgary (MST)" },
-      { value: "America/Vancouver", label: "Vancouver (PST)" },
-      { value: "America/Halifax", label: "Halifax (AST)" },
+      { value: "America/Edmonton", label: "Calgary (MST/MDT)" },
+      { value: "America/Vancouver", label: "Vancouver (PST/PDT)" },
+      { value: "America/Halifax", label: "Halifax (AST/ADT)" },
     ],
   },
   { flag: "🇬🇧", region: "United Kingdom", zones: [{ value: "Europe/London", label: "London (GMT/BST)" }] },
@@ -85,12 +85,12 @@ export const TIMEZONE_GROUPS: TimezoneGroup[] = [
     flag: "🇦🇺",
     region: "Australia",
     zones: [
-      { value: "Australia/Sydney", label: "Sydney (AEST)" },
-      { value: "Australia/Melbourne", label: "Melbourne (AEST)" },
+      { value: "Australia/Sydney", label: "Sydney (AEST/AEDT)" },
+      { value: "Australia/Melbourne", label: "Melbourne (AEST/AEDT)" },
       { value: "Australia/Perth", label: "Perth (AWST)" },
     ],
   },
-  { flag: "🇳🇿", region: "New Zealand", zones: [{ value: "Pacific/Auckland", label: "Auckland (NZST)" }] },
+  { flag: "🇳🇿", region: "New Zealand", zones: [{ value: "Pacific/Auckland", label: "Auckland (NZST/NZDT)" }] },
   { flag: "🇦🇪", region: "UAE", zones: [{ value: "Asia/Dubai", label: "Dubai (GST)" }] },
   { flag: "🇸🇬", region: "Singapore", zones: [{ value: "Asia/Singapore", label: "Singapore (SGT)" }] },
   {
@@ -107,7 +107,11 @@ export const TIMEZONES = TIMEZONE_GROUPS.flatMap((g) => g.zones.map((z) => z.val
 export const clientSchema = z.object({
   accountName: z.string().trim().min(1, "Account name is required").max(150),
   currency: z.enum(CURRENCIES),
-  timezone: z.string().trim().min(1),
+  timezone: z.string().trim().min(1).refine(value => {
+    if (/^[+-]/.test(value)) return false; // Fixed offsets cannot follow an ad account's DST rules.
+    try { new Intl.DateTimeFormat("en-US", { timeZone: value }).format(0); return true; }
+    catch { return false; }
+  }, "Choose a valid IANA timezone, such as Australia/Sydney or Asia/Kolkata."),
   monthlyBudget: z
     .union([z.number().positive(), z.nan(), z.null()])
     .optional()

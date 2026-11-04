@@ -1,3 +1,5 @@
+import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
+import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { extractCampaignNames, extractCampaignSpend, isLowSpendCampaign, sortCampaignsBySpend } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
@@ -60,6 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const campaigns = sortCampaignsBySpend(extractCampaignNames(payload.rows), campaignSpend);
     return NextResponse.json({
       ok: true,
+      currencySymbol: resolveReportCurrencySymbol(payload.headers, payload.rows, CURRENCY_SYMBOLS[client.currency]),
       campaigns,
       campaignSpend,
       lowSpendCampaigns: campaigns.filter(name => isLowSpendCampaign(name, campaignSpend)),

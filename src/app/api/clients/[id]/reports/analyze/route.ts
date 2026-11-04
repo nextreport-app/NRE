@@ -1,3 +1,5 @@
+import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
+import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { alignCsvReportFormData } from "@/lib/nre/csv-reporting-calendar";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
@@ -205,6 +207,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       detectedPlatform,
       platform,
       uploadSessionId,
+      currencySymbol: resolveReportCurrencySymbol(mtdParsed.headers, mtdParsed.rows, CURRENCY_SYMBOLS[client.currency]),
       headers: mtdParsed.headers,
       metricHeaderProfile: buildCsvMetricHeaderProfile(mtdParsed.headers,mtdParsed.rows),
       campaigns,

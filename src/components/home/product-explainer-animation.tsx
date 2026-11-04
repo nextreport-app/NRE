@@ -156,9 +156,8 @@ export function ProductExplainerAnimation() {
             onClick={() => setIndex(i)}
             aria-label={`Show step ${i + 1}: ${f.title}`}
             aria-current={i === index}
-            className="h-2 w-2 rounded-full transition-colors"
-            style={{ background: i === index ? ACCENT : "#383e4c" }}
-          />
+            className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-accent"
+          ><span aria-hidden="true" className="h-2 w-2 rounded-full transition-colors" style={{ background: i === index ? ACCENT : "#383e4c" }} /></button>
         ))}
       </div>
     </div>
