@@ -1,3 +1,4 @@
+import { restoreHistoricalShareCharts } from "@/lib/nre/share-report";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -41,7 +42,7 @@ const getReportByToken = cache(async (token: string): Promise<SharedReportPayloa
       return { kind: "comparison", data: parsed };
     }
     if (Array.isArray(parsed.campaigns) && parsed.version === 1) {
-      return { kind: "ads", data: parsed as ShareReportData };
+      return { kind: "ads", data: restoreHistoricalShareCharts(parsed as ShareReportData) };
     }
     return null;
   } catch {

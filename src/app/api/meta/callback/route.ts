@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { encryptMetaToken } from "@/lib/meta-token-storage";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
       where: { id: session.user.id },
       data: {
         metaAdsEnabled: true,
-        metaAccessToken: longLived.access_token,
+        metaAccessToken: encryptMetaToken(longLived.access_token),
         metaTokenExpiresAt: tokenExpiresAt,
         metaConnectedUserId: profile.id,
         metaConnectedName: profile.name ?? null,

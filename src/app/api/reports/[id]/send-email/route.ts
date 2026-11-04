@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { sendReportEmail } from "@/lib/email";
+import { reportDeliverySummary } from "@/lib/report-delivery-summary";
 import { reportBrandingFromShareJson } from "@/lib/report-branding";
 
 const bodySchema = z.object({
@@ -14,12 +15,6 @@ const bodySchema = z.object({
 // Prevents a single report's share link from being used to blast an
 // arbitrary list of addresses through this account's Resend quota.
 const MAX_EMAILS_PER_REPORT = 10;
-
-const REPORT_TYPE_LABELS: Record<string, string> = {
-  WEEKLY: "Weekly",
-  MONTHLY: "Monthly",
-  COMPARISON: "Comparison",
-};
 
 /**
  * The download screen's "Send Email" modal (see report-upload-wizard.tsx's
@@ -65,7 +60,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     const senderName = user?.name || user?.email || "NextReport user";
 
-    const dateRange = report.weekStart && report.weekEnd ? `${report.weekStart} - ${report.weekEnd}` : "—";
+    const deliverySummary = reportDeliverySummary(report);
     let summaryBranding = reportBrandingFromShareJson({
       agencyName: user?.agencyName,
       reportBrandingMode: user?.reportBrandingMode,
@@ -81,8 +76,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const result = await sendReportEmail({
       to: parsed.data.to,
       clientName: report.client.accountName,
-      reportType: REPORT_TYPE_LABELS[report.reportType] ?? report.reportType,
-      dateRange,
+      ...deliverySummary,
       shareLink: `https://nextreport.in/r/${report.shareToken}`,
       driveLink: report.slidesUrl ?? undefined,
       senderName,

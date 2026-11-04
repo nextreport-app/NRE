@@ -170,6 +170,7 @@ export interface ShareReportData {
   mtdRow: TableRowData;
   /** Multi-Month Historical — one row per calendar month for the final comparison table. */
   historicalComparisonRows?: TableRowData[];
+  historicalCharts?: ShareChartData[];
   dailyAdditionalTables?: DailyExtraTable[];
   dailyPresentation?: DailyPresentation;
   dailyExcludedMetricKeys?: string[];
@@ -443,6 +444,7 @@ export function buildHistoricalShareReportData(
       return { campaignName, adSetName: slide.adSetName, resultLabel: slide.resultLabel, dateRange: slide.dateRangeLine.split("\n")[0], adFrequency: adFrequencyLabel(slide.rowFreq), statusIndicator: slide.statusIndicator, metrics: allSlideMetrics(slide), aiSummary: ai.summary, aiInsights: ai.insights };
     }),
     chart: null,
+    historicalCharts: (data.monthlyCharts ?? []).map(item => projectChartSlideToShareChart(item.chart, data.currencySymbol ?? "$")),
     tableHeaderLabels: data.tableHeaderLabels,
     periodRow: EMPTY_TABLE_ROW,
     mtdRow: EMPTY_TABLE_ROW,
@@ -453,7 +455,7 @@ export function buildHistoricalShareReportData(
     generatedAt: now.toISOString(),
     visibility: {
       cover: true,
-      overview: false,
+      overview: (data.monthlyCharts?.length ?? 0) > 0,
       combinedTotal: data.comparisonRows.length > 0,
       metricGuide: true,
       campaigns: Object.fromEntries(campaigns.map((c) => [c.campaignName, true])),
@@ -461,4 +463,12 @@ export function buildHistoricalShareReportData(
     },
     publishedAt: null,
   };
+}
+
+/** Recover charts for previously generated monthly reports whose archive retained them. */
+export function restoreHistoricalShareCharts<T extends ShareReportData & { _renderArchive?: unknown }>(share: T): T {
+  if (share.reportType !== "HISTORICAL" || share.historicalCharts !== undefined) return share;
+  const data = (share._renderArchive as { historicalData?: HistoricalReportData } | undefined)?.historicalData;
+  if (!data?.monthlyCharts?.length) return share;
+  return { ...share, historicalCharts: data.monthlyCharts.map(item => projectChartSlideToShareChart(item.chart, data.currencySymbol ?? "$")), visibility: { ...(share.visibility ?? defaultShareVisibility(share)), overview: true } };
 }

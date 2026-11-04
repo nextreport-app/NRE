@@ -174,11 +174,12 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     }
 
     if (job.kind === "COMPARISON") {
-      const user = await prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT });
+      const [user, clientLogo] = await Promise.all([prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }), loadLogoAsset(client.logoUrl)]);
       const templateBuffer = await loadTemplateBufferForPlatform(job.platform, client.template);
       const pptxBuffer = await renderComparisonPptx({
         templateBuffer,
         data: job.comparisonData,
+        clientLogo,
         reportTitle: job.reportTitle,
         agencyName: agencyNameForCoverSlide(user ?? {}),
         isLightTemplate: isLightReportTemplate(client.template),

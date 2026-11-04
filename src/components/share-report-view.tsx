@@ -867,6 +867,12 @@ export function ShareReportView({
           </section>
         )}
 
+        {showOverview && visibleData.historicalCharts?.map((monthlyChart, index) => (
+          <section key={`monthly-chart-${index}`} className={slideClass}>
+            <ShareMtdOverviewSlide chart={monthlyChart} />
+          </section>
+        ))}
+
         {showCombinedTotal && visibleData.dailyPresentation?.summaryPages.map((metrics, index) => <section key={`daily-summary-${index}`} className={slideClass}><SlideCard>
           <CardReportTypeLabel label={`Selected period totals${visibleData.dailyPresentation!.summaryPages.length > 1 ? ` · ${index + 1} of ${visibleData.dailyPresentation!.summaryPages.length}` : ""}`} />
           <h3 className="text-[22px] font-bold text-ink sm:text-[28px]">Selected campaigns · {visibleData.accountName}</h3>
