@@ -15,7 +15,6 @@ import {
   detectCountryCode,
   readCachedCountry,
   readPricingCurrencyPreference,
-  resolveInitialPricingCurrency,
   writePricingCurrencyPreference,
   type PricingCurrency,
 } from "@/lib/currency";
@@ -37,22 +36,24 @@ export function PricingCurrencyProvider({
   /** Vercel `x-vercel-ip-country` — first paint INR in India, USD elsewhere. */
   initialVisitorCountryCode?: string | null;
 }) {
-  const [currency, setCurrencyState] = useState<PricingCurrency>(() =>
-    resolveInitialPricingCurrency(globalThis.localStorage, initialVisitorCountryCode),
-  );
-  const [ready, setReady] = useState(
-    () =>
-      !!readPricingCurrencyPreference() ||
-      !!readCachedCountry() ||
-      !!initialVisitorCountryCode,
-  );
+  // Keep SSR and the first hydrated render identical. Apply saved choices after hydration.
+  const [currency, setCurrencyState] = useState<PricingCurrency>(() => countryCodeToCurrency(initialVisitorCountryCode));
+  const [ready, setReady] = useState(!!initialVisitorCountryCode);
 
   useEffect(() => {
-    if (readPricingCurrencyPreference()) {
+    const preference = readPricingCurrencyPreference();
+    if (preference) {
+      setCurrencyState(preference);
       setReady(true);
       return;
     }
 
+    // The trusted edge country is fresher than a cached browser geolocation.
+    if (initialVisitorCountryCode) {
+      setCurrencyState(countryCodeToCurrency(initialVisitorCountryCode));
+      setReady(true);
+      return;
+    }
     const cached = readCachedCountry();
     if (cached) {
       setCurrencyState(countryCodeToCurrency(cached.countryCode));
@@ -81,7 +82,7 @@ export function PricingCurrencyProvider({
       clearTimeout(timeout);
       controller.abort();
     };
-  }, []);
+  }, [initialVisitorCountryCode]);
 
   const setCurrency = useCallback((next: PricingCurrency) => {
     writePricingCurrencyPreference(next);

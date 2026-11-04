@@ -38,7 +38,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "Are reports unlimited, and how long are they stored?",
-    a: "Paid plans have no monthly report quota. One report generates at a time per account, and shared capacity may temporarily ask you to retry. Each report supports up to 50 campaign/ad-set detail slides and uploads up to 4 MB; larger reports can be split. Technical upload/sync limits are 20 per day during trial and 100 per day on paid plans; contact us for bulk needs. The trial includes 10 reports. Report storage defaults to 7 days; download reports you need to keep. Automated bulk generation, account resale and sharing one workspace across unrelated agencies are not included. Contact us for high-volume use.",
+    a: "Paid plans have no monthly report quota. One report generates at a time per account, and shared capacity may temporarily ask you to retry. Each report supports up to 50 campaign/ad-set detail slides and day-wise CSVs up to 32 MB when lossless compression fits the 4 MB request limit; otherwise export a shorter range. Technical upload/sync limits are 20 per day during trial and 100 per day on paid plans; contact us for bulk needs. The trial includes 10 reports. Report storage defaults to 7 days; download reports you need to keep. Automated bulk generation, account resale and sharing one workspace across unrelated agencies are not included. Contact us for high-volume use.",
   },
   {
     q: "Is my data secure?",

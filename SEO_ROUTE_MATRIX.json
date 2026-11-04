@@ -1,0 +1,1182 @@
+[
+  {
+    "route": "/account",
+    "source": "src/app/(dashboard)/account/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/admin/metrics",
+    "source": "src/app/(dashboard)/admin/metrics/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/admin/support",
+    "source": "src/app/(dashboard)/admin/support/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/billing",
+    "source": "src/app/(dashboard)/billing/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/[id]/edit",
+    "source": "src/app/(dashboard)/clients/[id]/edit/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/[id]",
+    "source": "src/app/(dashboard)/clients/[id]/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/[id]/reports/[reportId]/copy",
+    "source": "src/app/(dashboard)/clients/[id]/reports/[reportId]/copy/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/[id]/reports/new",
+    "source": "src/app/(dashboard)/clients/[id]/reports/new/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/[id]/reports",
+    "source": "src/app/(dashboard)/clients/[id]/reports/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/[id]/reports/website/new",
+    "source": "src/app/(dashboard)/clients/[id]/reports/website/new/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients/new",
+    "source": "src/app/(dashboard)/clients/new/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/clients",
+    "source": "src/app/(dashboard)/clients/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/support",
+    "source": "src/app/(dashboard)/support/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/about",
+    "source": "src/app/about/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/about"
+  },
+  {
+    "route": "/api/account/integrations",
+    "source": "src/app/api/account/integrations/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/account/logo",
+    "source": "src/app/api/account/logo/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/account/onboarding",
+    "source": "src/app/api/account/onboarding/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/account",
+    "source": "src/app/api/account/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/[...nextauth]",
+    "source": "src/app/api/auth/[...nextauth]/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/account-login-hint",
+    "source": "src/app/api/auth/account-login-hint/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/forgot-password",
+    "source": "src/app/api/auth/forgot-password/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/resend-verification",
+    "source": "src/app/api/auth/resend-verification/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/reset-password",
+    "source": "src/app/api/auth/reset-password/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/signup",
+    "source": "src/app/api/auth/signup/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/auth/verify-email",
+    "source": "src/app/api/auth/verify-email/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/billing/cancel",
+    "source": "src/app/api/billing/cancel/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/book-demo",
+    "source": "src/app/api/book-demo/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/duplicate",
+    "source": "src/app/api/clients/[id]/duplicate/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/ga4-property",
+    "source": "src/app/api/clients/[id]/ga4-property/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/logo",
+    "source": "src/app/api/clients/[id]/logo/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/objective-cache",
+    "source": "src/app/api/clients/[id]/objective-cache/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/previous-month-data",
+    "source": "src/app/api/clients/[id]/previous-month-data/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/recovery/[incidentId]",
+    "source": "src/app/api/clients/[id]/recovery/[incidentId]/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/[reportId]",
+    "source": "src/app/api/clients/[id]/reports/[reportId]/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/analyze",
+    "source": "src/app/api/clients/[id]/reports/analyze/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/metrics",
+    "source": "src/app/api/clients/[id]/reports/metrics/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/preview",
+    "source": "src/app/api/clients/[id]/reports/preview/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports",
+    "source": "src/app/api/clients/[id]/reports/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/selection",
+    "source": "src/app/api/clients/[id]/reports/selection/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/sync-api",
+    "source": "src/app/api/clients/[id]/reports/sync-api/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/reports/upload-session-context",
+    "source": "src/app/api/clients/[id]/reports/upload-session-context/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]",
+    "source": "src/app/api/clients/[id]/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/website-report/analyze",
+    "source": "src/app/api/clients/[id]/website-report/analyze/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/website-report/preview",
+    "source": "src/app/api/clients/[id]/website-report/preview/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/website-report",
+    "source": "src/app/api/clients/[id]/website-report/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/wizard-draft",
+    "source": "src/app/api/clients/[id]/wizard-draft/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients/[id]/wizard-generate-baseline",
+    "source": "src/app/api/clients/[id]/wizard-generate-baseline/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/clients",
+    "source": "src/app/api/clients/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/contact",
+    "source": "src/app/api/contact/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/cron/purge-reports",
+    "source": "src/app/api/cron/purge-reports/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/cron/report-daily-digest",
+    "source": "src/app/api/cron/report-daily-digest/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/cron/retry-stuck-reports",
+    "source": "src/app/api/cron/retry-stuck-reports/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/cron/trial-reminders",
+    "source": "src/app/api/cron/trial-reminders/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/ga4/callback",
+    "source": "src/app/api/ga4/callback/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/ga4/connect",
+    "source": "src/app/api/ga4/connect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/ga4/disconnect",
+    "source": "src/app/api/ga4/disconnect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/ga4/properties",
+    "source": "src/app/api/ga4/properties/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-ads/callback",
+    "source": "src/app/api/google-ads/callback/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-ads/connect",
+    "source": "src/app/api/google-ads/connect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-ads/customers",
+    "source": "src/app/api/google-ads/customers/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-ads/disconnect",
+    "source": "src/app/api/google-ads/disconnect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-drive/callback",
+    "source": "src/app/api/google-drive/callback/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-drive/connect",
+    "source": "src/app/api/google-drive/connect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/google-drive/disconnect",
+    "source": "src/app/api/google-drive/disconnect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/internal/quality-incidents",
+    "source": "src/app/api/internal/quality-incidents/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/internal/quality-recovery",
+    "source": "src/app/api/internal/quality-recovery/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/jobs/generate-report",
+    "source": "src/app/api/jobs/generate-report/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/meta/adaccounts",
+    "source": "src/app/api/meta/adaccounts/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/meta/callback",
+    "source": "src/app/api/meta/callback/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/meta/connect",
+    "source": "src/app/api/meta/connect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/meta/data-deletion",
+    "source": "src/app/api/meta/data-deletion/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/meta/disconnect",
+    "source": "src/app/api/meta/disconnect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/payments/config",
+    "source": "src/app/api/payments/config/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/payments/create-order",
+    "source": "src/app/api/payments/create-order/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/payments/create-subscription",
+    "source": "src/app/api/payments/create-subscription/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/payments/verify",
+    "source": "src/app/api/payments/verify/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/payments/webhook",
+    "source": "src/app/api/payments/webhook/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/public/social-proof",
+    "source": "src/app/api/public/social-proof/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/r/[token]/agency-logo",
+    "source": "src/app/api/r/[token]/agency-logo/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/r/[token]/download",
+    "source": "src/app/api/r/[token]/download/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/reports/[id]/download",
+    "source": "src/app/api/reports/[id]/download/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/reports/[id]/save-to-drive",
+    "source": "src/app/api/reports/[id]/save-to-drive/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/reports/[id]/send-email",
+    "source": "src/app/api/reports/[id]/send-email/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/reports/[id]/slides",
+    "source": "src/app/api/reports/[id]/slides/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/reports/[id]/status",
+    "source": "src/app/api/reports/[id]/status/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/support",
+    "source": "src/app/api/support/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/tiktok/advertisers",
+    "source": "src/app/api/tiktok/advertisers/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/tiktok/callback",
+    "source": "src/app/api/tiktok/callback/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/tiktok/connect",
+    "source": "src/app/api/tiktok/connect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/tiktok/disconnect",
+    "source": "src/app/api/tiktok/disconnect/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/api/waitlist",
+    "source": "src/app/api/waitlist/route.ts",
+    "classification": "API / utility (noindex; auth or endpoint-specific signature/token)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/book-demo",
+    "source": "src/app/book-demo/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/book-demo"
+  },
+  {
+    "route": "/case-studies",
+    "source": "src/app/case-studies/page.tsx",
+    "classification": "Placeholder examples (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": null
+  },
+  {
+    "route": "/contact",
+    "source": "src/app/contact/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/contact"
+  },
+  {
+    "route": "/dashboard",
+    "source": "src/app/dashboard/page.tsx",
+    "classification": "Private / authenticated workspace",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/data-deletion",
+    "source": "src/app/data-deletion/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/data-deletion"
+  },
+  {
+    "route": "/download",
+    "source": "src/app/download/page.tsx",
+    "classification": "Permanent redirect to /help/download",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": null
+  },
+  {
+    "route": "/feedback",
+    "source": "src/app/feedback/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/feedback"
+  },
+  {
+    "route": "/forgot-password",
+    "source": "src/app/forgot-password/page.tsx",
+    "classification": "Authentication utility (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/help/download",
+    "source": "src/app/help/download/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/help/download"
+  },
+  {
+    "route": "/help/metrics",
+    "source": "src/app/help/metrics/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/help/metrics"
+  },
+  {
+    "route": "/help/objectives",
+    "source": "src/app/help/objectives/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/help/objectives"
+  },
+  {
+    "route": "/how-it-works",
+    "source": "src/app/how-it-works/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/how-it-works"
+  },
+  {
+    "route": "/light-preview",
+    "source": "src/app/light-preview/page.tsx",
+    "classification": "Design utility (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/login",
+    "source": "src/app/login/page.tsx",
+    "classification": "Authentication utility (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/",
+    "source": "src/app/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/"
+  },
+  {
+    "route": "/pricing",
+    "source": "src/app/pricing/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/pricing"
+  },
+  {
+    "route": "/privacy",
+    "source": "src/app/privacy/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/privacy"
+  },
+  {
+    "route": "/r/[token]",
+    "source": "src/app/r/[token]/page.tsx",
+    "classification": "Client-token view (public read-only, noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/refer",
+    "source": "src/app/refer/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/refer"
+  },
+  {
+    "route": "/reset-password",
+    "source": "src/app/reset-password/page.tsx",
+    "classification": "Authentication utility (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/signup",
+    "source": "src/app/signup/page.tsx",
+    "classification": "Authentication utility (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/terms",
+    "source": "src/app/terms/page.tsx",
+    "classification": "Indexable public",
+    "indexable": true,
+    "inSitemap": true,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": "https://nextreport.in/terms"
+  },
+  {
+    "route": "/verify-email",
+    "source": "src/app/verify-email/page.tsx",
+    "classification": "Authentication utility (noindex)",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": null,
+    "canonical": null
+  },
+  {
+    "route": "/robots.txt",
+    "source": "src/app/robots.ts",
+    "classification": "Public framework metadata / asset utility; not an HTML sitemap page",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": null
+  },
+  {
+    "route": "/sitemap.xml",
+    "source": "src/app/sitemap.ts",
+    "classification": "Public framework metadata / asset utility; not an HTML sitemap page",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": null
+  },
+  {
+    "route": "/opengraph-image",
+    "source": "src/app/opengraph-image.tsx",
+    "classification": "Public framework metadata / asset utility; not an HTML sitemap page",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": null
+  },
+  {
+    "route": "/favicon.ico",
+    "source": "src/app/favicon.ico",
+    "classification": "Public framework metadata / asset utility; not an HTML sitemap page",
+    "indexable": false,
+    "inSitemap": false,
+    "liveVerification": "NEEDS ACCESS: gateway 403",
+    "localStatus": 200,
+    "canonical": null
+  }
+]

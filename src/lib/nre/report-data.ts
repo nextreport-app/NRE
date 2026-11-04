@@ -348,6 +348,8 @@ export type ReportType = "WEEKLY" | "MONTHLY" | "DAILY" | "CREATIVE" | "QUARTER"
 export type Platform = "META" | "GOOGLE" | "TIKTOK";
 
 export interface ReportData {
+  /** Snapshot currency used for preview, PPT rendering and asynchronous jobs. */
+  currencySymbol?: string;
   calculationContext?: ReportCalculationContext;
   isPaused: boolean;
   platform: Platform;

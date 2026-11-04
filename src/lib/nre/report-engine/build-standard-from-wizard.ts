@@ -1,3 +1,4 @@
+import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "../csv-currency";
 import { getCalendarDateInTimezone } from "../dates";
 import { alignCsvReportFormData, csvReportNow, csvReportingCalendar } from "../csv-reporting-calendar";
 import { prepareMonthlyCsvFacts, monthlyFactSelectionError } from "../monthly-csv-grain";
@@ -197,13 +198,17 @@ export async function buildStandardReportForWizard(
     metaAccessToken,
   });
 
+  const currencyCheck = detectCsvCurrency([...mtdParsed.headers, ...sourceHeaders(periodRows ?? [])], [...mtdParsed.rows, ...(periodRows ?? [])]);
+  if (currencyCheck.error) return { error: currencyCheck.error };
+  const reportCurrency = resolveReportCurrencySymbol([...mtdParsed.headers, ...sourceHeaders(periodRows ?? [])], [...mtdParsed.rows, ...(periodRows ?? [])], CURRENCY_SYMBOLS[client.currency]);
+  const budgetCurrencyMatches = reportCurrency === CURRENCY_SYMBOLS[client.currency];
   const data = engine.buildStandard({
     now,
     accountName: client.accountName,
-    currencySymbol: CURRENCY_SYMBOLS[client.currency],
+    currencySymbol: reportCurrency,
     timezone: client.timezone,
-    monthlyBudget: client.monthlyBudget,
-    showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
+    monthlyBudget: budgetCurrencyMatches ? client.monthlyBudget : null,
+    showBudgetPacingOnCover: budgetCurrencyMatches && resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
     alignResultsWithCsvExport: resolveCsvAlignResults(formData),
     mtdDailyRows: sourceRows,
     periodRows,
@@ -221,6 +226,7 @@ export async function buildStandardReportForWizard(
     metaCampaignPeriodReach,
   });
 
+  data.currencySymbol = reportCurrency;
   const generated = getCalendarDateInTimezone(sourceNow, client.timezone);
   data.cover.reportDate = `${String(generated.month).padStart(2, "0")}-${String(generated.day).padStart(2, "0")}-${generated.year}`;
   return { data };

@@ -125,7 +125,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
   try {
     if (job.kind === "PREVIOUS_MONTH_SUMMARY") {
-      const currencySymbol = CURRENCY_SYMBOLS[client.currency];
+      const currencySymbol = job.summaryData.currencySymbol ?? CURRENCY_SYMBOLS[client.currency];
       const [user, clientLogo] = await Promise.all([
         prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
         loadLogoAsset(client.logoUrl),
@@ -331,7 +331,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
     // STANDARD — Meta / Google / TikTok weekly/monthly/etc.
     const { reportData, platform, reportTitle, aiCopyPrecalc } = job;
-    const currencySymbol = CURRENCY_SYMBOLS[client.currency];
+    const currencySymbol = reportData.currencySymbol ?? CURRENCY_SYMBOLS[client.currency];
 
     const precalcMap =
       aiCopyPrecalc && Object.keys(aiCopyPrecalc).length > 0

@@ -1,3 +1,4 @@
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
@@ -8,11 +9,9 @@ import { ProductExplainerAnimation } from "@/components/home/product-explainer-a
 import { MetaWalkthroughVideo } from "@/components/meta-walkthrough-video";
 import {
   breadcrumbJsonLd,
-  faqPageJsonLd,
   howToJsonLd,
   HOW_IT_WORKS_STEPS_SCHEMA,
   pageMetadata,
-  PRODUCT_FAQ_SCHEMA,
 } from "@/lib/seo";
 import { MARKETING_TRY_CTA_HEADLINE } from "@/lib/product-positioning";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
@@ -140,7 +139,6 @@ export default async function HowItWorksPage() {
               { name: "Home", path: "/" },
               { name: "How It Works", path: "/how-it-works" },
             ]),
-            faqPageJsonLd(PRODUCT_FAQ_SCHEMA),
             howToJsonLd(
               "How to generate a Meta Ads client report with NextReport",
               "Generate a branded Meta Ads client report in under 2 minutes via day-wise CSV from Meta Ads Reporting.",
@@ -154,6 +152,7 @@ export default async function HowItWorksPage() {
       <main className="flex-1">
         <section className="border-b border-navy-border bg-navy px-6 py-14 sm:py-16">
           <div className="mx-auto max-w-3xl text-center">
+            <Breadcrumbs current="How It Works" />
             <p className="inline-block rounded-full border border-navy-border bg-navy-panel px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent-orange">
               {META_LAUNCH_HERO_BADGE}
             </p>

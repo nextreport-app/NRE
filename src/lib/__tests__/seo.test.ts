@@ -15,7 +15,7 @@ describe("seo", () => {
     expect(joined).not.toMatch(/google ads|tiktok|ga4|google analytics/i);
   });
 
-  it("builds page metadata with canonical, hreflang, and large twitter card", () => {
+  it("builds page metadata with canonical and large twitter card", () => {
     const meta = pageMetadata({
       title: "Pricing",
       description: "Test description for pricing page metadata.",

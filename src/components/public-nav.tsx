@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { BETA_HIDE_PRICING } from "@/lib/beta";
@@ -50,7 +51,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
     <header className="public-site-header sticky top-0 z-40 border-b border-navy-border bg-navy/95 font-sans text-[13px] antialiased backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2.5 lg:min-w-[168px]">
-          <img src="/logo.png" alt="NextReport logo" className="h-12 w-12 shrink-0" width={48} height={48} />
+          <Image src="/logo.png" alt="NextReport logo" className="h-12 w-12 shrink-0" width={48} height={48} sizes="48px" />
           <span className="text-[18px] font-semibold leading-none tracking-[-0.02em] text-ink">NextReport</span>
         </Link>
 
@@ -93,7 +94,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
-          className="ml-auto flex h-8 w-8 items-center justify-center rounded-md border border-navy-border text-ink lg:ml-0 lg:hidden"
+          className="ml-auto flex h-11 w-11 items-center justify-center rounded-md border border-navy-border text-ink lg:ml-0 lg:hidden"
         >
           {open ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">

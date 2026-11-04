@@ -500,9 +500,8 @@ export function SlidePreviewCarousel(props: SlidePreviewCarouselProps) {
               onClick={() => goTo(i)}
               aria-label={`Show slide ${i + 1}`}
               aria-current={i === index}
-              className="h-1.5 w-1.5 rounded-full transition-colors"
-              style={{ background: i === index ? ACCENT : "#334155" }}
-            />
+              className="flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-dash-accent"
+            ><span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: i === index ? ACCENT : "#334155" }} /></button>
           ))}
         </div>
       )}

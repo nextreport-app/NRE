@@ -17,6 +17,8 @@ export const FOOTER_PRODUCT_LINKS: SiteLink[] = [
   { href: "/", label: "Home" },
   { href: "/how-it-works", label: "Getting Started" },
   { href: "/help/download", label: "CSV Export Guide" },
+  { href: "/help/metrics", label: "Metric guide" },
+  { href: "/help/objectives", label: "Campaign objectives" },
   { href: "/pricing", label: "Pricing", hideDuringBeta: true },
 ];
 

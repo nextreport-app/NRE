@@ -27,7 +27,7 @@ export function LeadCaptureSection() {
             </p>
             <p className="mt-3 text-xs text-ink-muted">
               {home.leadPreferEmail}{" "}
-              <Link href="/contact" className="text-accent hover:underline">
+              <Link href="/contact" className="text-accent underline underline-offset-4">
                 {home.leadContactLink}
               </Link>
             </p>

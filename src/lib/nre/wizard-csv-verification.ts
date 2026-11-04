@@ -1,3 +1,4 @@
+import { resolveReportCurrencySymbol, sourceHeaders } from "./csv-currency";
 import { alignCsvReportFormData, csvReportNow } from "./csv-reporting-calendar";
 /**
  * Shared CSV verification inputs for preview + generate (must stay in sync).
@@ -59,7 +60,7 @@ export function verifyStandardWizardReportAgainstCsv(input: {
     weeklyRange,
     reportType,
     timezone: client.timezone,
-    currencySymbol: CURRENCY_SYMBOLS[client.currency],
+    currencySymbol: resolveReportCurrencySymbol(sourceHeaders(mtdRows), mtdRows, CURRENCY_SYMBOLS[client.currency]),
     now,
     resultCountingMode: csvAlign ? "meta-csv-export" : "standard",
     periodRows: input.periodRows,
