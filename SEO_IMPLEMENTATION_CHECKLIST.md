@@ -35,7 +35,7 @@
 - [ ] Open `https://nextreport.in/robots.txt` and `/sitemap.xml` unauthenticated; verify origin status, content types and canonical links after deploy.
 - [ ] Run `SEO_BASE_URL=https://nextreport.in npm run verify:seo` from permitted networking. A workspace tunnel 403 is not origin failure evidence.
 - [ ] Use Rich Results Test / Schema Markup Validator. Do not promise FAQ/HowTo/software rich eligibility merely because JSON parses.
-- [ ] Confirm production `GA_MEASUREMENT_ID` belongs to the intended GA4 stream. Never paste account secrets into chat.
+- [ ] Configure and publish GTM-PZPXTRPH with the intended GA4 stream, consent requirements and custom page-view trigger described in ANALYTICS_EVENT_PLAN.md. Disable duplicate automatic page/form measurement.
 - [ ] Check actual GA requests, consent decline/accept/withdrawal, initial page_view and public SPA navigation in DebugView/Realtime.
 - [ ] Review Enhanced Measurement history and form settings for duplicates/private route/query exposure; inspect redaction before certifying measurement.
 - [ ] Use synthetic public form submissions only with approval; confirm success-triggered business events exist before marking them key events.

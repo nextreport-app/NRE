@@ -23,7 +23,7 @@ The codebase already had a sitemap, robots route, canonical metadata, Organizati
 | Canonical origin | `https://nextreport.in`, from `src/lib/seo.ts` |
 | Public registry | `PUBLIC_SITEMAP_ROUTES`: 14 public documents after adding metrics/objectives guides |
 | Inventory | 37 page routes + 77 API handlers + 4 framework metadata/assets = 118 routes in `SEO_ROUTE_MATRIX.json` |
-| Tracking | One GA4 component at root; no separate GTM container or other manual gtag/event installation found. Google Ads/GA4 OAuth connectors are reporting data integrations, not website measurement. |
+| Tracking | Baseline: one GA4 component. Follow-up: replaced direct GA loader with consent-gated GTM-PZPXTRPH; see ANALYTICS_EVENT_PLAN.md. Google Ads/GA4 OAuth connectors are reporting data integrations, not website measurement. |
 | Local configured names | `DATABASE_URL`, `AUTH_SECRET`, `AUTH_TRUST_HOST`; values deliberately not recorded |
 | Optional integration names | `GA_MEASUREMENT_ID`, `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`; verification names added to `.env.example`. Production values/configuration were not accessed. |
 
@@ -231,3 +231,7 @@ Priority next steps: (1) review/merge these code changes; production deployment 
 | `src/proxy.ts` | Expose real public guides/OG/alias, retain protected namespaces, allow genuine unknown-document 404s. |
 | `src/lib/pricing-faq.ts` | Correct public/schema FAQ upload-size wording to match bounded CSV compression. |
 | `src/lib/__tests__/seo-auth-boundary.test.tsx` | Verify dashboard authentication before any private lookup. |
+
+## Publication follow-up
+
+The fix/seo-performance-reporting branch was successfully pushed on 4 November 2026 after the earlier commit_refs failures. GTM-PZPXTRPH replaces the direct GA website tag. No Google account changes or production deployment performed.

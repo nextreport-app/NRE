@@ -1,5 +1,7 @@
+import { runInNewContext } from "node:vm";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { analyticsPageLocation, validGaMeasurementId } from "../analytics";
+import { GTM_CONTAINER_ID, GTM_CONSENT_BOOT_SCRIPT, analyticsPageLocation, validGaMeasurementId } from "../analytics";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { JsonLd } from "@/components/json-ld";
@@ -38,6 +40,24 @@ describe("SEO and analytics privacy readiness", () => {
         "?utm_source=person@example.com&utm_campaign=9876543210",
       ),
     ).toBe("https://nextreport.in/");
+  });
+  it("initializes denied consent without loading a vendor or duplicating the queue", () => {
+    const window: Record<string, unknown> = {};
+    runInNewContext(GTM_CONSENT_BOOT_SCRIPT, { window });
+    const queue = window.dataLayer as unknown[][];
+    expect(queue).toHaveLength(1);
+    expect(Array.from(queue[0]).slice(0, 2)).toEqual(["consent", "default"]);
+    expect(queue[0][2]).toEqual({ analytics_storage: "denied", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" });
+    runInNewContext(GTM_CONSENT_BOOT_SCRIPT, { window });
+    expect(window.dataLayer).toBe(queue);
+    expect(GTM_CONTAINER_ID).toBe("GTM-PZPXTRPH");
+  });
+  it("replaces the direct GA loader with one consent-gated container", () => {
+    const source = readFileSync("src/components/google-analytics.tsx", "utf8");
+    expect(source).not.toContain("/gtag/js");
+    expect(source).toContain('if (!allowed)');
+    expect(source).toContain('document.getElementById("nre-google-tag-manager")');
+    expect(source).toContain('event: "nre_public_page_view"');
   });
   it("validates GA IDs before putting them in script content", () => {
     expect(validGaMeasurementId("G-TEST123")).toBe(true);

@@ -1,17 +1,16 @@
 # GA4 tag audit and event plan
 
-4 November 2026. **No GA4/GSC account access, production ID inspection or live event delivery verification was available.** `GA4_CLIENT_ID` is the OAuth reporting connector; `GA_MEASUREMENT_ID` is the website measurement tag. They are different integrations.
+4 November 2026. No GA4/GTM/GSC account access or real event delivery verification is available.
 
-## Current implementation and verified boundaries
+## Current implementation and GTM setup required
 
-- One `GoogleAnalytics` component in root layout, only rendered when `GA_MEASUREMENT_ID` exists. The ID must match `G-…` syntax; syntax validation is not property verification.
-- Vendor and config scripts load `lazyOnload` **after optional analytics consent** on allowlisted marketing/help routes. No separate GTM container/manual event bus was found.
-- Explicit consent is persisted as `nre.analytics-consent.v1`; unavailable storage falls back to the current session. Analytics preferences permits withdrawal. Session/auth preferences remain independent.
-- Advertising storage, ad user data/personalization and Google signals are disabled in the config. Private/auth/client-token routes are not initial tracking routes; a route-level `ga-disable-*` guard is applied.
-- Initial page_location keeps only allowlisted slug-like UTM values; arbitrary queries, email/token/callback parameters, form contents, client names, uploaded CSV data and report tokens are not intentionally passed. Initial referrer is reduced to its origin.
-- **No manual SPA page_view was added.** Initial config uses normal GA page_view behavior. Subsequent history events depend on the stream's Enhanced Measurement settings, which require account inspection. Do not add a second route-event listener without first disabling the overlapping automatic history behavior.
-- Production-mode local browser test with a dummy ID and intercepted vendor responses: no load before consent, exactly one vendor request/config across a public SPA navigation, query redaction, valid UTM preservation, persisted denial and withdrawal. No real Google measurement event was sent.
-- Actual Enhanced Measurement timing/URL behavior on private SPA transitions, form autocapture, delivery, cookies and account redaction still need browser Network + DebugView validation with owner access. Code tests are not proof that the real property is collecting accurately or privately.
+- Root head initializes dataLayer and Consent Mode with all storage denied. After analytics opt-in on public routes, one standard GTM loader installs **GTM-PZPXTRPH** in head. The old direct GA4 loader has been replaced; GA_MEASUREMENT_ID no longer installs a website tag. GA4_CLIENT_ID remains a separate reporting connector.
+- Consent preferences persist locally and can be withdrawn. No vendor request before opt-in; private/auth/client-report routes do not initiate the container. No consent-bypassing noscript iframe is installed.
+- Public navigation emits `nre_public_page_view` with sanitized page_location, page_path, page_title and origin-only page_referrer. Private routes emit no page events and reset analytics consent to denied. Existing loaded containers cannot be unloaded; container configuration must respect these restrictions.
+- In GTM, configure the intended GA4 Google tag with `send_page_view=false`. Disable GA4 Enhanced Measurement history/page changes and form capture to avoid duplicate views and private URL collection. Do not use All Pages/history triggers for measurement.
+- Create a Custom Event trigger for `nre_public_page_view`, and one GA4 `page_view` event tag using data-layer page_location, page_title and page_referrer values. Use the Google tag as the event tag’s setup tag (once per page), so initial queued page views have their configuration ready. Require analytics_storage consent on analytics tags; no advertising tags are authorized. Check other existing container tags before publishing.
+- Publish the container only after Tag Assistant/Preview verifies one page_view per public navigation, none before opt-in/on private routes, no raw sensitive URL fields, and withdrawal prevents further requests. Verify delivery in GA4 DebugView/Realtime. Container ID is not a GA4 Measurement ID.
+- Code tests cannot verify the contents of the external container or account settings. Earlier direct-GA browser evidence applies to the audit baseline, not to this replacement GTM integration.
 
 ## Event inventory / proposed implementation contract
 
@@ -19,7 +18,7 @@ Business events below are a plan, **not falsely reported as implemented**. Imple
 
 | Event | Current status | Trigger / allowed parameters | Deduplication | Key event recommendation |
 |---|---|---|---|---|
-| `page_view` | Config-installed initial view; SPA/account NEEDS ACCESS | Initial allowed public page and Enhanced Measurement history; sanitized page URL, page_title, origin-only referrer | One GA install/config; no second manual view listener | No |
+| `page_view` | GTM custom-event contract; account setup NEEDS ACCESS | Allowed public-page custom events; sanitized page URL, page_title, origin-only referrer | One GA install/config; no second manual view listener | No |
 | `generate_lead` | Planned | Confirmed successful contact/demo lead response; fixed `form_id`, `lead_type`; no free text/name/email/phone | Server-issued submission ID, one success per accepted submission | Yes, once implemented and validated |
 | `form_submit` | Account Enhanced Measurement NEEDS ACCESS; no custom duplicate | Only genuine allowed public form success if custom measurement is chosen; fixed `form_id` | Disable overlapping auto-form event or keep just one source; never also count the same action as two independent conversions | Usually no when `generate_lead` is the conversion |
 | `sign_up` | Planned | Successful first account creation, including first OAuth registration; `method` = email/google | Account creation event ID; never every login/verification reload | Yes for qualified trial signup after validation |
