@@ -178,11 +178,11 @@ function buildSlideList(share: ShareReportData, visibility: ShareVisibility): Sl
       visible: visibility.adSets[key] !== false,
     });
   }
-  if (share.chart?.donutSegments?.length) {
+  if (share.chart?.donutSegments?.length || share.historicalCharts?.length) {
     items.push({
       id: "overview",
       kind: "overview",
-      label: "Month to date overview",
+      label: share.historicalCharts?.length ? "Monthly overview charts" : "Performance overview",
       sublabel: "Budget + results",
       visible: visibility.overview !== false,
     });
@@ -190,7 +190,7 @@ function buildSlideList(share: ShareReportData, visibility: ShareVisibility): Sl
   items.push({
     id: "combinedTotal",
     kind: "combinedTotal",
-    label: "Monthly Performance Overview",
+    label: share.reportType === "DAY_BREAKDOWN" ? "Daily totals and tables" : "Performance overview table",
     sublabel: "Combined Total table",
     visible: visibility.combinedTotal !== false,
   });
@@ -334,8 +334,7 @@ export function ReportShareReview({
       const name = item.label;
       next.campaigns[name] = !item.visible;
     } else if (item.kind === "adset") {
-      const ad = share?.adSets.find((a) => (a.adSetName || a.campaignName) === item.label);
-      if (ad) next.adSets[adSetVisibilityKey(ad.campaignName, ad.adSetName)] = !item.visible;
+      next.adSets[item.id.slice(2)] = !item.visible;
     } else if (item.kind === "overview") next.overview = !item.visible;
     else if (item.kind === "combinedTotal") next.combinedTotal = !item.visible;
     else if (item.kind === "metricGuide") next.metricGuide = !item.visible;
@@ -461,7 +460,7 @@ export function ReportShareReview({
         <div>
           <p className="text-[15px] font-semibold text-dash-ink">Review before sharing</p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            {visibleCount} slides on the live link. <strong>Publish</strong> updates the browser report
+            {visibleCount} report sections. <strong>Publish</strong> updates the browser report
             {canSyncPpt ? " and Download PPTX" : ""} — not a Google Slides file already in Drive.
           </p>
         </div>
@@ -479,8 +478,8 @@ export function ReportShareReview({
           <button
             type="button"
             onClick={() => void publish()}
-            disabled={saving}
-            className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-dash-accent"
+            disabled={saving || visibleCount === 0}
+            className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-dash-accent"
           >
             {saving ? "Publishing…" : publishedAt ? "Publish again" : "Publish to live link"}
           </button>
@@ -647,7 +646,7 @@ export function ReportShareReview({
             </div>
           )}
 
-          {combinedTotalSelected && combinedTotalEdit && draftShare ? (
+          {combinedTotalSelected && combinedTotalEdit && draftShare && !["HISTORICAL", "DAY_BREAKDOWN"].includes(draftShare.reportType) ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[13px] font-semibold text-dash-ink">Monthly Campaign Performance Overview</p>
               <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
@@ -672,6 +671,10 @@ export function ReportShareReview({
                 ) : null}
               </div>
             </div>
+          ) : null}
+
+          {combinedTotalSelected && ["HISTORICAL", "DAY_BREAKDOWN"].includes(draftShare.reportType) ? (
+            <p className="rounded-lg border border-dash-border p-4 text-sm text-dash-ink-secondary">These tables use your selected CSV data. Review them in the preview; use the visibility control to include or hide them. To change the reporting data or dates, return to the report setup.</p>
           ) : null}
 
           {overviewSelected && chartEdit ? (

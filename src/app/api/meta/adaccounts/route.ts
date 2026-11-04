@@ -1,3 +1,4 @@
+import { decryptMetaToken, encryptMetaToken, isEncryptedMetaToken } from "@/lib/meta-token-storage";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -29,15 +30,15 @@ export async function GET() {
     }
 
     const fresh = await ensureFreshMetaAccessToken({
-      accessToken: user.metaAccessToken,
+      accessToken: decryptMetaToken(user.metaAccessToken),
       tokenExpiresAt: user.metaTokenExpiresAt,
     });
 
-    if (fresh.refreshed) {
+    if (fresh.refreshed || !isEncryptedMetaToken(user.metaAccessToken)) {
       await prisma.user.update({
         where: { id: session.user.id },
         data: {
-          metaAccessToken: fresh.accessToken,
+          metaAccessToken: encryptMetaToken(fresh.accessToken),
           metaTokenExpiresAt: fresh.tokenExpiresAt,
         },
       });

@@ -1,3 +1,5 @@
+import { restoreHistoricalShareCharts } from "@/lib/nre/share-report";
+import { countVisibleSlides } from "@/lib/nre/share-visibility";
 import { enforceRateLimit } from "@/lib/usage-rate-limit";
 import { after } from "next/server";
 import { queueBlobDeletions, drainBlobDeletionQueue } from "@/lib/blob-deletion-outbox";
@@ -141,8 +143,8 @@ function parseShareJson(raw: string | null): ShareReportWithArchive | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    if (parsed?.version !== 1 || !Array.isArray(parsed.campaigns)) return null;
-    return parsed as ShareReportWithArchive;
+    if (parsed?.version !== 1 || parsed.kind === "comparison" || !Array.isArray(parsed.campaigns) || !Array.isArray(parsed.adSets)) return null;
+    return restoreHistoricalShareCharts(parsed as ShareReportWithArchive);
   } catch {
     return null;
   }
@@ -275,6 +277,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         share.periodRow = { ...share.periodRow, ...parsed.data.combinedTotal.periodRow };
         share.mtdRow = { ...share.mtdRow, ...parsed.data.combinedTotal.mtdRow };
       }
+      if (parsed.data.publish && countVisibleSlides(share) === 0) return NextResponse.json({ error: "Keep at least one report section visible before publishing." }, { status: 400 });
       if (parsed.data.publish) {
         share.publishedAt = new Date().toISOString();
       }
@@ -294,6 +297,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         data: {
           summaryJson: JSON.stringify(share),
           ...(filePath ? { filePath } : {}),
+          ...(parsed.data.publish && share._renderArchive ? { slidesUrl: null } : {}),
         },
       });
 

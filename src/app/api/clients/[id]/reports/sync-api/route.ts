@@ -1,3 +1,4 @@
+import { decryptMetaToken, encryptMetaToken, isEncryptedMetaToken } from "@/lib/meta-token-storage";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
@@ -133,14 +134,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       const fresh = await ensureFreshMetaAccessToken({
-        accessToken: user.metaAccessToken,
+        accessToken: decryptMetaToken(user.metaAccessToken),
         tokenExpiresAt: user.metaTokenExpiresAt,
       });
 
-      if (fresh.refreshed) {
+      if (fresh.refreshed || !isEncryptedMetaToken(user.metaAccessToken)) {
         await prisma.user.update({
           where: { id: session.user.id },
-          data: { metaAccessToken: fresh.accessToken, metaTokenExpiresAt: fresh.tokenExpiresAt },
+          data: { metaAccessToken: encryptMetaToken(fresh.accessToken), metaTokenExpiresAt: fresh.tokenExpiresAt },
         });
       }
 

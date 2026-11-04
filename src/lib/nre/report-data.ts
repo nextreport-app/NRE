@@ -1199,7 +1199,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     primaryRawRows = split?.weeklyRawRows ?? [];
   }
 
-  const isPaused = primaryRows.length === 0;
+  // Meta exports can include explicit zero-spend rows for paused campaigns.
+  const isPaused = !primaryRows.some(row => row.spend > 0);
 
   const adNameColumn =
     adNameColumnInput ??

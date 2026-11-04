@@ -364,11 +364,19 @@ export interface RenderComparisonPptxInput {
   agencyName?: string | null;
   /** Light-template palette for from-scratch comparison slides — see renderPptx.isLightTemplate. */
   isLightTemplate?: boolean;
+  clientLogo?: ImageAsset | null;
 }
 
 export async function renderComparisonPptx(input: RenderComparisonPptxInput): Promise<Buffer> {
   const { templateBuffer, data, reportTitle, agencyName, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
+  if (input.clientLogo) {
+    const logo = input.clientLogo;
+    template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, logo.extension, logo.contentType);
+    const embedded = embedImageInSlide(template.cover, logo, clientLogoBox(!!agencyName?.trim()), { baseName: "client-logo", shapeName: "Client Logo", style: CLIENT_LOGO_STYLE });
+    template.cover = embedded.slide;
+    template.staticFiles.set(embedded.mediaPath, embedded.mediaBytes);
+  }
 
   const slides: SlideToInsert[] = [];
 
@@ -403,6 +411,8 @@ export interface RenderHistoricalPptxInput {
   agencyName?: string | null;
   clientLogo?: ImageAsset | null;
   isLightTemplate?: boolean;
+  shareVisibility?: ShareVisibility;
+  coverOverride?: Partial<ReportData["cover"]>;
   aiCopyBySlideKey?: Map<string, AiCopy>;
 }
 
@@ -432,9 +442,9 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     budgetSummary: "",
   };
 
-  const slides: SlideToInsert[] = [
+  const slides: SlideToInsert[] = input.shareVisibility?.cover === false ? [] : [
     {
-      xml: buildCoverSlideXml(template.cover, cover, {
+      xml: buildCoverSlideXml(template.cover, { ...cover, ...input.coverOverride }, {
         reportTitle,
         agencyName,
         reportType: "HISTORICAL",
@@ -458,45 +468,34 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
       rels: template.campaign.rels,
     });
   } else {
-    for (const [slideIndex, slide] of data.slides.entries()) {
-      const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
-      slides.push({
-        xml: buildCampaignOrAdSetSlideXml(
-          template.campaign,
-          slide,
-          ai,
-          "MONTHLY",
-          data.platform,
-          false,
-          false,
-          isLightTemplate,
-        ),
-        rels: template.campaign.rels,
-      });
-      const extraPages = additionalMetricPages(slide);
-      extraPages.forEach((metrics, index) => slides.push({
-        xml: buildAdditionalMetricsSlideXml(slide, metrics, index, extraPages.length, template.background, isLightTemplate),
-        rels: buildChartSlideRels(template.background.mediaTarget),
-      }));
-      const monthLabel = slide.ai.dateRange;
-      if (data.slides[slideIndex + 1]?.ai.dateRange !== monthLabel) {
-        for (const adSet of (data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel)) {
-          const key = `adset:${monthLabel} — ${adSet.campaignName}/${adSet.adSetName}`;
-          slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, adSet, aiCopyBySlideKey?.get(key) ?? buildHistoricalSlideCopy(adSet), "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
-          const pages = additionalMetricPages(adSet);
-          pages.forEach((metrics, index) => slides.push({ xml: buildAdditionalMetricsSlideXml(adSet, metrics, index, pages.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) }));
-        }
-        const chart = data.monthlyCharts?.find(item => item.monthLabel === monthLabel)?.chart;
-        if (chart) {
-          const { buildChartSlideBundle } = await import("./chart-slide-render");
-          const bundle = await buildChartSlideBundle(chart, data.currencySymbol ?? "$", template.background, isLightTemplate, data.platform);
-          slides.push({ xml: bundle.xml, rels: buildChartSlideRels(template.background.mediaTarget) });
-        }
+    // Month sections remain independent of detail visibility, including identically named ad sets.
+    const months = [...new Set([
+      ...(data.monthlyCharts ?? []).map(item => item.monthLabel),
+      ...data.slides.map(slide => slide.ai.dateRange),
+      ...(data.adSetSlides ?? []).map(slide => slide.ai.dateRange),
+    ])];
+    for (const monthLabel of months) {
+      for (const slide of data.slides.filter(item => item.ai.dateRange === monthLabel)) {
+        const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
+        slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
+        const pages = additionalMetricPages(slide);
+        pages.forEach((metrics, index) => slides.push({ xml: buildAdditionalMetricsSlideXml(slide, metrics, index, pages.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) }));
       }
-
+      for (const adSet of (data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel)) {
+        const key = `adset:${monthLabel} — ${adSet.campaignName}/${adSet.adSetName}`;
+        slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, adSet, aiCopyBySlideKey?.get(key) ?? buildHistoricalSlideCopy(adSet), "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
+        const pages = additionalMetricPages(adSet);
+        pages.forEach((metrics, index) => slides.push({ xml: buildAdditionalMetricsSlideXml(adSet, metrics, index, pages.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) }));
+      }
+      const chart = data.monthlyCharts?.find(item => item.monthLabel === monthLabel)?.chart;
+      if (chart && input.shareVisibility?.overview !== false) {
+        const { buildChartSlideBundle } = await import("./chart-slide-render");
+        const bundle = await buildChartSlideBundle(chart, data.currencySymbol ?? "$", template.background, isLightTemplate, data.platform);
+        slides.push({ xml: bundle.xml, rels: buildChartSlideRels(template.background.mediaTarget) });
+      }
     }
 
-    if (data.comparisonRows.length > 0) {
+    if (input.shareVisibility?.combinedTotal !== false && data.comparisonRows.length > 0) {
       slides.push({
         xml: buildHistoricalTableSlideXml(
           template.table,
@@ -510,7 +509,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     }
   }
 
-  appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }));
+  if (input.shareVisibility?.metricGuide !== false) appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }));
   return assemblePptx(template, slides);
 }
 
@@ -521,6 +520,8 @@ export interface RenderDayBreakdownPptxInput {
   agencyName?: string | null;
   clientLogo?: ImageAsset | null;
   isLightTemplate?: boolean;
+  shareVisibility?: ShareVisibility;
+  coverOverride?: Partial<ReportData["cover"]>;
 }
 
 /** Day-by-Day — cover plus paginated account-level daily table slides. */
@@ -549,9 +550,9 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     budgetSummary: "",
   };
 
-  const slides: SlideToInsert[] = [
+  const slides: SlideToInsert[] = input.shareVisibility?.cover === false ? [] : [
     {
-      xml: buildCoverSlideXml(template.cover, cover, {
+      xml: buildCoverSlideXml(template.cover, { ...cover, ...input.coverOverride }, {
         reportTitle,
         agencyName,
         reportType: "DAY_BREAKDOWN",
@@ -561,7 +562,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     },
   ];
 
-  if (!data.isPaused) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,dailyClientCopy(data.presentation!.summaryPages.flat(),data.dayRows),index,pages.length,isLightTemplate),rels:template.campaign.rels}));
+  if (!data.isPaused && input.shareVisibility?.combinedTotal !== false) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,dailyClientCopy(data.presentation!.summaryPages.flat(),data.dayRows),index,pages.length,isLightTemplate),rels:template.campaign.rels}));
 
   if (data.isPaused) {
     slides.push({
@@ -577,7 +578,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
       rels: template.campaign.rels,
     });
   } else {
-    const pages = dailyMainTablePages(data);
+    const pages = input.shareVisibility?.combinedTotal === false ? [] : dailyMainTablePages(data);
     const slideCount = pages.length;
     pages.forEach((page, index) => {
       slides.push({
@@ -587,7 +588,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     });
   }
 
-  appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys));
+  if (input.shareVisibility?.metricGuide !== false) appendMetricGuide(template, slides, isLightTemplate, dailyExtraMetricGuide(data.additionalTables, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys));
   return assemblePptx(template, slides);
 }
 

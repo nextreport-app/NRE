@@ -13,7 +13,7 @@ import { splitIsoDateRangeIntoChunks } from "@/lib/nre/api-date-range";
 export { splitIsoDateRangeIntoChunks };
 
 /** Read-only scopes for performance reporting — no ads_management writes. */
-export const META_ADS_SCOPES = ["ads_read", "business_management"] as const;
+export const META_ADS_SCOPES = ["ads_read"] as const;
 
 export const META_OAUTH_STATE_COOKIE = "meta_ads_oauth_state";
 
@@ -55,6 +55,30 @@ export interface MetaTokenResponse {
   expires_in?: number;
 }
 
+/** Never log provider token responses or credential-bearing OAuth URLs. */
+async function fetchMetaToken(url: URL): Promise<MetaTokenResponse> {
+  try {
+    const response = await fetch(url.toString(), { cache: "no-store", signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) throw new Error("Meta rejected token exchange");
+    const data = await response.json() as MetaTokenResponse;
+    if (!data.access_token) throw new Error("Meta returned no token");
+    return data;
+  } catch {
+    throw new Error("Could not connect to Meta. Please reconnect your account.");
+  }
+}
+
+/** Only trusted Graph GETs; bearer tokens stay out of request URLs and pagination cannot redirect credentials. */
+async function fetchMetaGraph(input: string | URL, accessToken: string): Promise<Response> {
+  const url = new URL(input);
+  if (url.protocol !== "https:" || url.hostname !== "graph.facebook.com" || url.port || url.username || url.password) throw new Error("Invalid Meta pagination destination.");
+  url.searchParams.delete("access_token");
+  url.searchParams.delete("appsecret_proof");
+  const secret = process.env.META_APP_SECRET?.trim();
+  if (secret) url.searchParams.set("appsecret_proof", createHmac("sha256", secret).update(accessToken).digest("hex"));
+  return fetch(url.toString(), { method: "GET", headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(45_000) });
+}
+
 /** Exchanges the OAuth authorization code for a short-lived user access token. */
 export async function exchangeMetaAuthCode(code: string, redirectUri: string): Promise<MetaTokenResponse> {
   const url = new URL(`${metaGraphBase()}/oauth/access_token`);
@@ -63,11 +87,7 @@ export async function exchangeMetaAuthCode(code: string, redirectUri: string): P
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("code", code);
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`Failed to exchange Meta authorization code (${res.status}): ${await res.text()}`);
-  }
-  return res.json();
+  return fetchMetaToken(url);
 }
 
 /** Converts a short-lived user token into a ~60-day long-lived token. */
@@ -78,11 +98,7 @@ export async function exchangeForLongLivedToken(shortLivedToken: string): Promis
   url.searchParams.set("client_secret", requireMetaAppSecret());
   url.searchParams.set("fb_exchange_token", shortLivedToken);
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`Failed to exchange Meta long-lived token (${res.status}): ${await res.text()}`);
-  }
-  return res.json();
+  return fetchMetaToken(url);
 }
 
 export interface MetaUserProfile {
@@ -95,7 +111,7 @@ export async function fetchMetaUserProfile(accessToken: string): Promise<MetaUse
   url.searchParams.set("fields", "id,name");
   url.searchParams.set("access_token", accessToken);
 
-  const res = await fetch(url.toString());
+  const res = await fetchMetaGraph(url, accessToken);
   const data = (await res.json()) as MetaUserProfile & { error?: { message: string } };
   if (!res.ok || data.error) {
     throw new Error(data.error?.message ?? `Failed to fetch Meta user profile (${res.status})`);
@@ -116,12 +132,20 @@ export async function fetchMetaAdAccounts(accessToken: string): Promise<MetaAdAc
   url.searchParams.set("limit", "100");
   url.searchParams.set("access_token", accessToken);
 
-  const res = await fetch(url.toString());
-  const data = (await res.json()) as { data?: MetaAdAccount[]; error?: { message: string } };
-  if (!res.ok || data.error) {
-    throw new Error(data.error?.message ?? `Failed to fetch Meta ad accounts (${res.status})`);
+  const accounts: MetaAdAccount[] = [];
+  const seen = new Set<string>();
+  let next: string | null = url.toString();
+  while (next) {
+    if (seen.has(next) || seen.size >= 1000) throw new Error("Meta account pagination could not finish. Please retry.");
+    seen.add(next);
+    const res = await fetchMetaGraph(next, accessToken);
+    const data = await res.json() as { data?: MetaAdAccount[]; paging?: { next?: string }; error?: { message: string } };
+    if (!res.ok || data.error) throw new Error(data.error?.message ?? `Failed to fetch Meta ad accounts (${res.status})`);
+    accounts.push(...(data.data ?? []));
+    next = data.paging?.next ?? null;
   }
-  return data.data ?? [];
+  return accounts;
+
 }
 
 export interface MetaInsightAction {
@@ -226,7 +250,7 @@ const META_INSIGHT_FIELDS = [
   "date_stop",
 ].join(",");
 
-async function fetchMetaInsightsPageWithRetry(url: string, maxRetries = 3): Promise<MetaInsightsResponse> {
+async function fetchMetaInsightsPageWithRetry(url: string, accessToken: string, maxRetries = 3): Promise<MetaInsightsResponse> {
   let lastError: MetaGraphErrorDetails | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -234,7 +258,7 @@ async function fetchMetaInsightsPageWithRetry(url: string, maxRetries = 3): Prom
       await sleep(1500 * attempt);
     }
 
-    const res = await fetch(url);
+    const res = await fetchMetaGraph(url, accessToken);
     const data = (await res.json()) as MetaInsightsResponse;
     if (res.ok && !data.error) {
       return data;
@@ -290,7 +314,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   nextUrl = buildUrl();
 
   while (nextUrl) {
-    const data = await fetchMetaInsightsPageWithRetry(nextUrl);
+    const data = await fetchMetaInsightsPageWithRetry(nextUrl, params.accessToken);
     allRows.push(...(data.data ?? []));
     nextUrl = data.paging?.next ?? null;
   }
@@ -399,7 +423,7 @@ export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
   nextUrl = buildUrl();
 
   while (nextUrl) {
-    const data = await fetchMetaInsightsPageWithRetry(nextUrl);
+    const data = await fetchMetaInsightsPageWithRetry(nextUrl, params.accessToken);
     allRows.push(...(data.data ?? []));
     nextUrl = data.paging?.next ?? null;
   }
@@ -427,7 +451,7 @@ export async function fetchMetaCustomConversions(
   let nextUrl: string | null = `${metaGraphBase()}/${actId}/customconversions?fields=id,name&limit=100&access_token=${encodeURIComponent(accessToken)}`;
 
   while (nextUrl) {
-    const res = await fetch(nextUrl);
+    const res = await fetchMetaGraph(nextUrl, accessToken);
     const data = (await res.json()) as {
       data?: MetaCustomConversion[];
       paging?: { next?: string };

@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ReportShareReview } from "@/components/report-share-review";
 import Link from "next/link";
+import { isShareComparisonReportData } from "@/lib/nre/share-comparison-report";
+import { ShareComparisonReportView } from "@/components/share-comparison-report-view";
 
 export default async function ReportCopyPage({
   params,
@@ -21,6 +23,17 @@ export default async function ReportCopyPage({
   const fromGenerate = from === "generate";
   const backHref = fromGenerate ? `/clients/${id}/reports/new?resumeReport=${reportId}` : `/clients/${id}`;
   const backLabel = fromGenerate ? "← Back to Generate screen" : "← Back to client";
+
+  let comparison: unknown = null;
+  try { comparison = report.summaryJson ? JSON.parse(report.summaryJson) : null; } catch { /* Existing review handles unavailable payloads. */ }
+  if (isShareComparisonReportData(comparison)) return (
+    <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+      <Link href={backHref} className="text-sm text-dash-accent">{backLabel}</Link>
+      <h1 className="text-xl font-semibold text-dash-ink">Review comparison report</h1>
+      <p className="text-sm text-dash-ink-secondary">Review both periods below. To change campaigns, metrics or dates, return to the report setup and generate again.</p>
+      <ShareComparisonReportView data={comparison} shareToken={report.shareToken ?? undefined} />
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-6">

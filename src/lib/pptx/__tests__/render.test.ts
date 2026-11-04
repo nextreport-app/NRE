@@ -289,12 +289,12 @@ describe("renderPptx — real template end-to-end", () => {
     // Combined MTD overview slide — single-panel performance leaderboard.
     const zipForChart = await JSZip.loadAsync(buffer);
     const chartXmlFromZip = await findChartSlideXml(zipForChart);
-    expect(chartXmlFromZip).toContain("BY CAMPAIGN");
+    expect(chartXmlFromZip).toContain("CAMPAIGN PERFORMANCE");
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("Last 30 Days Campaign Performance");
-    expect(chartSvg).toContain("Jun 20 - Jul 19, 2026");
-    expect(chartSvg).toContain("BY CAMPAIGN");
+    expect(chartSvg).toContain("Campaign Performance");
+    expect(chartSvg).toContain("Jul 13 - Jul 19, 2026");
+    expect(chartSvg).toContain("CAMPAIGN PERFORMANCE");
     expect(chartSvg).toContain("Reach");
     expect(chartSvg).toContain("Purchases");
 
@@ -443,7 +443,7 @@ describe("renderPptx — real template end-to-end", () => {
     // same-month ranges compact to "July 13 - 19" instead of repeating
     // "July".
     expect(data.periodRow.monthLabel).toBe("Jun 1 - 30");
-    expect(data.mtdRow.monthLabel).toBe("Jul 1 - 19");
+    expect(data.mtdRow.monthLabel).toBe("Jul 13 - 19");
     expect(data.periodRow.sameMonthAsCurrentMTD).toBe(false);
 
     const buffer = await renderPptx({ templateBuffer, data, currencySymbol: "₹" });
@@ -455,7 +455,7 @@ describe("renderPptx — real template end-to-end", () => {
     const allText = texts.join(" | ");
 
     expect(allText).toContain("Jun 1 - 30");
-    expect(allText).toContain("Jul 1 - 19");
+    expect(allText).toContain("Jul 13 - 19");
     expect(allText).not.toContain("Previous Month");
     expect(allText).not.toContain("MTD");
     expect(allText).not.toContain("{{");
@@ -574,7 +574,8 @@ describe("renderPptx — real template end-to-end", () => {
     expect(chartXmlFromZip).toContain('prst="pie"');
     expect(data.chart).toBeTruthy();
     const chartSvg = chartOverviewSvgForFixture(data.chart!, "₹");
-    expect(chartSvg).toContain("Last 30 Days Campaign Performance");
+    expect(chartSvg).toContain("Monthly Campaign Performance");
+    expect(chartSvg).not.toContain("Last 30 Days");
     expect(chartSvg).not.toContain("MTD CAMPAIGN PERFORMANCE");
 
     fs.unlinkSync(outPath);
@@ -704,6 +705,9 @@ describe("renderPptx — real template end-to-end", () => {
       date_start: day,
       date_end: day,
     }));
+    // An explicit zero-spend latest day keeps the CSV anchored in September.
+    // Without it, the latest-CSV fallback correctly reports the active August week.
+    rows.push({ ...rows[0], date_start: "2026-09-07", date_end: "2026-09-07", spend: "0", results: "0", reach: "0", impressions: "0", _raw: { Day: "2026-09-07" } });
     const data = buildReportData({
       accountName: "Turnbow",
       currencySymbol: "$",
@@ -720,7 +724,7 @@ describe("renderPptx — real template end-to-end", () => {
     const { slideCount, slideTexts } = inspectWithPythonPptx(outPath);
     expect(slideCount).toBe(5);
     expect(slideTexts[0]).toContain("Campaigns Paused");
-    expect(slideTexts.some((t) => t.includes("Last 30 Days Campaign Performance"))).toBe(true);
+    expect(slideTexts.some((t) => t.includes("SPEND BY OBJECTIVE"))).toBe(true);
 
     fs.unlinkSync(outPath);
   }, 30000);
@@ -1139,7 +1143,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       const expected = isTableSlide
         ? 20
         : isChartSlide
-          ? 1 /* donut hole fill on light template */
+          ? 0 /* native donut uses a transparent hole over the light surface */
           : isLegendSlide
             ? legendEntryCount
             : 0;

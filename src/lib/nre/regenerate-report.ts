@@ -6,12 +6,13 @@ import { adSetVisibilityKey } from "./share-report";
 
 import type { ReportData } from "./report-data";
 import type { ShareReportData, ShareVisibility } from "./share-report";
-import { defaultShareVisibility } from "./share-report";
+import { defaultShareVisibility, restoreHistoricalShareCharts } from "./share-report";
 import { applyShareEditsToReportData, patchMetricSlots } from "./apply-share-edits";
 import type { AiCopy } from "../pptx/fill-tags";
+import type { DayBreakdownReportData } from "./day-breakdown-report-data";
 import type { HistoricalReportData } from "./historical-report-data";
 import { historicalSlideShareKey } from "./share-report";
-import { renderHistoricalPptx, renderPptx } from "../pptx/render";
+import { renderDayBreakdownPptx, renderHistoricalPptx, renderPptx } from "../pptx/render";
 import type { ImageAsset } from "../pptx/embed-image";
 
 export interface RenderArchive {
@@ -31,11 +32,18 @@ export interface HistoricalRenderArchive {
   isLightTemplate: boolean;
 }
 
+export interface DailyRenderArchive {
+  dayBreakdownData: DayBreakdownReportData;
+  reportTitle?: string | null;
+  agencyName?: string | null;
+  isLightTemplate: boolean;
+}
+
 export type ShareReportWithArchive = ShareReportData & {
-  _renderArchive?: RenderArchive | HistoricalRenderArchive;
+  _renderArchive?: RenderArchive | HistoricalRenderArchive | DailyRenderArchive;
 };
 
-function isHistoricalArchive(archive: RenderArchive | HistoricalRenderArchive): archive is HistoricalRenderArchive {
+function isHistoricalArchive(archive: RenderArchive | HistoricalRenderArchive | DailyRenderArchive): archive is HistoricalRenderArchive {
   return "historicalData" in archive;
 }
 
@@ -55,9 +63,20 @@ export async function regeneratePptxFromShare(
   templateBuffer: Buffer,
   clientLogo?: ImageAsset | null,
 ): Promise<Buffer> {
+  share = restoreHistoricalShareCharts(share);
   const archive = share._renderArchive;
   if (!archive) {
     throw new Error("This report cannot be regenerated — generate a new report to enable PPT sync.");
+  }
+
+  if ("dayBreakdownData" in archive) {
+    return renderDayBreakdownPptx({
+      templateBuffer, data: { ...archive.dayBreakdownData, accountName: share.accountName, rangeLabel: share.cover.dateRange },
+      reportTitle: archive.reportTitle, agencyName: archive.agencyName,
+      isLightTemplate: archive.isLightTemplate, clientLogo,
+      coverOverride: { healthBadge: share.cover.healthBadge },
+      shareVisibility: share.visibility ?? defaultShareVisibility(share),
+    });
   }
 
   if (isHistoricalArchive(archive)) {
@@ -76,7 +95,7 @@ export async function regeneratePptxFromShare(
 
     const adSetSlides = (archive.historicalData.adSetSlides ?? []).filter(slide => {
       const campaignName = `${slide.ai.dateRange || "Month"} — ${slide.campaignName}`;
-      return visibility.campaigns[campaignName] !== false && visibility.adSets[adSetVisibilityKey(campaignName, slide.adSetName)] !== false;
+      return visibility.adSets[adSetVisibilityKey(campaignName, slide.adSetName)] !== false;
     }).map(slide => {
       const campaignName = `${slide.ai.dateRange || "Month"} — ${slide.campaignName}`;
       const metrics = share.adSets.find(item => item.campaignName === campaignName && item.adSetName === slide.adSetName)?.metrics;
@@ -84,12 +103,14 @@ export async function regeneratePptxFromShare(
     });
     return renderHistoricalPptx({
       templateBuffer,
-      data: { ...archive.historicalData, slides, adSetSlides, isPaused: slides.length === 0 },
+      data: { ...archive.historicalData, slides, adSetSlides },
       reportTitle: archive.reportTitle,
       agencyName: archive.agencyName,
       clientLogo,
       isLightTemplate: archive.isLightTemplate,
       aiCopyBySlideKey: mergeShareCopyIntoAiMap(share, archive.aiCopy ?? {}),
+      shareVisibility: visibility,
+      coverOverride: { ...share.cover, accountName: share.accountName },
     });
   }
 

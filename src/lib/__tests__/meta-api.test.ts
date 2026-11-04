@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe("META_ADS_SCOPES", () => {
   it("requests read-only ads scopes, not ads_management", () => {
-    expect(META_ADS_SCOPES).toEqual(["ads_read", "business_management"]);
+    expect(META_ADS_SCOPES).toEqual(["ads_read"]);
     expect(META_ADS_SCOPES).not.toContain("ads_management");
   });
 });
@@ -49,7 +49,7 @@ describe("buildMetaConnectUrl", () => {
     expect(url.hostname).toBe("www.facebook.com");
     expect(url.searchParams.get("client_id")).toBe("app-123");
     expect(url.searchParams.get("redirect_uri")).toBe("https://nextreport.in/api/meta/callback");
-    expect(url.searchParams.get("scope")).toBe("ads_read,business_management");
+    expect(url.searchParams.get("scope")).toBe("ads_read");
     expect(url.searchParams.get("state")).toBe("state-abc");
   });
 });
@@ -120,6 +120,25 @@ describe("fetchMetaAdAccounts", () => {
     const accounts = await fetchMetaAdAccounts("token");
     expect(accounts).toHaveLength(1);
     expect(accounts[0].name).toBe("Test Account");
+  });
+});
+
+describe("Meta read credential boundaries", () => {
+  it("paginates accounts, strips URL tokens and adds app-secret proof", async () => {
+    process.env.META_APP_SECRET = "test-app-secret";
+    const fetchMock = vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({data:[{id:"act_1",name:"First"}],paging:{next:"https://graph.facebook.com/v26.0/me/adaccounts?after=next&access_token=leaked-url-token"}})}).mockResolvedValueOnce({ok:true,json:async()=>({data:[{id:"act_2",name:"Second"}]})});
+    vi.stubGlobal("fetch",fetchMock);
+    expect(await fetchMetaAdAccounts("private-token")).toHaveLength(2);
+    for(const [url,init] of fetchMock.mock.calls){expect(url).not.toContain("access_token=");expect(url).not.toContain("private-token");expect(url).toContain("appsecret_proof=");expect(init.headers.Authorization).toBe("Bearer private-token");expect(init.method).toBe("GET");expect(init.cache).toBe("no-store");}
+  });
+  it("rejects cross-origin pagination before forwarding credentials", async () => {
+    const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({data:[],paging:{next:"https://untrusted.example/collect?access_token=token"}})});
+    vi.stubGlobal("fetch",fetchMock);await expect(fetchMetaAdAccounts("private-token")).rejects.toThrow(/Invalid Meta/);expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("does not expose raw OAuth errors or provider tokens in exceptions", async () => {
+    process.env.META_APP_ID="app";process.env.META_APP_SECRET="secret";
+    vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:false,status:400,text:async()=>"access_token=private-token"}));
+    await expect(exchangeMetaAuthCode("code","https://nextreport.in/api/meta/callback")).rejects.toThrow("Could not connect to Meta");
   });
 });
 
