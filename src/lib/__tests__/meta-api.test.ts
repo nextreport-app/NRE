@@ -290,3 +290,34 @@ describe("fetchMetaAdAccountInsights", () => {
     expect(ranges).toContain("2026-09-11:2026-09-12");
   });
 });
+
+describe("strict wizard insight source contract", () => {
+  it("keeps action-only fields and attribution settings across chunks and pagination", async () => {
+    const urls: URL[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (rawUrl: string) => {
+      const url = new URL(rawUrl); urls.push(url);
+      const range = JSON.parse(url.searchParams.get("time_range")!);
+      if (range.since === "2026-10-01" && !url.searchParams.has("after")) {
+        const next = new URL(url); next.searchParams.set("after", "next-page");
+        return new Response(JSON.stringify({ data: [], paging: { next: next.toString() } }));
+      }
+      return new Response(JSON.stringify({ data: [] }));
+    }));
+    await fetchMetaAdAccountInsights({ accessToken: "fixture-token", adAccountId: "123", sinceIso: "2026-10-01", untilIso: "2026-10-12", level: "adset", includeResultChannels: false });
+    expect(urls).toHaveLength(4);
+    for (const url of urls) {
+      const fields = url.searchParams.get("fields")!.split(",");
+      expect(fields).toContain("actions"); expect(fields).toContain("spend"); expect(fields).toContain("clicks");
+      for (const field of ["results", "objective_results", "cost_per_result", "cost_per_objective_result"]) expect(fields).not.toContain(field);
+      expect(url.searchParams.get("use_unified_attribution_setting")).toBe("true");
+      expect(url.searchParams.get("action_report_time")).toBe("impression");
+      expect(url.searchParams.get("time_increment")).toBe("1");
+      expect(url.searchParams.has("access_token")).toBe(false);
+    }
+  });
+  it("retains the legacy result fields for existing non-wizard callers", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] }))); vi.stubGlobal("fetch", fetch);
+    await fetchMetaAdAccountInsights({ accessToken: "fixture-token", adAccountId: "123", sinceIso: "2026-10-01", untilIso: "2026-10-01" });
+    expect(new URL(fetch.mock.calls[0][0]).searchParams.get("fields")!.split(",")).toContain("results");
+  });
+});
