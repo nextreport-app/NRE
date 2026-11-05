@@ -253,7 +253,7 @@ export interface MetaInsightRow {
   optimization_goal?: string;
   actions?: MetaInsightAction[];
   cost_per_action_type?: MetaInsightAction[];
-  /** When present, matches Ads Manager Results column (preferred over inferring from actions). */
+  /** Legacy result-channel projection; not a duplicate of the actions.value count. */
   results?: MetaInsightResultMetric[];
   cost_per_result?: MetaInsightResultMetric[];
   /** Objective-aligned results / CPR — often paired when results[] is incomplete. */
@@ -363,6 +363,8 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   sinceIso: string;
   untilIso: string;
   level?: MetaInsightsLevel;
+  /** Strict wizard imports use only the canonical actions channel for conversion counts. */
+  includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
     ? params.adAccountId
@@ -378,7 +380,10 @@ async function fetchMetaAdAccountInsightsForRange(params: {
     // conversion is attributed across multiple ad sets in one campaign (Credit Firm).
     url.searchParams.set("level", params.level ?? "campaign");
     url.searchParams.set("time_increment", "1");
-    url.searchParams.set("fields", META_INSIGHT_FIELDS);
+    const fields = params.includeResultChannels === false
+      ? META_INSIGHT_FIELDS.split(",").filter(field => !["results", "cost_per_result", "objective_results", "cost_per_objective_result"].includes(field)).join(",")
+      : META_INSIGHT_FIELDS;
+    url.searchParams.set("fields", fields);
     url.searchParams.set(
       "time_range",
       JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
@@ -416,6 +421,7 @@ async function fetchMetaAdAccountInsightsForRangeResilient(params: {
   sinceIso: string;
   untilIso: string;
   level: MetaInsightsLevel;
+  includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   try {
     return await fetchMetaAdAccountInsightsForRange(params);
@@ -447,6 +453,8 @@ export async function fetchMetaAdAccountInsights(params: {
   untilIso: string;
   /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
   level?: MetaInsightsLevel;
+  /** Strict wizard imports use only the canonical actions channel for conversion counts. */
+  includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   const level = params.level ?? "campaign";
   const chunkDays = proactiveInsightsChunkDays(level);

@@ -31,8 +31,20 @@ describe("configured website event, independent of generic lead totals", () => {
  it("does not change a zero-event day into generic leads", () => {
   expect(directlyEvidencedResult({ configured_result_action: pixel, spend: "10", results: [{ indicator: "actions:lead", values: [{ value: "2" }] }], actions: [{ action_type: "lead", value: "2" }] })).toMatchObject({ value: "0", cpr: "", action_type: pixel });
  });
- it("stops conflicting counts for the same event instead of selecting a convenient number", () => {
-  expect(() => directlyEvidencedResult({ configured_result_action: pixel, actions: [{ action_type: pixel, value: "21" }], results: [{ indicator: `actions:${pixel}`, values: [{ value: "23" }] }] })).toThrow(/conflicting counts/);
+ it.each([["21", "23"], ["23", "21"]])("uses canonical actions=%s regardless of a different result-channel count=%s", (canonical, other) => {
+  expect(directlyEvidencedResult({ configured_result_action: pixel, spend: "444.63", actions: [{ action_type: pixel, value: canonical }], results: [{ indicator: `actions:${pixel}`, values: [{ value: other }] }], objective_results: [{ indicator: `actions:${pixel}`, values: [{ value: "99" }] }] })?.value).toBe(canonical);
+ });
+ it("still rejects conflicting duplicate counts within the canonical channel", () => {
+  expect(() => directlyEvidencedResult({ configured_result_action: pixel, actions: [{ action_type: pixel, value: "21" }, { action_type: pixel, value: "23" }] })).toThrow(/duplicate conflicting/);
+ });
+ it("does not backfill a missing configured action from other result channels", () => {
+  expect(directlyEvidencedResult({ configured_result_action: pixel, results: [{ indicator: `actions:${pixel}`, values: [{ value: "23" }] }] })?.value).toBe("0");
+ });
+ it("keeps traffic and form goals tied to their own counts when result channels are not requested", () => {
+  const actions = [{ action_type: "link_click", value: "100" }, { action_type: pixel, value: "1" }, { action_type: "onsite_conversion.lead_grouped", value: "5" }, { action_type: "lead", value: "99" }];
+  expect(directlyEvidencedResult({ campaign_name: "Old Leads Name", optimization_goal: "LINK_CLICKS", spend: "100", inline_link_clicks: "100", actions })).toMatchObject({ action_type: "link_click", value: "100", cpr: "1" });
+  expect(directlyEvidencedResult({ campaign_name: "Old Traffic Name", optimization_goal: "LEAD_GENERATION", spend: "100", actions })).toMatchObject({ action_type: "onsite_conversion.lead_grouped", value: "5", cpr: "20" });
+  expect(directlyEvidencedResult({ optimization_goal: "REACH", reach: "1000", actions })).toMatchObject({ action_type: "reach", value: "1000" });
  });
  it("maps 21 website events, not 23 combined leads; preserves cents and distinct CTR definitions in PPT", async () => {
   // Synthetic reproduction of the reported totals; not a downloaded account response.
@@ -40,12 +52,17 @@ describe("configured website event, independent of generic lead totals", () => {
    campaign_id: "1", campaign_name: "Website campaign", adset_id: String(index + 1), adset_name: `Set ${index + 1}`,
    date_start: "2026-11-04", date_stop: "2026-11-04", spend: index ? "244.63" : "200", impressions: "5000", reach: "2000",
    clicks: index ? "431" : "300", ctr: index ? "8.62" : "6", inline_link_clicks: index ? "308" : "200", inline_link_click_ctr: index ? "6.16" : "4",
-   results: [{ indicator: "actions:lead", values: [{ value: String(leads + 1) }] }],
+   results: [{ indicator: `actions:${pixel}`, values: [{ value: String(leads + 1) }] }],
+   objective_results: [{ indicator: `actions:${pixel}`, values: [{ value: String(leads + 2) }] }],
    actions: [{ action_type: "lead", value: String(leads + 1) }, { action_type: pixel, value: String(leads) }],
   })));
   vi.mocked(fetchMetaAdSetReportingConfigs).mockResolvedValue(["1", "2"].map(id => ({ id, optimization_goal: "OFFSITE_CONVERSIONS", promoted_object: { pixel_id: "9", custom_event_type: "LEAD" } })));
   const source = await fetchMetaReportCsv({ accessToken: "fixture-only", adAccountId: "123", currency: "USD", timezone: "America/Los_Angeles", sinceIso: "2026-10-06", untilIso: "2026-11-04", requireDirectResultEvidence: true });
+  expect(fetchMetaAdAccountInsights).toHaveBeenCalledWith(expect.objectContaining({ includeResultChannels: false, level: "adset" }));
   const parsed = parseCsvText(source.csvText);
+  expect(parsed.rows[0]._raw["NRE API result source"]).toBe("actions.value");
+  expect(parsed.rows[0]._raw["NRE API attribution mode"]).toBe("adset_unified");
+  expect(parsed.rows[0]._raw["NRE API action report time"]).toBe("impression");
   expect(parsed.rows.reduce((sum, row) => sum + Number(row.results), 0)).toBe(21);
   expect(parsed.rows.reduce((sum, row) => sum + Number(row._raw["Website leads"]), 0)).toBe(21);
   expect(combinedCtrCpcFromRows(parsed.rows).ctr).toBeCloseTo(7.31);

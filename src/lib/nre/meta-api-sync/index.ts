@@ -3,7 +3,8 @@
  * fill rules to manual Ads Manager exports, then the normal NRE CSV import path.
  *
  * - Fetch: ad-set + daily (same grain as typical manual downloads)
- * - Transform: manual-export-mapper.ts (Ads Manager Results column only)
+ * - Strict transform: configured action + actions.value under unified attribution
+ * - Legacy transform: manual-export-mapper.ts (historical fixture compatibility)
  * - Serialize: shared rows-to-csv helper
  */
 export {

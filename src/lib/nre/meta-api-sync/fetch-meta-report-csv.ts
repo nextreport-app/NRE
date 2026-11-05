@@ -70,6 +70,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
       sinceIso,
       untilIso,
       level: "adset",
+      includeResultChannels: !input.requireDirectResultEvidence,
     })
   ).map(normalizeMetaInsightRow);
 
@@ -118,9 +119,13 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   if (process.env.META_SYNC_DEBUG === "true") logIngestionNormalizationSample(deduped);
   const dataRows = deduped.map(row => input.requireDirectResultEvidence ? insightToManualCsvRowWithResult(row, directlyEvidencedResult(row)) : insightToManualCsvRow(row));
 
-  if (input.requireDirectResultEvidence) dataRows.forEach(row => row.push(sinceIso, untilIso));
+  if (input.requireDirectResultEvidence) dataRows.forEach((row, index) => row.push(
+    sinceIso, untilIso,
+    deduped[index].configured_result_action ? "actions.value" : "delivery_or_actions",
+    "adset_unified", "impression",
+  ));
   const headers = META_CSV_HEADERS.map(header => header === "Amount spent (USD)" ? `Amount spent (${input.currency})` : header);
-  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER);
+  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time");
   let csvText = rowsToCsv(headers, dataRows);
 
   if (input.referenceManualCsvText?.trim()) {

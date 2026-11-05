@@ -91,3 +91,16 @@ The previous root multi-ID lookup mapped all provider failures to a generic inst
 Retry temporary network/provider and rate-limit failures at most twice. Expired/revoked login (190), permissions (10/200), rate limiting (4/17/32/613 or HTTP 429), invalid/unavailable objects (100), and unexpected responses receive distinct statuses/messages. Include provider codes but never raw provider messages, credentials or request URLs. Only authentication failures instruct the user to reconnect. Conversion-event/count checks remain intact.
 
 Validation: 55 Meta API/PPT/route tests and 61 API route tests passed, including real configuration-parser calls through the sync route, bounded concurrency, retries, incomplete objects, and error redaction. TypeScript, scoped lint and the production build passed. No real-account provider response or production deployment was available; the original provider error hidden by the old generic message remains unknown. No new environment variables, permissions or OAuth scopes are required.
+
+
+## One count source per configured event (November 6, 2026)
+
+The cross-channel equality guard was too broad: it concatenated the configured event's `actions.value`, first `results` value and first `objective_results` value, then rejected any difference without establishing matching attribution context. Do not interpret that error as proof the user's Ads Manager settings are wrong.
+
+Strict imports now request standard action/delivery fields only, excluding `results`, `objective_results` and their cost channels. Configured website/custom events use the matching `actions.value` scalar under `use_unified_attribution_setting=true` and `action_report_time=impression`. Alternative result projections do not override, backfill or invalidate that count. Missing configured actions remain zero; duplicate conflicting values within the canonical action channel still fail. Cost is recomputed from spend/count through the shared engine, never inverted to invent a count.
+
+Standard traffic, landing-page, reach, impression and instant-form goals retain explicit goal-specific action/delivery sources when alternative result channels are absent. Goal selection takes precedence over campaign naming. Legacy helper callers retain their existing fields and behavior. The source CSV records result source, attribution mode and action reporting time as metadata, not selectable metrics.
+
+Regression tests cover actions=21/results=23 and actions=23/results=21, proving the source policy does not choose the smaller value. The full CSV/engine/PPT reproduction now includes conflicting alternative channels and still produces 21 configured website results, $444.63 chart spend and $21.17 CPL from its canonical inputs. Provider tests check field/attribution settings through pagination and date chunks. All four PPT types remain covered.
+
+Verification: 80 API/provider/route/PPT tests, 505 accounting tests, 279 report-choice tests and 61 API route tests passed. TypeScript, scoped lint and the production build passed. Provider data in tests is synthetic; the live account must be synced again after deployment to verify its actual counts. No reconnect, environment variable or permission changes are required for this correction.

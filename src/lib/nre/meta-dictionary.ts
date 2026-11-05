@@ -69,6 +69,9 @@ const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   { csvName: "result value type", key: "result_value_type", type: "dimension" },
 
   { csvName: "nre api result action", key: "api_result_action", type: "metadata" },
+  { csvName: "nre api result source", key: "api_result_source", type: "metadata" },
+  { csvName: "nre api attribution mode", key: "api_attribution_mode", type: "metadata" },
+  { csvName: "nre api action report time", key: "api_action_report_time", type: "metadata" },
 
   // ── METADATA — never shown as cards ───────────────────────────────────────
   { csvName: "delivery status", key: "delivery_status", type: "metadata" },
