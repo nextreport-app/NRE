@@ -33,6 +33,9 @@ jobs:
       - name: Check source accounting and rendered deck cells
         run: npm run test:reporting-accuracy
 
+      - name: Check Meta API import and four-report PPT parity
+        run: npm run test:meta-api
+
       - name: Check report choice rollout and saved preferences
         run: npm run test:report-choices
 

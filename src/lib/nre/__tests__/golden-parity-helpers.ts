@@ -115,6 +115,7 @@ export async function apiRowsFromManual(
     })),
   );
   const apiCsv = await fetchMetaReportCsv({
+    currency: "USD",
     accessToken: "token",
     adAccountId: "act_123",
     timezone,

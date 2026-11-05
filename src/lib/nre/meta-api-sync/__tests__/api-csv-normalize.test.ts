@@ -13,9 +13,9 @@ describe("api-csv-normalize", () => {
     expect(normalizeDateFormat("2026-09-27")).toBe("2026-09-27");
   });
 
-  it("normalizePercentage handles percent strings and Meta fractions", () => {
+  it("normalizePercentage preserves Meta percentage units below one percent", () => {
     expect(normalizePercentage("6.02%")).toBe(6.02);
-    expect(normalizePercentage("0.0602")).toBeCloseTo(6.02);
+    expect(normalizePercentage("0.0602")).toBeCloseTo(0.0602);
     expect(normalizePercentage(3.26086957)).toBeCloseTo(3.26086957);
   });
 
@@ -48,7 +48,7 @@ describe("api-csv-normalize", () => {
     const ctrIdx = META_CSV_HEADERS.indexOf("CTR (all)");
     const cpcIdx = META_CSV_HEADERS.indexOf("CPC (all)");
     expect(cells[dayIdx]).toBe("2026-09-27");
-    expect(cells[ctrIdx]).toBe("6.02");
+    expect(cells[ctrIdx]).toBe("0.0602");
     expect(cells[cpcIdx]).toBe("1.25");
   });
 });

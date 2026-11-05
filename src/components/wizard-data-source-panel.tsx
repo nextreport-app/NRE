@@ -1,5 +1,6 @@
 "use client";
 
+import type { MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
@@ -8,6 +9,7 @@ export type WizardDataSource = "csv" | "api";
 
 interface WizardDataSourcePanelProps {
   clientId: string;
+  reportSelection?: MetaApiReportSelection;
   platform: "META" | "GOOGLE" | "TIKTOK";
   metaConfigured: boolean;
   metaConnected: boolean;
@@ -32,6 +34,8 @@ interface MetaAccountOption {
   id: string;
   name: string;
   accountId?: string;
+  currency?: string;
+  timezone?: string;
 }
 
 interface GoogleCustomerOption {
@@ -76,6 +80,7 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
  */
 export function WizardDataSourcePanel({
   clientId,
+  reportSelection,
   platform,
   metaConfigured,
   metaConnected,
@@ -153,6 +158,7 @@ export function WizardDataSourcePanel({
           ? {
               platform: "META" as const,
               metaAdAccountId: selectedMetaAccount,
+              ...reportSelection,
               ...(refText ? { referenceManualCsvText: refText } : {}),
             }
           : platform === "GOOGLE"
@@ -188,17 +194,24 @@ export function WizardDataSourcePanel({
         throw new Error(message);
       }
 
-      if (!data.csvText || data.rowCount === 0) {
+      let csvText: string = data.csvText ?? "";
+      if (typeof data.csvGzipBase64 === "string") {
+        const bytes = Uint8Array.from(atob(data.csvGzipBase64), character => character.charCodeAt(0));
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        csvText = await new Response(stream).text();
+      }
+      if (!csvText || data.rowCount === 0) {
         onSyncError(
-          "No campaign data returned for the last 30 days. Check that campaigns were active during this period.",
+          "No campaign data returned for the selected reporting dates. Check the ad account and reporting period.",
         );
         return;
       }
 
       const fileName = data.fileName ?? "api-sync.csv";
-      const file = new File([data.csvText], fileName, { type: "text/csv" });
+      const file = new File([csvText], fileName, { type: "text/csv" });
       onSynced(file, {
         metaSyncDiagnostics: data.metaSyncDiagnostics,
+        previousMonthWarning: data.previousMonthWarning,
         mergedWithManualReference: !!data.mergedWithManualReference,
         previousMonthSynced: !!data.previousMonthSynced,
         hasPreviousMonthData: !!data.hasPreviousMonthData,
@@ -226,7 +239,7 @@ export function WizardDataSourcePanel({
     <div className="space-y-4">
       <div className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3">
         <p className="text-[13px] text-dash-ink-secondary">
-          Last 30 days through yesterday — Previous month loads automatically.
+          Weekly imports include the last 30 days through yesterday. Other reports fetch their selected dates.
         </p>
       </div>
 
@@ -235,7 +248,7 @@ export function WizardDataSourcePanel({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[14px] font-semibold text-dash-ink">Meta Marketing API</p>
-              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Approved · read-only ads reporting</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only reporting · testing</p>
             </div>
             <StatusPill ok={metaConnected} label={metaConnected ? "Connected" : "Not connected"} />
           </div>
@@ -249,12 +262,12 @@ export function WizardDataSourcePanel({
           ) : !metaConnected ? (
             <>
               <p className="mt-3 text-[13px] text-dash-ink-secondary">Connect your Meta account to sync data directly.</p>
-              <Link
-                href="/account#meta-ads"
-                className="mt-3 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
+              <a
+                href={`/api/meta/connect?returnTo=${encodeURIComponent(`/clients/${clientId}/reports/new`)}`}
+                className="mt-3 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover"
               >
                 Connect Meta Ads
-              </Link>
+              </a>
             </>
           ) : (
             <div className="mt-3 space-y-3">
@@ -285,7 +298,7 @@ export function WizardDataSourcePanel({
                   <option value="">Select ad account…</option>
                   {metaAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.accountId ?? a.id.replace("act_", "")})
+                      {a.name} ({a.accountId ?? a.id.replace("act_", "")}){a.currency ? ` · ${a.currency}` : ""}{a.timezone ? ` · ${a.timezone}` : ""}
                     </option>
                   ))}
                 </select>
@@ -442,7 +455,7 @@ export function WizardDataSourcePanel({
             className={
               importComplete
                 ? "h-10 w-full rounded-md border border-dash-border text-[14px] font-medium text-dash-ink-secondary hover:bg-dash-border disabled:opacity-40"
-                : "h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+                : "h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:opacity-40"
             }
           >
             {isSyncing ? "Syncing & analyzing…" : importComplete ? "Sync again" : "Analyze campaign data"}
@@ -474,14 +487,14 @@ export function WizardDataSourceToggle({
             onClick={() => onChange("csv")}
             className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
               value === "csv"
-                ? "border-dash-accent bg-dash-accent text-dash-ink"
+                ? "border-dash-accent bg-dash-accent text-[#0d1b2e]"
                 : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
             }`}
           >
             <DataSourceBadge label="CSV" />
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold">Manual CSV upload</span>
-              <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-dash-ink/80" : ""}`}>
+              <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-[#0d1b2e]/80" : ""}`}>
                 Manual export from Ads Manager
               </span>
             </span>
@@ -496,7 +509,7 @@ export function WizardDataSourceToggle({
               apiLaunchingSoon
                 ? "cursor-not-allowed border-dash-border bg-dash-bg/60 opacity-90"
                 : value === "api"
-                  ? "border-dash-accent bg-dash-accent text-dash-ink"
+                  ? "border-dash-accent bg-dash-accent text-[#0d1b2e]"
                   : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
             }`}
           >
@@ -511,7 +524,7 @@ export function WizardDataSourceToggle({
                 ) : null}
               </span>
               <span
-                className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiLaunchingSoon ? "text-dash-ink/80" : ""}`}
+                className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiLaunchingSoon ? "text-[#0d1b2e]/80" : ""}`}
               >
                 {apiLaunchingSoon
                   ? "Meta API sync — preview in Account settings"

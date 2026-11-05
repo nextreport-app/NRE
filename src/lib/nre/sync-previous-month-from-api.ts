@@ -129,6 +129,7 @@ export async function maybeSyncPreviousMonthDataFromMetaApi(input: {
   accessToken: string;
   adAccountId: string;
   timezone: string;
+  currency: string;
   previousMonthDataUrl: string | null;
   previousMonthDataUpdatedAt: Date | null;
   previousMonthSelectedCampaigns: string | null;
@@ -146,6 +147,8 @@ export async function maybeSyncPreviousMonthDataFromMetaApi(input: {
     fetchCsv: async (sinceIso, untilIso) =>
       fetchMetaReportCsv({
         accessToken: input.accessToken,
+        currency: input.currency,
+        requireDirectResultEvidence: true,
         adAccountId: input.adAccountId,
         timezone: input.timezone,
         sinceIso,

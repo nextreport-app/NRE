@@ -1,3 +1,4 @@
+import { decryptMetaToken, encryptMetaToken } from "@/lib/meta-token-storage";
 import { prisma } from "@/lib/prisma";
 import { ensureFreshMetaAccessToken, fetchMetaCustomConversions, type MetaCustomConversion } from "@/lib/meta-api";
 import { getMetaResultLabels } from "./meta-objective-dictionary";
@@ -63,14 +64,14 @@ export async function tryFetchMetaCustomConversionResultTypesForUser(
   if (!user?.metaAdsEnabled || !user.metaAccessToken) return undefined;
 
   const fresh = await ensureFreshMetaAccessToken({
-    accessToken: user.metaAccessToken,
+    accessToken: decryptMetaToken(user.metaAccessToken),
     tokenExpiresAt: user.metaTokenExpiresAt,
   });
 
   if (fresh.refreshed) {
     await prisma.user.update({
       where: { id: userId },
-      data: { metaAccessToken: fresh.accessToken, metaTokenExpiresAt: fresh.tokenExpiresAt },
+      data: { metaAccessToken: encryptMetaToken(fresh.accessToken), metaTokenExpiresAt: fresh.tokenExpiresAt },
     });
   }
 

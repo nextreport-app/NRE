@@ -1,3 +1,4 @@
+import { META_OAUTH_RETURN_COOKIE, safeMetaOAuthReturnTo } from "@/lib/meta-oauth-return";
 import { NextRequest, NextResponse } from "next/server";
 import { encryptMetaToken } from "@/lib/meta-token-storage";
 import { auth } from "@/lib/auth";
@@ -10,7 +11,9 @@ import {
 } from "@/lib/meta-api";
 
 function redirectToAccount(req: NextRequest, query: string) {
-  return NextResponse.redirect(new URL(`/account${query}`, req.url));
+  const target = safeMetaOAuthReturnTo(req.cookies.get(META_OAUTH_RETURN_COOKIE)?.value) ?? "/account";
+  const url = new URL(target + query, req.url);
+  return NextResponse.redirect(url);
 }
 
 /** Completes the "Connect Meta Ads" OAuth flow started by /api/meta/connect. */
@@ -23,6 +26,7 @@ export async function GET(req: NextRequest) {
 
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(META_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
+    res.cookies.set(META_OAUTH_RETURN_COOKIE, "", { maxAge: 0, path: "/" });
     return res;
   };
 

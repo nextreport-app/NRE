@@ -1,3 +1,4 @@
+import { apiQueryCoverage } from "./api-query-coverage";
 /**
  * NRE v1 — date-range computation for the report upload wizard's date-range
  * step. Everything here is pure and works off already-parsed CSV rows; the
@@ -46,6 +47,8 @@ export function computeEffectiveYesterday(
     const ts = tsOf(d);
     if (latestTs === null || ts > latestTs) latestTs = ts;
   });
+  const queryCoverage = apiQueryCoverage(rows);
+  if (queryCoverage) latestTs = Date.parse(queryCoverage.endIso + "T00:00:00Z");
   if (latestTs === null) return null;
 
   const yesterdayInTz = addDays(getCalendarDateInTimezone(now, timezone), -1);
@@ -321,6 +324,8 @@ export interface CsvDateBounds {
 
 /** The actual min/max dates present anywhere in the uploaded CSV — bounds the custom date pickers. */
 export function computeCsvDateBounds(rows: NreRow[]): CsvDateBounds | null {
+  const queryCoverage = apiQueryCoverage(rows);
+  if (queryCoverage) return { minIso: queryCoverage.startIso, maxIso: queryCoverage.endIso };
   let minTs: number | null = null;
   let maxTs: number | null = null;
   rows.forEach((row) => {

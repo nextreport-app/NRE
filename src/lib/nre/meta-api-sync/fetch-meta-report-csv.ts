@@ -1,3 +1,6 @@
+import { labelMetaInsightIdentities } from "./insight-identities";
+import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
+import { directlyEvidencedResult } from "./direct-result-evidence";
 import { fetchMetaAdAccountInsights, type MetaInsightRow } from "@/lib/meta-api";
 import { computeLastNDaysIsoRange } from "../api-date-range";
 import { rowsToCsv } from "../rows-to-csv";
@@ -10,6 +13,7 @@ import {
   META_CSV_HEADERS,
   dedupeInsightsByAdSetDay,
   insightToManualCsvRow,
+  insightToManualCsvRowWithResult,
 } from "./insight-engine";
 import { resolveMetaInsightRowsForCsvExport } from "./resolve-rows-for-csv-export";
 import { mergeApiCsvWithManualReference } from "./merge-reference-manual-csv";
@@ -26,6 +30,8 @@ export interface FetchMetaReportCsvInput {
   accessToken: string;
   adAccountId: string;
   timezone: string;
+  currency: string;
+  requireDirectResultEvidence?: boolean;
   now?: Date;
   days?: number;
   /** When set, overrides the default last-N-days window (e.g. previous calendar month sync). */
@@ -72,7 +78,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   let usedCampaignLevelConversionFallback = false;
   let enrichedRows: MetaInsightRow[] | null = null;
   const adsetWithConversion = countRowsWithConversionFields(adsetRows);
-  if (adsetRows.length > 0 && adsetWithConversion < Math.max(1, Math.floor(adsetRows.length * 0.2))) {
+  if (!input.requireDirectResultEvidence && adsetRows.length > 0 && adsetWithConversion < Math.max(1, Math.floor(adsetRows.length * 0.2))) {
     const campaignInsights = (
       await fetchMetaAdAccountInsights({
         accessToken: input.accessToken,
@@ -94,19 +100,26 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     usedCampaignLevelConversionFallback,
   );
 
-  logIngestionNormalizationSample(deduped);
-  const dataRows = deduped.map(insightToManualCsvRow);
+  const identities = labelMetaInsightIdentities(deduped);
+  deduped = identities.rows;
+  if (process.env.META_SYNC_DEBUG === "true") logIngestionNormalizationSample(deduped);
+  const dataRows = deduped.map(row => input.requireDirectResultEvidence ? insightToManualCsvRowWithResult(row, directlyEvidencedResult(row)) : insightToManualCsvRow(row));
 
-  let csvText = rowsToCsv([...META_CSV_HEADERS], dataRows);
+  if (input.requireDirectResultEvidence) dataRows.forEach(row => row.push(sinceIso, untilIso));
+  const headers = META_CSV_HEADERS.map(header => header === "Amount spent (USD)" ? `Amount spent (${input.currency})` : header);
+  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER);
+  let csvText = rowsToCsv(headers, dataRows);
 
   if (input.referenceManualCsvText?.trim()) {
     csvText = mergeApiCsvWithManualReference(csvText, input.referenceManualCsvText);
   }
 
-  const rowCount = Math.max(0, csvText.split("\n").filter(Boolean).length - 1);
+  const rowCount = dataRows.length;
   const diagnostics = buildMetaSyncDiagnostics(deduped, {
     usedCampaignLevelConversionFallback,
   });
+
+  diagnostics.mappedResultsSum = dataRows.reduce((sum, row) => sum + (Number(row[META_CSV_HEADERS.indexOf("Results")]) || 0), 0);
 
   const campaignPeriodRows = await fetchMetaAdAccountCampaignPeriodInsights({
     accessToken: input.accessToken,
@@ -114,7 +127,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     sinceIso,
     untilIso,
   });
-  const campaignPeriodReachByName = campaignPeriodReachMapFromInsights(campaignPeriodRows);
+  const campaignPeriodReachByName = campaignPeriodReachMapFromInsights(campaignPeriodRows.map(row => ({ ...row, campaign_name: row.campaign_id ? identities.campaignLabels.get(row.campaign_id) ?? row.campaign_name : row.campaign_name })));
   const campaignPeriodReachMaps = metaCampaignPeriodReachMapsFromFlatWindow(
     sinceIso,
     untilIso,

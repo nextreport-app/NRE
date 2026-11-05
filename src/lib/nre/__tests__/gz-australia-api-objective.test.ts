@@ -74,6 +74,7 @@ describe("GZ Australia API sync — META FORM LEADS not MESSAGING", () => {
 
   it("objective map and report table use META FORM LEADS despite messaging column in API CSV", async () => {
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",

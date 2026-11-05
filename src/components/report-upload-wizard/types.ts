@@ -57,6 +57,7 @@ export type MetaSyncDiagnosticsSummary = {
 };
 
 export type ApiSyncMeta = {
+  previousMonthWarning?: string;
   metaSyncDiagnostics?: MetaSyncDiagnosticsSummary;
   mergedWithManualReference?: boolean;
   previousMonthSynced?: boolean;
@@ -85,6 +86,7 @@ export interface ReportUploadWizardProps {
   metaConnected?: boolean;
   metaConnectedName?: string | null;
   metaConfigured?: boolean;
+  apiSyncEnabled?: boolean;
   googleAdsConfigured?: boolean;
   googleAdsConnected?: boolean;
   tiktokConfigured?: boolean;

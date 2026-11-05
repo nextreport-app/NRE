@@ -12,9 +12,11 @@ describe("ad platform API sync visibility", () => {
     expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });
 
-  it("does not run wizard sync until env flag is true", async () => {
+  it("enables Meta testing by default and allows an explicit kill switch", async () => {
     delete process.env.AD_PLATFORM_API_SYNC_ENABLED;
     const { isAdPlatformApiSyncEnabled } = await import("../ad-platform-api-sync");
+    expect(isAdPlatformApiSyncEnabled()).toBe(true);
+    process.env.AD_PLATFORM_API_SYNC_ENABLED = "false";
     expect(isAdPlatformApiSyncEnabled()).toBe(false);
   });
 
@@ -24,8 +26,8 @@ describe("ad platform API sync visibility", () => {
       "../ad-platform-api-sync"
     );
     expect(isAdPlatformApiSyncEnabled()).toBe(true);
-    expect(isWizardApiSyncVisible()).toBe(false);
-    expect(isWizardApiSyncEnabled()).toBe(false);
+    expect(isWizardApiSyncVisible()).toBe(true);
+    expect(isWizardApiSyncEnabled()).toBe(true);
     expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });
 });

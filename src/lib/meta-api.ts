@@ -124,11 +124,13 @@ export interface MetaAdAccount {
   name: string;
   account_id?: string;
   account_status?: number;
+  currency?: string;
+  timezone_name?: string;
 }
 
 export async function fetchMetaAdAccounts(accessToken: string): Promise<MetaAdAccount[]> {
   const url = new URL(`${metaGraphBase()}/me/adaccounts`);
-  url.searchParams.set("fields", "id,name,account_id,account_status");
+  url.searchParams.set("fields", "id,name,account_id,account_status,currency,timezone_name");
   url.searchParams.set("limit", "100");
   url.searchParams.set("access_token", accessToken);
 
@@ -146,6 +148,19 @@ export async function fetchMetaAdAccounts(accessToken: string): Promise<MetaAdAc
   }
   return accounts;
 
+}
+
+export interface MetaAdAccountMetadata { id: string; name?: string; currency: string; timezone_name: string; }
+export async function fetchMetaAdAccountMetadata(accessToken: string, accountId: string): Promise<MetaAdAccountMetadata> {
+  if (!/^(act_)?\d+$/.test(accountId)) throw new Error("Choose a valid Meta ad account.");
+  const id = accountId.startsWith("act_") ? accountId : `act_${accountId}`;
+  const url = new URL(`${metaGraphBase()}/${id}`);
+  url.searchParams.set("fields", "id,name,currency,timezone_name");
+  const response = await fetchMetaGraph(url, accessToken);
+  const data = await response.json() as MetaAdAccountMetadata & { error?: { message?: string } };
+  if (!response.ok || data.error || !/^[A-Z]{3}$/.test(data.currency ?? "") || !data.timezone_name) throw new Error("Meta could not confirm this account's currency and timezone. Reconnect Meta or choose another account.");
+  new Intl.DateTimeFormat("en-US", { timeZone: data.timezone_name });
+  return data;
 }
 
 export interface MetaInsightAction {
@@ -168,6 +183,9 @@ export interface MetaInsightRow {
   ctr?: string;
   cpc?: string;
   inline_link_clicks?: string;
+  clicks?: string;
+  campaign_id?: string;
+  adset_id?: string;
   frequency?: string;
   date_start?: string;
   date_stop?: string;
@@ -230,6 +248,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 const META_INSIGHT_FIELDS = [
+  "campaign_id",
+  "adset_id",
+  "clicks",
   "campaign_name",
   "adset_name",
   "spend",
@@ -301,10 +322,6 @@ async function fetchMetaAdAccountInsightsForRange(params: {
       "time_range",
       JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
     );
-    url.searchParams.set(
-      "filtering",
-      JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: "0" }]),
-    );
     url.searchParams.set("limit", "250");
     url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("access_token", params.accessToken);
@@ -313,7 +330,10 @@ async function fetchMetaAdAccountInsightsForRange(params: {
 
   nextUrl = buildUrl();
 
+  const visited = new Set<string>();
   while (nextUrl) {
+    if (visited.has(nextUrl) || visited.size >= 2000) throw new MetaInsightsFetchError({ message: "Meta pagination did not finish. Try a shorter reporting period." });
+    visited.add(nextUrl);
     const data = await fetchMetaInsightsPageWithRetry(nextUrl, params.accessToken);
     allRows.push(...(data.data ?? []));
     nextUrl = data.paging?.next ?? null;
@@ -383,7 +403,7 @@ export async function fetchMetaAdAccountInsights(params: {
   return fetchMetaAdAccountInsightsForRangeResilient({ ...params, level });
 }
 
-const META_CAMPAIGN_PERIOD_REACH_FIELDS = ["campaign_name", "reach", "spend", "impressions"].join(",");
+const META_CAMPAIGN_PERIOD_REACH_FIELDS = ["campaign_id", "campaign_name", "reach", "spend", "impressions"].join(",");
 
 /**
  * One row per campaign for the full date range — reach matches Ads Manager
@@ -410,10 +430,6 @@ export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
       "time_range",
       JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
     );
-    url.searchParams.set(
-      "filtering",
-      JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: "0" }]),
-    );
     url.searchParams.set("limit", "250");
     url.searchParams.set("use_unified_attribution_setting", "true");
     url.searchParams.set("access_token", params.accessToken);
@@ -422,7 +438,10 @@ export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
 
   nextUrl = buildUrl();
 
+  const visited = new Set<string>();
   while (nextUrl) {
+    if (visited.has(nextUrl) || visited.size >= 2000) throw new MetaInsightsFetchError({ message: "Meta pagination did not finish. Try a shorter reporting period." });
+    visited.add(nextUrl);
     const data = await fetchMetaInsightsPageWithRetry(nextUrl, params.accessToken);
     allRows.push(...(data.data ?? []));
     nextUrl = data.paging?.next ?? null;
@@ -450,7 +469,10 @@ export async function fetchMetaCustomConversions(
   const all: MetaCustomConversion[] = [];
   let nextUrl: string | null = `${metaGraphBase()}/${actId}/customconversions?fields=id,name&limit=100&access_token=${encodeURIComponent(accessToken)}`;
 
+  const visited = new Set<string>();
   while (nextUrl) {
+    if (visited.has(nextUrl) || visited.size >= 2000) throw new MetaInsightsFetchError({ message: "Meta pagination did not finish. Try a shorter reporting period." });
+    visited.add(nextUrl);
     const res = await fetchMetaGraph(nextUrl, accessToken);
     const data = (await res.json()) as {
       data?: MetaCustomConversion[];

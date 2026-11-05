@@ -101,6 +101,7 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
 
   it("writes Quote Request Submitted result type into API-sync CSV rows", async () => {
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -146,6 +147,7 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
     );
 
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -190,6 +192,7 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
     );
 
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -252,6 +255,7 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
     );
 
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -271,6 +275,7 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
 
   it("detects QUOTE REQUESTS (not MESSAGING) for API-sync rows on first import", async () => {
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",

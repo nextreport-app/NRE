@@ -19,7 +19,8 @@
     "test:lifecycle": "vitest run src/lib/__tests__/lifecycle-delivery.postgres.test.ts src/lib/__tests__/lifecycle-email-copy.test.ts src/lib/__tests__/admin-report-digest.test.ts",
     "test:launch-safety": "vitest run src/lib/__tests__/launch-security.test.ts src/lib/__tests__/launch-guards.postgres.test.ts src/lib/__tests__/blob-deletion-outbox.test.ts src/lib/__tests__/subscription.test.ts src/lib/__tests__/razorpay.test.ts src/lib/__tests__/report-retention.test.ts src/lib/__tests__/auth-google-sign-in.test.ts src/lib/__tests__/auth-sign-in-errors.test.ts src/lib/__tests__/account-login-hint.test.ts src/lib/__tests__/plan-pricing.test.ts src/app/api/__tests__/payments-subscription.route.integration.test.ts src/app/api/__tests__/clients.route.integration.test.ts",
     "verify:seo": "tsx scripts/verify-seo.ts",
-    "test:seo": "vitest run src/lib/__tests__/seo.test.ts src/lib/__tests__/analytics-readiness.test.ts src/lib/__tests__/currency.test.ts src/lib/nre/__tests__/csv-currency-timezone.test.ts src/lib/__tests__/seo-auth-boundary.test.tsx"
+    "test:seo": "vitest run src/lib/__tests__/seo.test.ts src/lib/__tests__/analytics-readiness.test.ts src/lib/__tests__/currency.test.ts src/lib/nre/__tests__/csv-currency-timezone.test.ts src/lib/__tests__/seo-auth-boundary.test.tsx",
+    "test:meta-api": "vitest run src/lib/nre/__tests__/meta-api-*.test.ts src/lib/nre/meta-api-sync/__tests__ src/lib/__tests__/ad-platform-api-sync.test.ts src/app/api/__tests__/meta-sync.route.integration.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

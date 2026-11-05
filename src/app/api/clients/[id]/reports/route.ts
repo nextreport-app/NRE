@@ -1,3 +1,4 @@
+import { metaApiSelectionCoverageError } from "@/lib/nre/meta-api-selection-coverage";
 import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "@/lib/nre/csv-currency";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
@@ -203,6 +204,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(resolved.body, { status: resolved.status });
   }
   const { parsed: mtdParsed, uploadSessionId, metaCampaignPeriodReach, metaAdAccountId, fileHash } = resolved.data;
+  const apiCoverageError = metaApiSelectionCoverageError(formData, mtdParsed.rows, client.timezone);
+  if (apiCoverageError) return NextResponse.json({ valid: false, error: apiCoverageError, errors: [{ field: "dateSelection", message: apiCoverageError }], warnings: [] }, { status: 400 });
   alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
   const platform = mtdParsed.platform;
 
