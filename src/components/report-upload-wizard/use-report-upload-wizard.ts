@@ -117,7 +117,7 @@ import { normalizeReportBrandingMode, type ReportBrandingMode } from "@/lib/repo
 export function useReportUploadWizard({
   clientId,
   clientName,
-  clientTimezone,
+  clientTimezone: initialClientTimezone,
   currencySymbol: initialCurrencySymbol,
   hasGoogleDriveConnected,
   initialLastDriveFolderId,
@@ -146,6 +146,7 @@ export function useReportUploadWizard({
   initialShowAgencyNameOnCover = true,
   accountDisplayName = null,
 }: ReportUploadWizardProps) {
+  const [clientTimezone, setClientTimezone] = useState(initialClientTimezone);
   const { locale } = useSiteTheme();
   const [currencySymbol, setCurrencySymbol] = useState(initialCurrencySymbol);
   const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
@@ -591,10 +592,10 @@ export function useReportUploadWizard({
     setCustomEnd("");
     if (next === "DAY_BREAKDOWN" && isLaunchReportTypeEnabled(next)) {
       setDateMode("custom");
-      const yesterday = csvReportingCalendar(dateBounds, new Date(), clientTimezone).endIso;
+      const yesterday = csvReportingCalendar(dataSourceMode === "api" && step === 1 ? null : dateBounds, new Date(), clientTimezone).endIso;
       setCustomStart(yesterday); setCustomEnd(yesterday);
     }
-    if (next === "MONTHLY" && dateBounds) {
+    if (next === "MONTHLY" && dateBounds && dataSourceMode !== "api") {
       const selection = monthlySelectionFromBounds(dateBounds, new Date(), clientTimezone);
       setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY");
       setHistoricalMonthCount(selection.count);
@@ -655,7 +656,7 @@ export function useReportUploadWizard({
     acknowledgePostGenerateEdit();
     setComparisonPreset(preset === "thisMonth" ? "custom" : preset);
     if (preset !== "custom" && preset !== "thisMonth") {
-      const periods = comparisonPresetPeriods(preset, csvReportingCalendar(dateBounds, new Date(), clientTimezone).now, clientTimezone);
+      const periods = comparisonPresetPeriods(preset, csvReportingCalendar(dataSourceMode === "api" && step === 1 ? null : dateBounds, new Date(), clientTimezone).now, clientTimezone);
       setComparisonPeriodA(periods.periodA);
       setComparisonPeriodB(periods.periodB);
     }
@@ -1221,14 +1222,14 @@ export function useReportUploadWizard({
     setMonthComparisonCoverage(json.monthComparisonCoverage || null);
     setDailyRange(json.dailyRange || null);
     setHasAdLevelCsv(!!json.hasAdLevelCsv);
-    if (reportType === "WEEKLY") {
+    if (reportType === "WEEKLY" && dataSourceMode !== "api") {
     const savedSelection: DateSelection = json.dateSelection || { mode: "last7" };
     const normalizedSelection = normalizeSavedDateSelection(savedSelection, json.weeklyOptions || null);
     setDateMode(normalizedSelection.mode);
     setCustomStart(normalizedSelection.customStart || savedSelection.customStart || "");
     setCustomEnd(normalizedSelection.customEnd || savedSelection.customEnd || "");
     }
-    if (["DAY_BREAKDOWN", "DAILY", "MONTHLY", "HISTORICAL"].includes(reportType) && !preserve) {
+    if (["DAY_BREAKDOWN", "DAILY", "MONTHLY", "HISTORICAL"].includes(reportType) && !preserve && dataSourceMode !== "api") {
       const selected = alignCsvSelection(currentDateSelection(), json.dateBounds, reportType, new Date(), clientTimezone);
       if (selected?.mode === "custom") {
         setDateMode("custom"); setCustomStart(selected.customStart ?? ""); setCustomEnd(selected.customEnd ?? "");
@@ -1238,7 +1239,7 @@ export function useReportUploadWizard({
         setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);
       }
     }
-    if (reportType === "COMPARISON" && comparisonPeriodA && comparisonPeriodB && !preserve) {
+    if (reportType === "COMPARISON" && comparisonPeriodA && comparisonPeriodB && !preserve && dataSourceMode !== "api") {
       const periods = alignCsvComparison(comparisonPeriodA, comparisonPeriodB, json.dateBounds, new Date(), clientTimezone);
       setComparisonPeriodA(periods.periodA); setComparisonPeriodB(periods.periodB);
     }
@@ -1458,7 +1459,44 @@ export function useReportUploadWizard({
     );
   }
 
+  /** A new source/calendar must not leave selectable campaigns or reports from the previous import. */
+  function clearImportedWizardData() {
+    setMtdFile(null);
+    setUploadSessionId(null);
+    setAnalyzeStatus("idle");
+    setAnalyzeErrors([]);
+    setAnalyzeMessage(null);
+    setApiSyncStatus("idle");
+    setApiSyncError(null);
+    setCampaigns([]);
+    setCampaignSpend({});
+    setLowSpendCampaigns([]);
+    setSelectedCampaigns(new Set());
+    setAdSetGroups([]);
+    setSelectedAdSets(new Set());
+    setDateBounds(null);
+    setWeeklyOptions(null);
+    setMtdRange(null);
+    setDailyRange(null);
+    setMetaAdAccountId(null);
+    resetMetricsState();
+    resetPreviewState();
+    resetGenerateState();
+    setVisitedSteps(new Set([1]));
+  }
+
+  function updateApiTimezone(timezone: string) {
+    setClientTimezone(timezone);
+    clearImportedWizardData();
+    if (comparisonPreset !== "custom" && comparisonPreset !== "thisMonth") {
+      const periods = comparisonPresetPeriods(comparisonPreset, new Date(), timezone);
+      setComparisonPeriodA(periods.periodA); setComparisonPeriodB(periods.periodB);
+    }
+  }
+
   function handleDataSourceModeChange(mode: WizardDataSource) {
+    if (mode === dataSourceMode) return;
+    clearImportedWizardData();
     if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
       setMtdFile(null);
       setUploadSessionId(null);
@@ -1500,7 +1538,7 @@ export function useReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(file, {
         platform: selectedPlatformCard,
-        reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
+        reportType, historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
         metaAdAccountId: meta?.metaAdAccountId,
       }),
@@ -2992,6 +3030,7 @@ export function useReportUploadWizard({
     clientId,
     clientName,
     clientTimezone,
+    updateApiTimezone,
     currencySymbol,
     hasGoogleDriveConnected,
     clientTemplate,

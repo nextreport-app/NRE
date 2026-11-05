@@ -32,6 +32,7 @@ export const maxDuration = 300;
 
 const syncApiBodySchema = z.object({
   platform: platformSchema,
+  importRange: comparisonPeriodSchema.optional(),
   reportType: reportTypeSchema.optional(),
   dateSelection: dateSelectionSchema.optional(),
   comparisonPeriodA: comparisonPeriodSchema.optional(),
