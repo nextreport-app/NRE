@@ -5,7 +5,7 @@
  */
 
 import { objectiveRate } from "./objective-rate";
-import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive, parseCellNum } from "./format";
+import { fmtCurrency2dp, fmtCurrencyAdaptive, parseCellNum } from "./format";
 import type { ChartCampaignData, ChartSlideData } from "./report-data";
 import { toTitleCaseChartLabel } from "./chart-kpi-layout";
 import {
@@ -335,7 +335,7 @@ function buildSummaryMulti(chart: ChartSlideData, currencySymbol: string): strin
     const cost = formatSummaryCost(count, obj.cprValue, obj.cprLabel);
     return `${label}: ${count.toLocaleString("en-US")} · ${cost}`;
   });
-  const prefix = [`Total Spend: ${fmtCurrency(chart.totalAllSpend, currencySymbol)}`];
+  const prefix = [`Total Spend: ${fmtCurrencyAdaptive(chart.totalAllSpend, currencySymbol)}`];
   return [...prefix, ...chunks].join("  |  ");
 }
 
@@ -475,7 +475,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       rightHeading: panelHeading,
       miniDonuts: [],
       groupedDonut: null,
-      groupedDonutCenterLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
+      groupedDonutCenterLabel: fmtCurrencyAdaptive(chart.totalAllSpend, currencySymbol),
       resultBars,
       summaryLine: buildSummaryMulti(chart, currencySymbol),
     };
@@ -532,7 +532,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     rightHeading: `${resultLabel} by Campaign`,
     miniDonuts: [],
     groupedDonut,
-    groupedDonutCenterLabel: fmtCurrency(chart.totalAllSpend, currencySymbol),
+    groupedDonutCenterLabel: fmtCurrencyAdaptive(chart.totalAllSpend, currencySymbol),
     resultBars,
     summaryLine: buildSummarySingle(
       chart,

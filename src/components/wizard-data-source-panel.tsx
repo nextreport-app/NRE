@@ -14,7 +14,6 @@ interface WizardDataSourcePanelProps {
   onTimezoneUpdated?: (timezone: string) => void;
   reportTypeControls?: ReactNode;
   setupControls?: ReactNode;
-  importSummary?: string | null;
   selectionError?: string | null;
   platform: "META" | "GOOGLE" | "TIKTOK";
   metaConfigured: boolean;
@@ -87,7 +86,7 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
 export function WizardDataSourcePanel({
   clientId,
   reportSelection,
-  clientTimezone, onTimezoneUpdated, reportTypeControls, setupControls, importSummary, selectionError,
+  clientTimezone, onTimezoneUpdated, reportTypeControls, setupControls, selectionError,
   platform,
   metaConfigured,
   metaConnected,
@@ -331,7 +330,6 @@ export function WizardDataSourcePanel({
         }}>{timezoneSaving ? 'Updating timezone…' : `Use ${selectedAccount?.timezone} for this client`}</button>
       </div> : null}
       {setupControls}
-      {importSummary ? <div aria-live="polite" className="rounded-lg border border-dash-border bg-dash-card p-4"><p className="text-sm font-semibold text-dash-ink">Meta will fetch</p><p className="mt-1 text-sm text-dash-ink-secondary">{importSummary}</p><p className="mt-2 text-xs text-dash-ink-secondary">Next: choose campaigns, confirm objectives, select metrics, then generate your report. No CSV download is needed.</p></div> : null}
       {selectionError ? <p role="alert" className="text-sm text-red-400">{selectionError}</p> : null}
 
       {showGoogle ? (

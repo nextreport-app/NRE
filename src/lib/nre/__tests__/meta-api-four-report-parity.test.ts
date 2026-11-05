@@ -2,7 +2,7 @@ import {describe,expect,it,vi,beforeEach} from "vitest";
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import JSZip from "jszip";
 vi.mock("@/lib/prisma",()=>({prisma:{user:{findUnique:vi.fn().mockResolvedValue(null)}}}));
-vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/lib/meta-api")>(),fetchMetaAdAccountInsights:vi.fn(),fetchMetaAdAccountCampaignPeriodInsights:vi.fn()}));
+vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/lib/meta-api")>(),fetchMetaAdSetReportingConfigs:vi.fn().mockResolvedValue([{id:"10",optimization_goal:"LEAD_GENERATION",promoted_object:{}}]),fetchMetaAdAccountInsights:vi.fn(),fetchMetaAdAccountCampaignPeriodInsights:vi.fn()}));
 import {fetchMetaAdAccountInsights,fetchMetaAdAccountCampaignPeriodInsights,type MetaInsightRow} from "@/lib/meta-api";
 import {fetchMetaReportCsv} from "../meta-api-sync";
 import {metaApiImportRange,type MetaApiReportSelection} from "../meta-api-import-range";

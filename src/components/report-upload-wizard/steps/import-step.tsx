@@ -111,16 +111,15 @@ export function WizardImportStep() {
   const reportTypeSetup = <WizardReportSetupPanel source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />;
   const reportPeriods = <>
     <ReportPeriodControls />
-    {reportType === "WEEKLY" ? <WeeklyPeriodControls /> : null}
+    {reportType === "WEEKLY" && dataSourceMode === "csv" ? <WeeklyPeriodControls /> : null}
   </>;
   const reportSetup = <>{reportTypeSetup}{reportPeriods}</>;
   const apiSelection: MetaApiReportSelection = {
-    reportType, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
+    reportType, dateSelection: reportType === "WEEKLY" ? { mode: "last7" } : w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
     comparisonPeriodA: w.comparisonPeriodA ?? undefined, comparisonPeriodB: w.comparisonPeriodB ?? undefined, historicalMonthCount: w.historicalMonthCount,
   };
-  let apiRange: ReturnType<typeof metaApiImportRange> | null = null;
   let apiSelectionError: string | null = null;
-  try { apiRange = metaApiImportRange(apiSelection, new Date(), clientTimezone); }
+  try { metaApiImportRange(apiSelection, new Date(), clientTimezone); }
   catch (error) { apiSelectionError = error instanceof Error ? error.message : "Choose valid dates."; }
 
   return (
@@ -207,7 +206,6 @@ export function WizardImportStep() {
               clientTimezone={clientTimezone}
               onTimezoneUpdated={w.updateApiTimezone}
               selectionError={apiSelectionError}
-              importSummary={apiRange ? `${apiRange.sinceIso} – ${apiRange.untilIso} · Daily breakdown · ${clientTimezone}` : null}
               reportTypeControls={reportTypeSetup}
               setupControls={reportPeriods}
               platform={selectedPlatformCard}

@@ -7,6 +7,7 @@
  * future automated report generation. Tokens live on User.meta* columns.
  */
 
+import { ServiceError } from "./service-error";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { splitIsoDateRangeIntoChunks } from "@/lib/nre/api-date-range";
 
@@ -163,12 +164,40 @@ export async function fetchMetaAdAccountMetadata(accessToken: string, accountId:
   return data;
 }
 
+export interface MetaAdSetReportingConfig {
+  id: string;
+  optimization_goal?: string;
+  promoted_object?: { pixel_id?: string; custom_conversion_id?: string; custom_event_type?: string };
+}
+
+/** Resolve the actual optimization event for only the ad sets present in the import. */
+export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: string[]): Promise<MetaAdSetReportingConfig[]> {
+  const unique = [...new Set(ids)];
+  if (unique.some(id => !/^\d+$/.test(id))) throw new ServiceError("Meta returned an invalid ad set ID.", 422);
+  const configs: MetaAdSetReportingConfig[] = [];
+  for (let offset = 0; offset < unique.length; offset += 50) {
+    const batch = unique.slice(offset, offset + 50);
+    const url = new URL(`${metaGraphBase()}/`);
+    url.searchParams.set("ids", batch.join(","));
+    url.searchParams.set("fields", "id,optimization_goal,promoted_object");
+    const response = await fetchMetaGraph(url, accessToken);
+    const data = await response.json() as Record<string, MetaAdSetReportingConfig & { error?: MetaGraphErrorDetails }> & { error?: MetaGraphErrorDetails };
+    if (!response.ok || data.error) throw new ServiceError("Meta could not confirm the ad sets' conversion events. Reconnect Meta and sync again.", 502);
+    for (const id of batch) {
+      const config = data[id];
+      if (!config || config.error || config.id !== id) throw new ServiceError("Meta did not return the conversion settings for every imported ad set. Reconnect Meta and sync again.", 502);
+      configs.push(config);
+    }
+  }
+  return configs;
+}
+
 export interface MetaInsightAction {
   action_type: string;
   value: string;
 }
 
-/** Ads Manager "Results" / "Cost per result" — same numbers as the UI export, not raw actions[]. */
+/** Meta result channels can include broader totals than the configured website conversion event. */
 export interface MetaInsightResultMetric {
   indicator?: string;
   values?: Array<{ value?: string }>;
@@ -183,6 +212,9 @@ export interface MetaInsightRow {
   ctr?: string;
   cpc?: string;
   inline_link_clicks?: string;
+  inline_link_click_ctr?: string;
+  /** Resolved from ad-set promoted_object, never guessed from campaign naming. */
+  configured_result_action?: string;
   clicks?: string;
   campaign_id?: string;
   adset_id?: string;
@@ -259,6 +291,7 @@ const META_INSIGHT_FIELDS = [
   "ctr",
   "cpc",
   "inline_link_clicks",
+  "inline_link_click_ctr",
   "frequency",
   "optimization_goal",
   "actions",
@@ -324,6 +357,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
     );
     url.searchParams.set("limit", "250");
     url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("action_report_time", "impression");
     url.searchParams.set("access_token", params.accessToken);
     return url.toString();
   };
@@ -432,6 +466,7 @@ export async function fetchMetaAdAccountCampaignPeriodInsights(params: {
     );
     url.searchParams.set("limit", "250");
     url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("action_report_time", "impression");
     url.searchParams.set("access_token", params.accessToken);
     return url.toString();
   };

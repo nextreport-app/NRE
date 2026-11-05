@@ -1518,6 +1518,8 @@ export function useReportUploadWizard({
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
   async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
+    const syncedDateSelection: DateSelection = reportType === "WEEKLY" ? { mode: "last7" } : currentDateSelection();
+    if (reportType === "WEEKLY") { setDateMode("last7"); setCustomStart(""); setCustomEnd(""); }
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
@@ -1538,7 +1540,7 @@ export function useReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(file, {
         platform: selectedPlatformCard,
-        reportType, historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
+        reportType, historicalMonthCount: reportType === "HISTORICAL" ? historicalMonthCount : undefined, dateSelection: syncedDateSelection, comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
         metaAdAccountId: meta?.metaAdAccountId,
       }),

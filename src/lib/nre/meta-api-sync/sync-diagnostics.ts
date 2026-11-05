@@ -65,7 +65,7 @@ function rowHasCostedLeadInResults(row: MetaInsightRow): boolean {
 
 export function buildMetaSyncDiagnostics(
   rows: MetaInsightRow[],
-  options?: { usedCampaignLevelConversionFallback?: boolean },
+  options?: { usedCampaignLevelConversionFallback?: boolean; resultForRow?: typeof manualExportPrimaryResult },
 ): MetaSyncDiagnostics {
   let mappedResultsSum = 0;
   let rowsWithResultsField = 0;
@@ -106,7 +106,7 @@ export function buildMetaSyncDiagnostics(
     if (hasMeaningfulConversionFields(row)) rowsWithMeaningfulConversionFields++;
     if (hasMeaningfulWebsiteConversionFields(row)) rowsWithCostedWebsiteOrLeadInResults++;
 
-    const primary = manualExportPrimaryResult(row);
+    const primary = options?.resultForRow ? options.resultForRow(row) : manualExportPrimaryResult(row);
     const mapped = primary ? parseFloat(primary.value) : 0;
     if (mapped > 0) {
       rowsWithMappedResults++;

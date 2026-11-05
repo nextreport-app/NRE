@@ -68,6 +68,8 @@ const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   { csvName: "result type", key: "result_type", type: "dimension" },
   { csvName: "result value type", key: "result_value_type", type: "dimension" },
 
+  { csvName: "nre api result action", key: "api_result_action", type: "metadata" },
+
   // ── METADATA — never shown as cards ───────────────────────────────────────
   { csvName: "delivery status", key: "delivery_status", type: "metadata" },
   { csvName: "delivery level", key: "delivery_level", type: "metadata" },
@@ -232,7 +234,14 @@ const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     type: "primary",
     format: "percentage",
     priority: 75,
-    explanation: "Percentage of people who clicked after seeing your ad",
+    explanation: "All clicks divided by impressions, including reactions and other clicks. Different from link CTR.",
+  },
+
+  {
+    csvName: "ctr (link click-through rate)", key: "ctr_link", label: "LINK CTR",
+    type: "secondary", format: "percentage", priority: 74,
+    numeratorKey: "link_clicks", denominatorKey: "impressions", ratioScale: 100,
+    explanation: "Link clicks divided by impressions. Different from CTR (All), which includes every click on the ad.",
   },
 
   // ── SECONDARY — shown based on objective and availability ────────────────

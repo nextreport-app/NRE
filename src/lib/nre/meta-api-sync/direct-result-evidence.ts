@@ -1,10 +1,21 @@
 import type { MetaInsightRow } from "@/lib/meta-api";
+import { syntheticResultTypeFromMetaResultIndicator } from "../meta-result-indicator";
 import { ServiceError } from "@/lib/service-error";
 import { metaApiActionToCsvResultType } from "../meta-objective-dictionary";
 import { manualExportPrimaryResult, type ManualExportPrimaryResult } from "./manual-export-mapper";
 const action = (indicator: string) => indicator.replace(/^actions:/, "");
 /** Prefer an unambiguous primary result supplied by Meta; never infer a conversion count from spend/CPA. */
 export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimaryResult | null {
+  if (row.configured_result_action) {
+    const type = row.configured_result_action;
+    const observed = (row.actions ?? []).filter(item => item.action_type === type).map(item => Number(item.value));
+    const primary = [...(row.results ?? []), ...(row.objective_results ?? [])].filter(item => action(item.indicator ?? "") === type).map(item => Number(item.values?.[0]?.value));
+    const counts = [...observed, ...primary];
+    if (counts.some(count => !Number.isFinite(count) || count < 0) || counts.some(count => Math.abs(count - counts[0]) > 1e-8)) throw new ServiceError("Meta returned conflicting counts for the configured conversion event. We stopped the import rather than choose a different lead total. Compare the same dates and attribution settings in Ads Manager.", 422);
+    const count = counts[0] ?? 0;
+    const spend = Number(row.spend ?? 0);
+    return { action_type: type, value: String(count), cpr: count > 0 ? String(spend / count) : "", csvResultType: syntheticResultTypeFromMetaResultIndicator(`actions:${type}`) ?? metaApiActionToCsvResultType(type) };
+  }
   const legacy = manualExportPrimaryResult(row);
   const explicit = (row.results ?? []).map(item => ({ type: action(item.indicator ?? ""), count: Number(item.values?.[0]?.value) })).filter(item => item.type && Number.isFinite(item.count) && item.count > 0);
   if (explicit.length === 1) {
