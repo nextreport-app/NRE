@@ -170,23 +170,51 @@ export interface MetaAdSetReportingConfig {
   promoted_object?: { pixel_id?: string; custom_conversion_id?: string; custom_event_type?: string };
 }
 
-/** Resolve the actual optimization event for only the ad sets present in the import. */
+function adSetSettingsError(error: MetaGraphErrorDetails | undefined, status: number): ServiceError {
+  const code = error?.code;
+  const suffix = code == null ? `HTTP ${status}` : `Meta code ${code}${error?.error_subcode == null ? "" : `/${error.error_subcode}`}`;
+  if (code === 190) return new ServiceError(`Your Meta login expired or was revoked (${suffix}). Reconnect Meta to continue.`, 401);
+  if (code === 10 || code === 200) return new ServiceError(`Meta denied access to an ad set's conversion settings (${suffix}). Check that the connected user has reporting access to this ad account.`, 403);
+  if (status === 429 || [4, 17, 32, 613].includes(code ?? -1)) return new ServiceError(`Meta is limiting reporting requests (${suffix}). Wait a moment and retry sync; reconnecting is not required.`, 429, 30);
+  // Never include provider messages, response bodies or credential-bearing URLs.
+  if (code === 100) return new ServiceError(`Meta could not read an ad set's conversion settings (${suffix}). The ad set may be deleted or unavailable to the connected user.`, 422);
+  return new ServiceError(`Meta could not read an ad set's conversion settings (${suffix}). Retry sync. Your connection has not been changed.`, 502);
+}
+
+async function fetchMetaAdSetReportingConfig(accessToken: string, id: string): Promise<MetaAdSetReportingConfig> {
+  const url = new URL(`${metaGraphBase()}/${id}`);
+  url.searchParams.set("fields", "id,optimization_goal,promoted_object");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let response: Response;
+    try {
+      response = await fetchMetaGraph(url, accessToken);
+    } catch {
+      if (attempt < 2) { await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); continue; }
+      throw new ServiceError("Meta's ad set settings request timed out or could not connect. Retry sync; reconnecting is not required.", 502);
+    }
+    const data = await response.json().catch(() => null) as (MetaAdSetReportingConfig & { error?: MetaGraphErrorDetails }) | null;
+    if (response.ok && data && !data.error && data.id === id && typeof data.optimization_goal === "string" && data.optimization_goal.trim()) return data;
+    const code = data?.error?.code;
+    const transient = response.status === 429 || response.status >= 500 || [1, 2, 4, 17, 32, 613].includes(code ?? -1);
+    if (transient && attempt < 2) { await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); continue; }
+    if (response.ok && !data?.error) throw new ServiceError("Meta returned incomplete ad set conversion settings. Retry sync; results have not been estimated.", 502);
+    throw adSetSettingsError(data?.error, response.status);
+  }
+  throw new ServiceError("Meta could not read ad set conversion settings. Retry sync.", 502);
+}
+
+/** Read supported AdSet nodes directly; bound concurrency rather than relying on root multi-ID field expansion. */
 export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: string[]): Promise<MetaAdSetReportingConfig[]> {
   const unique = [...new Set(ids)];
   if (unique.some(id => !/^\d+$/.test(id))) throw new ServiceError("Meta returned an invalid ad set ID.", 422);
   const configs: MetaAdSetReportingConfig[] = [];
-  for (let offset = 0; offset < unique.length; offset += 50) {
-    const batch = unique.slice(offset, offset + 50);
-    const url = new URL(`${metaGraphBase()}/`);
-    url.searchParams.set("ids", batch.join(","));
-    url.searchParams.set("fields", "id,optimization_goal,promoted_object");
-    const response = await fetchMetaGraph(url, accessToken);
-    const data = await response.json() as Record<string, MetaAdSetReportingConfig & { error?: MetaGraphErrorDetails }> & { error?: MetaGraphErrorDetails };
-    if (!response.ok || data.error) throw new ServiceError("Meta could not confirm the ad sets' conversion events. Reconnect Meta and sync again.", 502);
-    for (const id of batch) {
-      const config = data[id];
-      if (!config || config.error || config.id !== id) throw new ServiceError("Meta did not return the conversion settings for every imported ad set. Reconnect Meta and sync again.", 502);
-      configs.push(config);
+  for (let offset = 0; offset < unique.length; offset += 4) {
+    const group = unique.slice(offset, offset + 4);
+    // Wait for every request in this group before retrying or starting another group.
+    const results = await Promise.allSettled(group.map(id => fetchMetaAdSetReportingConfig(accessToken, id)));
+    for (const result of results) {
+      if (result.status === "rejected") throw result.reason;
+      configs.push(result.value);
     }
   }
   return configs;
