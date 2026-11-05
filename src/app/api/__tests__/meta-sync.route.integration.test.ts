@@ -10,7 +10,7 @@ vi.mock("@/lib/nre/sync-previous-month-from-api",()=>({maybeSyncPreviousMonthDat
 vi.mock("@/lib/nre/previous-month-data",()=>({loadPreviousMonthDataCampaigns:vi.fn().mockResolvedValue(["Example"]),parsePreviousMonthSelectedCampaigns:()=>null}));
 import {auth} from "@/lib/auth";
 import {prisma} from "@/lib/prisma";
-import {ensureFreshMetaAccessToken,fetchMetaAdAccountMetadata} from "@/lib/meta-api";
+import {ensureFreshMetaAccessToken,fetchMetaAdAccountMetadata,fetchMetaAdSetReportingConfigs} from "@/lib/meta-api";
 import {fetchMetaReportCsv} from "@/lib/nre/meta-api-sync";
 import {maybeSyncPreviousMonthDataFromMetaApi} from "@/lib/nre/sync-previous-month-from-api";
 import {POST} from "../clients/[id]/reports/sync-api/route";
@@ -27,7 +27,7 @@ beforeEach(()=>{
  vi.mocked(fetchMetaReportCsv).mockResolvedValue({csvText:"Campaign name,Day,Amount spent (AUD)\nExample,2026-10-31,10",rowCount:1,sinceIso:"2026-10-01",untilIso:"2026-10-31",diagnostics:{},campaignPeriodReachByName:{},campaignPeriodReachMaps:{byRangeKey:{}}} as never);
  vi.mocked(maybeSyncPreviousMonthDataFromMetaApi).mockResolvedValue({synced:false});
 });
-afterEach(()=>{vi.useRealTimers();vi.unstubAllEnvs();});
+afterEach(()=>{vi.useRealTimers();vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe("Meta wizard import route",()=>{
  it("requires authentication",async()=>{vi.mocked(auth).mockResolvedValue(null as never);expect((await POST(request(),params)).status).toBe(401);});
  it("does not import into another user's client",async()=>{vi.mocked(prisma.client.findUnique).mockResolvedValue({userId:"other"} as never);expect((await POST(request(),params)).status).toBe(404);expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
@@ -40,6 +40,28 @@ describe("Meta wizard import route",()=>{
   const response = await POST(request({ ...body, importRange: { startIso: "2026-08-07", endIso: "2026-11-04" } }), params);
   expect(response.status).toBe(200);
   expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({ sinceIso: "2026-10-01", untilIso: "2026-10-31" }));
+ });
+ it("continues sync using real per-object configuration parsing", async () => {
+  const importer = vi.mocked(fetchMetaReportCsv).getMockImplementation()!;
+  vi.mocked(fetchMetaReportCsv).mockImplementation(async input => {
+   await fetchMetaAdSetReportingConfigs(input.accessToken, ["1"]);
+   return importer(input);
+  });
+  const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "1", optimization_goal: "OFFSITE_CONVERSIONS", promoted_object: { pixel_id: "10", custom_event_type: "LEAD" } })));
+  vi.stubGlobal("fetch", provider);
+  expect((await POST(request(), params)).status).toBe(200);
+  expect(new URL(provider.mock.calls[0][0]).pathname).toMatch(/\/1$/);
+ });
+ it("returns a request/access error without falsely telling the user to reconnect", async () => {
+  vi.mocked(fetchMetaReportCsv).mockImplementation(async input => {
+   await fetchMetaAdSetReportingConfigs(input.accessToken, ["1"]);
+   throw new Error("Should not continue with unresolved conversion settings");
+  });
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 100, message: "access_token=secret" } }), { status: 400 })));
+  const response = await POST(request(), params);
+  expect(response.status).toBe(422);
+  const payload = await response.json();
+  expect(payload.error).toContain("Meta code 100"); expect(payload.error).not.toContain("Reconnect"); expect(payload.error).not.toContain("secret");
  });
  it("rejects a timezone mismatch instead of reporting the wrong yesterday",async()=>{vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"AUD",timezone_name:"Australia/Sydney"});const response=await POST(request(),params);expect(response.status).toBe(409);expect((await response.json()).code).toBe("meta_timezone_mismatch");expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
  it("does not hide API mapping problems behind a manual reference CSV",async()=>{expect((await POST(request({...body,referenceManualCsvText:"CSV reference"}),params)).status).toBe(400);expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
