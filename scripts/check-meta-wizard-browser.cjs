@@ -21,7 +21,6 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  });
  await page.goto('https://wizard.test/');await page.getByRole('button',{name:'Use America/Los_Angeles for this client'}).click();
  await page.waitForFunction(()=>window.w.clientTimezone==='America/Los_Angeles');
- await page.getByRole('button',{name:'Last 3 months (90 days)',exact:true}).click();
  if(kind==='WEEKLY'){
  const weekly = page.locator('section').filter({has:page.getByRole('heading',{name:'Weekly report period',exact:true})});
  await weekly.getByRole('button',{name:'Custom date range',exact:true}).click();
@@ -30,22 +29,30 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await weekly.getByRole('button',{name:'End date',exact:true}).click();
  await page.getByRole('button',{name:'2026-11-03',exact:true}).click();
  if(await page.evaluate(()=>window.w.customStart)!=='2026-10-30'||await page.evaluate(()=>window.w.customEnd)!=='2026-11-03')throw Error('custom weekly calendar failed');
- const source = page.locator('section').filter({has:page.getByRole('heading',{name:'Data to fetch from Meta',exact:true})});
- await source.getByRole('button',{name:'Custom date range',exact:true}).click();
- await source.getByRole('button',{name:'Fetch start date',exact:true}).click();
- await page.getByRole('button',{name:'2026-08-08',exact:true}).click();
- if(!(await page.getByText(/2026-08-08 – 2026-11-04/).count()))throw Error('source calendar did not update planned range');
- await source.getByRole('button',{name:'Last 3 months (90 days)',exact:true}).click();
-
  for(const [label,mode] of [['Previous 7 days','prev7'],['Last 14 days','last14'],['Last 7 days','last7']]){await page.getByRole('button',{name:label,exact:true}).click();if(await page.getByRole('button',{name:label,exact:true}).getAttribute('aria-pressed')!=='true'||await page.evaluate(()=>window.w.dateMode)!==mode)throw Error('preset failed '+mode);}
  await page.getByRole('button',{name:'Previous 7 days',exact:true}).click();
  }else{
- await page.getByRole('button',{name:'Change report type',exact:true}).click();
+ if(!await page.getByRole('group',{name:'Choose report type',exact:true}).isVisible())await page.getByRole('button',{name:'Change report type',exact:true}).click();
  const label=kind==='HISTORICAL'?'Monthly report':kind==='COMPARISON'?'Compare two periods':'Daily report';
  await page.getByRole('button').filter({has:page.getByText(label,{exact:true})}).first().click();
  if(kind==='HISTORICAL')await page.getByRole('button',{name:'Last 3 complete months',exact:true}).click();
  if(kind==='COMPARISON'){if(await page.getByRole('heading',{name:'Which periods would you like to compare?',exact:true}).count()!==1)throw Error('duplicate comparison controls');await page.getByRole('button',{name:'Last 30 days vs previous 30 days',exact:true}).click();}
- if(kind==='DAY_BREAKDOWN')await page.getByRole('button',{name:'Last 14 days',exact:true}).click();
+ if(kind==='DAY_BREAKDOWN'){
+  await page.getByRole('button',{name:'Last 14 days',exact:true}).click();
+  await page.getByRole('button',{name:'Custom date range',exact:true}).click();
+  await page.getByRole('button',{name:'Start date',exact:true}).click();
+  await page.getByRole('button',{name:'2026-10-23',exact:true}).click();
+ }
+ }
+ if(await page.getByRole('heading',{name:'Data to fetch from Meta',exact:true}).count())throw Error('duplicate date selection still visible');
+ if(await page.getByRole('button',{name:'Match report dates',exact:true}).count()||await page.getByRole('button',{name:/Last 6/}).count())throw Error('removed fetch options still visible');
+ const expectedRange = { WEEKLY:['2026-10-06','2026-11-04'], HISTORICAL:['2026-08-01','2026-10-31'], COMPARISON:['2026-09-06','2026-11-04'], DAY_BREAKDOWN:['2026-10-23','2026-11-04'] }[kind];
+ await page.getByText(`${expectedRange[0]} – ${expectedRange[1]} · Daily breakdown · America/Los_Angeles`,{exact:true}).waitFor();
+ if(kind==='COMPARISON'){
+  await page.getByRole('button',{name:'Custom date range',exact:true}).click();
+  const periodA=page.locator('div.space-y-2').filter({has:page.getByText('Period A',{exact:true})});
+  await periodA.getByRole('button',{name:'Start date',exact:true}).click();
+  await page.getByRole('button',{name:'2026-10-07',exact:true}).click();
  }
  const before=await page.evaluate(()=>({type:window.w.reportType,mode:window.w.dateMode,start:window.w.customStart,end:window.w.customEnd}));
  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('overflow '+width+' '+kind);
@@ -53,7 +60,7 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await page.getByRole('button',{name:'Analyze campaign data',exact:true}).click();await page.waitForFunction(()=>window.w.step===2);
  const after=await page.evaluate(()=>({type:window.w.reportType,mode:window.w.dateMode,start:window.w.customStart,end:window.w.customEnd}));
  if(JSON.stringify(before)!==JSON.stringify(after))throw Error('analysis replaced selection '+JSON.stringify({before,after}));
- if(sent.importRange.startIso!=='2026-08-07'||sent.importRange.endIso!=='2026-11-04')throw Error('wrong source range '+JSON.stringify(sent));
+ if('importRange' in sent)throw Error('independent source window still sent');
  if(sent.reportType!==kind)throw Error('wrong report '+JSON.stringify(sent));
  if(!analyzed.includes(kind))throw Error('report not sent to analyze');
  if(errors.length)throw Error(errors.join('\n'));

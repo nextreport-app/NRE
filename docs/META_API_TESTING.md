@@ -13,9 +13,14 @@ Meta API import is enabled for controlled testing. Manual CSV import remains ava
 
 ## Wizard setup
 
-Choose the import source first. API mode shows the connection and account picker, then a daily-data fetch window: match report dates, last 30 days, last 90 days, last 180 days, or custom. The report type and period controls are shared with CSV mode. The fetch window is expanded when needed to include all report dates, and an exact dated summary is shown before Analyze. Weekly reports always include their required last-30-days chart window.
+Choose API import and a report type, connect/select an ad account, then choose that report’s period. All four report choices are visible immediately. There is no independent source-date selector: the selected report period determines the API request automatically, with a read-only summary of the exact fetch dates.
 
-A wider import must never select a different report type or replace the user's report dates during analysis. API Import calendars use the current account calendar rather than a previous CSV's end date. Selected weekly presets have visible active states, date labels and the same custom calendar on Import and Generate. Comparison dates appear once. Source changes and timezone corrections clear imported campaigns, metrics and generated state; controls are locked during sync and analysis.
+- Weekly defaults to the last seven reporting days, with a last-30-days API fetch for MTD/chart data. Weekly presets and a custom period remain available; an earlier custom period automatically extends the fetch.
+- Monthly offers month presets and custom From/To month pickers. Three months means three selected calendar months, not a rolling 90-day import.
+- Comparison offers presets or two custom periods; Meta fetches daily data spanning both.
+- Day-by-day offers presets or a custom date range; Meta fetches those dates.
+
+API Import calendars use the current account calendar rather than a previous CSV's end date. A wider historical selection must never silently replace the chosen report type or dates during analysis. Source changes and timezone corrections clear imported campaigns, metrics and generated state; controls are locked during sync and analysis. The previous Match report dates, rolling source presets and separate custom source calendar have been removed.
 
 After Analyze both sources use the same campaign, objective, metric, preview and PPT generation pipeline. API mode does not ask the user to download a CSV or upload previous-month data; an optional source-data download remains available for diagnostics.
 
@@ -52,7 +57,14 @@ Initial API rollout results: 33 API-specific tests, 69 objective tests, 58 route
 ## Workflow correction verification (November 5, 2026)
 
 - Automated suite: 40 Meta API/UI/route/parity tests, 59 API route tests, 504 accounting tests and 279 report-choice tests pass. TypeScript and production build pass.
-- Browser interaction: `node scripts/check-meta-wizard-browser.cjs` runs all four report choices at 390px and 1440px with synthetic provider responses. It exercises timezone PATCH, weekly presets/custom calendar, custom source calendar, monthly ranges, comparison presets, day-by-day periods, outgoing request dates, preservation after analysis and source-change invalidation. It checks horizontal overflow and browser runtime errors. Screenshots/bundle go under the system temporary directory (`nre-meta-api-workflow`).
+- Browser interaction: `node scripts/check-meta-wizard-browser.cjs` runs all four report choices at 390px and 1440px with synthetic provider responses. It exercises timezone PATCH, weekly presets/custom calendar, monthly ranges, comparison presets, day-by-day periods, outgoing request dates, preservation after analysis and source-change invalidation. It checks horizontal overflow and browser runtime errors. Screenshots/bundle go under the system temporary directory (`nre-meta-api-workflow`).
 - The optional browser script requires Playwright, esbuild, the existing PostCSS tooling and Chromium; use `CHROMIUM_EXECUTABLE_PATH` if Chromium is installed outside its usual path. It does not access live Meta or storage.
 - Existing effect-related lint errors and warnings in the large wizard components remain; lint is not claimed as a clean pass.
 - No deployment or real-account accuracy verification is included. Validate the first connected account against Ads Manager before client delivery.
+
+
+## Report-driven dates (November 6, 2026)
+
+Removed the independent fetch-window UI and request option. All four API report choices are shown first. Report dates alone determine the request; stale frontend `importRange` fields are ignored by the route. Weekly retains its automatic 30-day data requirement and custom reporting period. Monthly retains calendar-month presets and From/To month pickers, without the six-month shortcut in API mode. Comparison and day-by-day retain custom calendars. The fetch summary is read-only.
+
+Validation: 40 API/UI/route/PPT parity tests and 279 report-choice tests passed. Eight synthetic-provider Chromium journeys passed at mobile and desktop widths, including custom weekly, comparison and day-by-day calendars, exact automatic fetch summaries, choice preservation and source resets. TypeScript and production build passed. Existing component effect lint findings remain; no live-account test or deployment was performed.

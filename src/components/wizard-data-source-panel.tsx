@@ -12,6 +12,7 @@ interface WizardDataSourcePanelProps {
   reportSelection?: MetaApiReportSelection;
   clientTimezone?: string;
   onTimezoneUpdated?: (timezone: string) => void;
+  reportTypeControls?: ReactNode;
   setupControls?: ReactNode;
   importSummary?: string | null;
   selectionError?: string | null;
@@ -86,7 +87,7 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
 export function WizardDataSourcePanel({
   clientId,
   reportSelection,
-  clientTimezone, onTimezoneUpdated, setupControls, importSummary, selectionError,
+  clientTimezone, onTimezoneUpdated, reportTypeControls, setupControls, importSummary, selectionError,
   platform,
   metaConfigured,
   metaConnected,
@@ -246,6 +247,7 @@ export function WizardDataSourcePanel({
 
   return (
     <fieldset disabled={isSyncing || timezoneSaving} className="min-w-0 space-y-4">
+      {reportTypeControls}
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
@@ -549,7 +551,7 @@ export function WizardDataSourceToggle({
               >
                 {apiLaunchingSoon
                   ? "Meta API sync — preview in Account settings"
-                  : "Choose dates and sync daily data from Meta"}
+                  : "Choose a report and sync daily data from Meta"}
               </span>
             </span>
           </button>

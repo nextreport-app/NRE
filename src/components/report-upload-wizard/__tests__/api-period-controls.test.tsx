@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
 import { ReportPeriodControls } from "../ui/report-period-controls";
-import { ApiImportRangeControls, selectedApiImportRange } from "../ui/api-import-range-controls";
+import { WizardReportSetupPanel } from "../ui/wizard-report-setup-panel";
+vi.mock("@/components/site-theme-provider", () => ({ useSiteTheme: () => ({ locale: "en" }) }));
 const { state } = vi.hoisted(() => ({ state: { reportType: "WEEKLY", step: 1, dataSourceMode: "api", clientTimezone: "UTC", dateMode: "last7", customStart: "2026-10-01", customEnd: "2026-10-31", dateBounds: { minIso: "2026-08-01", maxIso: "2026-08-31" } } }));
 vi.mock("../wizard-context", () => ({ useWizardContext: () => state }));
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-05T12:00:00Z")); state.reportType = "WEEKLY"; state.dateMode = "last7"; });
@@ -21,10 +22,10 @@ describe("shared report controls for API imports", () => {
   expect(html).toContain("Last 30 days"); expect(html).toContain("Meta data needed:");
   expect(html).not.toContain("Your CSV must");
  });
- it("offers explicit source windows and computes them in the account timezone", () => {
-  const value = { preset: "90" as const, startIso: "", endIso: "" };
-  const html = renderToStaticMarkup(<ApiImportRangeControls value={value} onChange={() => {}} timezone="UTC" />);
-  for (const label of ["Last 30 days", "Last 3 months (90 days)", "Last 6 months (180 days)", "Custom date range", "Match report dates"]) expect(html).toContain(label);
-  expect(selectedApiImportRange(value, "UTC")).toEqual({ startIso: "2026-08-07", endIso: "2026-11-04" });
+ it("shows the four report choices immediately in API mode", () => {
+  const html = renderToStaticMarkup(<WizardReportSetupPanel source="api" reportType="WEEKLY" reportTypeLabel="Weekly overview" platform="META" clientTimezone="UTC" onReportTypeChange={() => {}} />);
+  for (const label of ["Weekly overview", "Monthly report", "Compare two periods", "Daily report"]) expect(html).toContain(label);
+  expect(html).toContain('aria-label="Choose report type"');
+  expect(html).not.toContain("Match report dates");
  });
 });
