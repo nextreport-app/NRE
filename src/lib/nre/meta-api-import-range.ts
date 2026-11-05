@@ -5,6 +5,8 @@ import { computeLastNDaysIsoRange } from "./api-date-range";
 import { historicalPeriods, reportCalendarYesterday, selectedSinglePeriod } from "./report-period-selection";
 import { comparisonPresetPeriods } from "./comparison-period-selection";
 export interface MetaApiReportSelection {
+  /** Optional source window, like the date range chosen before exporting a CSV. */
+  importRange?: DateRangeIso;
   reportType?: string;
   dateSelection?: DateSelection;
   comparisonPeriodA?: DateRangeIso;
@@ -32,6 +34,8 @@ export function metaApiImportRange(selection: MetaApiReportSelection, now: Date,
   } else if (type === "DAY_BREAKDOWN") {
     ranges = [custom ?? computeWeeklyRangeOptions([], now, timezone).last7];
   } else throw new Error("Choose a supported Meta report type.");
+  // Keep all data required by the report, even when its dates extend the source preset.
+  if (selection.importRange) ranges.push(selection.importRange);
   for (const range of ranges) {
     const valid = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && Number.isFinite(Date.parse(iso + "T00:00:00Z")) && new Date(iso + "T00:00:00Z").toISOString().slice(0, 10) === iso;
     if (!valid(range.startIso) || !valid(range.endIso) || range.startIso > range.endIso || range.endIso > yesterday) throw new Error("Choose valid reporting dates ending yesterday or earlier in the ad account timezone.");

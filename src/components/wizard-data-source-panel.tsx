@@ -2,7 +2,7 @@
 
 import type { MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
 
 export type WizardDataSource = "csv" | "api";
@@ -10,6 +10,11 @@ export type WizardDataSource = "csv" | "api";
 interface WizardDataSourcePanelProps {
   clientId: string;
   reportSelection?: MetaApiReportSelection;
+  clientTimezone?: string;
+  onTimezoneUpdated?: (timezone: string) => void;
+  setupControls?: ReactNode;
+  importSummary?: string | null;
+  selectionError?: string | null;
   platform: "META" | "GOOGLE" | "TIKTOK";
   metaConfigured: boolean;
   metaConnected: boolean;
@@ -19,7 +24,7 @@ interface WizardDataSourcePanelProps {
   tiktokConfigured: boolean;
   tiktokConnected: boolean;
   /** Called after a successful API sync with a CSV File ready for analyze. */
-  onSynced: (file: File, meta?: ApiSyncMeta) => void;
+  onSynced: (file: File, meta?: ApiSyncMeta) => void | Promise<void>;
   syncStatus: "idle" | "loading" | "error";
   syncError: string | null;
   onSyncStart: () => void;
@@ -81,6 +86,7 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
 export function WizardDataSourcePanel({
   clientId,
   reportSelection,
+  clientTimezone, onTimezoneUpdated, setupControls, importSummary, selectionError,
   platform,
   metaConfigured,
   metaConnected,
@@ -109,6 +115,9 @@ export function WizardDataSourcePanel({
   const [selectedMetaAccount, setSelectedMetaAccount] = useState("");
   const [selectedGoogleCustomer, setSelectedGoogleCustomer] = useState("");
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
+  const [timezoneSaving, setTimezoneSaving] = useState(false);
+  const selectedAccount = metaAccounts.find(account => account.id === selectedMetaAccount);
+  const timezoneMismatch = !!(showMeta && selectedAccount?.timezone && clientTimezone && new Intl.DateTimeFormat("en", { timeZone: selectedAccount.timezone }).resolvedOptions().timeZone !== new Intl.DateTimeFormat("en", { timeZone: clientTimezone }).resolvedOptions().timeZone);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const loadAccounts = useCallback(async () => {
@@ -209,7 +218,7 @@ export function WizardDataSourcePanel({
 
       const fileName = data.fileName ?? "api-sync.csv";
       const file = new File([csvText], fileName, { type: "text/csv" });
-      onSynced(file, {
+      await onSynced(file, {
         metaSyncDiagnostics: data.metaSyncDiagnostics,
         previousMonthWarning: data.previousMonthWarning,
         mergedWithManualReference: !!data.mergedWithManualReference,
@@ -232,23 +241,18 @@ export function WizardDataSourcePanel({
   const canSync =
     connected &&
     configured &&
-    !isSyncing &&
+    !isSyncing && !timezoneSaving && !timezoneMismatch && !selectionError &&
     (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3">
-        <p className="text-[13px] text-dash-ink-secondary">
-          Weekly imports include the last 30 days through yesterday. Other reports fetch their selected dates.
-        </p>
-      </div>
+    <fieldset disabled={isSyncing || timezoneSaving} className="min-w-0 space-y-4">
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[14px] font-semibold text-dash-ink">Meta Marketing API</p>
-              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only reporting · testing</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only ads reporting</p>
             </div>
             <StatusPill ok={metaConnected} label={metaConnected ? "Connected" : "Not connected"} />
           </div>
@@ -292,7 +296,7 @@ export function WizardDataSourcePanel({
               ) : (
                 <select
                   value={selectedMetaAccount}
-                  onChange={(e) => setSelectedMetaAccount(e.target.value)}
+                  onChange={(e) => { setSelectedMetaAccount(e.target.value); setAccountsError(null); }}
                   className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
                 >
                   <option value="">Select ad account…</option>
@@ -310,6 +314,23 @@ export function WizardDataSourcePanel({
           )}
         </div>
       ) : null}
+
+      {timezoneMismatch ? <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
+        <p className="text-sm text-dash-ink-secondary">This ad account reports in <strong>{selectedAccount?.timezone}</strong>. Use the same timezone for this client so report dates match Ads Manager.</p>
+        <button type="button" className="min-h-10 rounded-lg bg-dash-accent px-3 py-2 text-sm font-semibold text-[#0b1728]" onClick={async () => {
+          setTimezoneSaving(true); setAccountsError(null);
+          try {
+            const res = await fetch(`/api/clients/${clientId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ timezone: selectedAccount!.timezone }) });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? 'Unable to update timezone.');
+            onTimezoneUpdated?.(data.client.timezone);
+          } catch (error) { setAccountsError(error instanceof Error ? error.message : 'Unable to update timezone.'); }
+          finally { setTimezoneSaving(false); }
+        }}>{timezoneSaving ? 'Updating timezone…' : `Use ${selectedAccount?.timezone} for this client`}</button>
+      </div> : null}
+      {setupControls}
+      {importSummary ? <div aria-live="polite" className="rounded-lg border border-dash-border bg-dash-card p-4"><p className="text-sm font-semibold text-dash-ink">Meta will fetch</p><p className="mt-1 text-sm text-dash-ink-secondary">{importSummary}</p><p className="mt-2 text-xs text-dash-ink-secondary">Next: choose campaigns, confirm objectives, select metrics, then generate your report. No CSV download is needed.</p></div> : null}
+      {selectionError ? <p role="alert" className="text-sm text-red-400">{selectionError}</p> : null}
 
       {showGoogle ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
@@ -462,7 +483,7 @@ export function WizardDataSourcePanel({
           </button>
         </>
       ) : null}
-    </div>
+    </fieldset>
   );
 }
 
@@ -528,7 +549,7 @@ export function WizardDataSourceToggle({
               >
                 {apiLaunchingSoon
                   ? "Meta API sync — preview in Account settings"
-                  : "Sync last 30 days from Meta"}
+                  : "Choose dates and sync daily data from Meta"}
               </span>
             </span>
           </button>

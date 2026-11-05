@@ -15,9 +15,11 @@ export function WizardReportSetupPanel({
   reportTypeLabel,
   clientTimezone,
   onReportTypeChange,
+  source = "csv",
   variant = "full",
   onEditSetup,
 }: {
+  source?: "csv" | "api";
   reportType: ReportTypeValue;
   reportTypeLabel: string;
   platform: Platform;
@@ -35,7 +37,7 @@ export function WizardReportSetupPanel({
   function renderChoice(type: (typeof LAUNCH_PRIMARY_REPORT_TYPES)[number]) {
     const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
     const icons: Record<string, string> = { WEEKLY: "📊", MONTHLY: "🗓️", DAILY: "☀️", HISTORICAL: "📈", COMPARISON: "🔀", DAY_BREAKDOWN: "📋" };
-    return <ReportTypeCard key={type} icon={icons[type]} heading={copy.cardHeading} description={copy.cardOneLiner} csvRequiredNote={wizardCsvRequirementForReportType({ reportType: type, clientTimezone }).shortNote} selected={reportType === type || (type === "MONTHLY" && reportType === "HISTORICAL") || (type === "DAY_BREAKDOWN" && reportType === "DAILY")} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
+    return <ReportTypeCard key={type} icon={icons[type]} heading={copy.cardHeading} description={copy.cardOneLiner} csvRequiredNote={source === "api" ? undefined : wizardCsvRequirementForReportType({ reportType: type, clientTimezone }).shortNote} selected={reportType === type || (type === "MONTHLY" && reportType === "HISTORICAL") || (type === "DAY_BREAKDOWN" && reportType === "DAILY")} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
   }
 
   if (variant === "summary") {
@@ -55,10 +57,10 @@ export function WizardReportSetupPanel({
     </div>
     <p className="text-[13px] leading-relaxed text-dash-ink-secondary" title={selectedCopy.cardYouGet}>{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</p>
     </div>
-    {!["MONTHLY", "HISTORICAL"].includes(reportType) && <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">CSV needed:</span> {requirement.shortNote}</p>}
+    {!["MONTHLY", "HISTORICAL"].includes(reportType) && <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">{source === "api" ? "Report data:" : "CSV needed:"}</span> {source === "api" ? requirement.shortNote.replace(/CSV/g, "data") : requirement.shortNote}</p>}
     {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">
       <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
-      <p className="text-[12px] text-dash-ink-secondary">Use a Day-wise breakdown CSV for every report type. Choose the date range needed for your report.</p>
+      <p className="text-[12px] text-dash-ink-secondary">{source === "api" ? "Choose your report type and dates. Meta will provide daily data for the same reporting workflow." : "Use a Day-wise breakdown CSV for every report type. Choose the date range needed for your report."}</p>
       <div role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {LAUNCH_PRIMARY_REPORT_TYPES.map(renderChoice)}
       </div>

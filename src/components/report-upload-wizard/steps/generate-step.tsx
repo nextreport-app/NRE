@@ -10,13 +10,10 @@ import { NoDataRowsWarning, PreviousMonthSummaryOption } from "../ui/warnings";
 import { SpecificFieldWarning } from "../ui/specific-field-warning";
 import {
   defaultReportTitleFor,
-  formatIso,
-  formatIsoRange,
   isNoDataRowsError,
   isSpecificFieldError,
 } from "../utils";
-import { WeeklyPeriodOption } from "../ui/weekly-period-option";
-import { WizardDateRangeFields } from "../ui/wizard-date-picker";
+import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
@@ -47,11 +44,8 @@ export function WizardGenerateStep() {
     handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
-    customEnd,
     customRangeError,
-    customStart,
     data,
-    dateBounds,
     dateMode,
     downloadUrl,
     driveDisplayLabel,
@@ -63,8 +57,6 @@ export function WizardGenerateStep() {
     driveSaving,
     driveView,
     estimatedSlideCount,
-    formatIso,
-    formatIsoRange,
     generateMessage,
     generateStatus,
     handleCancelPreviousMonthSummary,
@@ -77,10 +69,8 @@ export function WizardGenerateStep() {
     generatedWithCsvVerifySkipped,
     handleGeneratePreviousMonthSummary,
     handleSaveButtonClick,
-    clientTimezone,
     handleSaveToFolderLink,
     handleShowBudgetOnCoverChange,
-    hasAdLevelCsv,
     hasGoogleDriveConnected,
     dayBreakdownData,
     historicalData,
@@ -105,27 +95,16 @@ export function WizardGenerateStep() {
     reportId,
     reportType,
     reportTypeLabel,
-    setCustomEnd,
-    setCustomRangeError,
-    setCustomStart,
-    editCustomEnd,
-    editCustomStart,
-    editDateMode,
-    setDateMode,
     setDriveFolderLinkInput,
     setDriveFolderNameInput,
     setDriveLinkFormatError,
     setDriveSaveError,
     setDriveSaveUrl,
     setDriveView,
-    setHistoricalMonthCount,
     setLongRangeConfirmed,
     setStep,
     shareToken,
     showBudgetOnCover,
-    spanDays,
-    weeklyOptions,
-    weeklyRangeIso,
     reportPeriodConfirmationLine,
     reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
@@ -340,81 +319,14 @@ export function WizardGenerateStep() {
             <div className="space-y-5">
             <ReportPeriodControls stage="generate" />
 
-          {showWeeklyPeriodEditor ? (
-            <section className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <h4 className="text-[15px] font-semibold text-dash-ink">Report period</h4>
-              <p className="mt-1 text-[13px] leading-snug text-dash-ink-secondary">
-                Default is last 7 days in your CSV. Change here only if you need a different week.
-              </p>
-              <div className="mt-4 space-y-4">
-                <div className="flex flex-wrap gap-3">
-                  {weeklyOptions ? (
-                    <WeeklyPeriodOption
-                      selected={dateMode === "last7"}
-                      label="Last 7 days"
-                      sublabel={formatIsoRange(weeklyOptions.last7)}
-                      onSelect={() => {
-                        editDateMode("last7");
-                        setCustomRangeError(null);
-                        setWeeklyPeriodExpanded(false);
-                      }}
-                    />
-                  ) : null}
-                  <WeeklyPeriodOption
-                    selected={dateMode === "custom"}
-                    label="Custom date range"
-                    sublabel={
-                      dateBounds
-                        ? `${formatIso(dateBounds.minIso)} – ${formatIso(dateBounds.maxIso)}`
-                        : "Pick any start and end date in your CSV"
-                    }
-                    onSelect={() => {
-                      editDateMode("custom");
-                      setWeeklyPeriodExpanded(true);
-                    }}
-                  />
-                </div>
-
-                {dateMode === "custom" ? (
-                  <div className="space-y-3 rounded-lg border border-dash-border nre-wizard-panel p-4">
-                    <WizardDateRangeFields
-                      startIso={customStart}
-                      endIso={customEnd}
-                      minIso={dateBounds?.minIso}
-                      maxIso={dateBounds?.maxIso}
-                      onStartChange={(iso) => editCustomStart(iso)}
-                      onEndChange={(iso) => editCustomEnd(iso)}
-                    />
-
-                    {customRangeError ? <p className="text-[14px] text-red-400">{customRangeError}</p> : null}
-
-                    {needsLongRangeConfirm ? (
-                      <div className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                        <p className="mb-2 text-[14px] text-amber-200">
-                          You selected {spanDays} days. Weekly reports read best at 7 days or less — continue with this
-                          longer period anyway?
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setLongRangeConfirmed(true)}
-                            className="rounded-md bg-dash-accent px-3 py-1 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
-                          >
-                            Yes
-                          </button>
-                          <button
-                            onClick={() => setCustomEnd("")}
-                            className="rounded-md border border-dash-border px-3 py-1 text-[14px] text-dash-ink-secondary hover:bg-dash-border"
-                          >
-                            No
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
+          {showWeeklyPeriodEditor ? <>
+            <WeeklyPeriodControls />
+            {customRangeError ? <p role="alert" className="text-sm text-red-400">{customRangeError}</p> : null}
+            {needsLongRangeConfirm ? <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <p className="text-sm text-dash-ink-secondary">This weekly report covers more than seven days. Use this reporting period?</p>
+              <button type="button" onClick={() => setLongRangeConfirmed(true)} className="mt-3 rounded-md bg-dash-accent px-3 py-2 text-sm font-semibold text-[#0b1728]">Confirm reporting period</button>
+            </div> : null}
+          </> : null}
 
               {previewStatus === "invalid" && (
                 <div className="space-y-3">

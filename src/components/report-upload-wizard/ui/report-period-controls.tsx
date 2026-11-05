@@ -17,7 +17,7 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
   const [datesExpanded, setDatesExpanded] = useState(false);
   if (w.reportType === "COMPARISON") return <ComparisonPeriodControls stage={stage} />;
   if (!["MONTHLY", "DAILY", "HISTORICAL", "DAY_BREAKDOWN"].includes(w.reportType)) return null;
-  const calendar = csvReportingCalendar(w.dateBounds, new Date(), w.clientTimezone);
+  const calendar = csvReportingCalendar(w.dataSourceMode === "api" && w.step === 1 ? null : w.dateBounds, new Date(), w.clientTimezone);
   const now = calendar.now;
   const yesterday = reportCalendarYesterday(now, w.clientTimezone);
   const today = getCalendarDateInTimezone(now, w.clientTimezone);
@@ -43,7 +43,7 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
         return <button key={days} type="button" aria-pressed={active} onClick={() => { setCustomDaily(false); chooseRange(range.startIso, range.endIso); }} className={`rounded-lg border px-3 py-2 text-xs font-medium ${active ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink hover:bg-dash-card"}`}>{days === 1 ? calendar.adjusted ? "Latest CSV day" : "Yesterday" : `Last ${days} days`}</button>;
       })}<button type="button" aria-pressed={customDaily || dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone) === "Custom date range"} onClick={() => setCustomDaily(true)} className={`rounded-lg border px-3 py-2 text-xs font-medium ${customDaily || dailyPeriodLabel({ startIso: start, endIso: end }, now, w.clientTimezone) === "Custom date range" ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink"}`}>Custom date range</button></div>
       <WizardDateRangeFields startIso={start} endIso={end} maxIso={yesterday} onStartChange={day => { setCustomDaily(true); chooseRange(day, end < day ? day : end); }} onEndChange={day => { setCustomDaily(true); chooseRange(start > day ? day : start, day); }} />
-      <p className="text-xs text-dash-ink-secondary">CSV coverage needed: {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"))}. Your CSV must have Day-wise breakdown covering this entire range. Each table row combines your selected campaigns for one day; missing days are not treated as zero delivery.</p>
+      <p className="text-xs text-dash-ink-secondary">{w.dataSourceMode === "api" ? "Meta data needed:" : "CSV coverage needed:"} {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"))}. {w.dataSourceMode === "api" ? "Daily data will be fetched for the report." : "Your CSV must have Day-wise breakdown covering this entire range."} Each table row combines your selected campaigns for one day; missing days are not treated as zero delivery.</p>
       {w.customRangeError && <p className="text-sm text-red-400">{w.customRangeError}</p>}
     </section>;
   }
@@ -100,6 +100,6 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
       <p className="text-xs font-semibold text-dash-ink">{count === 1 ? "1 month selected" : `${count} months selected`}</p>
       <ul className="mt-2 grid gap-1.5 text-xs text-dash-ink-secondary sm:grid-cols-2">{periods.map((period, index) => <li key={period.startIso}>{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(period.startIso + "T12:00:00Z"))}: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).formatRange(new Date(period.startIso + "T12:00:00Z"), new Date((index === periods.length - 1 ? end : period.endIso) + "T12:00:00Z"))}{period.startIso.slice(0, 7) === currentMonth ? " (MTD)" : " (full month)"}</li>)}</ul>
     </div>
-    <p className="text-xs leading-relaxed text-dash-ink-secondary">CSV coverage needed: {rangeLabel}. Your CSV must have Day-wise breakdown for this entire date range.</p>
+    <p className="text-xs leading-relaxed text-dash-ink-secondary">{w.dataSourceMode === "api" ? "Meta data needed:" : "CSV coverage needed:"} {rangeLabel}. {w.dataSourceMode === "api" ? "Daily data will be fetched for these months." : "Your CSV must have Day-wise breakdown for this entire date range."}</p>
   </section>;
 }

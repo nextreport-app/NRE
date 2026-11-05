@@ -1,7 +1,7 @@
 "use client";
-import { ComparisonPeriodControls } from "../ui/comparison-period-controls";
-import { WizardDateRangeFields } from "../ui/wizard-date-picker";
-import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
+import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
+import { ApiImportRangeControls, selectedApiImportRange, type ApiImportWindow } from "../ui/api-import-range-controls";
+import { metaApiImportRange, type MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import { ReportPeriodControls } from "../ui/report-period-controls";
 
 import { useState } from "react";
@@ -33,6 +33,7 @@ import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 export function WizardImportStep() {
   const w = useWizardContext();
   const [apiDiagnosticsOpen, setApiDiagnosticsOpen] = useState(false);
+  const [apiImportWindow, setApiImportWindow] = useState<ApiImportWindow>({ preset: "30", startIso: "", endIso: "" });
   if (w.step !== 1) return null;
   const {
     analyzeErrors,
@@ -109,8 +110,23 @@ export function WizardImportStep() {
 
   const setupPlatform = selectedPlatformCard ?? "META";
 
+  const reportSetup = <>
+    <WizardReportSetupPanel source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />
+    <ReportPeriodControls />
+    {reportType === "WEEKLY" ? <WeeklyPeriodControls /> : null}
+  </>;
+  const apiSelection: MetaApiReportSelection = {
+    importRange: selectedApiImportRange(apiImportWindow, clientTimezone),
+    reportType, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
+    comparisonPeriodA: w.comparisonPeriodA ?? undefined, comparisonPeriodB: w.comparisonPeriodB ?? undefined, historicalMonthCount: w.historicalMonthCount,
+  };
+  let apiRange: ReturnType<typeof metaApiImportRange> | null = null;
+  let apiSelectionError: string | null = null;
+  try { apiRange = metaApiImportRange(apiSelection, new Date(), clientTimezone); }
+  catch (error) { apiSelectionError = error instanceof Error ? error.message : "Choose valid dates."; }
+
   return (
-    <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm">
+    <fieldset disabled={apiSyncStatus === "loading" || analyzeStatus === "loading"} className="min-w-0 space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm">
       {selectedPlatformCard && (hasSavedPlatformPreference || !platformSwitchEnabled) ? (
         <>
           <WizardPlatformCompactBar
@@ -130,7 +146,7 @@ export function WizardImportStep() {
                   ? "Google Ads"
                   : "TikTok Ads"
             }
-            description={wizardPlatformImportDescription(selectedPlatformCard)}
+            description={dataSourceMode === "api" ? "Import daily campaign data directly from your ad account" : wizardPlatformImportDescription(selectedPlatformCard)}
             expanded={platformPickerExpanded}
             onToggle={() => setPlatformPickerExpanded((open) => !open)}
             allowPlatformChange={platformSwitchEnabled}
@@ -159,15 +175,6 @@ export function WizardImportStep() {
         </>
       )}
 
-      <WizardReportSetupPanel
-        reportType={reportType}
-        reportTypeLabel={reportTypeLabel()}
-        platform={setupPlatform}
-        clientTimezone={clientTimezone}
-        onReportTypeChange={handleReportTypeChange}
-      />
-      <ReportPeriodControls />
-
       {selectedPlatformCard && isPlatformBeta(selectedPlatformCard) ? (
         <PlatformBetaNotice platform={selectedPlatformCard} />
       ) : null}
@@ -186,15 +193,7 @@ export function WizardImportStep() {
             </p>
           ) : null}
 
-          {w.apiSyncEnabled && dataSourceMode === "api" && w.reportType === "COMPARISON" ? <ComparisonPeriodControls stage="import" /> : null}
-          {w.apiSyncEnabled && dataSourceMode === "api" && w.reportType === "WEEKLY" ? (
-            <details className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <summary className="cursor-pointer text-sm font-medium text-dash-ink">Weekly reporting dates</summary>
-              <p className="my-3 text-xs text-dash-ink-secondary">The import includes the last 30 days for the chart and any earlier week you select.</p>
-              <div className="mb-3 flex flex-wrap gap-2">{(["last7", "prev7", "last14", "custom"] as const).map(mode => <button key={mode} type="button" aria-pressed={w.dateMode === mode} onClick={() => w.editDateMode(mode)} className="min-h-10 rounded-md border border-dash-border px-3 text-sm text-dash-ink">{{ last7: "Last 7 days", prev7: "Previous 7 days", last14: "Last 14 days", custom: "Custom" }[mode]}</button>)}</div>
-              {w.dateMode === "custom" ? <WizardDateRangeFields startIso={w.customStart} endIso={w.customEnd} maxIso={reportCalendarYesterday(new Date(), w.clientTimezone)} onStartChange={w.editCustomStart} onEndChange={w.editCustomEnd} /> : null}
-            </details>
-          ) : null}
+          {dataSourceMode === "csv" ? reportSetup : null}
 
           {dataSourceMode === "csv" && <WizardImportDownloadInstructions
             clientId={clientId}
@@ -203,17 +202,15 @@ export function WizardImportStep() {
             clientTimezone={clientTimezone}
           />}
 
-          {w.apiSyncEnabled && dataSourceMode === "api" && selectedPlatformCard === "META" ? (
-            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-dash-ink-secondary">
-              <strong className="font-semibold text-dash-ink">Experimental API import.</strong>{" "}
-              Compare Results and cost per result with an Ads Manager export before sharing. Manual CSV is recommended while API accuracy is being validated.
-            </p>
-          ) : null}
-
           {w.apiSyncEnabled && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
               clientId={clientId}
-              reportSelection={{ reportType: w.reportType, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode }, comparisonPeriodA: w.comparisonPeriodA ?? undefined, comparisonPeriodB: w.comparisonPeriodB ?? undefined, historicalMonthCount: w.historicalMonthCount }}
+              reportSelection={apiSelection}
+              clientTimezone={clientTimezone}
+              onTimezoneUpdated={w.updateApiTimezone}
+              selectionError={apiSelectionError}
+              importSummary={apiRange ? `${apiRange.sinceIso} – ${apiRange.untilIso} · Daily breakdown · ${clientTimezone}` : null}
+              setupControls={<><ApiImportRangeControls value={apiImportWindow} onChange={setApiImportWindow} timezone={clientTimezone} />{reportSetup}</>}
               platform={selectedPlatformCard}
               metaConnected={metaConnected}
               metaConnectedName={metaConnectedName}
@@ -222,8 +219,8 @@ export function WizardImportStep() {
               googleAdsConnected={googleAdsConnected}
               tiktokConfigured={tiktokConfigured}
               tiktokConnected={tiktokConnected}
-              onSynced={(file, meta) => void handleApiSynced(file, meta)}
-              syncStatus={apiSyncStatus}
+              onSynced={handleApiSynced}
+              syncStatus={analyzeStatus === "loading" ? "loading" : apiSyncStatus}
               syncError={apiSyncError || (w.metaConnectError ? "Meta connection could not be completed. Try connecting again." : null)}
               onSyncStart={() => {
                 setApiSyncStatus("loading");
@@ -392,7 +389,8 @@ export function WizardImportStep() {
             </>
           )}
 
-          {reportType === "WEEKLY" && (showCompactPreviousMonth ? (
+          {dataSourceMode === "api" && reportType === "WEEKLY" ? <p className="text-xs text-dash-ink-secondary">Previous-month totals are fetched separately when available. You can include them in the report after syncing.</p> : null}
+          {dataSourceMode === "csv" && reportType === "WEEKLY" && (showCompactPreviousMonth ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3">
               <p className="text-[14px] text-dash-ink-secondary">
                 <span className="font-medium text-emerald-400">{previousMonthInfo.expectedMonthName} on file ✓</span>
@@ -540,6 +538,6 @@ export function WizardImportStep() {
           ) : null}
         </div>
       )}
-    </div>
+    </fieldset>
   );
 }

@@ -36,6 +36,11 @@ describe("Meta wizard import route",()=>{
   expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({currency:"AUD",timezone:"UTC",sinceIso:"2026-10-01",untilIso:"2026-10-31",requireDirectResultEvidence:true}));
   expect(await response.json()).toMatchObject({accountCurrency:"AUD",accountTimezone:"UTC",rowCount:1});expect(maybeSyncPreviousMonthDataFromMetaApi).not.toHaveBeenCalled();
  });
+ it("passes the explicit source window to the importer without replacing the monthly report period", async () => {
+  const response = await POST(request({ ...body, importRange: { startIso: "2026-08-07", endIso: "2026-11-04" } }), params);
+  expect(response.status).toBe(200);
+  expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({ sinceIso: "2026-08-07", untilIso: "2026-11-04" }));
+ });
  it("rejects a timezone mismatch instead of reporting the wrong yesterday",async()=>{vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"AUD",timezone_name:"Australia/Sydney"});const response=await POST(request(),params);expect(response.status).toBe(409);expect((await response.json()).code).toBe("meta_timezone_mismatch");expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
  it("does not hide API mapping problems behind a manual reference CSV",async()=>{expect((await POST(request({...body,referenceManualCsvText:"CSV reference"}),params)).status).toBe(400);expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
  it("honors the explicit server kill switch",async()=>{vi.stubEnv("AD_PLATFORM_API_SYNC_ENABLED","false");expect((await POST(request(),params)).status).toBe(410);});
