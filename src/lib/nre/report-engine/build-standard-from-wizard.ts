@@ -1,3 +1,5 @@
+import { metaApiSelectionCoverageError } from "../meta-api-selection-coverage";
+import { decryptMetaToken } from "@/lib/meta-token-storage";
 import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "../csv-currency";
 import { getCalendarDateInTimezone } from "../dates";
 import { alignCsvReportFormData, csvReportNow, csvReportingCalendar } from "../csv-reporting-calendar";
@@ -104,6 +106,8 @@ export async function buildStandardReportForWizard(
   const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
     input;
   const sourceNow = now;
+  const apiCoverageError = metaApiSelectionCoverageError(formData, mtdParsed.rows, client.timezone, now);
+  if (apiCoverageError) return { error: apiCoverageError };
   alignCsvReportFormData(formData, mtdParsed.rows, client.timezone, now);
   now = csvReportNow(mtdParsed.rows, now, client.timezone);
   const engine = createReportEngine(platform);
@@ -179,7 +183,7 @@ export async function buildStandardReportForWizard(
       });
       if (user?.metaAdsEnabled && user.metaAccessToken) {
         const fresh = await ensureFreshMetaAccessToken({
-          accessToken: user.metaAccessToken,
+          accessToken: decryptMetaToken(user.metaAccessToken),
           tokenExpiresAt: user.metaTokenExpiresAt,
         });
         metaAccessToken = fresh.accessToken;

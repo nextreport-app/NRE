@@ -21,7 +21,6 @@ export function normalizePercentage(value: string | number | undefined): number 
   }
   const n = parseFloat(String(value));
   if (!Number.isFinite(n)) return 0;
-  if (n > 0 && n <= 1) return n * 100;
   return n;
 }
 
@@ -32,7 +31,7 @@ export function formatCtrForManualCsv(raw: string | undefined): string {
 
 /** API / export header labels → manual CSV column names the engine auto-map expects. */
 export const API_TO_CSV_COLUMN_MAP: Record<string, string> = {
-  "CPC (cost per link click)": "CPC (all)",
+  "CPC (cost per link click)": "CPC (cost per link click)",
   "CTR (all)": "CTR (all)",
   "Cost per lead": "Cost per result",
   "Website leads": "Website leads",

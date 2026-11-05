@@ -1,3 +1,4 @@
+import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 import { redirect } from "next/navigation";
 import { isLaunchReportTypeEnabled } from "@/lib/meta-launch-scope";
 import { Suspense } from "react";
@@ -101,6 +102,7 @@ export default async function NewReportPage({ params, searchParams }: { params: 
           metaConnected={!!user.metaAccessToken}
           metaConnectedName={user.metaConnectedName}
           metaConfigured={isMetaApiConfigured()}
+          apiSyncEnabled={isAdPlatformApiSyncEnabled()}
           googleAdsConfigured={isGoogleAdsApiConfigured()}
           googleAdsConnected={!!user.googleAdsRefreshToken}
           tiktokConfigured={isTikTokApiConfigured()}

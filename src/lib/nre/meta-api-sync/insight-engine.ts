@@ -29,6 +29,9 @@ export const META_CSV_HEADERS = [
   "Cost per lead",
   "Messaging conversations started",
   "Cost per messaging conversation started",
+  "Clicks (all)",
+  "Campaign ID",
+  "Ad set ID",
 ] as const;
 
 function formatCount(value: number): string {
@@ -63,7 +66,7 @@ export function dedupeInsightsByAdSetDay(rows: MetaInsightRow[]): MetaInsightRow
   for (const row of rows) {
     if (!row.campaign_name?.trim() || !row.date_start?.trim()) continue;
     const adset = (row.adset_name ?? "").trim();
-    const key = `${row.campaign_name.trim()}\0${adset}\0${row.date_start.trim()}`;
+    const key = `${row.campaign_id ?? row.campaign_name.trim()}\0${row.adset_id ?? adset}\0${row.date_start.trim()}`;
     if (!byKey.has(key)) byKey.set(key, row);
   }
   return [...byKey.values()];
@@ -71,7 +74,10 @@ export function dedupeInsightsByAdSetDay(rows: MetaInsightRow[]): MetaInsightRow
 
 /** One Meta insight row → one manual-export CSV data row (same fields the upload wizard parses). */
 export function insightToManualCsvRow(row: MetaInsightRow): string[] {
-  const primary = manualExportPrimaryResult(row);
+  return insightToManualCsvRowWithResult(row, manualExportPrimaryResult(row));
+}
+
+export function insightToManualCsvRowWithResult(row: MetaInsightRow, primary: ReturnType<typeof manualExportPrimaryResult>): string[] {
   const actionMap = actionValueMap(row.actions);
   const landingPageViews = actionMap.get("landing_page_view") ?? 0;
 
@@ -112,6 +118,9 @@ export function insightToManualCsvRow(row: MetaInsightRow): string[] {
     cpr,
     "",
     "",
+    row.clicks ?? "",
+    row.campaign_id ?? "",
+    row.adset_id ?? "",
   ];
 }
 

@@ -25,6 +25,7 @@ export function campaignPeriodReachMapFromInsights(rows: MetaInsightRow[]): Reco
     const reach = Number.parseFloat(String(row.reach ?? ""));
     if (!Number.isFinite(reach) || reach <= 0) continue;
     map[normalizeCampaignKey(name)] = Math.round(reach);
+    if (row.campaign_id && !name.endsWith(`[${row.campaign_id}]`)) map[normalizeCampaignKey(`${name} [${row.campaign_id}]`)] = Math.round(reach);
   }
   return map;
 }

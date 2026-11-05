@@ -64,6 +64,7 @@ describe("API sync production regression (Meta results[] + stray costed pixel ac
     );
 
     const apiCsv = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "America/New_York",
@@ -136,6 +137,7 @@ describe("API sync production regression (Meta results[] + stray costed pixel ac
     );
 
     const apiCsv = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "America/New_York",

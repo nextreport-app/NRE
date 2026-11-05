@@ -54,6 +54,8 @@ export async function GET() {
         name: a.name,
         accountId: a.account_id,
         accountStatus: a.account_status,
+        currency: a.currency,
+        timezone: a.timezone_name,
       })),
     });
   } catch (err) {

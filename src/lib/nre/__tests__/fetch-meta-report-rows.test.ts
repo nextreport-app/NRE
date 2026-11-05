@@ -301,6 +301,7 @@ describe("fetchMetaReportCsv", () => {
 
   it("produces CSV that passes Meta validation", async () => {
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -319,6 +320,7 @@ describe("fetchMetaReportCsv", () => {
 
   it("maps lead-gen rows with dedicated lead columns and Leads (form) result type", async () => {
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -375,6 +377,7 @@ describe("fetchMetaReportCsv", () => {
     );
 
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -441,6 +444,7 @@ describe("fetchMetaReportCsv", () => {
     );
 
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -495,6 +499,7 @@ describe("fetchMetaReportCsv", () => {
       }),
     );
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",
@@ -512,6 +517,7 @@ describe("fetchMetaReportCsv", () => {
 
   it("buildReportData resolves META FORM LEADS from API-sync-shaped CSV rows", async () => {
     const result = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "UTC",

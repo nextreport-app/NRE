@@ -1,3 +1,4 @@
+import { META_OAUTH_RETURN_COOKIE, safeMetaOAuthReturnTo } from "@/lib/meta-oauth-return";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -26,5 +27,7 @@ export async function GET(req: NextRequest) {
     maxAge: STATE_COOKIE_MAX_AGE_SECONDS,
     path: "/",
   });
+  const returnTo = safeMetaOAuthReturnTo(req.nextUrl.searchParams.get("returnTo"));
+  res.cookies.set(META_OAUTH_RETURN_COOKIE, returnTo ?? "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: returnTo ? STATE_COOKIE_MAX_AGE_SECONDS : 0, path: "/" });
   return res;
 }

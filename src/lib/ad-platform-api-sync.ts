@@ -1,12 +1,11 @@
 /**
- * Meta / Google / TikTok wizard "Sync from API" import (server + functional sync).
+ * Meta wizard "Sync from API" import for controlled testing.
  *
- * Server capability is controlled by AD_PLATFORM_API_SYNC_ENABLED. Wizard
- * visibility is separate so existing configuration cannot expose API import.
+ * The server passes capability to the client; explicit false is the kill switch.
  */
 
 export function isAdPlatformApiSyncEnabled(): boolean {
-  return process.env.AD_PLATFORM_API_SYNC_ENABLED === "true";
+  return process.env.AD_PLATFORM_API_SYNC_ENABLED !== "false";
 }
 
 /** Client detail "Platform connections" — always visible; connect flows may be preview until launch. */
@@ -14,9 +13,9 @@ export function isClientPlatformConnectionsSectionVisible(): boolean {
   return true;
 }
 
-/** Keep API imports out of the wizard while manual CSV acceptance is in progress. */
+/** Show the API source option, with availability supplied by the server. */
 export function isWizardApiSyncVisible(): boolean {
-  return false;
+  return true;
 }
 
 export function isWizardApiSyncEnabled(): boolean {

@@ -70,6 +70,7 @@ function stubMetaInsightsFetch(data: MetaInsightRow[]) {
 async function apiRowsFromManual(manualRows: ReturnType<typeof parseCsvText>["rows"]) {
   stubMetaInsightsFetch(manualRows.map(manualRowToInsight));
   const apiCsv = await fetchMetaReportCsv({
+      currency: "USD",
     accessToken: "token",
     adAccountId: "act_123",
     timezone: "America/New_York",
@@ -160,6 +161,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
 
     stubMetaInsightsFetch(noisyInsights);
     const apiCsv = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "America/New_York",
@@ -202,6 +204,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
 
     stubMetaInsightsFetch(insights);
     const apiCsv = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "America/New_York",
@@ -266,6 +269,7 @@ describe("DC Credit Firm manual CSV vs API-sync parity", () => {
 
     stubMetaInsightsFetch(insights);
     const apiCsv = await fetchMetaReportCsv({
+      currency: "USD",
       accessToken: "token",
       adAccountId: "act_123",
       timezone: "America/New_York",

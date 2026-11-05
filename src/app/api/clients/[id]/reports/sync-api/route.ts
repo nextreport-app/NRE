@@ -1,3 +1,6 @@
+import { metaApiCsvTransport } from "@/lib/meta-api-csv-transport";
+import { metaApiImportRange } from "@/lib/nre/meta-api-import-range";
+import { dateSelectionSchema, comparisonPeriodSchema, reportTypeSchema } from "@/lib/validators/report-wizard";
 import { decryptMetaToken, encryptMetaToken, isEncryptedMetaToken } from "@/lib/meta-token-storage";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -6,7 +9,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
-import { ensureFreshMetaAccessToken } from "@/lib/meta-api";
+import { ensureFreshMetaAccessToken, fetchMetaAdAccountMetadata, MetaInsightsFetchError, formatMetaInsightsErrorMessage } from "@/lib/meta-api";
 import { refreshGoogleAdsAccessToken } from "@/lib/google-ads-api";
 import { ensureFreshTikTokAccessToken } from "@/lib/tiktok-api";
 import { fetchMetaReportCsv } from "@/lib/nre/meta-api-sync";
@@ -29,7 +32,12 @@ export const maxDuration = 300;
 
 const syncApiBodySchema = z.object({
   platform: platformSchema,
-  metaAdAccountId: z.string().trim().min(1).optional(),
+  reportType: reportTypeSchema.optional(),
+  dateSelection: dateSelectionSchema.optional(),
+  comparisonPeriodA: comparisonPeriodSchema.optional(),
+  comparisonPeriodB: comparisonPeriodSchema.optional(),
+  historicalMonthCount: z.number().int().min(1).max(12).optional(),
+  metaAdAccountId: z.string().trim().regex(/^(act_)?\d+$/).optional(),
   googleCustomerId: z.string().trim().min(1).optional(),
   tiktokAdvertiserId: z.string().trim().min(1).optional(),
   /** Ads Manager CSV — when provided, Result columns are taken from this export (API refreshes delivery metrics). */
@@ -125,6 +133,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+    if (platform !== "META") return NextResponse.json({ error: "Wizard API testing is currently available for Meta Ads only." }, { status: 400 });
     if (platform === "META") {
       if (!metaAdAccountId) {
         return NextResponse.json({ error: "metaAdAccountId is required for Meta sync" }, { status: 400 });
@@ -145,37 +154,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         });
       }
 
+      const account = await fetchMetaAdAccountMetadata(fresh.accessToken, metaAdAccountId);
+      const canonicalZone = (zone: string) => new Intl.DateTimeFormat("en-US", { timeZone: zone }).resolvedOptions().timeZone;
+      if (canonicalZone(account.timezone_name) !== canonicalZone(client.timezone)) return NextResponse.json({ error: `This Meta account uses ${account.timezone_name}; the client workspace uses ${client.timezone}. Update the client timezone to match the ad account before syncing.`, code: "meta_timezone_mismatch", accountTimezone: account.timezone_name }, { status: 409 });
+      let range;
+      try { range = metaApiImportRange(parsed.data, new Date(), account.timezone_name); }
+      catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Choose valid report dates." }, { status: 400 }); }
+      if (referenceManualCsvText?.trim()) return NextResponse.json({ error: "Use Manual CSV mode for a reference export. API testing does not replace API results with CSV values." }, { status: 400 });
       const result = await fetchMetaReportCsv({
-        accessToken: fresh.accessToken,
-        adAccountId: metaAdAccountId,
-        timezone: client.timezone,
-        referenceManualCsvText,
+        accessToken: fresh.accessToken, adAccountId: metaAdAccountId,
+        timezone: account.timezone_name, currency: account.currency,
+        ...range, requireDirectResultEvidence: true,
       });
-
-      const previousMonth = await previousMonthPayloadFromClient(client);
-      // Previous-month sync is a second Meta fetch — run in the background so the wizard can analyze MTD data immediately.
-      void maybeSyncPreviousMonthDataFromMetaApi({
-        clientId: client.id,
-        accessToken: fresh.accessToken,
-        adAccountId: metaAdAccountId,
-        timezone: client.timezone,
-        previousMonthDataUrl: client.previousMonthDataUrl,
-        previousMonthDataUpdatedAt: client.previousMonthDataUpdatedAt,
-        previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns,
-        referenceManualCsvText,
-      }).catch((err) => {
-        console.error("[reports:sync-api] previous month auto-sync failed:", err);
-      });
+      let previousMonth = { hasPreviousMonthData: false, previousMonthSynced: false, previousMonthCampaigns: [] as string[], previousMonthSelectedCampaigns: null as string[] | null, previousMonthUpdatedAt: null as string | null };
+      let previousMonthWarning: string | undefined;
+      if ((parsed.data.reportType ?? "WEEKLY") === "WEEKLY") {
+        try {
+          const previous = await maybeSyncPreviousMonthDataFromMetaApi({ clientId: client.id, accessToken: fresh.accessToken, adAccountId: metaAdAccountId, timezone: account.timezone_name, currency: account.currency, previousMonthDataUrl: client.previousMonthDataUrl, previousMonthDataUpdatedAt: null, previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns });
+          if (previous.synced) {
+            const updated = await prisma.client.findUniqueOrThrow({ where: { id: client.id } });
+            previousMonth = { ...await previousMonthPayloadFromClient(updated), previousMonthSynced: true };
+          }
+        } catch { previousMonthWarning = "Current report data imported. Previous-month comparison could not be refreshed; it has been turned off for this setup."; }
+      }
 
       return NextResponse.json({
         ok: true,
         platform: "META",
-        csvText: result.csvText,
+        accountCurrency: account.currency,
+        accountTimezone: account.timezone_name,
+        previousMonthWarning,
+        ...metaApiCsvTransport(result.csvText),
         rowCount: result.rowCount,
         sinceIso: result.sinceIso,
         untilIso: result.untilIso,
         fileName: `meta-api-sync-${result.untilIso}.csv`,
-        mergedWithManualReference: Boolean(referenceManualCsvText?.trim()),
+        mergedWithManualReference: false,
         metaSyncDiagnostics: result.diagnostics,
         campaignPeriodReachByName: result.campaignPeriodReachByName,
         campaignPeriodReachMaps: result.campaignPeriodReachMaps,
@@ -288,6 +302,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ...previousMonth,
     });
   } catch (err) {
+    if (err instanceof MetaInsightsFetchError) return NextResponse.json({ error: formatMetaInsightsErrorMessage(err.meta) }, { status: 502 });
     return apiErrorResponse(err, "reports:sync-api");
   }
 }

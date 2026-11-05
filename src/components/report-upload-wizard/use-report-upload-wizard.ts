@@ -45,7 +45,6 @@ import type { CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation"
 import { pollReportStatus, ReportGenerationPollError } from "@/lib/nre/poll-report-status";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
 import { wizardReportTypePickerLabel } from "@/lib/nre/wizard-report-type-copy";
-import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 import {
   coerceLaunchPlatform,
   coerceLaunchReportType,
@@ -132,6 +131,7 @@ export function useReportUploadWizard({
   metaConnected = false,
   metaConnectedName = null,
   metaConfigured = false,
+  apiSyncEnabled = false,
   googleAdsConfigured = false,
   googleAdsConnected = false,
   tiktokConfigured = false,
@@ -1483,10 +1483,14 @@ export function useReportUploadWizard({
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
+    if (!meta?.hasPreviousMonthData) {
+      setPreviousMonthHasFile(false);
+      setIncludePreviousMonthComparison(false);
+    }
+    if (meta?.previousMonthWarning) showToast(meta.previousMonthWarning);
     setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
     if (meta?.metaAdAccountId) setMetaAdAccountId(meta.metaAdAccountId);
     setMtdFile(file);
-    downloadWizardCsvFile(file);
     setAnalyzeStatus("loading");
     setAnalyzeErrors([]);
     setAnalyzeMessage(null);
@@ -1496,6 +1500,7 @@ export function useReportUploadWizard({
       method: "POST",
       body: buildUploadFormData(file, {
         platform: selectedPlatformCard,
+        reportType, dateSelection: currentDateSelection(), comparisonPeriodA: reportType === "COMPARISON" ? comparisonPeriodA : undefined, comparisonPeriodB: reportType === "COMPARISON" ? comparisonPeriodB : undefined,
         metaCampaignPeriodReach: meta?.campaignPeriodReachMaps,
         metaAdAccountId: meta?.metaAdAccountId,
       }),
@@ -2993,6 +2998,8 @@ export function useReportUploadWizard({
     metaConnected,
     metaConnectedName,
     metaConfigured,
+    apiSyncEnabled,
+    metaConnectError: searchParams.get("meta_ads_error"),
     googleAdsConfigured,
     googleAdsConnected,
     tiktokConfigured,
