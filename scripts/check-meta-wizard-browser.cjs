@@ -21,17 +21,8 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  });
  await page.goto('https://wizard.test/');await page.getByRole('button',{name:'Use America/Los_Angeles for this client'}).click();
  await page.waitForFunction(()=>window.w.clientTimezone==='America/Los_Angeles');
- if(kind==='WEEKLY'){
- const weekly = page.locator('section').filter({has:page.getByRole('heading',{name:'Weekly report period',exact:true})});
- await weekly.getByRole('button',{name:'Custom date range',exact:true}).click();
- await weekly.getByRole('button',{name:'Start date',exact:true}).click();
- await page.getByRole('button',{name:'2026-10-30',exact:true}).click();
- await weekly.getByRole('button',{name:'End date',exact:true}).click();
- await page.getByRole('button',{name:'2026-11-03',exact:true}).click();
- if(await page.evaluate(()=>window.w.customStart)!=='2026-10-30'||await page.evaluate(()=>window.w.customEnd)!=='2026-11-03')throw Error('custom weekly calendar failed');
- for(const [label,mode] of [['Previous 7 days','prev7'],['Last 14 days','last14'],['Last 7 days','last7']]){await page.getByRole('button',{name:label,exact:true}).click();if(await page.getByRole('button',{name:label,exact:true}).getAttribute('aria-pressed')!=='true'||await page.evaluate(()=>window.w.dateMode)!==mode)throw Error('preset failed '+mode);}
- await page.getByRole('button',{name:'Previous 7 days',exact:true}).click();
- }else{
+ if(await page.getByRole('heading',{name:'Meta will fetch',exact:true}).count() || await page.getByRole('heading',{name:'Weekly report period',exact:true}).count())throw Error('removed weekly/fetch sections still visible');
+ if(kind!=='WEEKLY'){
  if(!await page.getByRole('group',{name:'Choose report type',exact:true}).isVisible())await page.getByRole('button',{name:'Change report type',exact:true}).click();
  const label=kind==='HISTORICAL'?'Monthly report':kind==='COMPARISON'?'Compare two periods':'Daily report';
  await page.getByRole('button').filter({has:page.getByText(label,{exact:true})}).first().click();
@@ -46,8 +37,6 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  }
  if(await page.getByRole('heading',{name:'Data to fetch from Meta',exact:true}).count())throw Error('duplicate date selection still visible');
  if(await page.getByRole('button',{name:'Match report dates',exact:true}).count()||await page.getByRole('button',{name:/Last 6/}).count())throw Error('removed fetch options still visible');
- const expectedRange = { WEEKLY:['2026-10-06','2026-11-04'], HISTORICAL:['2026-08-01','2026-10-31'], COMPARISON:['2026-09-06','2026-11-04'], DAY_BREAKDOWN:['2026-10-23','2026-11-04'] }[kind];
- await page.getByText(`${expectedRange[0]} – ${expectedRange[1]} · Daily breakdown · America/Los_Angeles`,{exact:true}).waitFor();
  if(kind==='COMPARISON'){
   await page.getByRole('button',{name:'Custom date range',exact:true}).click();
   const periodA=page.locator('div.space-y-2').filter({has:page.getByText('Period A',{exact:true})});

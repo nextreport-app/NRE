@@ -1,3 +1,4 @@
+import { resolveObjectiveFromResultType } from "../result-type-map";
 import type { MetaInsightRow } from "@/lib/meta-api";
 import { formatCtrForManualCsv, normalizeDateFormat } from "./api-csv-normalize";
 import {
@@ -32,6 +33,8 @@ export const META_CSV_HEADERS = [
   "Clicks (all)",
   "Campaign ID",
   "Ad set ID",
+  "CTR (link click-through rate)",
+  "NRE API result action",
 ] as const;
 
 function formatCount(value: number): string {
@@ -85,7 +88,7 @@ export function insightToManualCsvRowWithResult(row: MetaInsightRow, primary: Re
   let websiteLeads = 0;
   if (primary) {
     const v = parseFloat(primary.value);
-    if (primary.csvResultType.toLowerCase().includes("website submission")) {
+    if (resolveObjectiveFromResultType(primary.csvResultType)?.key === "website_leads") {
       websiteLeads = v;
     } else if (
       primary.csvResultType.toLowerCase().includes("leads (form)") ||
@@ -121,6 +124,8 @@ export function insightToManualCsvRowWithResult(row: MetaInsightRow, primary: Re
     row.clicks ?? "",
     row.campaign_id ?? "",
     row.adset_id ?? "",
+    row.inline_link_click_ctr ?? (Number(row.impressions) > 0 ? String(Number(row.inline_link_clicks ?? 0) / Number(row.impressions) * 100) : ""),
+    row.configured_result_action ?? primary?.action_type ?? "",
   ];
 }
 

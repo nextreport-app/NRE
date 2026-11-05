@@ -15,7 +15,7 @@ Meta API import is enabled for controlled testing. Manual CSV import remains ava
 
 Choose API import and a report type, connect/select an ad account, then choose that report’s period. All four report choices are visible immediately. There is no independent source-date selector: the selected report period determines the API request automatically, with a read-only summary of the exact fetch dates.
 
-- Weekly defaults to the last seven reporting days, with a last-30-days API fetch for MTD/chart data. Weekly presets and a custom period remain available; an earlier custom period automatically extends the fetch.
+- Weekly defaults to the last seven reporting days, with a last-30-days API fetch for MTD/chart data. Weekly Import uses its default automatically; custom reporting dates remain available on Generate. An earlier custom period requires source coverage.
 - Monthly offers month presets and custom From/To month pickers. Three months means three selected calendar months, not a rolling 90-day import.
 - Comparison offers presets or two custom periods; Meta fetches daily data spanning both.
 - Day-by-day offers presets or a custom date range; Meta fetches those dates.
@@ -68,3 +68,18 @@ Initial API rollout results: 33 API-specific tests, 69 objective tests, 58 route
 Removed the independent fetch-window UI and request option. All four API report choices are shown first. Report dates alone determine the request; stale frontend `importRange` fields are ignored by the route. Weekly retains its automatic 30-day data requirement and custom reporting period. Monthly retains calendar-month presets and From/To month pickers, without the six-month shortcut in API mode. Comparison and day-by-day retain custom calendars. The fetch summary is read-only.
 
 Validation: 40 API/UI/route/PPT parity tests and 279 report-choice tests passed. Eight synthetic-provider Chromium journeys passed at mobile and desktop widths, including custom weekly, comparison and day-by-day calendars, exact automatic fetch summaries, choice preservation and source resets. TypeScript and production build passed. Existing component effect lint findings remain; no live-account test or deployment was performed.
+
+
+## Configured conversion events and CTR (November 6, 2026)
+
+Removed the Weekly report period section and the Meta will fetch summary from API Import. Weekly API imports default to last-seven-day reporting plus the automatic last-30-day source window, ignoring old hidden weekly date preferences. CSV Import and Generate keep their shared period controls.
+
+Strict API imports now read the imported ad sets' `promoted_object` using read-only Graph requests. A configured pixel event or custom conversion ID selects one exact action type for every daily row. Combined `lead` totals and other events cannot fill a day where that configured event has zero results. Unsupported website events or conflicting counts for the same event stop the import. Non-conversion goals retain their existing result handling. The exported diagnostic source records the chosen action type. Current ad-set configuration is used; historical event-setting changes still need live acceptance testing.
+
+The API requests explicitly use impression-time action reporting and each ad set's unified attribution setting. Ads Manager comparisons must use identical dates, accounts, campaign/ad-set selection and attribution settings.
+
+CTR (All) remains all clicks / impressions. Link CTR is now available separately as link clicks / impressions, with matching source columns and weighted aggregation. Inconsistent provider count/rate pairs stop an import. Neither rate is replaced with the other to match a screenshot. The chart retains fractional spend instead of rounding $444.63 to $445.
+
+A synthetic regression models 23 combined leads versus 21 configured website events at $444.63 spend. The same reporting/PPT path produces 21 website events, $21.17 CPL and $444.63 in the visual slide. Separate 7.31% all-click and 5.08% link CTR assertions verify their definitions; this fixture is not a captured response from the user's account. The user confirmed that 5.08% is link CTR. The synthetic PPT also verifies a selectable LINK CTR card displaying 5.08%. The supplied live report URL could not be fetched because this environment’s web gateway returned 403, so its actual conversion rows and settings remain unverified. Existing saved imports must be synced again after deployment; previously generated reports are not rewritten.
+
+Verification: 47 API/configuration/route/PPT tests, 69 objective regressions, 505 accounting tests, 279 report-choice tests, 59 route tests, eight synthetic-provider browser journeys, TypeScript and production build passed. Scoped lint retains existing effect errors in wizard components. No production deployment or real-account API call was performed.

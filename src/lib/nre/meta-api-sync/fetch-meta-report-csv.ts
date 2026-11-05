@@ -1,5 +1,8 @@
 import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
+import { validateMetaClickRates } from "./validate-click-rates";
+import { configuredResultAction } from "./configured-result-event";
+import { fetchMetaAdSetReportingConfigs } from "@/lib/meta-api";
 import { directlyEvidencedResult } from "./direct-result-evidence";
 import { fetchMetaAdAccountInsights, type MetaInsightRow } from "@/lib/meta-api";
 import { computeLastNDaysIsoRange } from "../api-date-range";
@@ -74,6 +77,16 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     (r) => r.campaign_name && r.date_start,
   );
 
+  if (input.requireDirectResultEvidence) {
+    deduped.forEach(validateMetaClickRates);
+    const configs = await fetchMetaAdSetReportingConfigs(input.accessToken, deduped.flatMap(row => row.adset_id ? [row.adset_id] : []));
+    const byId = new Map(configs.map(config => [config.id, config]));
+    deduped = deduped.map(row => {
+      const config = row.adset_id ? byId.get(row.adset_id) : undefined;
+      return config ? { ...row, optimization_goal: config.optimization_goal ?? row.optimization_goal, configured_result_action: configuredResultAction(config) } : row;
+    });
+  }
+
   const adsetRows = deduped;
   let usedCampaignLevelConversionFallback = false;
   let enrichedRows: MetaInsightRow[] | null = null;
@@ -117,6 +130,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   const rowCount = dataRows.length;
   const diagnostics = buildMetaSyncDiagnostics(deduped, {
     usedCampaignLevelConversionFallback,
+    resultForRow: input.requireDirectResultEvidence ? directlyEvidencedResult : undefined,
   });
 
   diagnostics.mappedResultsSum = dataRows.reduce((sum, row) => sum + (Number(row[META_CSV_HEADERS.indexOf("Results")]) || 0), 0);
