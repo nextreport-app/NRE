@@ -14,14 +14,14 @@ describe("API uses the same report-period rules as CSV",()=>{
  it("does not allow the OAuth return path to become an open redirect",()=>{expect(safeMetaOAuthReturnTo("/clients/example/reports/new")).toBe("/clients/example/reports/new");for(const value of ["https://other.example","//other.example","/account?next=https://other.example"]){expect(safeMetaOAuthReturnTo(value)).toBeNull();}});
 });
 
-describe("API source window is independent of report dates", () => {
- it("fetches a wider source window without changing a monthly period", () => {
-  expect(metaApiImportRange({ reportType: "MONTHLY", dateSelection: { mode: "custom", customStart: "2026-10-01", customEnd: "2026-10-31" }, importRange: { startIso: "2026-08-07", endIso: "2026-11-04" } }, now, "UTC")).toEqual({ sinceIso: "2026-08-07", untilIso: "2026-11-04" });
+describe("report selection alone determines the API window", () => {
+ it("uses calendar months, not a rolling 90-day source window", () => {
+  expect(metaApiImportRange({ reportType: "HISTORICAL", historicalMonthCount: 3, dateSelection: { mode: "custom", customStart: "2026-08-01", customEnd: "2026-10-31" } }, now, "UTC")).toEqual({ sinceIso: "2026-08-01", untilIso: "2026-10-31" });
  });
- it("includes report dates outside the chosen source preset", () => {
-  expect(metaApiImportRange({ reportType: "COMPARISON", comparisonPeriodA: { startIso: "2026-09-01", endIso: "2026-09-30" }, comparisonPeriodB: { startIso: "2026-08-01", endIso: "2026-08-31" }, importRange: { startIso: "2026-10-06", endIso: "2026-11-04" } }, now, "UTC")).toEqual({ sinceIso: "2026-08-01", untilIso: "2026-11-04" });
+ it("keeps weekly report presets inside the automatic 30-day fetch", () => {
+  for (const mode of ["last7", "prev7", "last14"] as const) expect(metaApiImportRange({ reportType: "WEEKLY", dateSelection: { mode } }, now, "UTC")).toEqual({ sinceIso: "2026-10-06", untilIso: "2026-11-04" });
  });
- it("validates custom source dates even when report dates are valid", () => {
-  for (const importRange of [{ startIso: "", endIso: "" }, { startIso: "2026-10-01", endIso: "2026-11-05" }, { startIso: "2026-10-02", endIso: "2026-10-01" }, { startIso: "2024-01-01", endIso: "2026-11-04" }]) expect(() => metaApiImportRange({ reportType: "WEEKLY", importRange }, now, "UTC")).toThrow();
+ it("rejects invalid custom report periods", () => {
+  for (const [customStart, customEnd] of [["", ""], ["2026-10-01", "2026-11-05"], ["2026-10-02", "2026-10-01"]]) expect(() => metaApiImportRange({ reportType: "WEEKLY", dateSelection: { mode: "custom", customStart, customEnd } }, now, "UTC")).toThrow();
  });
 });

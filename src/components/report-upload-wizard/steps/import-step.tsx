@@ -1,6 +1,5 @@
 "use client";
 import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
-import { ApiImportRangeControls, selectedApiImportRange, type ApiImportWindow } from "../ui/api-import-range-controls";
 import { metaApiImportRange, type MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import { ReportPeriodControls } from "../ui/report-period-controls";
 
@@ -33,7 +32,6 @@ import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 export function WizardImportStep() {
   const w = useWizardContext();
   const [apiDiagnosticsOpen, setApiDiagnosticsOpen] = useState(false);
-  const [apiImportWindow, setApiImportWindow] = useState<ApiImportWindow>({ preset: "30", startIso: "", endIso: "" });
   if (w.step !== 1) return null;
   const {
     analyzeErrors,
@@ -110,13 +108,13 @@ export function WizardImportStep() {
 
   const setupPlatform = selectedPlatformCard ?? "META";
 
-  const reportSetup = <>
-    <WizardReportSetupPanel source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />
+  const reportTypeSetup = <WizardReportSetupPanel source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />;
+  const reportPeriods = <>
     <ReportPeriodControls />
     {reportType === "WEEKLY" ? <WeeklyPeriodControls /> : null}
   </>;
+  const reportSetup = <>{reportTypeSetup}{reportPeriods}</>;
   const apiSelection: MetaApiReportSelection = {
-    importRange: selectedApiImportRange(apiImportWindow, clientTimezone),
     reportType, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
     comparisonPeriodA: w.comparisonPeriodA ?? undefined, comparisonPeriodB: w.comparisonPeriodB ?? undefined, historicalMonthCount: w.historicalMonthCount,
   };
@@ -210,7 +208,8 @@ export function WizardImportStep() {
               onTimezoneUpdated={w.updateApiTimezone}
               selectionError={apiSelectionError}
               importSummary={apiRange ? `${apiRange.sinceIso} – ${apiRange.untilIso} · Daily breakdown · ${clientTimezone}` : null}
-              setupControls={<><ApiImportRangeControls value={apiImportWindow} onChange={setApiImportWindow} timezone={clientTimezone} />{reportSetup}</>}
+              reportTypeControls={reportTypeSetup}
+              setupControls={reportPeriods}
               platform={selectedPlatformCard}
               metaConnected={metaConnected}
               metaConnectedName={metaConnectedName}

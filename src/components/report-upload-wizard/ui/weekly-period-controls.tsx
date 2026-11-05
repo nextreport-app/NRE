@@ -22,6 +22,7 @@ export function WeeklyPeriodControls() {
       w.editDateMode(mode);
     }} className={`min-h-10 rounded-lg border px-3 py-2 text-sm font-medium ${w.dateMode === mode ? 'border-dash-accent bg-dash-accent text-[#0b1728]' : 'border-dash-border text-dash-ink hover:bg-dash-bg'}`}>{label}</button>)}</div>
     {w.dateMode === 'custom' && <WizardDateRangeFields startIso={w.customStart} endIso={w.customEnd} minIso={importingApi ? undefined : w.dateBounds?.minIso} maxIso={importingApi ? reportCalendarYesterday(new Date(), w.clientTimezone) : calendar.endIso} onStartChange={w.editCustomStart} onEndChange={w.editCustomEnd} />}
+    {importingApi ? <p className="text-xs text-dash-ink-secondary">Meta automatically fetches the last 30 days through yesterday for this report. An earlier custom period extends the fetch range when needed.</p> : null}
     <p aria-live="polite" className="text-sm text-dash-ink-secondary">Report dates: {range?.startIso || 'Choose start'} – {range?.endIso || 'Choose end'} · {w.clientTimezone}</p>
   </section>;
 }
