@@ -243,6 +243,7 @@ export interface MetaInsightRow {
   inline_link_click_ctr?: string;
   /** Resolved from ad-set promoted_object, never guessed from campaign naming. */
   configured_result_action?: string;
+  configured_result_type?: string;
   clicks?: string;
   campaign_id?: string;
   adset_id?: string;

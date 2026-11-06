@@ -268,6 +268,7 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "website schedules",
       "conversions:schedule_website",
       "schedule_website",
+      "offsite_conversion.fb_pixel_schedule",
     ],
   },
   {
@@ -284,7 +285,6 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "appointments",
       "booking",
       "bookings",
-      "offsite_conversion.fb_pixel_schedule",
     ],
   },
   {
@@ -673,7 +673,7 @@ export const META_API_ACTION_TO_CSV: Record<string, string> = (() => {
     "offsite_conversion.fb_pixel_add_payment_info": "Add payment info",
     "offsite_conversion.fb_pixel_submit_application": "Submit application",
     "offsite_conversion.fb_pixel_subscribe": "Subscribe",
-    "offsite_conversion.fb_pixel_schedule": "Schedule",
+    "offsite_conversion.fb_pixel_schedule": "Website appointments scheduled",
     "offsite_conversion.fb_pixel_donate": "Donate",
     "offsite_conversion.fb_pixel_find_location": "Find location",
     "offsite_conversion.fb_pixel_start_trial": "Start trial",

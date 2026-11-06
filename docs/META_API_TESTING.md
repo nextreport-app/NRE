@@ -130,3 +130,15 @@ Replace the native account select with a searchable dropdown displaying account 
 Search runs locally over loaded permitted accounts and matches case-insensitive name/ID terms. Filtering and keyboard navigation do not change the chosen account until selection is committed. Add no-match feedback, bounded scrolling, active-item visibility, Escape/outside dismissal, focus return and keyboard selection. No new provider requests or scopes are introduced.
 
 Validation: 91 API/provider/UI/PPT tests, eight synthetic-provider mobile/desktop wizard journeys, TypeScript and production build passed. Browser checks cover name/ID filtering, no matches, Enter selection, Arrow navigation, Escape, and the absence of currency/timezone in options. New picker and test lint passed. Existing unrelated parent component effect lint findings remain. No production deployment or environment changes performed.
+
+## Website schedule detection parity (November 7, 2026)
+
+Manual CSV already maps `Website appointments scheduled` to WEBSITE SCHEDULE / COST PER BOOKING. API normalization incorrectly translated `offsite_conversion.fb_pixel_schedule` to generic Schedule (APPOINTMENT LEADS). Map that exact website action to the same website-specific Result type and indicator. Generic Schedule remains APPOINTMENT LEADS.
+
+Reuse the CSV custom-conversion naming resolver during strict API ingestion, preserving the raw Result indicator for later catalog resolution. Catalog lookup is best effort; attribution and canonical action counts are unchanged. Extract pure naming functions from server storage code while preserving existing exports. Register the dedicated website appointments metric separately from generic appointments and expose the corresponding API column only when that event is present.
+
+The parity regression compares campaign extraction/spend, objectives, stale-cache rejection, selected metrics, weekly report calculations and generated PPT labels through both import paths. It covers standard pixel Schedule and named custom Schedule conversions, plus a temporarily unavailable custom catalog. Provider responses are synthetic, not captured live account evidence.
+
+Verification: uploaded DC-weekly-Unstoppable.csv contains 47 website appointments for the selected campaign; its synthetic API counterpart matches. Four upload-based parity tests, 95 API tests, 69 objective regression tests, 506 reporting-accuracy tests and 279 report-choice tests passed. Scoped ESLint, TypeScript, diff checks and production build passed. Run the upload-specific check with `SCHEDULE_PARITY_CSV=/local/path/to/file.csv npx vitest run src/lib/nre/__tests__/meta-api-schedule-parity.test.ts`; otherwise the committed regression fixture is used. The uploaded client CSV is not committed.
+
+No production deployment or live Meta-account verification performed. After deployment, sync again to replace previously normalized source data. No environment, OAuth scope or permission changes required.

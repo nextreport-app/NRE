@@ -65,6 +65,7 @@ export function syntheticResultTypeFromMetaResultIndicator(
     }
     return "website submission";
   }
+  if (/^offsite_conversion\.fb_pixel_schedule$/i.test(core)) return "Website appointments scheduled";
   if (/offsite_conversion\.fb_pixel_lead/i.test(core)) return "website submission";
   if (/offsite_conversion\.fb_pixel_submit_application/i.test(core)) return "Website applications submitted";
   if (/onsite_conversion\.lead_grouped/i.test(core)) return "Leads (form)";
