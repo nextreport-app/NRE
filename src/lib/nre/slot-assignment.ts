@@ -111,7 +111,7 @@ const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
   ]),
   initiate_checkout: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
   add_to_cart: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
-  link_clicks: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
+  link_clicks: withMessagingBlocked(["cpc_all", "website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
   landing_page_views: withMessagingBlocked([
     "website_leads",
     "meta_form_leads",
@@ -410,7 +410,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
 
     case "LINK CLICKS":
       slot4 = slot("link_clicks", "LINK CLICKS", "number", baseline.resultValue);
-      slot5 = slot("cpc_link_click", "COST PER CLICK", "currency", baseline.cprValue);
+      slot5 = slot("cpc_link_click", "CPLC", "currency", baseline.cprValue);
       slot7 = pickSlot([LANDING_PAGE_VIEWS], usedKeys(slot4, slot5), v);
       // Product spec's "Link Clicks/Traffic: LANDING PAGE VIEWS" would
       // duplicate this case's own slot 7, and CLICKS (ALL) would duplicate
