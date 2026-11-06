@@ -162,3 +162,11 @@ The supplied Unstoppable CSV independently totals 24 appointments / $2,218.82 sp
 Strengthen the parity regression to assert exact weekly results/CPL, MTD results/CPL, chart results, source metadata and metric-column consistency, instead of merely equality between two outputs. Cover conversion-only Schedule responses, legacy pixel-action responses, named custom events, exclusion of all-location schedules, explicit zero and unchanged lead actions. Provider fixtures are synthetic counterparts of the supplied CSV; the account's actual API response was not accessible. The uploaded client file remains outside the repository. Fresh sync after deployment is required to replace previously zeroed source data; existing exported PPTs are not rewritten.
 
 Validation: 97 API tests, 506 accounting/reporting tests, 279 report-choice tests, 10 upload/indicator tests, TypeScript, scoped ESLint and production build passed. No production deployment or environment changes performed.
+
+## Remove unrelated Website Leads card from Website Schedule (November 7, 2026)
+
+The generic CSV-aware eight-card backfill could select Website Leads for a Website Schedule campaign because that objective lacked a cross-objective exclusion. Add Website Leads and Cost per Website Lead to both Schedule exclusion lists: default metric backfill and final slide/available-metric filtering. Keep Website Schedule / Cost per Booking, and allow fewer cards instead of adding an unrelated conversion metric. Existing Website Leads campaigns are unaffected.
+
+Extend the CSV/API Schedule parity tests to assert no Website Leads default/addable chip and to generate PPTs with a stale saved Website Leads selection. Confirm the generated dynamic cards exclude it while exact booking counts/costs remain intact. This applies to both CSV and API sources; existing exports need regeneration.
+
+Validation: six CSV/API/PPT Schedule tests, 506 reporting-accuracy tests, 279 report-choice tests, TypeScript, scoped ESLint and production build passed. No environment changes or deployment performed.

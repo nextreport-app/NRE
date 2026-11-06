@@ -70,6 +70,7 @@ function withMessagingBlocked(keys: string[]): string[] {
  * LEADS" -> "meta_form_leads".
  */
 const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
+  website_schedule: withMessagingBlocked(["website_leads", "cost_per_website_lead"]),
   meta_form_leads: withMessagingBlocked([
     "website_leads",
     "cost_per_website_lead",
