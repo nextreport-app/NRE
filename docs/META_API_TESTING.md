@@ -170,3 +170,13 @@ The generic CSV-aware eight-card backfill could select Website Leads for a Websi
 Extend the CSV/API Schedule parity tests to assert no Website Leads default/addable chip and to generate PPTs with a stale saved Website Leads selection. Confirm the generated dynamic cards exclude it while exact booking counts/costs remain intact. This applies to both CSV and API sources; existing exports need regeneration.
 
 Validation: six CSV/API/PPT Schedule tests, 506 reporting-accuracy tests, 279 report-choice tests, TypeScript, scoped ESLint and production build passed. No environment changes or deployment performed.
+
+## Objective-specific Website Schedule defaults and source parity (November 7, 2026)
+
+The earlier Website Leads exclusion was too narrow. Website Schedule still fell through the generic default wishlist, whose final CSV-pool backfill could select another conversion event (Meta Form Leads) because API input exposes more column names. Both imports already use the same campaign/objective/metric/report engine; generic header-driven backfill caused their metric selection to diverge.
+
+Give Website Schedule an explicit pack and matching automatic/default selection: Ad Spend, Reach, Impressions, Website Schedule, Cost per Booking, CTR (All), Link Clicks, Landing Page Views. When a supporting metric is unavailable, use only the pack's relevant supporting options (cost per LPV, CPC link, frequency, CPM), never arbitrary conversion columns. Both backfill passes now honor objective exclusions. Share the Schedule exclusion policy between wizard defaults and final rendering so stale Website Leads, Meta Form Leads and duplicate appointment selections cannot reappear as slide cards.
+
+Strengthen the CSV/API regression to require identical campaign identities/spend, objective maps, exact eight selected metric keys, and rendered dynamic-card keys/labels/values. Inspect the generated PPT campaign slide XML for Landing Page Views and absence of Website/Meta Form Leads cards. Exercise pixel-action, conversion-metric-only and named custom-conversion source variants, including old saved stray metrics. Missing-LPV tests verify the fallback is a relevant delivery metric rather than a different conversion count. The uploaded CSV and synthetic provider counterpart pass; no live-account comparison or deployment was performed.
+
+Validation: 98 API tests, seven upload parity tests, 506 reporting-accuracy tests, 279 report-choice tests and 66 pack/slot tests passed. TypeScript, scoped ESLint, diff checks and production build passed. No environment changes required; regenerate after deployment to apply new defaults to new reports.

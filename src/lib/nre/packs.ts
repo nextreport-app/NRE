@@ -22,6 +22,7 @@ export type PackId =
   | "traffic_landing_page_views"
   | "leads_meta_form"
   | "leads_website"
+  | "leads_website_schedule"
   | "leads_quote_requests"
   | "leads_messaging"
   | "sales_purchase"
@@ -68,7 +69,11 @@ export const LEADS_META_FORM_PACK = pack(
   ["frequency", "cpc_all", "landing_page_views", "cost_per_lpv"],
 );
 
+/** Other conversion events cannot stand in for a website appointment. */
+export const WEBSITE_SCHEDULE_BLOCKED_KEYS = ["website_leads", "cost_per_website_lead", "meta_form_leads", "leads", "cost_per_lead", "cost_per_meta_form_lead", "purchases", "cost_per_purchase", "app_installs", "website_appointments"];
+
 export const METRIC_PACKS: readonly MetricPack[] = [
+  pack("leads_website_schedule", "LEADS", "Website appointments", "results", "cost_per_result", "link_clicks", "landing_page_views", ["cost_per_lpv", "cpc_link_click", "frequency", "cpm"]),
   pack("awareness_reach", "AWARENESS", "Maximise reach of ads", "frequency", "cpm", "cpc_all", "cost_per_1k_reached", ["video_thruplay", "link_clicks", "cpc_link_click"]),
   pack("awareness_impressions", "AWARENESS", "Maximise number of impressions", "cpm", "frequency", "link_clicks", "cpc_link_click", ["video_thruplay"]),
   pack("traffic_link_clicks", "TRAFFIC", "Maximise link clicks", "link_clicks", "cpc_link_click", "landing_page_views", "cost_per_lpv", ["cpc_all", "frequency", "clicks_all"]),
@@ -85,6 +90,7 @@ export const METRIC_PACKS: readonly MetricPack[] = [
 const RESULT_LABEL_TO_PACK: Record<string, PackId> = {
   "META FORM LEADS": "leads_meta_form",
   "WEBSITE LEADS": "leads_website",
+  "WEBSITE SCHEDULE": "leads_website_schedule",
   LEADS: "leads_website",
   "QUOTE REQUESTS": "leads_quote_requests",
   "LINK CLICKS": "traffic_link_clicks",

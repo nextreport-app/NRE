@@ -82,17 +82,19 @@ describe("website schedule detection is shared by CSV and API", () => {
       const bundle = buildCampaignMetricBundle("META", parsed.headers, "WEBSITE SCHEDULE", "COST PER BOOKING");
       expect(bundle.selection.map(metric => metric.label)).toContain("WEBSITE SCHEDULE");
       expect(bundle.selection.map(metric => metric.label)).toContain("COST PER BOOKING");
+      expect(bundle.selection.map(metric => metric.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result", "ctr", "link_clicks", "landing_page_views"]);
       expect(bundle.selection.map(metric => metric.key)).not.toContain("website_leads");
+      expect(bundle.available.map(metric => metric.key)).not.toContain("meta_form_leads");
       expect(bundle.available.map(metric => metric.key)).not.toContain("website_leads");
       const form = new FormData(); form.set("reportType", JSON.stringify("WEEKLY")); form.set("dateSelection", JSON.stringify({ mode: "last7" })); form.set("selectedCampaigns", JSON.stringify([name]));
       // Exercise the wizard selection path, including an old saved stray chip.
-      form.set("selectedMetrics", JSON.stringify([...bundle.selection, {key:"website_leads",label:"WEBSITE LEADS",format:"number",csvName:"website leads"}]));
+      form.set("selectedMetrics", JSON.stringify([...bundle.selection, {key:"website_leads",label:"WEBSITE LEADS",format:"number",csvName:"website leads"}, {key:"meta_form_leads",label:"META FORM LEADS",format:"number",csvName:"on-facebook leads"}]));
       const client = { id: "fixture", userId: "fixture", accountName: "Scheduling fixture", currency: "USD", timezone: "UTC", monthlyBudget: null, showBudgetPacingOnCover: false, campaignObjectiveCache: JSON.stringify({ [key]: { key: "appointment_leads", resultLabel: "APPOINTMENT LEADS", costLabel: "COST PER BOOKING" } }) } as Client;
       const output = await buildStandardReportForWizard({ client, platform: "META", mtdParsed: parsed, formData: form, now });
       if (!("data" in output)) throw new Error(output.error);
       const slide = output.data.campaignSlides[0];
       expect(slide.ai.resultLabel).toBe("WEBSITE SCHEDULE");
-      expect(slide.dynamicMetrics?.filter(Boolean).map(metric => metric?.key)).not.toContain("website_leads");
+      expect(slide.dynamicMetrics?.filter(Boolean).map(metric => metric?.key)).toEqual(bundle.selection.map(metric => metric.key));
       const selectedRows = manual.rows.filter(row => row.campaign_name === name);
       const end = new Date(untilIso + "T12:00:00Z"); end.setUTCDate(end.getUTCDate() - 6);
       const expectedWeek = selectedRows.filter(row => row._raw.Day >= end.toISOString().slice(0, 10));
@@ -110,10 +112,20 @@ describe("website schedule detection is shared by CSV and API", () => {
       const zip = await JSZip.loadAsync(ppt);
       const text = (await Promise.all(Object.keys(zip.files).filter(path => /^ppt\/slides\/slide\d+\.xml$/.test(path)).map(path => zip.file(path)!.async("string")))).join("\n");
       expect(text).toContain("WEBSITE SCHEDULE"); expect(text).not.toContain("APPOINTMENT LEADS");
-      outputs.push({ results: slide.metrics.results, cpr: slide.metrics.cpr, chart: output.data.chart?.campaigns.map(c => ({ results: c.results, label: c.resLabel })) });
+      const campaignXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
+      expect(campaignXml).toContain("LANDING PAGE VIEWS");
+      expect(campaignXml).not.toContain("META FORM LEADS");
+      expect(campaignXml).not.toContain("WEBSITE LEADS");
+      outputs.push({ selection: bundle.selection, cards: slide.dynamicMetrics, results: slide.metrics.results, cpr: slide.metrics.cpr, chart: output.data.chart?.campaigns.map(c => ({ results: c.results, label: c.resLabel })) });
     }
     expect(outputs[0]).toEqual(outputs[1]);
   }, 30000);
+  it("does not fill missing supporting metrics with another conversion event", () => {
+    const headers = ["Campaign name", "Day", "Amount spent (USD)", "Reach", "Impressions", "Result type", "Results", "Cost per result", "CTR (all)", "Link clicks", "Website leads", "On-Facebook leads", "Purchases", "Website appointments scheduled"];
+    const bundle = buildCampaignMetricBundle("META", headers, "WEBSITE SCHEDULE", "COST PER BOOKING");
+    expect(bundle.selection.map(metric => metric.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result", "ctr", "link_clicks", "cpm"]);
+    expect(bundle.available.map(metric => metric.key)).not.toContain("website_appointments");
+  });
   it("counts only the configured website schedule metric, preserving observed zero and excluding other locations", () => {
     const row: MetaInsightRow = { spend: "100", configured_result_action: "offsite_conversion.fb_pixel_schedule", actions: [{action_type:"offsite_conversion.fb_pixel_schedule",value:"7"}], conversions: [{action_type:"schedule_website",value:"0"},{action_type:"schedule_total",value:"99"}] };
     expect(directlyEvidencedResult(row)?.value).toBe("0");
