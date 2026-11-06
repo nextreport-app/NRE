@@ -15,7 +15,6 @@ import { ensureFreshTikTokAccessToken } from "@/lib/tiktok-api";
 import { fetchMetaReportCsv } from "@/lib/nre/meta-api-sync";
 import {
   maybeSyncPreviousMonthDataFromGoogleApi,
-  maybeSyncPreviousMonthDataFromMetaApi,
   maybeSyncPreviousMonthDataFromTikTokApi,
 } from "@/lib/nre/sync-previous-month-from-api";
 import { fetchGoogleReportCsv } from "@/lib/nre/fetch-google-report-rows";
@@ -166,24 +165,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: account.timezone_name, currency: account.currency,
         ...range, requireDirectResultEvidence: true,
       });
-      let previousMonth = { hasPreviousMonthData: false, previousMonthSynced: false, previousMonthCampaigns: [] as string[], previousMonthSelectedCampaigns: null as string[] | null, previousMonthUpdatedAt: null as string | null };
-      let previousMonthWarning: string | undefined;
-      if ((parsed.data.reportType ?? "WEEKLY") === "WEEKLY") {
-        try {
-          const previous = await maybeSyncPreviousMonthDataFromMetaApi({ clientId: client.id, accessToken: fresh.accessToken, adAccountId: metaAdAccountId, timezone: account.timezone_name, currency: account.currency, previousMonthDataUrl: client.previousMonthDataUrl, previousMonthDataUpdatedAt: null, previousMonthSelectedCampaigns: client.previousMonthSelectedCampaigns });
-          if (previous.synced) {
-            const updated = await prisma.client.findUniqueOrThrow({ where: { id: client.id } });
-            previousMonth = { ...await previousMonthPayloadFromClient(updated), previousMonthSynced: true };
-          }
-        } catch { previousMonthWarning = "Current report data imported. Previous-month comparison could not be refreshed; it has been turned off for this setup."; }
-      }
-
       return NextResponse.json({
         ok: true,
         platform: "META",
         accountCurrency: account.currency,
         accountTimezone: account.timezone_name,
-        previousMonthWarning,
         ...metaApiCsvTransport(result.csvText),
         rowCount: result.rowCount,
         sinceIso: result.sinceIso,
@@ -193,7 +179,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         metaSyncDiagnostics: result.diagnostics,
         campaignPeriodReachByName: result.campaignPeriodReachByName,
         campaignPeriodReachMaps: result.campaignPeriodReachMaps,
-        ...previousMonth,
+        hasPreviousMonthData: false,
+        previousMonthSynced: false,
       });
     }
 

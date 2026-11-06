@@ -385,7 +385,8 @@ export function useReportUploadWizard({
   );
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
-  const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
+  const [manualPreviousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
+  const previousMonthHasFile = dataSourceMode === "csv" && manualPreviousMonthHasFile;
   const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
   const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
   const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
@@ -394,7 +395,8 @@ export function useReportUploadWizard({
   const [previousMonthCampaignSpend, setPreviousMonthCampaignSpend] = useState<Record<string, number>>(
     initialPreviousMonthCampaignSpend,
   );
-  const [includePreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
+  const [manualPreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
+  const includePreviousMonthComparison = dataSourceMode === "csv" && manualPreviousMonthComparison;
 
   const previousMonthComparisonReady = useMemo(
     () =>
@@ -566,7 +568,7 @@ export function useReportUploadWizard({
       dateMode,
       customStart: dateMode === "custom" ? customStart : undefined,
       customEnd: dateMode === "custom" ? customEnd : undefined,
-      includePreviousMonthComparison,
+      includePreviousMonthComparison: manualPreviousMonthComparison,
       showBudgetOnCover,
       dataSourceMode,
     });
@@ -577,7 +579,7 @@ export function useReportUploadWizard({
     dateMode,
     customStart,
     customEnd,
-    includePreviousMonthComparison,
+    manualPreviousMonthComparison,
     showBudgetOnCover,
     dataSourceMode,
   ]);
@@ -1522,11 +1524,6 @@ export function useReportUploadWizard({
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
-    if (!meta?.hasPreviousMonthData) {
-      setPreviousMonthHasFile(false);
-      setIncludePreviousMonthComparison(false);
-    }
-    if (meta?.previousMonthWarning) showToast(meta.previousMonthWarning);
     setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
     if (meta?.metaAdAccountId) setMetaAdAccountId(meta.metaAdAccountId);
     setMtdFile(file);
@@ -1565,22 +1562,6 @@ export function useReportUploadWizard({
     rememberPlatformChoice(selectedPlatformCard);
     saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
     await dispatchAfterAnalyze(json, selectedPlatformCard);
-    if (meta?.hasPreviousMonthData || meta?.previousMonthSynced) {
-      setPreviousMonthHasFile(true);
-      if (meta.previousMonthUpdatedAt) setPreviousMonthUpdatedAt(meta.previousMonthUpdatedAt);
-      if (meta.previousMonthCampaigns) setPreviousMonthCampaigns(meta.previousMonthCampaigns);
-      if (meta.previousMonthSelectedCampaigns !== undefined) {
-        setPreviousMonthSelectedCampaigns(meta.previousMonthSelectedCampaigns);
-      }
-      if (meta.previousMonthCampaignSpend) {
-        setPreviousMonthCampaignSpend(meta.previousMonthCampaignSpend);
-      }
-    }
-    if (meta?.previousMonthSynced) {
-      showToast(
-        "Previous month data synced — review campaign checkboxes on the next step, then uncheck any you don't manage.",
-      );
-    }
   }
 
   /** Mismatch warning's "Continue anyway" — re-analyzes with the user's selected platform forced as an override, so a genuinely wrong-platform CSV fails validation honestly instead of silently being parsed as the wrong thing. */

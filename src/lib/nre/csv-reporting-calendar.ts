@@ -1,3 +1,4 @@
+import { apiQueryCoverage } from "./api-query-coverage";
 import { computeCsvDateBounds, type CsvDateBounds, type DateRangeIso } from "./date-range";
 import { getRowDate, type NreRow } from "./columns";
 import { parseDate } from "./dates";
@@ -51,6 +52,9 @@ export function alignCsvSelection(selection: DateSelection | undefined, bounds: 
 /** Preview/generation/reconciliation consume the same canonical request dates. */
 export function alignCsvReportFormData(form: FormData | null, rows: NreRow[], timezone: string, now = new Date()) {
   if (!form) return;
+  // Supplemental previous-month uploads belong to manual CSV reports only.
+  // Apply this before preview, verification, cache fingerprinting and generation.
+  if (apiQueryCoverage(rows)) form.set("includePreviousMonthComparison", "false");
   const bounds = completeCsvBounds(rows, now, timezone);
   const type = parseJsonFormField(form, "reportType", reportTypeSchema) ?? "WEEKLY";
   const selection = alignCsvSelection(parseJsonFormField(form, "dateSelection", dateSelectionSchema), bounds, type, now, timezone);

@@ -26,7 +26,7 @@ After Analyze both sources use the same campaign, objective, metric, preview and
 
 ## Import periods
 
-- Weekly: trailing 30 days ending yesterday in the ad account timezone, plus any earlier selected weekly period. Previous-month comparison is refreshed separately and awaited; a failure turns that comparison off for this setup.
+- Weekly: trailing 30 days ending yesterday in the ad account timezone, plus any earlier selected weekly period. Supplemental previous-month totals are available only in manual CSV mode.
 - Monthly: selected month/period; legacy historical mode fetches its selected months.
 - Comparison: union of both selected periods, including any gap between them.
 - Day-by-day: selected period, default last seven days.
@@ -113,3 +113,12 @@ Weekly CSV and API setup now use the same Last 7 days / Custom date range compon
 API import sends the selected period to sync and analyze without resetting custom dates to Last 7 days. The automatic 30-day chart window is still fetched, extending to include earlier custom reporting dates as needed. No separate fetch window or Meta will fetch panel was restored.
 
 Verification: 85 API/provider/UI/PPT tests, 279 report-choice tests, TypeScript and production build passed. Eight mobile/desktop browser journeys cover API custom-week preservation, CSV presets/calendar interaction, and the other report types. Scoped lint retains existing effect errors in the wizard hook. No new environment settings or permissions are required.
+
+
+## Supplemental previous-month totals are manual-only (November 6, 2026)
+
+Remove the previous-month message from API Import and stop the extra previous-month Meta fetch/storage refresh. API responses do not expose manual previous-month metadata. The wizard ignores saved comparison toggles in API mode while retaining the manual file/choice for a switch back to CSV. API source coverage metadata also forces the supplemental comparison flag off before server preview, verification, cache fingerprinting and generation. Manual CSV behavior is preserved.
+
+This restriction concerns the optional stored previous-month totals. Explicit Monthly or Comparison report periods can still include earlier months in their own API source data.
+
+Validation: 88 API/provider/route/PPT tests, 505 accounting tests, eight synthetic-provider mobile/desktop browser journeys, TypeScript and production build passed. Tests verify no weekly API previous-month fetch, server rejection of stale API comparison flags, and retention of manual CSV settings after API use. Existing component effect lint findings remain. No deployment or environment changes performed.

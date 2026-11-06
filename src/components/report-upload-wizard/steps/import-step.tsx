@@ -386,7 +386,6 @@ export function WizardImportStep() {
             </>
           )}
 
-          {dataSourceMode === "api" && reportType === "WEEKLY" ? <p className="text-xs text-dash-ink-secondary">Previous-month totals are fetched separately when available. You can include them in the report after syncing.</p> : null}
           {dataSourceMode === "csv" && reportType === "WEEKLY" && (showCompactPreviousMonth ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3">
               <p className="text-[14px] text-dash-ink-secondary">
