@@ -25,7 +25,7 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
   const pack = (type: string, count: number, delivery = false): ManualExportPrimaryResult => ({
     action_type: type, value: String(count),
     cpr: !delivery && count > 0 ? String(Number(row.spend ?? 0) / count) : "",
-    csvResultType: syntheticResultTypeFromMetaResultIndicator(`actions:${type}`) ?? metaApiActionToCsvResultType(type),
+    csvResultType: (row.configured_result_action === type ? row.configured_result_type : undefined) ?? syntheticResultTypeFromMetaResultIndicator(`actions:${type}`) ?? metaApiActionToCsvResultType(type),
   });
   if (row.configured_result_action) {
     // `actions.value` is the scalar total for this request's unified attribution

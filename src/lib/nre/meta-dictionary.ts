@@ -66,6 +66,7 @@ const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
   { csvName: "week", key: "day", type: "dimension" },
   { csvName: "month", key: "day", type: "dimension" },
   { csvName: "result type", key: "result_type", type: "dimension" },
+  { csvName: "result indicator", key: "result_indicator", type: "dimension" },
   { csvName: "result value type", key: "result_value_type", type: "dimension" },
 
   { csvName: "nre api result action", key: "api_result_action", type: "metadata" },
@@ -463,6 +464,11 @@ const BASE_META_METRIC_DICTIONARY: MetaMetricDefinition[] = [
     priority: 81,
     explanation: "Average cost per application submission",
     perUnitOf: "applications",
+  },
+  {
+    csvName: "website appointments scheduled", key: "website_appointments", label: "WEBSITE APPOINTMENTS",
+    type: "secondary", format: "number", objectives: ["website_schedule"], priority: 82,
+    explanation: "Appointments scheduled on your website, distinct from generic appointment counts.",
   },
   {
     csvName: "appointments scheduled",

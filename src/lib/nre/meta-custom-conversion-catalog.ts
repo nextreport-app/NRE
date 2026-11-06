@@ -1,45 +1,10 @@
 import { decryptMetaToken, encryptMetaToken } from "@/lib/meta-token-storage";
 import { prisma } from "@/lib/prisma";
-import { ensureFreshMetaAccessToken, fetchMetaCustomConversions, type MetaCustomConversion } from "@/lib/meta-api";
-import { getMetaResultLabels } from "./meta-objective-dictionary";
-import { normalizeMetaSyntheticResultType } from "./meta-result-indicator";
-import { resolveObjectiveFromResultType } from "./result-type-map";
+import { ensureFreshMetaAccessToken, fetchMetaCustomConversions } from "@/lib/meta-api";
 
-/** Maps Meta custom conversion id → Ads Reporting-style Result type text. */
-export type MetaCustomConversionResultTypeMap = Record<string, string>;
-
-/** Turn a custom conversion name from Graph API into our synthetic result_type string. */
-export function syntheticResultTypeFromCustomConversionName(name: string): string {
-  const n = name.trim();
-  if (!n) return "website submission";
-
-  const fromExact = resolveObjectiveFromResultType(n);
-  if (fromExact?.key === "quote_requests") return "Quote Request Submitted";
-
-  const meta = getMetaResultLabels(n);
-  if (meta.resultLabel === "QUOTE REQUESTS") return "Quote Request Submitted";
-  if (meta.resultLabel === "WEBSITE LEADS") return "website submission";
-  if (meta.resultLabel === "WEBSITE SCHEDULE") return "Website appointments scheduled";
-  if (meta.resultLabel !== "RESULTS") return normalizeMetaSyntheticResultType(n);
-
-  if (/quote[\s_]*request/i.test(n)) return "Quote Request Submitted";
-  if (/schedule_website|website.*appointment.*scheduled/i.test(n)) return "Website appointments scheduled";
-  if (/website submission|website lead|web lead/i.test(n)) return "website submission";
-  return normalizeMetaSyntheticResultType(n);
-}
-
-export function buildMetaCustomConversionResultTypeMap(
-  conversions: MetaCustomConversion[],
-): MetaCustomConversionResultTypeMap {
-  const out: MetaCustomConversionResultTypeMap = {};
-  for (const c of conversions) {
-    const id = String(c.id ?? "").trim();
-    const name = String(c.name ?? "").trim();
-    if (!id || !name) continue;
-    out[id] = syntheticResultTypeFromCustomConversionName(name);
-  }
-  return out;
-}
+import { buildMetaCustomConversionResultTypeMap, type MetaCustomConversionResultTypeMap } from "./meta-custom-conversion-labels";
+export { buildMetaCustomConversionResultTypeMap, syntheticResultTypeFromCustomConversionName } from "./meta-custom-conversion-labels";
+export type { MetaCustomConversionResultTypeMap } from "./meta-custom-conversion-labels";
 
 export async function fetchMetaCustomConversionResultTypeMap(params: {
   accessToken: string;

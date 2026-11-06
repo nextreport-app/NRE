@@ -2,7 +2,8 @@ import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
 import { validateMetaClickRates } from "./validate-click-rates";
 import { configuredResultAction } from "./configured-result-event";
-import { fetchMetaAdSetReportingConfigs } from "@/lib/meta-api";
+import { buildMetaCustomConversionResultTypeMap } from "../meta-custom-conversion-labels";
+import { fetchMetaCustomConversions, fetchMetaAdSetReportingConfigs } from "@/lib/meta-api";
 import { directlyEvidencedResult } from "./direct-result-evidence";
 import { fetchMetaAdAccountInsights, type MetaInsightRow } from "@/lib/meta-api";
 import { computeLastNDaysIsoRange } from "../api-date-range";
@@ -88,6 +89,17 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     });
   }
 
+  if (input.requireDirectResultEvidence && deduped.some(row => row.configured_result_action?.startsWith("offsite_conversion.custom."))) {
+    // Same catalog naming used by CSV analyze/metrics. Keep the raw indicator
+    // below so later detection can still resolve a refreshed custom catalog.
+    const catalog = await fetchMetaCustomConversions(input.accessToken, input.adAccountId)
+      .then(buildMetaCustomConversionResultTypeMap).catch(() => undefined);
+    if (catalog) deduped = deduped.map(row => {
+      const id = row.configured_result_action?.match(/^offsite_conversion\.custom\.(\d+)$/)?.[1];
+      return id && catalog[id] ? { ...row, configured_result_type: catalog[id] } : row;
+    });
+  }
+
   const adsetRows = deduped;
   let usedCampaignLevelConversionFallback = false;
   let enrichedRows: MetaInsightRow[] | null = null;
@@ -123,9 +135,14 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     sinceIso, untilIso,
     deduped[index].configured_result_action ? "actions.value" : "delivery_or_actions",
     "adset_unified", "impression",
+    row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : "",
   ));
   const headers = META_CSV_HEADERS.map(header => header === "Amount spent (USD)" ? `Amount spent (${input.currency})` : header);
-  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time");
+  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time", "Result indicator");
+  if (deduped.some(row => row.configured_result_action === "offsite_conversion.fb_pixel_schedule" || row.actions?.some(action => action.action_type === "offsite_conversion.fb_pixel_schedule"))) {
+    headers.push("Website appointments scheduled");
+    dataRows.forEach((row, index) => row.push(deduped[index].actions?.find(action => action.action_type === "offsite_conversion.fb_pixel_schedule")?.value ?? "0"));
+  }
   let csvText = rowsToCsv(headers, dataRows);
 
   if (input.referenceManualCsvText?.trim()) {
