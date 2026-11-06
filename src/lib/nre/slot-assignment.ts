@@ -33,6 +33,7 @@
  * lookupMetricValue for the actual aggregation.
  */
 
+import { WEBSITE_SCHEDULE_BLOCKED_KEYS } from "./packs";
 import { findMetaMetricByKey } from "./meta-dictionary";
 import { parseCellNum } from "./format";
 import { findGoogleMetricByKey } from "./google-dictionary";
@@ -70,7 +71,7 @@ function withMessagingBlocked(keys: string[]): string[] {
  * LEADS" -> "meta_form_leads".
  */
 const NEVER_KEYS_FOR_OBJECTIVE: Record<string, string[]> = {
-  website_schedule: withMessagingBlocked(["website_leads", "cost_per_website_lead"]),
+  website_schedule: withMessagingBlocked(WEBSITE_SCHEDULE_BLOCKED_KEYS),
   meta_form_leads: withMessagingBlocked([
     "website_leads",
     "cost_per_website_lead",
@@ -359,6 +360,7 @@ export function buildMetaSlots(baseline: MetaSlotBaseline, rawRows: RawMetricRow
   let slot8: DynamicMetricValue | null;
 
   switch (resultLabel) {
+    case "WEBSITE SCHEDULE":
     case "WEBSITE LEADS":
     case "LEADS":
       slot4 = slot("results", baseline.resultLabel, "number", baseline.resultValue);

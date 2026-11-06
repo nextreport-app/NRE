@@ -23,7 +23,7 @@ export { MAX_METRICS_PER_SLIDE, MAX_TOTAL_METRICS } from "./metric-pagination";
 import { autoClassifyUnknownColumn as autoClassifyMeta, findMetaMetric, findMetaMetricByKey, type MetaMetricDefinition, type MetricFormat } from "./meta-dictionary";
 import { autoClassifyUnknownColumn as autoClassifyGoogle, findGoogleMetric, findGoogleMetricByKey, type GoogleMetricDefinition } from "./google-dictionary";
 import { googleObjectiveSpecForKey, type GoogleObjectiveKey } from "./detect-objective";
-import { packForResultLabel } from "./packs";
+import { packForResultLabel, WEBSITE_SCHEDULE_BLOCKED_KEYS } from "./packs";
 
 export type MetricPlatform = "META" | "GOOGLE" | "TIKTOK";
 
@@ -283,7 +283,7 @@ function withMessagingBlocked(keys: string[]): string[] {
  * forbidden cross-objective metric on the default chip list.
  */
 const NEVER_BACKFILL_KEYS: Record<string, string[]> = {
-  website_schedule: withMessagingBlocked(["website_leads", "cost_per_website_lead"]),
+  website_schedule: withMessagingBlocked(WEBSITE_SCHEDULE_BLOCKED_KEYS),
   meta_form_leads: withMessagingBlocked([
     "website_leads",
     "cost_per_website_lead",
@@ -511,12 +511,13 @@ export function finalizeCsvAwareSelection(wishlist: SelectedMetric[], headers: s
   }
 
   const pack = packForResultLabel(resultLabel);
+  const scheduleExtras = pack?.id === "leads_website_schedule" ? new Set(pack.extraPoolExamples) : null;
   const extraKeys = [...(pack?.extraPoolExamples ?? []), ...listSelectableMetrics(headers, "META").map((m) => m.key)];
   const reachObjective = (resultLabel || "").toUpperCase() === "REACH" || (resultLabel || "").toUpperCase() === "UNIQUE REACH";
 
   for (const key of extraKeys) {
     if (kept.length >= MAX_METRICS_PER_SLIDE) break;
-    if (used.has(key) || neverKeys.has(key) || SKIP_AUTO_BACKFILL_KEYS.has(key)) continue;
+    if (used.has(key) || neverKeys.has(key) || SKIP_AUTO_BACKFILL_KEYS.has(key) || (scheduleExtras && !scheduleExtras.has(key))) continue;
     if (ALWAYS_EXCLUDED_SELECTABLE_KEYS.has(key)) continue;
     // Reach defaults never auto-fill LPV / cost-per-LPV. Those stay in
     // Add-from-CSV so the user can opt in; they are not pre-selected.
@@ -535,7 +536,9 @@ export function finalizeCsvAwareSelection(wishlist: SelectedMetric[], headers: s
     const addable = filterAddableMetrics(listSelectableMetrics(headers, "META"), kept);
     for (const candidate of addable) {
       if (kept.length >= MAX_METRICS_PER_SLIDE) break;
-      if (used.has(candidate.key)) continue;
+      if (used.has(candidate.key) || neverKeys.has(candidate.key)) continue;
+      if (scheduleExtras && !scheduleExtras.has(candidate.key)) continue;
+      if (reachObjective && (candidate.key === "landing_page_views" || candidate.key === "cost_per_lpv")) continue;
       if (!metricHonestlyAvailable(candidate, headers, csvKeys, resultLabel)) continue;
       kept.push(candidate);
       used.add(candidate.key);
@@ -565,6 +568,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
   let slot8: SelectedMetric;
 
   switch (upper) {
+    case "WEBSITE SCHEDULE":
     case "WEBSITE LEADS":
     case "LEADS":
       slot4 = byKey("META", "results", resultLabel)!;
