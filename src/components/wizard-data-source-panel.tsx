@@ -2,6 +2,7 @@
 
 import type { MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import Link from "next/link";
+import { MetaAdAccountPicker } from "./meta-ad-account-picker";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
 
@@ -296,18 +297,8 @@ export function WizardDataSourcePanel({
               ) : metaAccounts.length === 0 ? (
                 <p className="text-[13px] text-amber-200">No ad accounts found for this Meta connection.</p>
               ) : (
-                <select
-                  value={selectedMetaAccount}
-                  onChange={(e) => { setSelectedMetaAccount(e.target.value); setAccountsError(null); }}
-                  className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
-                >
-                  <option value="">Select ad account…</option>
-                  {metaAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.accountId ?? a.id.replace("act_", "")}){a.currency ? ` · ${a.currency}` : ""}{a.timezone ? ` · ${a.timezone}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <MetaAdAccountPicker accounts={metaAccounts} value={selectedMetaAccount}
+                  onChange={id => { setSelectedMetaAccount(id); setAccountsError(null); }} />
               )}
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection
