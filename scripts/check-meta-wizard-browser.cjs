@@ -6,7 +6,7 @@ const mocks=[[/next\/navigation$/,`const params=new URLSearchParams();const rout
 await r('esbuild').build({stdin:{contents:fixture,loader:'tsx',resolveDir:process.cwd()},bundle:true,define:{'process.env':'{}'},platform:'browser',jsx:'automatic',outfile:path.join(output,'browser.js'),plugins:[{name:'mock',setup(build){for(const[filter]of mocks)build.onResolve({filter},args=>({path:args.path,namespace:'mock'}));build.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:mocks.find(([filter])=>filter.test(args.path))[1],loader:'tsx'}));}}]});
 const css=await r('postcss')([r('@tailwindcss/postcss')({base:process.cwd()})]).process(fs.readFileSync('src/app/globals.css','utf8'),{from:process.cwd()+'/src/app/globals.css'});const browser=await r('playwright').chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
 for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARISON','DAY_BREAKDOWN']){
- const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed;page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
+ const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed,releaseAnalysis;const analysisGate=new Promise(resolve=>{releaseAnalysis=resolve;});page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
  await page.clock.install({time:new Date('2026-11-05T12:00:00Z')});
  await page.addInitScript(()=>localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7',includePreviousMonthComparison:true})));
  await page.route('https://wizard.test/**',async route=>{const req=route.request(),url=new URL(req.url());
@@ -14,8 +14,8 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(url.pathname==='/api/meta/adaccounts')return route.fulfill({json:{accounts:[{id:'act_123',accountId:'123',name:'Example Ads',currency:'USD',timezone:'America/Los_Angeles'},{id:'act_456',accountId:'456',name:'Another Agency Account',currency:'USD',timezone:'America/Los_Angeles'}]}});
  if(req.method()==='PATCH')return route.fulfill({json:{client:{timezone:JSON.parse(req.postData()).timezone}}});
  if(url.pathname.endsWith('/wizard-draft'))return route.fulfill({json:{draft:null}});
- if(url.pathname.endsWith('/sync-api')){sent=req.postDataJSON();return route.fulfill({json:{ok:true,csvText:'Campaign name,Day,Amount spent (USD)\nTest leads,2026-11-04,100',rowCount:1,hasPreviousMonthData:false,metaAdAccountId:'act_123'}});}
- if(url.pathname.endsWith('/analyze')){analyzed=req.postData();return route.fulfill({json:{valid:true,campaigns:['Test leads'],selectedCampaigns:['Test leads'],campaignSpend:{'Test leads':100},lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
+ if(url.pathname.endsWith('/sync-api')){sent=req.postDataJSON();return route.fulfill({json:{ok:true,csvText:'Campaign name,Day,Amount spent (USD)\nTest leads,2026-11-04,100',rowCount:1,metaSyncDiagnostics:{mappedResultsSum:157,rowCount:81,sampleActionTypes:['offsite_conversion.fb_pixel_schedule']},hasPreviousMonthData:false,metaAdAccountId:'act_123'}});}
+ if(url.pathname.endsWith('/analyze')){analyzed=req.postData();await analysisGate;return route.fulfill({json:{valid:true,campaigns:['Test leads'],selectedCampaigns:['Test leads'],campaignSpend:{'Test leads':100},lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
  if(url.pathname.endsWith('/metrics'))return route.fulfill({json:{campaignObjectives:{},perCampaignSelection:{},perCampaignAvailable:{}}});
  return route.fulfill({json:{client:{monthlyBudget:null},ok:true}});
  });
@@ -79,7 +79,12 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  const before=await page.evaluate(()=>({type:window.w.reportType,mode:window.w.dateMode,start:window.w.customStart,end:window.w.customEnd}));
  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('overflow '+width+' '+kind);
  if(width===390)await page.screenshot({path:path.join(output,`${kind}.png`),fullPage:true});
- await page.getByRole('button',{name:'Analyze campaign data',exact:true}).click();await page.waitForFunction(()=>window.w.step===2);
+ await page.getByRole('button',{name:'Analyze campaign data',exact:true}).click();
+ await page.waitForFunction(()=>window.w.analyzeStatus==='loading' && !!window.w.mtdFile && !!window.w.metaSyncDiagnostics);
+ const progress=page.getByRole('button',{name:'Syncing & analyzing…',exact:true});
+ if(!(await progress.isDisabled()))throw Error('sync-to-analysis transition enabled duplicate imports');
+ if(/Advanced: API sync diagnostics|API sync complete|Download API sync CSV|Mapped Results total|Sample actions\[\]/.test(await page.locator('body').innerText()))throw Error('support diagnostics flashed during analysis');
+ releaseAnalysis();await page.waitForFunction(()=>window.w.step===2);
  const after=await page.evaluate(()=>({type:window.w.reportType,mode:window.w.dateMode,start:window.w.customStart,end:window.w.customEnd}));
  if(JSON.stringify(before)!==JSON.stringify(after))throw Error('analysis replaced selection '+JSON.stringify({before,after}));
  if('importRange' in sent)throw Error('independent source window still sent');
