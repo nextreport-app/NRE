@@ -142,3 +142,11 @@ The parity regression compares campaign extraction/spend, objectives, stale-cach
 Verification: uploaded DC-weekly-Unstoppable.csv contains 47 website appointments for the selected campaign; its synthetic API counterpart matches. Four upload-based parity tests, 95 API tests, 69 objective regression tests, 506 reporting-accuracy tests and 279 report-choice tests passed. Scoped ESLint, TypeScript, diff checks and production build passed. Run the upload-specific check with `SCHEDULE_PARITY_CSV=/local/path/to/file.csv npx vitest run src/lib/nre/__tests__/meta-api-schedule-parity.test.ts`; otherwise the committed regression fixture is used. The uploaded client CSV is not committed.
 
 No production deployment or live Meta-account verification performed. After deployment, sync again to replace previously normalized source data. No environment, OAuth scope or permission changes required.
+
+## Remove transient API support panels (November 7, 2026)
+
+API sync publishes its source file and diagnostic payload before the common analyze request completes. The Import step rendered that intermediate state as Advanced: API sync diagnostics and API sync complete / Download API sync CSV, briefly exposing internal mapping fields during the normal transition. Remove those support panels from the user-facing Import step. Internal source data and diagnostics remain available to the existing engine; sync/analyze error handling remains intact.
+
+Keep the existing disabled Syncing & analyzing… action throughout sync and analysis, then continue directly to campaign/objective selection. Extend the synthetic-provider browser check to pause analysis after sync has returned real-shaped diagnostics and a source file; verify the action stays disabled and no support panel appears before releasing analysis. All four report types pass this transition on mobile (390px) and desktop (1440px). This is a local browser check, not production-account verification.
+
+Validation: eight browser journeys, 95 API tests, TypeScript, scoped ESLint, diff checks and production build passed. No environment changes required and no production deployment performed.
