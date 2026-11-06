@@ -131,7 +131,7 @@ function addPoolLabelFamily(label: string): string {
   if (n === "WEBSITE LEADS" || n === "META FORM LEADS" || n === "QUOTE REQUESTS" || n === "RESULTS" || n === "LEADS") {
     return "FAMILY:LEADS";
   }
-  if (n === "COST PER CLICK" || n === "COST PER LINK CLICK" || n === "CPC (COST PER LINK CLICK)") {
+  if (n === "CPLC" || n === "COST PER CLICK" || n === "COST PER LINK CLICK" || n === "CPC (COST PER LINK CLICK)") {
     return "FAMILY:CPC_LINK";
   }
   return `LABEL:${n}`;
@@ -211,7 +211,7 @@ export function findPrimaryResultCostPair(
     null;
 
   const found: SelectedMetric[] = [];
-  for (const item of [result, cost]) {
+  for (const item of [result, resultLabel === "LINK CLICKS" && cost ? { ...cost, label: "CPLC" } : cost]) {
     if (item && !found.some((existing) => existing.key === item.key)) found.push(item);
   }
   return found.slice(0, 2);
@@ -323,7 +323,7 @@ const NEVER_BACKFILL_KEYS: Record<string, string[]> = {
   ]),
   initiate_checkout: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
   add_to_cart: withMessagingBlocked(["website_leads", "meta_form_leads", "video_views", "app_installs"]),
-  link_clicks: withMessagingBlocked(["website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
+  link_clicks: withMessagingBlocked(["cpc_all", "website_leads", "meta_form_leads", "purchases", "video_views", "app_installs"]),
   landing_page_views: withMessagingBlocked([
     "website_leads",
     "meta_form_leads",
@@ -441,6 +441,9 @@ function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvK
     csvKeys.has("cost_per_meta_form_lead") ||
     csvKeys.has("cost_per_website_lead") ||
     hasHeader(headers, "cost per results", "cost per result");
+
+  if (upper === "LINK CLICKS" && metric.key === "cpc_link_click" && hasSpend && (csvKeys.has("link_clicks") || hasResults)) return true;
+  if (upper === "LINK CLICKS" && metric.key === "link_clicks" && hasResults) return true;
 
   if (isForm && (metric.key === "meta_form_leads" || metric.key === "results") && hasResults) return true;
   if (
@@ -619,7 +622,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       break;
     case "LINK CLICKS":
       slot4 = byKey("META", "link_clicks")!;
-      slot5 = byKey("META", "cpc_link_click")!;
+      slot5 = byKey("META", "cpc_link_click", "CPLC")!;
       slot7 = byKey("META", "landing_page_views")!;
       // CLICKS (ALL) would duplicate slot 4's own LINK CLICKS (Issue 1) —
       // COST PER LPV pairs with slot 7's own Landing Page Views instead.
@@ -847,7 +850,7 @@ export function buildMultiObjectiveSelection(objectivePairs: ObjectivePair[], he
   function buildPair(label: string): { resultMetric: SelectedMetric; costMetric: SelectedMetric } {
     const { resultKey, costKey, dedicated } = objectiveMetricKeys(label);
     if (dedicated) {
-      return { resultMetric: byKey("META", resultKey)!, costMetric: byKey("META", costKey)! };
+      return { resultMetric: byKey("META", resultKey)!, costMetric: byKey("META", costKey, label === "LINK CLICKS" ? "CPLC" : undefined)! };
     }
     const costLabel = costLabelByLabel.get(label) ?? `COST PER ${label}`;
     return {

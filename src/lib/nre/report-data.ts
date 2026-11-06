@@ -1772,8 +1772,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       override ? metricsInOverrideOrder(override, selectedMetrics) : filterMetricsForCampaignObjective(selectedMetrics, campaignObjective),
       objectiveKeyFor(campaignObjective?.resultLabel),
     ).filter((m): m is SelectedMetric => m !== null);
+    const labelledMetrics = campaignObjective?.resultLabel === "LINK CLICKS"
+      ? relevantMetrics.map(metric => metric.key === "cpc_link_click" ? { ...metric, label: "CPLC" } : metric)
+      : relevantMetrics;
     const [slide1Keys, ...extraPages] = splitMetricsForSlides(
-      relevantMetrics,
+      labelledMetrics,
       availableMetricsPool,
       campaignObjective?.resultLabel,
       campaignObjective?.costLabel,
