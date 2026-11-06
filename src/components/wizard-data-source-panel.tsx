@@ -247,6 +247,7 @@ export function WizardDataSourcePanel({
   return (
     <fieldset disabled={isSyncing || timezoneSaving} className="min-w-0 space-y-4">
       {reportTypeControls}
+      {setupControls}
 
       {showMeta ? (
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
@@ -329,7 +330,6 @@ export function WizardDataSourcePanel({
           finally { setTimezoneSaving(false); }
         }}>{timezoneSaving ? 'Updating timezone…' : `Use ${selectedAccount?.timezone} for this client`}</button>
       </div> : null}
-      {setupControls}
       {selectionError ? <p role="alert" className="text-sm text-red-400">{selectionError}</p> : null}
 
       {showGoogle ? (
