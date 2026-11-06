@@ -253,6 +253,8 @@ export interface MetaInsightRow {
   /** Ad-set optimization goal — used to pick the objective-aligned result from actions[]. */
   optimization_goal?: string;
   actions?: MetaInsightAction[];
+  /** Meta conversion metrics, including website Schedule (schedule_website). */
+  conversions?: MetaInsightAction[];
   cost_per_action_type?: MetaInsightAction[];
   /** Legacy result-channel projection; not a duplicate of the actions.value count. */
   results?: MetaInsightResultMetric[];
@@ -364,7 +366,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   sinceIso: string;
   untilIso: string;
   level?: MetaInsightsLevel;
-  /** Strict wizard imports use only the canonical actions channel for conversion counts. */
+  /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
   includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
@@ -382,7 +384,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
     url.searchParams.set("level", params.level ?? "campaign");
     url.searchParams.set("time_increment", "1");
     const fields = params.includeResultChannels === false
-      ? META_INSIGHT_FIELDS.split(",").filter(field => !["results", "cost_per_result", "objective_results", "cost_per_objective_result"].includes(field)).join(",")
+      ? [...META_INSIGHT_FIELDS.split(",").filter(field => !["results", "cost_per_result", "objective_results", "cost_per_objective_result"].includes(field)), "conversions"].join(",")
       : META_INSIGHT_FIELDS;
     url.searchParams.set("fields", fields);
     url.searchParams.set(
@@ -454,7 +456,7 @@ export async function fetchMetaAdAccountInsights(params: {
   untilIso: string;
   /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
   level?: MetaInsightsLevel;
-  /** Strict wizard imports use only the canonical actions channel for conversion counts. */
+  /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
   includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   const level = params.level ?? "campaign";

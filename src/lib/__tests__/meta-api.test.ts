@@ -310,6 +310,7 @@ describe("strict wizard insight source contract", () => {
       expect(fields).toContain("actions"); expect(fields).toContain("spend"); expect(fields).toContain("clicks");
       for (const field of ["results", "objective_results", "cost_per_result", "cost_per_objective_result"]) expect(fields).not.toContain(field);
       expect(url.searchParams.get("use_unified_attribution_setting")).toBe("true");
+      expect(url.searchParams.get("fields")?.split(",")).toContain("conversions");
       expect(url.searchParams.get("action_report_time")).toBe("impression");
       expect(url.searchParams.get("time_increment")).toBe("1");
       expect(url.searchParams.has("access_token")).toBe(false);

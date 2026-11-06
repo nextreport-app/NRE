@@ -5,8 +5,8 @@ import { metaApiActionToCsvResultType } from "../meta-objective-dictionary";
 import { manualExportPrimaryResult, type ManualExportPrimaryResult } from "./manual-export-mapper";
 const action = (indicator: string) => indicator.replace(/^actions:/, "");
 /** Read one action type; channels and aliases are never added together. */
-function actionCount(row: MetaInsightRow, type: string): number {
-  const observed = (row.actions ?? []).filter(item => item.action_type === type);
+function actionCount(row: MetaInsightRow, type: string, channel: "actions" | "conversions" = "actions"): number {
+  const observed = (row[channel] ?? []).filter(item => item.action_type === type);
   const counts = observed.map(item => Number(item.value));
   if (observed.some(item => String(item.value).trim() === "") || counts.some(count => !Number.isFinite(count) || count < 0) || counts.some(count => Math.abs(count - counts[0]) > 1e-8)) {
     throw new ServiceError("Meta returned invalid or duplicate conflicting values within the configured action's own counts. Retry sync; no result total has been estimated.", 422);
@@ -28,9 +28,14 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
     csvResultType: (row.configured_result_action === type ? row.configured_result_type : undefined) ?? syntheticResultTypeFromMetaResultIndicator(`actions:${type}`) ?? metaApiActionToCsvResultType(type),
   });
   if (row.configured_result_action) {
-    // `actions.value` is the scalar total for this request's unified attribution
-    // settings. Result/Objective channels are different projections, not duplicate
-    // observations. An omitted action is zero, never filled from another channel.
+    // Each configured event has one explicit scalar source under unified attribution.
+    // Schedule uses its location-specific conversion metric when supplied.
+    // Other events retain actions.value; Results/Objective projections never backfill it.
+    if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) {
+      // Meta's website appointment metric is a location-specific conversion,
+      // not schedule_total (all locations) or an unrelated lead action.
+      return pack("offsite_conversion.fb_pixel_schedule", actionCount(row, "schedule_website", "conversions"));
+    }
     return pack(row.configured_result_action, actionCount(row, row.configured_result_action));
   }
   // Standard non-website goals also need an explicit source when result channels
@@ -66,4 +71,10 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
   ];
   if (!candidates.some(value => Number.isFinite(value) && Math.abs(value - count) < 1e-8)) throw new ServiceError("Meta did not supply direct evidence for the mapped result count. We stopped this import rather than estimate conversions from costs. Use CSV reporting for this account while its API mapping is reviewed.", 422);
   return legacy;
+}
+
+/** Source metadata follows the same explicit schedule-channel policy as counting. */
+export function configuredResultCountSource(row: MetaInsightRow): string {
+  if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) return "conversions.schedule_website.value";
+  return row.configured_result_action ? "actions.value" : "delivery_or_actions";
 }

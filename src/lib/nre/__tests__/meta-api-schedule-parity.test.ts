@@ -5,6 +5,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { user: { findUnique: vi.fn().mockResol
 vi.mock("@/lib/meta-api", async original => ({ ...await original<typeof import("@/lib/meta-api")>(), fetchMetaAdAccountInsights: vi.fn(), fetchMetaAdSetReportingConfigs: vi.fn(), fetchMetaCustomConversions: vi.fn(), fetchMetaAdAccountCampaignPeriodInsights: vi.fn().mockResolvedValue([]) }));
 import { fetchMetaAdAccountInsights, fetchMetaAdSetReportingConfigs, fetchMetaCustomConversions, type MetaInsightRow } from "@/lib/meta-api";
 import { fetchMetaReportCsv } from "../meta-api-sync";
+import { directlyEvidencedResult } from "../meta-api-sync/direct-result-evidence";
 import { parseCsvText } from "../parse-csv";
 import { buildCampaignObjectiveMapWithConfidence, normalizeCampaignName } from "../objective";
 import { extractCampaignNames, extractCampaignSpend } from "../campaigns";
@@ -30,7 +31,7 @@ const adsets = [...new Map(manual.rows.map(row => [`${row.campaign_name}\0${row.
 const adsetIds = new Map(adsets.map(([name], i) => [name, String(100 + i)]));
 const templateBuffer = readFileSync("templates/dark.pptx");
 
-function providerFixture(custom: boolean) {
+function providerFixture(custom: boolean, conversionChannel = false) {
   const schedule = custom ? "offsite_conversion.custom.9001" : "offsite_conversion.fb_pixel_schedule";
   vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue(manual.rows.map(row => {
     const count = Number(row.results) || 0;
@@ -41,7 +42,8 @@ function providerFixture(custom: boolean) {
       date_start: row._raw.Day, date_stop: row._raw.Day, spend: row.spend,
       reach: row.reach, impressions: row.impressions, ctr: row.ctr, cpc: row.cpc,
       inline_link_clicks: row.link_clicks, frequency: row.frequency,
-      actions: [...(count ? [{ action_type: actionType, value: String(count) }] : []), { action_type: "link_click", value: row.link_clicks || "0" }, { action_type: "landing_page_view", value: row.landing_page_views || "0" }],
+      conversions: conversionChannel && row.campaign_name === name ? [{ action_type: "schedule_website", value: String(count) }, { action_type: "schedule_total", value: String(count + 9) }] : undefined,
+      actions: [...(count && !(conversionChannel && row.campaign_name === name) ? [{ action_type: actionType, value: String(count) }] : []), { action_type: "link_click", value: row.link_clicks || "0" }, { action_type: "landing_page_view", value: row.landing_page_views || "0" }],
       cost_per_action_type: count ? [{ action_type: actionType, value: String(Number(row.spend) / count) }] : [],
     } satisfies MetaInsightRow;
   }));
@@ -56,11 +58,17 @@ describe("website schedule detection is shared by CSV and API", () => {
     expect(metaApiActionToCsvResultType("offsite_conversion.fb_pixel_schedule")).toBe("Website appointments scheduled");
     expect(resolveObjectiveFromResultType("Schedule")?.key).toBe("appointment_leads");
   });
-  it.each([false, true])("matches campaigns, objective, metric labels and PPT results for custom=%s", async custom => {
+  it.each([{custom:false, conversionChannel:false}, {custom:true, conversionChannel:false}, {custom:false, conversionChannel:true}])("matches numeric totals, objectives and PPT results for %j", async ({custom, conversionChannel}) => {
     // These API responses are synthetic counterparts of the CSV facts, not captured provider responses.
-    providerFixture(custom);
+    providerFixture(custom, conversionChannel);
     const source = await fetchMetaReportCsv({ accessToken: "fixture", adAccountId: "123", currency: "USD", timezone: "UTC", sinceIso, untilIso, requireDirectResultEvidence: true });
     const api = parseCsvText(source.csvText);
+    if (conversionChannel) {
+      const row = api.rows.find(row => row.campaign_name === name && Number(row.results) > 0)!;
+      expect(row._raw["NRE API result source"]).toBe("conversions.schedule_website.value");
+      expect(row._raw["Result indicator"]).toBe("conversions:schedule_website");
+      expect(Number(row._raw["Website appointments scheduled"])).toBe(Number(row.results));
+    }
     expect(extractCampaignNames(api.rows)).toEqual(extractCampaignNames(manual.rows));
     expect(extractCampaignSpend(api.rows)).toEqual(extractCampaignSpend(manual.rows));
     const expected = buildCampaignObjectiveMapWithConfidence(manual.rows);
@@ -80,6 +88,19 @@ describe("website schedule detection is shared by CSV and API", () => {
       if (!("data" in output)) throw new Error(output.error);
       const slide = output.data.campaignSlides[0];
       expect(slide.ai.resultLabel).toBe("WEBSITE SCHEDULE");
+      const selectedRows = manual.rows.filter(row => row.campaign_name === name);
+      const end = new Date(untilIso + "T12:00:00Z"); end.setUTCDate(end.getUTCDate() - 6);
+      const expectedWeek = selectedRows.filter(row => row._raw.Day >= end.toISOString().slice(0, 10));
+      const count = (rows: typeof selectedRows) => rows.reduce((sum, row) => sum + Number(row.results || 0), 0);
+      expect(Number(slide.metrics.results)).toBe(count(expectedWeek));
+      expect(count(expectedWeek)).toBeGreaterThan(0);
+      const expectedSpend = expectedWeek.reduce((sum, row) => sum + Number(row.spend || 0), 0);
+      expect(slide.metrics.cpr).toBe(`$${(expectedSpend / count(expectedWeek)).toFixed(2)}`);
+      expect(output.data.chart?.campaigns[0].results).toBe(count(selectedRows));
+      const monthRows = selectedRows.filter(row => row._raw.Day.slice(0, 7) === untilIso.slice(0, 7));
+      const mtd = output.data.mtdRow.resultColumns.find(column => column.label === "WEBSITE SCHEDULE")!;
+      expect(Number(mtd.value)).toBe(count(monthRows));
+      expect(mtd.cprValue).toBe(`$${(monthRows.reduce((sum, row) => sum + Number(row.spend || 0), 0) / count(monthRows)).toFixed(2)}`);
       const ppt = await renderPptx({ templateBuffer, data: output.data, currencySymbol: "$" });
       const zip = await JSZip.loadAsync(ppt);
       const text = (await Promise.all(Object.keys(zip.files).filter(path => /^ppt\/slides\/slide\d+\.xml$/.test(path)).map(path => zip.file(path)!.async("string")))).join("\n");
@@ -88,6 +109,14 @@ describe("website schedule detection is shared by CSV and API", () => {
     }
     expect(outputs[0]).toEqual(outputs[1]);
   }, 30000);
+  it("counts only the configured website schedule metric, preserving observed zero and excluding other locations", () => {
+    const row: MetaInsightRow = { spend: "100", configured_result_action: "offsite_conversion.fb_pixel_schedule", actions: [{action_type:"offsite_conversion.fb_pixel_schedule",value:"7"}], conversions: [{action_type:"schedule_website",value:"0"},{action_type:"schedule_total",value:"99"}] };
+    expect(directlyEvidencedResult(row)?.value).toBe("0");
+    expect(directlyEvidencedResult({...row, conversions: [{action_type:"schedule_total",value:"99"}]})?.value).toBe("7");
+    expect(directlyEvidencedResult({...row, actions: [], conversions: [{action_type:"schedule_total",value:"99"}]})?.value).toBe("0");
+    expect(directlyEvidencedResult({...row, configured_result_action:"offsite_conversion.fb_pixel_lead", actions:[{action_type:"offsite_conversion.fb_pixel_lead",value:"21"}], conversions:[{action_type:"lead",value:"23"}]})?.value).toBe("21");
+    expect(() => directlyEvidencedResult({...row, conversions:[{action_type:"schedule_website",value:"2"},{action_type:"schedule_website",value:"3"}]})).toThrow(/conflicting/);
+  });
   it("retains custom event identity so the shared detector can apply a refreshed catalog", async () => {
     providerFixture(true); vi.mocked(fetchMetaCustomConversions).mockRejectedValue(new Error("temporary provider issue"));
     const source = await fetchMetaReportCsv({ accessToken: "fixture", adAccountId: "123", currency: "USD", timezone: "UTC", sinceIso, untilIso, requireDirectResultEvidence: true });

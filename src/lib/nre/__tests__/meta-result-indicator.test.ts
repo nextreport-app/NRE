@@ -5,6 +5,10 @@ import {
 } from "../meta-result-indicator";
 
 describe("meta-result-indicator", () => {
+  it("maps the exact website schedule conversion indicator without treating all-location totals as website appointments", () => {
+    expect(syntheticResultTypeFromMetaResultIndicator("conversions:schedule_website")).toBe("Website appointments scheduled");
+    expect(syntheticResultTypeFromMetaResultIndicator("conversions:schedule_total")).toBeNull();
+  });
   it("maps BumperTech custom conversion id to Quote Request Submitted", () => {
     const indicator = "actions:offsite_conversion.custom.871123778777517";
     expect(syntheticResultTypeFromMetaResultIndicator(indicator)).toBe("Quote Request Submitted");
