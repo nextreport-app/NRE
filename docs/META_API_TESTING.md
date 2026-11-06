@@ -122,3 +122,11 @@ Remove the previous-month message from API Import and stop the extra previous-mo
 This restriction concerns the optional stored previous-month totals. Explicit Monthly or Comparison report periods can still include earlier months in their own API source data.
 
 Validation: 88 API/provider/route/PPT tests, 505 accounting tests, eight synthetic-provider mobile/desktop browser journeys, TypeScript and production build passed. Tests verify no weekly API previous-month fetch, server rejection of stale API comparison flags, and retention of manual CSV settings after API use. Existing component effect lint findings remain. No deployment or environment changes performed.
+
+## Searchable Meta account picker (November 6, 2026)
+
+Replace the native account select with a searchable dropdown displaying account name and ID on separate lines. Currency and timezone are no longer part of picker labels or accessible names; the parent retains those metadata fields for reporting/currency and timezone validation. Numeric-only account names avoid repeating the same ID twice.
+
+Search runs locally over loaded permitted accounts and matches case-insensitive name/ID terms. Filtering and keyboard navigation do not change the chosen account until selection is committed. Add no-match feedback, bounded scrolling, active-item visibility, Escape/outside dismissal, focus return and keyboard selection. No new provider requests or scopes are introduced.
+
+Validation: 91 API/provider/UI/PPT tests, eight synthetic-provider mobile/desktop wizard journeys, TypeScript and production build passed. Browser checks cover name/ID filtering, no matches, Enter selection, Arrow navigation, Escape, and the absence of currency/timezone in options. New picker and test lint passed. Existing unrelated parent component effect lint findings remain. No production deployment or environment changes performed.

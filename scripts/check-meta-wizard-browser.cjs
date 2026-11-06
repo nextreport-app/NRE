@@ -11,7 +11,7 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await page.addInitScript(()=>localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7',includePreviousMonthComparison:true})));
  await page.route('https://wizard.test/**',async route=>{const req=route.request(),url=new URL(req.url());
  if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:`<html lang="en" data-site-theme="dark"><head><style>${css.css}</style><style>body{background:#101217;padding:16px}#root{max-width:960px;margin:auto}</style></head><body><div class="nre-app-shell" id="root"></div><script>${fs.readFileSync(path.join(output,'browser.js'),'utf8').replaceAll('</script','<\\/script')}</script></body></html>`});
- if(url.pathname==='/api/meta/adaccounts')return route.fulfill({json:{accounts:[{id:'act_123',name:'Example Ads',currency:'USD',timezone:'America/Los_Angeles'}]}});
+ if(url.pathname==='/api/meta/adaccounts')return route.fulfill({json:{accounts:[{id:'act_123',accountId:'123',name:'Example Ads',currency:'USD',timezone:'America/Los_Angeles'},{id:'act_456',accountId:'456',name:'Another Agency Account',currency:'USD',timezone:'America/Los_Angeles'}]}});
  if(req.method()==='PATCH')return route.fulfill({json:{client:{timezone:JSON.parse(req.postData()).timezone}}});
  if(url.pathname.endsWith('/wizard-draft'))return route.fulfill({json:{draft:null}});
  if(url.pathname.endsWith('/sync-api')){sent=req.postDataJSON();return route.fulfill({json:{ok:true,csvText:'Campaign name,Day,Amount spent (USD)\nTest leads,2026-11-04,100',rowCount:1,hasPreviousMonthData:false,metaAdAccountId:'act_123'}});}
@@ -19,7 +19,24 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(url.pathname.endsWith('/metrics'))return route.fulfill({json:{campaignObjectives:{},perCampaignSelection:{},perCampaignAvailable:{}}});
  return route.fulfill({json:{client:{monthlyBudget:null},ok:true}});
  });
- await page.goto('https://wizard.test/');await page.getByRole('button',{name:'Use America/Los_Angeles for this client'}).click();
+ await page.goto('https://wizard.test/');
+ await page.getByRole('button',{name:'Select an ad account',exact:true}).click();
+ const search=page.getByRole('combobox',{name:'Search ad accounts'});
+ await search.fill('does not exist');await page.getByRole('status').filter({hasText:'No ad accounts match your search.'}).waitFor();
+ await search.fill('another');if(await page.getByRole('option').count()!==1)throw Error('name filter failed');
+ await search.fill('123');if(await page.getByRole('option').count()!==1)throw Error('ID filter failed');
+ if(/USD|America\//.test(await page.getByRole('listbox',{name:'Ad accounts'}).innerText()))throw Error('currency or timezone leaked into account choices');
+ await search.press('Enter');
+ await page.getByRole('button',{name:'Ad account: Example Ads (123)',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Ad account: Example Ads (123)',exact:true}).click();
+ const reopenedSearch=page.getByRole('combobox',{name:'Search ad accounts'});
+ await reopenedSearch.press('ArrowDown');
+ const activeId=await reopenedSearch.getAttribute('aria-activedescendant');
+ if(!activeId || !(await page.locator(`[id="${activeId}"]`).innerText()).includes('Another Agency Account'))throw Error('keyboard account navigation failed');
+ if(kind==='WEEKLY')await page.screenshot({path:path.join(output,`account-picker-${width}.png`),fullPage:false});
+ await reopenedSearch.press('Escape');
+ if(await page.getByRole('dialog',{name:'Choose ad account'}).count())throw Error('Escape did not close picker');
+ await page.getByRole('button',{name:'Use America/Los_Angeles for this client'}).click();
  await page.waitForFunction(()=>window.w.clientTimezone==='America/Los_Angeles');
  if(await page.evaluate(()=>window.w.includePreviousMonthComparison || window.w.previousMonthHasFile))throw Error('manual previous-month settings leaked into API');
  if(await page.getByText('Previous-month totals are fetched separately when available. You can include them in the report after syncing.',{exact:true}).count())throw Error('removed API previous-month copy still visible');
