@@ -283,6 +283,7 @@ function withMessagingBlocked(keys: string[]): string[] {
  * forbidden cross-objective metric on the default chip list.
  */
 const NEVER_BACKFILL_KEYS: Record<string, string[]> = {
+  website_schedule: withMessagingBlocked(["website_leads", "cost_per_website_lead"]),
   meta_form_leads: withMessagingBlocked([
     "website_leads",
     "cost_per_website_lead",

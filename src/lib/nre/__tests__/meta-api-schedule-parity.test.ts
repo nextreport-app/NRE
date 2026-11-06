@@ -82,12 +82,17 @@ describe("website schedule detection is shared by CSV and API", () => {
       const bundle = buildCampaignMetricBundle("META", parsed.headers, "WEBSITE SCHEDULE", "COST PER BOOKING");
       expect(bundle.selection.map(metric => metric.label)).toContain("WEBSITE SCHEDULE");
       expect(bundle.selection.map(metric => metric.label)).toContain("COST PER BOOKING");
+      expect(bundle.selection.map(metric => metric.key)).not.toContain("website_leads");
+      expect(bundle.available.map(metric => metric.key)).not.toContain("website_leads");
       const form = new FormData(); form.set("reportType", JSON.stringify("WEEKLY")); form.set("dateSelection", JSON.stringify({ mode: "last7" })); form.set("selectedCampaigns", JSON.stringify([name]));
+      // Exercise the wizard selection path, including an old saved stray chip.
+      form.set("selectedMetrics", JSON.stringify([...bundle.selection, {key:"website_leads",label:"WEBSITE LEADS",format:"number",csvName:"website leads"}]));
       const client = { id: "fixture", userId: "fixture", accountName: "Scheduling fixture", currency: "USD", timezone: "UTC", monthlyBudget: null, showBudgetPacingOnCover: false, campaignObjectiveCache: JSON.stringify({ [key]: { key: "appointment_leads", resultLabel: "APPOINTMENT LEADS", costLabel: "COST PER BOOKING" } }) } as Client;
       const output = await buildStandardReportForWizard({ client, platform: "META", mtdParsed: parsed, formData: form, now });
       if (!("data" in output)) throw new Error(output.error);
       const slide = output.data.campaignSlides[0];
       expect(slide.ai.resultLabel).toBe("WEBSITE SCHEDULE");
+      expect(slide.dynamicMetrics?.filter(Boolean).map(metric => metric?.key)).not.toContain("website_leads");
       const selectedRows = manual.rows.filter(row => row.campaign_name === name);
       const end = new Date(untilIso + "T12:00:00Z"); end.setUTCDate(end.getUTCDate() - 6);
       const expectedWeek = selectedRows.filter(row => row._raw.Day >= end.toISOString().slice(0, 10));
