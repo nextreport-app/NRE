@@ -48,6 +48,7 @@ export function syntheticResultTypeFromMetaResultIndicator(
 ): string | null {
   const trimmed = indicator.trim();
   if (!trimmed) return null;
+  if (/^conversions:schedule_website$/i.test(trimmed)) return "Website appointments scheduled";
   const core = trimmed.replace(/^actions:/i, "");
 
   const custom = CUSTOM_ID.exec(trimmed);
