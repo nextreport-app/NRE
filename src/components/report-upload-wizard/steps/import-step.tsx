@@ -111,11 +111,11 @@ export function WizardImportStep() {
   const reportTypeSetup = <WizardReportSetupPanel source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />;
   const reportPeriods = <>
     <ReportPeriodControls />
-    {reportType === "WEEKLY" && dataSourceMode === "csv" ? <WeeklyPeriodControls /> : null}
+    {reportType === "WEEKLY" ? <WeeklyPeriodControls /> : null}
   </>;
   const reportSetup = <>{reportTypeSetup}{reportPeriods}</>;
   const apiSelection: MetaApiReportSelection = {
-    reportType, dateSelection: reportType === "WEEKLY" ? { mode: "last7" } : w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
+    reportType, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
     comparisonPeriodA: w.comparisonPeriodA ?? undefined, comparisonPeriodB: w.comparisonPeriodB ?? undefined, historicalMonthCount: w.historicalMonthCount,
   };
   let apiSelectionError: string | null = null;

@@ -30,7 +30,7 @@ export function WizardReportSetupPanel({
 }) {
   const { locale } = useSiteTheme();
   const choicesId = useId();
-  const [setupOpen, setSetupOpen] = useState(source === "api");
+  const [setupOpen, setSetupOpen] = useState(false);
   const selectedCopy = wizardReportTypeCopyForLocale(locale, reportType) ?? WIZARD_REPORT_TYPE_COPY[reportType];
   const requirement = wizardCsvRequirementForReportType({ reportType, clientTimezone });
 

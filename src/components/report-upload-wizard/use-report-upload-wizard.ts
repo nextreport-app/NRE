@@ -1518,8 +1518,7 @@ export function useReportUploadWizard({
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
   async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
-    const syncedDateSelection: DateSelection = reportType === "WEEKLY" ? { mode: "last7" } : currentDateSelection();
-    if (reportType === "WEEKLY") { setDateMode("last7"); setCustomStart(""); setCustomEnd(""); }
+    const syncedDateSelection = currentDateSelection();
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
