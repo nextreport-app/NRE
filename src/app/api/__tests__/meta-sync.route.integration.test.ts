@@ -36,6 +36,14 @@ describe("Meta wizard import route",()=>{
   expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({currency:"AUD",timezone:"UTC",sinceIso:"2026-10-01",untilIso:"2026-10-31",requireDirectResultEvidence:true}));
   expect(await response.json()).toMatchObject({accountCurrency:"AUD",accountTimezone:"UTC",rowCount:1});expect(maybeSyncPreviousMonthDataFromMetaApi).not.toHaveBeenCalled();
  });
+ it("does not fetch or expose saved previous-month data for weekly API reports", async () => {
+  vi.mocked(prisma.client.findUnique).mockResolvedValue({ id: "client_1", userId: "owner", timezone: "UTC", currency: "AUD", previousMonthDataUrl: "https://example.invalid/manual-only.csv", previousMonthDataUpdatedAt: new Date("2026-11-01"), previousMonthSelectedCampaigns: '["Example"]' } as never);
+  const response = await POST(request({ ...body, reportType: "WEEKLY", dateSelection: { mode: "last7" } }), params);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ hasPreviousMonthData: false, previousMonthSynced: false });
+  expect(maybeSyncPreviousMonthDataFromMetaApi).not.toHaveBeenCalled();
+  expect(prisma.client.findUniqueOrThrow).not.toHaveBeenCalled();
+ });
  it("ignores a stale independent source window and fetches only the report dates", async () => {
   const response = await POST(request({ ...body, importRange: { startIso: "2026-08-07", endIso: "2026-11-04" } }), params);
   expect(response.status).toBe(200);

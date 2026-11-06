@@ -460,7 +460,7 @@ export function WizardGenerateStep() {
                 <p>{data.pausedMessage}</p>
                 {(data.chart || data.periodRow.hasData) ? (
                   <p className="mt-2">
-                    Previous month and last-30-days data will still be included in this report where available.
+                    {w.dataSourceMode === "api" ? "Last-30-days data will still be included where available." : "Previous month and last-30-days data will still be included in this report where available."}
                   </p>
                 ) : null}
                 <p className="mt-2 font-medium text-amber-100">Still want to create this report? Click Generate.</p>

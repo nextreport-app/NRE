@@ -1,14 +1,14 @@
 // Browser interaction check with synthetic provider responses. Requires Playwright and Chromium.
 const {createRequire}=require('node:module');const r=createRequire(process.cwd()+'/package.json');const fs=require('node:fs');const path=require('node:path');const os=require('node:os');const output=path.join(os.tmpdir(),'nre-meta-api-workflow');fs.mkdirSync(output,{recursive:true});
 (async()=>{
-const fixture=`import React from 'react';import{createRoot}from'react-dom/client';import{useReportUploadWizard}from'./src/components/report-upload-wizard/use-report-upload-wizard';import{WizardImportStep}from'./src/components/report-upload-wizard/steps/import-step';import{WizardCampaignsStep}from'./src/components/report-upload-wizard/steps/campaigns-step';function App(){const w=useReportUploadWizard({clientId:'example',clientName:'Example',clientTimezone:'America/New_York',currencySymbol:'$',hasGoogleDriveConnected:false,initialLastDriveFolderId:null,initialLastDriveFolderName:null,initialPreviousMonthDataUpdatedAt:null,hasPreviousMonthData:false,clientTemplate:'DARK',metaConfigured:true,metaConnected:true,metaConnectedName:'Test User',apiSyncEnabled:true});window.w=w;return <><WizardImportStep/><WizardCampaignsStep/><output id="step">{w.step}</output></>;}createRoot(document.getElementById('root')).render(<App/>);`;
+const fixture=`import React from 'react';import{createRoot}from'react-dom/client';import{useReportUploadWizard}from'./src/components/report-upload-wizard/use-report-upload-wizard';import{WizardImportStep}from'./src/components/report-upload-wizard/steps/import-step';import{WizardCampaignsStep}from'./src/components/report-upload-wizard/steps/campaigns-step';function App(){const w=useReportUploadWizard({clientId:'example',clientName:'Example',clientTimezone:'America/New_York',currencySymbol:'$',hasGoogleDriveConnected:false,initialLastDriveFolderId:null,initialLastDriveFolderName:null,initialPreviousMonthDataUpdatedAt:'2026-11-04T12:00:00Z',hasPreviousMonthData:true,clientTemplate:'DARK',metaConfigured:true,metaConnected:true,metaConnectedName:'Test User',apiSyncEnabled:true});window.w=w;return <><WizardImportStep/><WizardCampaignsStep/><output id="step">{w.step}</output></>;}createRoot(document.getElementById('root')).render(<App/>);`;
 const mocks=[[/next\/navigation$/,`const params=new URLSearchParams();const router={push:()=>{},replace:()=>{}};export const useRouter=()=>router;export const useSearchParams=()=>params;`],[/\/toast$/,`const toast={showToast:()=>{}};export const useToast=()=>toast;`],[/wizard-context$/,`export const useWizardContext=()=>window.w;`],[/site-theme-provider$/,`export const useSiteTheme=()=>({locale:'en'});`],[/wizard-step-help$/,`export const WizardStepHelp=()=>null;`],[/wizard-sticky-footer$/,`export const WizardStickyFooter=()=>null;`]];
 await r('esbuild').build({stdin:{contents:fixture,loader:'tsx',resolveDir:process.cwd()},bundle:true,define:{'process.env':'{}'},platform:'browser',jsx:'automatic',outfile:path.join(output,'browser.js'),plugins:[{name:'mock',setup(build){for(const[filter]of mocks)build.onResolve({filter},args=>({path:args.path,namespace:'mock'}));build.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:mocks.find(([filter])=>filter.test(args.path))[1],loader:'tsx'}));}}]});
 const css=await r('postcss')([r('@tailwindcss/postcss')({base:process.cwd()})]).process(fs.readFileSync('src/app/globals.css','utf8'),{from:process.cwd()+'/src/app/globals.css'});const browser=await r('playwright').chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
 for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARISON','DAY_BREAKDOWN']){
  const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed;page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
  await page.clock.install({time:new Date('2026-11-05T12:00:00Z')});
- await page.addInitScript(()=>localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7'})));
+ await page.addInitScript(()=>localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7',includePreviousMonthComparison:true})));
  await page.route('https://wizard.test/**',async route=>{const req=route.request(),url=new URL(req.url());
  if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:`<html lang="en" data-site-theme="dark"><head><style>${css.css}</style><style>body{background:#101217;padding:16px}#root{max-width:960px;margin:auto}</style></head><body><div class="nre-app-shell" id="root"></div><script>${fs.readFileSync(path.join(output,'browser.js'),'utf8').replaceAll('</script','<\\/script')}</script></body></html>`});
  if(url.pathname==='/api/meta/adaccounts')return route.fulfill({json:{accounts:[{id:'act_123',name:'Example Ads',currency:'USD',timezone:'America/Los_Angeles'}]}});
@@ -21,6 +21,9 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  });
  await page.goto('https://wizard.test/');await page.getByRole('button',{name:'Use America/Los_Angeles for this client'}).click();
  await page.waitForFunction(()=>window.w.clientTimezone==='America/Los_Angeles');
+ if(await page.evaluate(()=>window.w.includePreviousMonthComparison || window.w.previousMonthHasFile))throw Error('manual previous-month settings leaked into API');
+ if(await page.getByText('Previous-month totals are fetched separately when available. You can include them in the report after syncing.',{exact:true}).count())throw Error('removed API previous-month copy still visible');
+
  if(await page.getByRole('heading',{name:'Meta will fetch',exact:true}).count())throw Error('removed fetch section still visible');
  if(kind==='WEEKLY'){
   const weekly=page.locator('section').filter({has:page.getByRole('heading',{name:'Weekly report period',exact:true})});
@@ -70,6 +73,7 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await page.evaluate(() => window.w.setStep(1));
  await page.getByRole('button').filter({has:page.getByText('Manual CSV upload',{exact:true})}).click();
  if(await page.evaluate(()=>window.w.campaigns.length)!==0 || await page.evaluate(()=>window.w.mtdFile)!==null)throw Error('stale source data survived source change');
+ if(!(await page.evaluate(()=>window.w.previousMonthHasFile)) || !(await page.evaluate(()=>window.w.includePreviousMonthComparison)))throw Error('manual previous-month setup was lost after API sync');
  if(kind==='WEEKLY'){
   const weekly=page.locator('section').filter({has:page.getByRole('heading',{name:'Weekly report period',exact:true})});
   await weekly.getByRole('button',{name:'Last 7 days',exact:true}).click();
