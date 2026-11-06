@@ -21,7 +21,20 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  });
  await page.goto('https://wizard.test/');await page.getByRole('button',{name:'Use America/Los_Angeles for this client'}).click();
  await page.waitForFunction(()=>window.w.clientTimezone==='America/Los_Angeles');
- if(await page.getByRole('heading',{name:'Meta will fetch',exact:true}).count() || await page.getByRole('heading',{name:'Weekly report period',exact:true}).count())throw Error('removed weekly/fetch sections still visible');
+ if(await page.getByRole('heading',{name:'Meta will fetch',exact:true}).count())throw Error('removed fetch section still visible');
+ if(kind==='WEEKLY'){
+  const weekly=page.locator('section').filter({has:page.getByRole('heading',{name:'Weekly report period',exact:true})});
+  if(await weekly.getByRole('button',{name:'Previous 7 days',exact:true}).count()||await weekly.getByRole('button',{name:'Last 14 days',exact:true}).count())throw Error('removed weekly presets still visible');
+  const text=await weekly.innerText();
+  if(text.includes('America/')||text.includes('Choose the reporting period')||text.includes('automatically fetches'))throw Error('extra weekly copy still visible');
+  await weekly.getByRole('button',{name:'Custom date range',exact:true}).click();
+  await weekly.getByRole('button',{name:'Start date',exact:true}).click();
+  await page.getByRole('button',{name:'2026-10-01',exact:true}).click();
+  await weekly.getByRole('button',{name:'End date',exact:true}).click();
+  await page.getByRole('button',{name:'Previous month',exact:true}).click();
+  await page.getByRole('button',{name:'2026-10-07',exact:true}).click();
+ }
+
  if(kind!=='WEEKLY'){
  if(!await page.getByRole('group',{name:'Choose report type',exact:true}).isVisible())await page.getByRole('button',{name:'Change report type',exact:true}).click();
  const label=kind==='HISTORICAL'?'Monthly report':kind==='COMPARISON'?'Compare two periods':'Daily report';
@@ -51,11 +64,22 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(JSON.stringify(before)!==JSON.stringify(after))throw Error('analysis replaced selection '+JSON.stringify({before,after}));
  if('importRange' in sent)throw Error('independent source window still sent');
  if(sent.reportType!==kind)throw Error('wrong report '+JSON.stringify(sent));
+ if(kind==='WEEKLY'&&(sent.dateSelection.mode!=='custom'||sent.dateSelection.customStart!=='2026-10-01'||sent.dateSelection.customEnd!=='2026-10-07'))throw Error('API lost selected custom week '+JSON.stringify(sent));
  if(!analyzed.includes(kind))throw Error('report not sent to analyze');
  if(errors.length)throw Error(errors.join('\n'));
  await page.evaluate(() => window.w.setStep(1));
  await page.getByRole('button').filter({has:page.getByText('Manual CSV upload',{exact:true})}).click();
  if(await page.evaluate(()=>window.w.campaigns.length)!==0 || await page.evaluate(()=>window.w.mtdFile)!==null)throw Error('stale source data survived source change');
+ if(kind==='WEEKLY'){
+  const weekly=page.locator('section').filter({has:page.getByRole('heading',{name:'Weekly report period',exact:true})});
+  await weekly.getByRole('button',{name:'Last 7 days',exact:true}).click();
+  if(await page.evaluate(()=>window.w.dateMode)!=='last7')throw Error('CSV last-seven preset failed');
+  await weekly.getByRole('button',{name:'Custom date range',exact:true}).click();
+  await weekly.getByRole('button',{name:'Start date',exact:true}).click();
+  await page.getByRole('button',{name:'2026-10-02',exact:true}).click();
+  if(await page.evaluate(()=>window.w.customStart)!=='2026-10-02')throw Error('CSV custom calendar failed');
+  if((await weekly.innerText()).includes('America/'))throw Error('CSV weekly timezone still shown');
+ }
  console.log('PASS',width,kind,{before,request:sent,sourceReset:'PASS'});await page.close();
 }
 await browser.close();

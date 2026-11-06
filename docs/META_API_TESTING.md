@@ -15,7 +15,7 @@ Meta API import is enabled for controlled testing. Manual CSV import remains ava
 
 Choose API import and a report type, connect/select an ad account, then choose that report’s period. All four report choices are visible immediately. There is no independent source-date selector: the selected report period determines the API request automatically, with a read-only summary of the exact fetch dates.
 
-- Weekly defaults to the last seven reporting days, with a last-30-days API fetch for MTD/chart data. Weekly Import uses its default automatically; custom reporting dates remain available on Generate. An earlier custom period requires source coverage.
+- Weekly defaults to the last seven reporting days, with a last-30-days API fetch for MTD/chart data. CSV and API Import share Last 7 days and Custom date range controls; Generate uses the same control. An earlier API custom period extends the required source coverage automatically.
 - Monthly offers month presets and custom From/To month pickers. Three months means three selected calendar months, not a rolling 90-day import.
 - Comparison offers presets or two custom periods; Meta fetches daily data spanning both.
 - Day-by-day offers presets or a custom date range; Meta fetches those dates.
@@ -104,3 +104,12 @@ Standard traffic, landing-page, reach, impression and instant-form goals retain 
 Regression tests cover actions=21/results=23 and actions=23/results=21, proving the source policy does not choose the smaller value. The full CSV/engine/PPT reproduction now includes conflicting alternative channels and still produces 21 configured website results, $444.63 chart spend and $21.17 CPL from its canonical inputs. Provider tests check field/attribution settings through pagination and date chunks. All four PPT types remain covered.
 
 Verification: 80 API/provider/route/PPT tests, 505 accounting tests, 279 report-choice tests and 61 API route tests passed. TypeScript, scoped lint and the production build passed. Provider data in tests is synthetic; the live account must be synced again after deployment to verify its actual counts. No reconnect, environment variable or permission changes are required for this correction.
+
+
+## Matching weekly controls (November 6, 2026)
+
+Weekly CSV and API setup now use the same Last 7 days / Custom date range component. Remove the Previous 7 days and Last 14 days buttons, explanatory paragraphs and visible timezone suffix. Account timezone still controls date calculations internally. Legacy saved quick picks are displayed as their equivalent custom ranges. Both report-type panels initially use the same collapsed presentation.
+
+API import sends the selected period to sync and analyze without resetting custom dates to Last 7 days. The automatic 30-day chart window is still fetched, extending to include earlier custom reporting dates as needed. No separate fetch window or Meta will fetch panel was restored.
+
+Verification: 85 API/provider/UI/PPT tests, 279 report-choice tests, TypeScript and production build passed. Eight mobile/desktop browser journeys cover API custom-week preservation, CSV presets/calendar interaction, and the other report types. Scoped lint retains existing effect errors in the wizard hook. No new environment settings or permissions are required.
