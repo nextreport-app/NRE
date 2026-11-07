@@ -3,7 +3,7 @@
  * Update docs/META_LAUNCH_SCOPE.md when this changes.
  */
 
-export const META_LAUNCH_PHASE = "meta-v1" as const;
+export const META_LAUNCH_PHASE = "meta-api-live" as const;
 
 /** Ad platforms selectable in the ads report wizard (GA4 uses the website wizard). */
 export const LAUNCH_ENABLED_PLATFORMS = ["META"] as const;
@@ -62,13 +62,13 @@ export function coerceLaunchPlatform(platform: string): LaunchEnabledPlatform {
 export const META_LAUNCH_HERO_BADGE = "Meta Ads reporting for agencies";
 
 export const META_LAUNCH_HERO_SUBHEAD =
-  "Upload a Meta Ads CSV from Ads Manager. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
+  "Connect Meta Ads for read-only API sync, or upload an Ads Manager CSV. Branded PowerPoint, live browser link, or Google Slides with AI-written insights — often under 2 minutes.";
 
 export const META_LAUNCH_FOOTER_BLURB =
   "Automated Meta Ads reporting for digital agencies — client-ready decks in under two minutes.";
 
 /** Public site — do not call these “live” until launch scope expands. */
-export const LAUNCHING_SOON_PLATFORMS_LABEL = "Meta API sync";
+export const LAUNCHING_SOON_PLATFORMS_LABEL = "Google Ads, TikTok Ads and GA4";
 
 export const DEFERRED_PLATFORMS_SHORT = "";
 

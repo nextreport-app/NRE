@@ -442,7 +442,7 @@ function metricHonestlyAvailable(metric: SelectedMetric, headers: string[], csvK
     csvKeys.has("cost_per_website_lead") ||
     hasHeader(headers, "cost per results", "cost per result");
 
-  if (upper === "LINK CLICKS" && metric.key === "cpc_link_click" && hasSpend && (csvKeys.has("link_clicks") || hasResults)) return true;
+  if (metric.key === "cpc_link_click" && hasSpend && (csvKeys.has("link_clicks") || (upper === "LINK CLICKS" && hasResults))) return true;
   if (upper === "LINK CLICKS" && metric.key === "link_clicks" && hasResults) return true;
 
   if (isForm && (metric.key === "meta_form_leads" || metric.key === "results") && hasResults) return true;
@@ -609,7 +609,7 @@ export function defaultMetaSelection(resultLabel: string, resultCostLabel: strin
       if (hasHeader(headers, "cost per on-facebook lead")) {
         slot5 = byKey("META", "cost_per_meta_form_lead")!;
       } else if (hasHeader(headers, "cost per lead")) {
-        slot5 = byKey("META", "cost_per_lead")!;
+        slot5 = { ...byKey("META", "cost_per_lead")!, key: "cost_per_meta_form_lead" };
       } else {
         slot5 = { ...byKey("META", "cost_per_result", "COST PER LEAD")!, key: "cost_per_meta_form_lead" };
       }

@@ -2,7 +2,7 @@
 export const PRICING_FAQS = [
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads CSV reporting is live — upload a day-wise export from Meta Ads Reporting in the wizard (weekly, monthly, daily, comparison, historical, day-breakdown, quarterly, YTD, and creative report types where supported). Meta API sync is launching soon and included in your plan when it launches.",
+    a: "Meta Ads reporting is live through CSV upload or read-only Meta API sync, included in every plan. Generate weekly, monthly, comparison and daily reports. Google Ads, TikTok Ads and GA4 reporting are coming soon.",
   },
   {
     q: "Is there really no credit card required for the free trial?",
@@ -10,7 +10,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "What's the difference between Freelancer, Agency and Agency Plus?",
-    a: "All three plans include unlimited report generation subject to fair use and generation concurrency safeguards, Meta CSV reporting today, white-label options, Slack/Zapier webhooks, and client sharing tools. Freelancer supports up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100. All three are available through self-service checkout. Priority email support is included on Agency and Agency Plus. Contact us for more than 100 clients.",
+    a: "All three plans include unlimited report generation subject to fair use and generation concurrency safeguards, Meta CSV upload and API sync, white-label options, Slack/Zapier webhooks, and client sharing tools. Freelancer supports up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100. All three are available through self-service checkout. Priority email support is included on Agency and Agency Plus. Contact us for more than 100 clients.",
   },
   {
     q: "Do you charge my card automatically each month?",
@@ -26,7 +26,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "Can I connect ad platforms directly instead of uploading a CSV?",
-    a: "Meta Marketing API sync is launching soon. Today the supported path is a day-wise CSV from Meta Ads Reporting (best parity with Ads Manager).",
+    a: "Yes. Connect Meta Ads in Account Settings, then choose API sync in the report wizard and select an ad account. API sync uses read-only access and follows the same report setup and calculations as CSV upload. You can switch methods at any time.",
   },
   {
     q: "Can I white-label reports for my clients?",

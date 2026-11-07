@@ -1,7 +1,7 @@
 import type { Platform } from "@/lib/nre/google-columns";
 import { LAUNCHING_SOON_PLATFORMS_LABEL } from "@/lib/meta-launch-scope";
 
-/** Platforms still in beta — Meta Ads CSV is production-ready and fully tested. */
+/** Deferred platforms remain in testing; Meta Ads CSV and API reporting are live. */
 export type PlatformBetaId = Platform | "GA4";
 
 export const PLATFORM_BETA_STATUS: Record<PlatformBetaId, boolean> = {
@@ -22,4 +22,4 @@ export function platformBetaCardNote(platform: PlatformBetaId): string | null {
 }
 
 /** Full notice for wizard and settings panels. */
-export const PLATFORM_BETA_NOTICE = `Meta Ads CSV reporting is live. ${LAUNCHING_SOON_PLATFORMS_LABEL} is in testing — connections remain available in Account Settings, while report-wizard API import is hidden until testing is complete.`;
+export const PLATFORM_BETA_NOTICE = `Meta Ads CSV upload and API sync are live. ${LAUNCHING_SOON_PLATFORMS_LABEL} reporting is coming soon; their connection settings remain available for setup.`;

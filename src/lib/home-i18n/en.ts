@@ -12,9 +12,9 @@ export const HOME_EN: HomeCopy = {
   howItWorksSubtitle: "The wizard has four detailed steps — here is the short version.",
   howItWorksSteps: [
     {
-      title: "Upload CSV",
+      title: "Connect or upload",
       description:
-        "Pick report type, export day-wise CSV from Meta Ads Reporting, and upload on Import.",
+        "Pick a report type, then sync daily data from Meta or upload a day-wise CSV.",
     },
     {
       title: "Confirm & review",
@@ -36,12 +36,12 @@ export const HOME_EN: HomeCopy = {
   painWithCalc: "10 clients × 2 minutes",
   painWithResult: "= 20 minutes/week",
   featuresTitle: "Everything you need to send better Meta reports",
-  featuresSubtitle: "Meta Ads reporting — day-wise CSV in, branded client deck out.",
+  featuresSubtitle: "Meta Ads reporting — API sync or CSV upload, client-ready decks.",
   features: [
     {
-      title: "CSV upload",
+      title: "Meta API sync + CSV upload",
       description:
-        "Export Last 30 days or Previous month with Day breakdown from Ads Manager — the supported way to build Meta reports today.",
+        "Connect your ad account for read-only Meta API sync, or upload an Ads Manager CSV. Both use the same reporting engine.",
     },
     {
       title: "Previous-month totals",
@@ -120,8 +120,8 @@ export const HOME_EN: HomeCopy = {
     unlimitedClients: "Up to 50 brands",
     reportGeneration: "Report generation",
     unlimitedReports: "Unlimited",
-    metaReporting: "Meta Ads (CSV + wizard)",
-    otherPlatforms: "Google Ads, TikTok, GA4, Meta API sync",
+    metaReporting: "Meta Ads (API sync + CSV)",
+    otherPlatforms: "Google Ads, TikTok Ads, GA4",
     included: "Included",
     roadmapIncluded: "Launching soon (included in plan)",
     whiteLabel: "White-label share links",
@@ -186,7 +186,7 @@ export const HOME_EN: HomeCopy = {
         features: [
           AGENCY_CLIENT_LIMIT_FEATURE,
           "Unlimited reports with fair-use safeguards",
-          "Meta Ads — CSV upload (live)",
+          "Meta Ads — API sync + CSV upload (live)",
           "AI-written campaign summaries & insights",
           "PowerPoint, Google Slides & live browser share",
           "Save to Google Drive",
@@ -200,7 +200,7 @@ export const HOME_EN: HomeCopy = {
         features: [
           PROFESSIONAL_CLIENT_LIMIT_FEATURE,
           "Everything in Freelancer",
-          "Quarterly, YTD & creative Meta CSV reports",
+          "Weekly, monthly, comparison & daily Meta reports",
           "Priority email support",
           "Early access to new features",
         ],

@@ -52,7 +52,7 @@ export default function OpenGraphImage() {
             maxWidth: 880,
           }}
         >
-          Meta Ads — CSV upload → .pptx, live link & Slides
+          Meta Ads — API sync or CSV → .pptx, live link & Slides
         </div>
       </div>
     ),

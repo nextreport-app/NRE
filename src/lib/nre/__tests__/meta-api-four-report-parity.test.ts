@@ -6,11 +6,15 @@ vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/li
 import {fetchMetaAdAccountInsights,fetchMetaAdAccountCampaignPeriodInsights,type MetaInsightRow} from "@/lib/meta-api";
 import {fetchMetaReportCsv} from "../meta-api-sync";
 import {metaApiImportRange,type MetaApiReportSelection} from "../meta-api-import-range";
+import {buildCampaignMetricBundle} from "../wizard-campaign-metrics";
+import {buildCampaignObjectiveMapWithConfidence} from "../objective";
+import {extractCampaignNames,extractCampaignSpend} from "../campaigns";
 import {parseCsvText} from "../parse-csv";
 import {buildStandardReportForWizard} from "../report-engine/build-standard-from-wizard";
+import {buildHistoricalReportData,buildHistoricalAiCopyMap} from "../historical-report-data";
 import {buildComparisonReportData} from "../report-data";
 import {buildDayBreakdownReportData} from "../day-breakdown-report-data";
-import {renderPptx,renderComparisonPptx,renderDayBreakdownPptx} from "../../pptx/render";
+import {renderPptx,renderComparisonPptx,renderDayBreakdownPptx,renderHistoricalPptx} from "../../pptx/render";
 import type {Client} from "@/generated/prisma/client";
 const now=new Date("2026-11-05T12:00:00Z");
 const all:MetaInsightRow[]=Array.from({length:65},(_,i)=>{
@@ -26,6 +30,7 @@ beforeEach(()=>{
 const cases:{name:string;selection:MetaApiReportSelection;spend:number;results:number}[]=[
  {name:"weekly",selection:{reportType:"WEEKLY"},spend:70,results:12},
  {name:"monthly",selection:{reportType:"MONTHLY",dateSelection:{mode:"custom",customStart:"2026-10-01",customEnd:"2026-10-31"}},spend:310,results:62},
+ {name:"multi-month",selection:{reportType:"HISTORICAL",historicalMonthCount:2,dateSelection:{mode:"custom",customStart:"2026-09-01",customEnd:"2026-10-31"}},spend:610,results:122},
  {name:"comparison",selection:{reportType:"COMPARISON",comparisonPeriodA:{startIso:"2026-10-29",endIso:"2026-11-04"},comparisonPeriodB:{startIso:"2026-10-22",endIso:"2026-10-28"}},spend:70,results:12},
  {name:"daily",selection:{reportType:"DAY_BREAKDOWN",dateSelection:{mode:"custom",customStart:"2026-10-01",customEnd:"2026-10-10"}},spend:100,results:20},
 ];
@@ -37,8 +42,22 @@ describe("API data and independent CSV produce the same four report outcomes",()
   const apiRows=parseCsvText(api.csvText);
   const selected=all.filter(row=>row.date_start!>=range.sinceIso&&row.date_start!<=range.untilIso);
   const csv=parseCsvText("Campaign name,Ad set name,Day,Result type,Results,Amount spent (AUD),Cost per result,Impressions,Reach,Clicks (all),CTR (all),CPC (all),Link clicks\n"+selected.map(row=>`Example Instant Form,Main,${row.date_start},Leads (form),${row.date_start==="2026-11-04"?0:2},10,${row.date_start==="2026-11-04"?"":5},2000,1000,10,0.5,1,5`).join("\n"));
+  expect(extractCampaignNames(apiRows.rows)).toEqual(extractCampaignNames(csv.rows));
+  expect(extractCampaignSpend(apiRows.rows)).toEqual(extractCampaignSpend(csv.rows));
+  const detected=buildCampaignObjectiveMapWithConfidence(apiRows.rows);
+  expect(Object.fromEntries(detected)).toEqual(Object.fromEntries(buildCampaignObjectiveMapWithConfidence(csv.rows)));
+  const objective=detected.get("example instant form")!;
+  const apiBundle=buildCampaignMetricBundle("META",apiRows.headers,objective.resultLabel,objective.costLabel);
+  const csvBundle=buildCampaignMetricBundle("META",csv.headers,objective.resultLabel,objective.costLabel);
+  expect(apiBundle.selection.map(({key,label,format})=>({key,label,format}))).toEqual(csvBundle.selection.map(({key,label,format})=>({key,label,format})));
   const build=async(parsed:typeof apiRows)=>{
    const base={accountName:client.accountName,currencySymbol:"A$",timezone:"UTC",monthlyBudget:null,mtdDailyRows:parsed.rows,now};
+   if(selection.reportType==="HISTORICAL"){
+    const data=buildHistoricalReportData({...base,monthCount:2,dateSelection:selection.dateSelection,selectedMetrics:parsed === apiRows ? apiBundle.selection : csvBundle.selection});
+    expect(data.comparisonRows.reduce((sum,row)=>sum+Number(row.spend.replace(/[^0-9.]/g,"")),0)).toBe(spend);
+    expect(data.slides.reduce((sum,slide)=>sum+Number(slide.metrics.results),0)).toBe(results);
+    return {data,ppt:await renderHistoricalPptx({templateBuffer,data,aiCopyBySlideKey:buildHistoricalAiCopyMap(data.slides,data.adSetSlides)})};
+   }
    if(selection.reportType==="COMPARISON"){
     const data=buildComparisonReportData({...base,periodA:selection.comparisonPeriodA!,periodB:selection.comparisonPeriodB!});
     expect(data.totals.metricsA.spend.value).toBe(spend);expect(data.totals.metricsA.results.value).toBe(results);expect(data.totals.metricsA.cpr.value).toBeCloseTo(spend/results);
@@ -48,7 +67,7 @@ describe("API data and independent CSV produce the same four report outcomes",()
     const data=buildDayBreakdownReportData({...base,dateRange:{startIso:selection.dateSelection!.customStart!,endIso:selection.dateSelection!.customEnd!}});
     expect(data.dayRows).toHaveLength(10);expect(data.dayRows.reduce((sum,row)=>sum+Number(row.spend.replace(/[^0-9.]/g,"")),0)).toBe(spend);return {data,ppt:await renderDayBreakdownPptx({templateBuffer,data})};
    }
-   const formData=new FormData();formData.set("reportType",JSON.stringify(selection.reportType));if(selection.dateSelection)formData.set("dateSelection",JSON.stringify(selection.dateSelection));
+   const formData=new FormData();formData.set("reportType",JSON.stringify(selection.reportType));formData.set("selectedMetrics",JSON.stringify(parsed === apiRows ? apiBundle.selection : csvBundle.selection));if(selection.dateSelection)formData.set("dateSelection",JSON.stringify(selection.dateSelection));
    const result=await buildStandardReportForWizard({client,platform:"META",mtdParsed:parsed,formData,now});if(!("data"in result))throw Error(result.error);
    expect(result.data.campaignSlides[0].metrics.spend).toBe(`A$${spend}`);expect(result.data.campaignSlides[0].metrics.results).toBe(String(results));
    expect(result.data.campaignSlides[0].metrics.cpr).toBe(`A$${(spend/results).toFixed(2)}`);
@@ -60,7 +79,7 @@ describe("API data and independent CSV produce the same four report outcomes",()
   expect(apiText).toContain("METRIC ABBREVIATION GUIDE");expect(apiText).not.toContain("{{");
   expect(apiText).toContain("A$");expect(apiText).not.toContain("₹");
   // Both sources independently pass the same monetary expectations; their rendered numbers agree.
-  expect(apiText.match(/A\$[\d,.]+/g)).toEqual(csvText.match(/A\$[\d,.]+/g));
+  expect(apiText).toBe(csvText);
   if(process.env.META_API_REVIEW_ARTIFACT_DIR){mkdirSync(process.env.META_API_REVIEW_ARTIFACT_DIR,{recursive:true});writeFileSync(`${process.env.META_API_REVIEW_ARTIFACT_DIR}/${name}-api.pptx`,fromApi.ppt);}
  },30000);
 });

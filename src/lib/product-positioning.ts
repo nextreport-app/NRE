@@ -14,20 +14,20 @@ export const SPECIALIST_TIME_SAVINGS_LINE =
   "Every automated report saves about 15–25 minutes of specialist time. At typical agency billing rates, that adds up to meaningful capacity each month — not just a shorter Friday.";
 
 export const PRODUCT_ELEVATOR_PITCH =
-  "NextReport turns your Meta Ads Manager CSV into the branded weekly deck you’d normally build in PowerPoint — with AI summaries — in about two minutes. Built for agencies, not client dashboards.";
+  "NextReport turns Meta API data or your Ads Manager CSV into the branded weekly deck you’d normally build in PowerPoint — with AI summaries — in about two minutes. Built for agencies, not client dashboards.";
 
 export const PRODUCT_DIFFERENTIATOR_LINE =
-  "Upload the same export you already pull from Ads Manager; get the deck you would have built by hand — with AI summary — in minutes.";
+  "Connect Meta Ads or upload the export you already pull from Ads Manager; get the deck you would have built by hand — with AI summary — in minutes.";
 
-export const META_V1_PROMISE_HEADLINE = "What’s live today (Meta CSV)";
+export const META_V1_PROMISE_HEADLINE = "What’s live today (Meta Ads)";
 
 export const META_V1_PROMISE_BULLETS = [
-  "Live now: Meta Ads — weekly, monthly, yesterday, comparison, historical, and day-by-day table reports from a day-wise CSV export.",
-  "Launching soon: Meta Marketing API sync (available for testing on some accounts — not production launch).",
-  "Export: Meta Ads Manager → Reports → Export table data → CSV (Day breakdown — not the Campaigns-screen export).",
-  "Date range: Last 30 days with Day breakdown (recommended), or Previous Month for month-end reporting.",
-  "Objectives auto-detected from your CSV; confirm in the wizard when needed.",
-  "Numbers come straight from your CSV rows; totals should match Ads Manager for the same dates and export level.",
+  "Live now: Meta Ads — weekly, monthly, comparison and daily reports from read-only API sync or a day-wise CSV.",
+  "Coming soon: Google Ads, TikTok Ads and GA4 reporting.",
+  "CSV option: Meta Ads Manager → Reports → Export table data → CSV (Day breakdown — not the Campaigns-screen export).",
+  "API sync fetches the dates your report needs. CSV exports should cover your selected period with Day breakdown.",
+  "Objectives auto-detected from your imported data; confirm in the wizard when needed.",
+  "Both import methods use the same calculation engine; totals should match Ads Manager for the same dates and export level.",
 ] as const;
 
 export const REFERRAL_PROGRAM_LINE =

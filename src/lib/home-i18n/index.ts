@@ -22,6 +22,12 @@ export function homeCopy(locale: SiteLocaleId): HomeCopy {
   const patch = PATCHES[locale];
   if (!patch) return HOME_EN;
   const copy = mergeHomeCopy(HOME_EN, patch);
+  // Launch status must not regress through older translation patches.
+  copy.howItWorksSteps = [HOME_EN.howItWorksSteps[0], ...copy.howItWorksSteps.slice(1)];
+  copy.features = [HOME_EN.features[0], ...copy.features.slice(1)];
+  copy.featuresSubtitle = HOME_EN.featuresSubtitle;
+  copy.pricingComparison.metaReporting = HOME_EN.pricingComparison.metaReporting;
+  copy.pricingComparison.otherPlatforms = HOME_EN.pricingComparison.otherPlatforms;
   // Commercial promises must not retain obsolete limits/tax/automation claims in old translations.
   copy.pricing.plans.starter.features = HOME_EN.pricing.plans.starter.features;
   copy.pricing.plans.professional.features = HOME_EN.pricing.plans.professional.features;

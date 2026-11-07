@@ -17,9 +17,9 @@ const FRAMES: ExplainerFrame[] = [
   {
     step: "1 / 5",
     title: "Add your ad data",
-    caption: "Upload a CSV export from Meta Ads Manager.",
+    caption: "Sync from Meta Ads or upload an Ads Manager CSV.",
     voiceoverScript:
-      "Start with a Meta Ads CSV export from Ads Manager. Meta API sync are launching soon.",
+      "Connect Meta Ads for API sync, or upload an Ads Manager CSV. Choose your report and continue through the same wizard.",
   },
   {
     step: "2 / 5",
@@ -55,7 +55,7 @@ function MockWizardPanel({ frameIndex }: { frameIndex: number }) {
   const panels = [
     <div key="upload" className="space-y-2">
       <div className="rounded border border-dashed border-navy-border p-3 text-center text-[10px] text-ink-muted">
-        Upload your Ads Manager CSV
+        Meta API sync or CSV upload
       </div>
       <div className="flex gap-1.5">
         {[

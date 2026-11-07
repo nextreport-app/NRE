@@ -12,7 +12,7 @@ describe("ad platform API sync visibility", () => {
     expect(isClientPlatformConnectionsSectionVisible()).toBe(true);
   });
 
-  it("enables Meta testing by default and allows an explicit kill switch", async () => {
+  it("enables Meta sync for all users by default and allows an explicit kill switch", async () => {
     delete process.env.AD_PLATFORM_API_SYNC_ENABLED;
     const { isAdPlatformApiSyncEnabled } = await import("../ad-platform-api-sync");
     expect(isAdPlatformApiSyncEnabled()).toBe(true);

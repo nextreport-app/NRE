@@ -13,7 +13,7 @@ describe.each(["WEEKLY", "MONTHLY", "COMPARISON", "DAY_BREAKDOWN"])("uniform met
     const html = renderToStaticMarkup(<WizardMetricsStep />);
     expect(html).toContain("Included metrics");
     expect(html).toContain("Add more metrics · optional");
-    expect(html).toContain("Add from CSV");
+    expect(html).toContain("Available metrics");
     expect(html).toContain("LINK CLICKS");
     expect(html).toContain("Continue to generate");
     expect(html).not.toContain("Metrics are fixed");

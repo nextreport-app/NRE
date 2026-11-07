@@ -32,7 +32,7 @@ import { getSocialProofStats } from "@/lib/social-proof-stats";
 export const metadata = pageMetadata({
   title: "Meta Ads Weekly Report Automation for Agencies",
   description:
-    "Meta ads weekly report template automation — upload Ads Manager CSV, get agency client reporting PowerPoint, live link, or Slides in minutes. Save specialist time. Free trial.",
+    "Meta ads weekly report template automation — connect Meta Ads or upload an Ads Manager CSV, get agency client reporting PowerPoint, live link, or Slides in minutes. Save specialist time. Free trial.",
   path: "/",
   keywords: [
     "meta ads weekly report template automation",
@@ -60,7 +60,7 @@ export default async function Home() {
         <HowItWorksSection />
         <section aria-label="Platform connections" className="border-y border-navy-border bg-navy-panel/30 px-6 py-6">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
-            <div><h2 className="text-base font-semibold text-ink">Platform connections</h2><p className="mt-1 text-sm text-ink-secondary">Meta Ads · Google Ads · Google Analytics (GA4) · TikTok Ads</p><p className="mt-1 text-xs text-ink-muted">Manage connections in Account Settings. Report generation currently supports manual Meta CSV; other platforms and API imports are awaiting testing.</p></div>
+            <div><h2 className="text-base font-semibold text-ink">Platform connections</h2><p className="mt-1 text-sm text-ink-secondary">Meta Ads · Google Ads · Google Analytics (GA4) · TikTok Ads</p><p className="mt-1 text-xs text-ink-muted">Meta Ads reporting is live with API sync or CSV upload. Manage connections in Account Settings. Google Ads, TikTok Ads and GA4 reporting are coming soon.</p></div>
             <Link href="/account" className="text-sm font-semibold text-accent hover:underline">Manage connections →</Link>
           </div>
         </section>

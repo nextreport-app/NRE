@@ -40,7 +40,7 @@ export default async function TermsPage() {
         <section>
           <h2 className="mb-2 text-lg font-medium text-white">1. The Service</h2>
           <p>
-            NextReport lets you upload Meta Ads (and similar) performance exports and
+            NextReport lets you import performance data through a read-only Meta Ads connection or upload performance exports and
             generates branded PowerPoint reports from that data, optionally including
             AI-written insights through configured AI providers.
           </p>

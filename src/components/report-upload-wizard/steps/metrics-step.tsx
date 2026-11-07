@@ -108,11 +108,11 @@ export function WizardMetricsStep() {
     const toggleMetric = (key: string) => daily && baseMetrics.some(metric => metric.key === key) ? w.toggleDailyBaseMetric(key) : toggle(key);
     const extras = optional.filter(metric => keys.includes(metric.key));
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
-      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your CSV. Add or remove optional metrics below.</p>
+      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your imported data. Add or remove optional metrics below.</p>
       <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "var(--nre-wizard-section-border, 3px solid #38bdf8)" }}>
         <h3 className="text-[15px] font-bold text-dash-ink">{daily ? "Daily tables · selected campaigns" : "Comparison · selected campaigns"}</h3>
         <p className="mt-1 text-sm text-dash-ink-secondary">{daily ? "The same metrics are shown for each day, combined across selected campaigns." : "Each campaign uses its confirmed objective for both periods. Extras appear on additional comparison slides."}</p>
-        <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={daily ? [...baseMetrics, ...optional] : optional} lockedKeys={daily ? [] : included.map(metric => metric.key)} onAdd={metric => toggleMetric(metric.key)} onRemove={toggleMetric} limit={MAX_TOTAL_METRICS + included.length} hint="Only supported metrics from your CSV are shown." />
+        <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={daily ? [...baseMetrics, ...optional] : optional} lockedKeys={daily ? [] : included.map(metric => metric.key)} onAdd={metric => toggleMetric(metric.key)} onRemove={toggleMetric} limit={MAX_TOTAL_METRICS + included.length} hint="Only supported metrics from your imported data are shown." />
       </div>
       <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-[#0b1728]">{copy.continueToGenerate}</button></div>
       <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />
@@ -128,11 +128,11 @@ export function WizardMetricsStep() {
         </div>
       )}
 
-      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your CSV. Review the first campaign below, or expand the list to customize others.</p>
+      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from your imported data. Review the first campaign below, or expand the list to customize others.</p>
       {activeCampaigns.length > 1 ? (
         <p className="text-[14px] text-dash-ink-secondary">
           {activeCampaigns.length} campaigns · {totalMetricChips} metric{totalMetricChips === 1 ? "" : "s"} selected from
-          your CSV
+          your imported data
         </p>
       ) : null}
 

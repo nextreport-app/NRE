@@ -110,35 +110,35 @@ export function buildGenerateStepReadinessItems(input: {
   if (v?.status === "ok" && v.coverageWarnings?.length) {
     items.push({
       id: "csv",
-      label: "CSV totals match; review date coverage",
+      label: "Source totals match; review date coverage",
       status: "warning",
-      detail: "Some dates have no CSV rows. Confirm the export covers your intended reporting window.",
+      detail: "Some dates have no source rows. Confirm the import covers your intended reporting window.",
     });
   } else if (v?.status === "ok") {
     items.push({
       id: "csv",
-      label: "CSV comparison complete",
+      label: "Source comparison complete",
       status: "done",
       detail: v.scopesVerified?.length ? v.scopesVerified.join(" · ") : "Listed totals and rates match this export",
     });
   } else if (v?.status === "mismatch") {
     items.push({
       id: "csv",
-      label: "CSV cross-check",
+      label: "Source data cross-check",
       status: "warning",
-      detail: "Preview differs from your CSV. Rebuild and recheck; generation is paused while listed checks disagree.",
+      detail: "Preview differs from your imported data. Rebuild and recheck; generation is paused while listed checks disagree.",
     });
   } else if (v?.status === "skipped") {
     items.push({
       id: "csv",
-      label: "CSV cross-check not run",
+      label: "Source data cross-check not run",
       status: "optional",
-      detail: v.skipReason?.trim() || "Totals were not compared to your CSV — not a verified pass",
+      detail: v.skipReason?.trim() || "Totals were not compared to your imported data — not a verified pass",
     });
   } else if (input.generateStepPreviewReady && v === null) {
     items.push({
       id: "csv",
-      label: "CSV cross-check",
+      label: "Source data cross-check",
       status: "pending",
       detail: "Waiting for comparison…",
     });

@@ -127,7 +127,7 @@ export const ROOT_METADATA: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Meta API sync launching soon.",
+    "Create branded Meta Ads reports with API sync or CSV upload. PowerPoint, live links and Google Slides with AI insights. Start a 7-day free trial.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -144,7 +144,7 @@ export const ROOT_METADATA: Metadata = {
     locale: "en_IN",
     title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Send polished Meta Ads client reports in under 2 minutes. CSV upload — branded .pptx, live browser link & Google Slides. Meta API sync launching soon.",
+      "Create branded Meta Ads reports with API sync or CSV upload. PowerPoint, live links and Google Slides with AI insights. Start a 7-day free trial.",
     images: ogImages(),
   },
   twitter: {
@@ -202,7 +202,7 @@ export const HOME_JSON_LD = {
       logo: `${SITE_URL}/logo.png`,
       email: SUPPORT_EMAIL,
       description:
-        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Meta API sync launching soon.",
+        "Automated Meta Ads reporting for digital agencies — branded PowerPoint, live share links, and Google Slides export in under two minutes. Read-only Meta API sync and CSV upload included.",
       contactPoint: {
         "@type": "ContactPoint",
         email: SUPPORT_EMAIL,
@@ -244,10 +244,10 @@ export const HOME_JSON_LD = {
         },
       ],
       description:
-        "Upload Meta Ads Manager CSV exports to generate client-ready PowerPoint (.pptx) reports, live browser share links, and Google Slides export with AI-written insights.",
+        "Connect Meta Ads for API sync or upload an Ads Manager CSV to generate client-ready PowerPoint reports, live browser links and Google Slides with AI insights.",
       featureList: [
         "Meta Ads CSV import (live)",
-        "Meta Marketing API sync (launching soon)",
+        "Meta Marketing API sync (live)",
         "CSV to PowerPoint (.pptx)",
         "Live browser share link",
         "AI campaign summaries",
@@ -314,7 +314,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Which ad platforms does NextReport support?",
     answer:
-      "NextReport supports Meta Ads reporting today via CSV upload from Ads Manager. Meta API sync is launching soon.",
+      "NextReport supports Meta Ads reporting through read-only API sync or CSV upload from Ads Manager. Google Ads, TikTok Ads and GA4 reporting are coming soon.",
   },
   {
     question: "What file formats can I upload?",
@@ -334,7 +334,7 @@ export const PRODUCT_FAQ_SCHEMA: FaqSchemaItem[] = [
   {
     question: "Can I use NextReport for multiple clients?",
     answer:
-      "Yes. NextReport is built for agencies — create one client workspace per brand. Freelancer includes up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100, with Meta Ads reporting today. Meta API sync is available for testing in the wizard.",
+      "Yes. NextReport is built for agencies — create one client workspace per brand. Freelancer includes up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100, with Meta Ads reporting today. Meta API sync and CSV upload are included in every plan.",
   },
   {
     question: "Can I white-label reports for my clients?",

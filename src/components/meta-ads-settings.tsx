@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
 
 const CONNECT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Meta authorisation was cancelled — your ad account was not connected.",
@@ -92,12 +91,10 @@ export function MetaAdsSettings({
 
   return (
     <div className="space-y-4 rounded-lg border border-dash-border bg-dash-card p-5">
-      {!isWizardApiSyncVisible() ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-dash-border bg-dash-bg/50 px-3 py-2 text-[13px] text-dash-ink-secondary">
-          <span className="rounded-full border border-amber-500/25 px-2 py-0.5 text-xs font-medium text-dash-accent">In testing</span>
-          <p>Reports currently use Meta CSV uploads.</p>
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2 text-[13px] text-dash-ink-secondary">
+        <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">Live</span>
+        <p>Sync campaign data directly in the report wizard. Manual CSV upload is also available.</p>
+      </div>
       {!metaConfigured && !(connectedName || connectedUserId) && (
         <p className="text-[13px] text-amber-300">
           Meta Ads connections are currently unavailable. You can still upload a CSV to generate reports.

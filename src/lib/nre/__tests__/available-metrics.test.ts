@@ -264,7 +264,7 @@ describe("defaultMetaSelection — matches slot-assignment.ts's own automatic pi
       "reach",
       "impressions",
       "meta_form_leads",
-      "cost_per_lead",
+      "cost_per_meta_form_lead",
       "ctr",
       "link_clicks",
       "cpc_link_click",
@@ -458,7 +458,7 @@ describe("defaultMetaSelection / buildMetaSlots — META FORM LEADS dedicated-co
   it("recognizes a plain 'cost per lead' column as the wizard preview's slot 5 pick when 'cost per on-facebook lead' is absent", () => {
     const headersWithCostPerLead = [...META_HEADERS, "Cost per lead"];
     const preview = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headersWithCostPerLead);
-    expect(preview[4]).toMatchObject({ key: "cost_per_lead", label: "COST PER LEAD" });
+    expect(preview[4]).toMatchObject({ key: "cost_per_meta_form_lead", label: "COST PER LEAD", csvName: "cost per lead" });
   });
 
   // cost_per_lead's own perUnitOf ("website_leads") means buildMetaSlots'

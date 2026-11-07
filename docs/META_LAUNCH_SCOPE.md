@@ -1,37 +1,25 @@
 # Product launch scope
 
-> Current wizard: four choices — Weekly overview, Monthly report (1–12 months), Compare two periods and Daily report (including one day). See [current workflow contracts](FOUR_REPORT_WORKFLOWS.md). Earlier six-choice notes below describe the previous rollout.
+Updated November 7, 2026.
 
-Updated 27 October 2026 for manual Meta acceptance after PR #588.
+**Meta Ads reporting is live with manual CSV upload and read-only Meta API sync**, included in the trial and every paid plan. Both sources use the same campaign/objective detection, metric review, calculations, report builders and PPT renderers. See [the launch audit](META_API_LAUNCH_AUDIT.md) and [four-report contracts](FOUR_REPORT_WORKFLOWS.md).
 
-Only **Meta Ads** is selectable in the report wizard. Google Ads, TikTok Ads and GA4 remain hidden from report-wizard platform pickers until the owner tests and approves them. Connection management is visible in Account Settings and client settings for every platform, including GA4 property linking. The homepage lists these connections with an explicit reporting-testing status; marketing and SEO do not claim their report generation is live. Their implementations and existing report history remain intact. The direct GA4 creation page is unavailable while GA4 is hidden; saved non-Meta drafts are preserved without being restored into the active wizard.
+The wizard offers four report choices: Weekly overview, Monthly report (one month or several), Compare two periods, and Daily report (one day or a range). Internal DAILY/HISTORICAL modes remain for compatibility. Quarterly, YTD and Creative report creation remain deferred; existing report history and implementations are preserved.
 
-**Report choices:** Weekly, Monthly, Daily, Month-by-month, Comparison and Daily breakdown are selectable for owner acceptance; Quarterly, Year-to-date and Creative are hidden while their implementations and saved reports remain intact. See [report-type simplification](./REPORT_TYPE_SIMPLIFICATION.md).
+Google Ads, TikTok Ads and GA4 reporting remain **coming soon**, hidden from report-wizard platform selection. Their account connection settings remain available for setup/testing. Connecting them does not enable reporting. TikTok connection availability retains the existing India restriction; unknown location is not treated as India.
 
-**Account Settings:** Google Ads, Google Analytics (GA4) and TikTok connection sections are visible for OAuth review and connection testing. This does not enable their report wizard flows or change OAuth scopes, credentials or approval status.
+## Import behavior
 
-**Meta API sync is hidden inside the wizard**, including the disabled launching-soon option and all sync/reference/diagnostic controls. Saved API import preferences fall back to CSV. `isWizardApiSyncVisible()` gates the UI independently of `AD_PLATFORM_API_SYNC_ENABLED`; an existing true server flag cannot unhide wizard API controls. API handlers, stored connections and credentials remain intact for future testing. API correctness is still a separate acceptance task.
+New users see both import choices. Returning users see their remembered method in a compact summary with **Change import method**. The preference is per client in this browser; it is not behavioral tracking. Only the chosen import form is expanded. Switching sources clears stale imported data and preserves report settings and the manual-only previous-month preference.
 
-## Visible functionality
+Weekly API import automatically includes the rolling 30-day chart window and any additional selected reporting dates. Monthly, comparison and daily imports use their selected periods. Account currency/timezone remain part of source validation and date calculations, without being added to account-picker labels.
 
-| Area | Included |
-|------|----------|
-| Platform | Meta Ads — manual CSV only |
-| Report types | Weekly overview (default), Monthly, Daily, Month-by-month; Comparison and Daily breakdown under details |
-| Output | Branded PPTX, share link, Google Slides, Google Drive, AI summaries |
+The optional stored previous-month CSV supplement remains manual-only by the owner's earlier instruction. This does not restrict explicitly selected monthly/comparison periods through API.
 
-Google sign-in, Drive/Slides exports and the site's analytics tag remain available. Existing privacy disclosures for optional OAuth grants are retained because hiding a product entry point does not delete stored connections or historical data.
+## Availability and permissions
 
-## Restore after testing
+`isWizardApiSyncVisible()` is true. API sync is enabled by default; `AD_PLATFORM_API_SYNC_ENABLED=false` remains an operational kill switch. No billing IDs, subscription limits, OAuth scopes or encryption keys change. Users require an active trial/subscription and their own connected Meta account. OAuth uses only `ads_read`, with no `ads_management` write permission.
 
-- `src/lib/meta-launch-scope.ts`: expand `LAUNCH_ENABLED_PLATFORMS` and `LIVE_PRODUCT_PLATFORMS` only for approved platforms; update deferred lists/phase to match. Wizard pickers and the GA4 creation page consume the report availability policy; client connection visibility is independent.
-- Update the public copy, pricing descriptions, translated taglines and SEO claims to describe the newly approved platform.
-- `src/lib/ad-platform-api-sync.ts`: restore wizard API visibility deliberately after testing; existing server API configuration remains separate.
+Before public rollout, the owner must confirm Meta's app is in Live mode with the required `ads_read` access approved for external users. Existing successful owner/developer-account connections do not prove external-user eligibility. This Meta dashboard status cannot be verified from repository tests.
 
-Google Ads Basic Access approval (15,000 operations/day, owner email dated 2 September) is distinct from OAuth scope verification and end-to-end report acceptance. The developer token belongs in the existing server-side GOOGLE_ADS_DEVELOPER_TOKEN configuration; never commit it. A successful GA4 OAuth connection does not certify report calculations or all metric availability.
-
-## Regional connection availability
-
-Visitors detected in India (`IN` in Vercel's country header) see TikTok marked **Unavailable in India** on client settings, and cannot start a new TikTok OAuth connection. Existing grants can still be managed/disconnected. Outside India, configured/connected status is shown normally; missing server configuration is labelled **Connection coming soon**, rather than being confused with a regional restriction. Unknown location is not assumed to be India. This uses visitor location, not nationality, client timezone or billing currency.
-
-Account headings distinguish Meta/Google Ads API Sync from manual CSV reporting. Client rows use API Connection labels. Linking a platform does not enable report generation: the wizard remains Meta manual CSV only in every region. API imports and Google/TikTok/GA4 reporting stay hidden pending testing.
+Production deployment is separate from this code change. Keep existing Meta credentials and stable token encryption configuration. If the API kill switch is explicitly false in Vercel, set it true or remove it before redeploying.

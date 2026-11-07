@@ -132,7 +132,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    if (platform !== "META") return NextResponse.json({ error: "Wizard API testing is currently available for Meta Ads only." }, { status: 400 });
+    if (platform !== "META") return NextResponse.json({ error: "API reporting is currently available for Meta Ads only." }, { status: 400 });
     if (platform === "META") {
       if (!metaAdAccountId) {
         return NextResponse.json({ error: "metaAdAccountId is required for Meta sync" }, { status: 400 });

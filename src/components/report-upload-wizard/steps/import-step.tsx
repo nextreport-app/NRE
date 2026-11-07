@@ -176,12 +176,12 @@ export function WizardImportStep() {
           {isWizardApiSyncVisible() && <WizardDataSourceToggle
             value={dataSourceMode}
             onChange={handleDataSourceModeChange}
-            apiLaunchingSoon={!w.apiSyncEnabled}
+            apiUnavailable={!w.apiSyncEnabled}
+            compact={w.hasSavedImportSource}
           />}
           {isWizardApiSyncVisible() && !w.apiSyncEnabled && dataSourceMode === "api" ? (
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100/90">
-              <span className="font-semibold text-amber-300">Launching soon.</span> Sync from API is not enabled on
-              this deployment yet — use Manual CSV upload for Meta reports today.
+              <span className="font-semibold text-amber-300">API sync is temporarily unavailable.</span> Use Manual CSV upload to continue.
             </p>
           ) : null}
 
@@ -228,7 +228,7 @@ export function WizardImportStep() {
 
           {(!w.apiSyncEnabled || dataSourceMode === "csv") && (
             <>
-              <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} />
+              <UploadDropzone file={mtdFile} onFileSelected={handleMtdFileSelected} disabled={analyzeStatus === "loading" || apiSyncStatus === "loading"} />
 
               {w.reportType === "WEEKLY" && csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
                 <CsvDateGuidanceBanner
@@ -245,7 +245,7 @@ export function WizardImportStep() {
                 type="button"
                 onClick={() => void handleAnalyze()}
                 disabled={!mtdFile || analyzeStatus === "loading"}
-                className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-40"
+                className="h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:opacity-40"
               >
                 {analyzeStatus === "loading" ? "Analyzing…" : "Analyze campaign data"}
               </button>
