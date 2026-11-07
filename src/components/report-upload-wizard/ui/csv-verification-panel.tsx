@@ -23,11 +23,11 @@ function DateCoverageNotice({ warnings }: { warnings: CsvCoverageWarning[] }) {
   if (!warnings.length) return null;
   return (
     <div className="nre-wizard-callout-warn rounded-lg px-4 py-3 text-[13px] leading-relaxed" role="status">
-      <p className="nre-wizard-callout-warn__title font-medium">CSV date coverage to review</p>
+      <p className="nre-wizard-callout-warn__title font-medium">Source date coverage to review</p>
       {warnings.map(warning => (
         <div key={warning.scope} className="nre-wizard-callout-warn__body mt-2">
           <p className="font-medium">{warning.scope}</p>
-          <p>No CSV rows on: {warning.missingDays.join(", ")}.</p>
+          <p>No source rows on: {warning.missingDays.join(", ")}.</p>
           <p>{warning.message}</p>
         </div>
       ))}
@@ -63,7 +63,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
   }
 
   if (refreshing && verification.checks.length === 0) {
-    return <p className="text-[13px] text-dash-ink-secondary">Comparing deck preview to your CSV…</p>;
+    return <p className="text-[13px] text-dash-ink-secondary">Comparing deck preview to your imported data…</p>;
   }
 
   const ok = verification.status === "ok";
@@ -127,7 +127,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
               <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-2 text-[12px]">
                 <span className="text-dash-ink-muted">Metric</span>
                 <span className="text-right text-dash-ink-muted">Deck preview</span>
-                <span className="text-right text-dash-ink-muted">Your CSV</span>
+                <span className="text-right text-dash-ink-muted">Source data</span>
                 {scopeChecks.map((c) => (
                   <div key={`${scope}-${c.metric}`} className="contents">
                     <span className="text-dash-ink-secondary">{c.metric}</span>

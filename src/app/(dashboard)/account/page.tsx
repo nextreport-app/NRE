@@ -118,7 +118,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <p className="mb-6 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] leading-relaxed text-dash-ink-secondary">Connections are optional for manual CSV reporting. Connect Google Drive when you want to save a finished report. Ad-platform connections remain available below for testing and setup.</p>
+      <p className="mb-6 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] leading-relaxed text-dash-ink-secondary">Choose Meta API sync or manual CSV upload in the report wizard. Connect Meta Ads below for read-only access; CSV reporting does not require a connection. Google Drive is optional for saving finished reports. Google Ads, TikTok Ads and GA4 reporting are coming soon.</p>
       <section id="google-drive" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings

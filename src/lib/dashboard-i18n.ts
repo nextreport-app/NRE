@@ -81,7 +81,7 @@ const EN: DashboardCopy = {
   clientsSupportOr: "or",
   emptyAddFirstClient: "Add your first client",
   emptyBody:
-    "One workspace per brand — set currency, timezone, and logo once. Then open New Report and upload your Meta CSV (Google, TikTok, GA4, and API sync launching soon).",
+    "One workspace per brand — set currency, timezone, and logo once. Then open New Report and choose Meta API sync or CSV upload. Google Ads, TikTok Ads and GA4 reporting are coming soon.",
   emptyAddClientCta: "+ Add client",
   helpCsvGuide: "CSV Export Guide",
   helpHowItWorks: "How it works",
@@ -113,10 +113,10 @@ const EN: DashboardCopy = {
     "Set the client name, currency, and logo — every report uses that branding automatically.",
   stepConnectTitle: "Connect ad accounts (optional)",
   stepConnectDesc:
-    "Optional — CSV is enough for your first deck. Meta API sync and other platforms are launching soon.",
+    "Connect Meta Ads for read-only API reporting, or use CSV upload without a connection.",
   stepGenerateTitle: "Generate your first report",
   stepGenerateDesc:
-    "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
+    "Open New Report, choose a report type, then use Meta API sync or upload a day-wise CSV. Review campaigns, objectives and metrics before generating.",
 };
 
 const LOCALE_OVERRIDES: Partial<Record<SiteLocaleId, Partial<DashboardCopy>>> = {

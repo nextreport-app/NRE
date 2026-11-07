@@ -263,6 +263,7 @@ export function useReportUploadWizard({
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
   const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
+  const [hasSavedImportSource, setHasSavedImportSource] = useState(false);
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   /** Parsed CSV cache from /analyze — metrics, preview, and generate reuse this instead of re-uploading. */
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
@@ -551,7 +552,7 @@ export function useReportUploadWizard({
       if (typeof prefs.showBudgetOnCover === "boolean") {
         setShowBudgetOnCover(prefs.showBudgetOnCover);
       }
-      if (prefs.dataSourceMode) setDataSourceMode(prefs.dataSourceMode);
+      if (prefs.dataSourceMode) { setDataSourceMode(prefs.dataSourceMode); setHasSavedImportSource(true); }
     }
     // Do not persist the initial defaults before restored state has committed.
     // This also keeps Strict Mode's second effect pass from overwriting the saved choice.
@@ -937,7 +938,7 @@ export function useReportUploadWizard({
           && ctx.campaignSpend && Array.isArray(ctx.adSetGroups)
           && ctx.campaigns.every((name: unknown) => typeof name === "string" && typeof ctx.campaignSpend[name] === "number" && Number.isFinite(ctx.campaignSpend[name]));
         if (!ctxRes.ok || !ctx?.ok || ctx.uploadSessionExpired || !completeCampaignContext) {
-          handleUploadSessionExpired(ctx?.error || "Saved setup could not be restored completely. Upload and analyze your CSV again to continue.");
+          handleUploadSessionExpired(ctx?.error || "Saved setup could not be restored completely. Return to Import and sync or upload your data again to continue.");
           stepRef.current = 1;
           setStepState(1);
           setVisitedSteps(new Set([1]));
@@ -1021,7 +1022,7 @@ export function useReportUploadWizard({
         }
       } catch {
         if (!cancelled) {
-          handleUploadSessionExpired("Could not restore your saved setup. Upload and analyze your CSV again to continue.");
+          handleUploadSessionExpired("Could not restore your saved setup. Return to Import and sync or upload your data again to continue.");
           stepRef.current = 1;
           setStepState(1);
           setVisitedSteps(new Set([1]));
@@ -1497,6 +1498,7 @@ export function useReportUploadWizard({
   }
 
   function handleDataSourceModeChange(mode: WizardDataSource) {
+    setHasSavedImportSource(true);
     if (mode === dataSourceMode) return;
     clearImportedWizardData();
     if (mode === "csv" && isApiSyncArtifact(mtdFile)) {
@@ -2125,7 +2127,7 @@ export function useReportUploadWizard({
   async function fetchPreview(options?: { csvAlignResults?: boolean; recoveryIncidentId?: string }): Promise<CsvVerificationResult | null> {
     const alignForRequest = options?.csvAlignResults ?? csvAlignResults;
     if (!mtdFile && !uploadSessionId) {
-      setPreviewMessage("Go back to Import and upload your CSV again.");
+      setPreviewMessage("Go back to Import and sync or upload your data again.");
       releasePreviewLoadingState("error");
       return null;
     }
@@ -3041,6 +3043,7 @@ export function useReportUploadWizard({
     choosePlatform,
     chooseWebsitePlatform,
     dataSourceMode,
+    hasSavedImportSource,
     handleDataSourceModeChange,
     mtdFile,
     handleMtdFileSelected,

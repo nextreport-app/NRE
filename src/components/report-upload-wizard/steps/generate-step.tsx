@@ -469,13 +469,13 @@ export function WizardGenerateStep() {
 
             {previewKind === "historical" && historicalData?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
-                No campaign spend found in the selected months. Check your CSV date range and campaign selection.
+                No campaign spend found in the selected months. Check your imported date range and campaign selection.
               </div>
             )}
 
             {previewKind === "dayBreakdown" && dayBreakdownData?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
-                No campaign spend found in the selected date range. Check your CSV dates and campaign selection.
+                No campaign spend found in the selected date range. Check your imported dates and campaign selection.
               </div>
             )}
 
@@ -488,7 +488,7 @@ export function WizardGenerateStep() {
                   >
                     <p>
                       <span className="font-medium">{w.campaignName}:</span> Objective auto-detected as{" "}
-                      {w.detectedLabel}. If this is incorrect, make sure your CSV includes the relevant result
+                      {w.detectedLabel}. If this is incorrect, make sure your imported data includes the relevant result
                       column — for example Website leads, Meta leads, Purchases, Landing page views etc. See our{" "}
                       <Link href="/help/download" className="underline hover:text-amber-100">
                         Download Guide

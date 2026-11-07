@@ -456,7 +456,7 @@ export function WizardCampaignsStep() {
                       <details key={`${normalized}-${csvAlign}-${isBlocking}`} open={csvAlign !== true || isBlocking} className={`group/objective overflow-hidden rounded-lg border ${isBlocking ? "border-[#fc8181] bg-red-950/10" : csvAlign === true ? "border-emerald-500/25 bg-emerald-500/5" : "border-dash-border"}`}>
                         <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm focus-visible:outline-2 focus-visible:outline-dash-accent [&::-webkit-details-marker]:hidden">
                           <span aria-hidden className={csvAlign === true && !isBlocking ? "text-emerald-400" : "text-dash-accent"}>{csvAlign === true && !isBlocking ? "✓" : "!"}</span>
-                          <span className="min-w-0 flex-1"><span className="block break-words font-medium text-dash-ink" title={name}>{name}</span><span className="text-xs text-dash-ink-secondary">{detectedLabel}{csvAlign === true && !isBlocking ? " · Matches CSV" : " · Review objective"}</span></span>
+                          <span className="min-w-0 flex-1"><span className="block break-words font-medium text-dash-ink" title={name}>{name}</span><span className="text-xs text-dash-ink-secondary">{detectedLabel}{csvAlign === true && !isBlocking ? " · Matches imported data" : " · Review objective"}</span></span>
                           <span aria-hidden className="text-dash-ink-secondary transition-transform group-open/objective:rotate-180">▾</span>
                         </summary>
                         <div className="space-y-2 border-t border-dash-border px-4 py-3">

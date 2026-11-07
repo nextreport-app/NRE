@@ -13,16 +13,16 @@ const EN_UI = {
   changeClient: "Change client →",
   csvMismatchTitle: (count: number) =>
     count === 1
-      ? "Deck preview differs from your CSV on 1 total"
-      : `Deck preview differs from your CSV on ${count} totals`,
+      ? "Deck preview differs from your imported data on 1 total"
+      : `Deck preview differs from your imported data on ${count} totals`,
   csvMismatchBody:
     "Review the differing metrics, date windows, and objective choices below. Generation is paused until these listed checks agree. Rebuild and recheck the preview; the investigation details are saved automatically when available.",
-  csvVerifiedTitle: "CSV checks passed",
+  csvVerifiedTitle: "Source data checks passed",
   csvVerifiedDetail: () =>
-    "The checked metrics match your CSV for each reporting period.",
-  csvSkippedTitle: "CSV cross-check not run",
+    "The checked metrics match your imported data for each reporting period.",
+  csvSkippedTitle: "Source data cross-check not run",
   csvSkippedLead:
-    "This is not a pass — deck totals were not compared to your CSV for this report setup.",
+    "This is not a pass — deck totals were not compared to your imported data for this report setup.",
   csvSkippedDefaultReason:
     "We could not run an automatic CSV comparison for this preview (for example, missing data or an unsupported report type). You can still generate; review totals yourself before sharing.",
   generateForInternalReview: "Generate for internal review",
@@ -35,10 +35,10 @@ const EN_UI = {
   openLiveReportRecommended: "Open live report (recommended)",
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
-    "Deck totals may not match your CSV export. Review the report yourself before sharing with the client.",
-  csvSkippedShareWarningTitle: "CSV cross-check did not run when you generated",
+    "Deck totals may not match your imported data. Review the report yourself before sharing with the client.",
+  csvSkippedShareWarningTitle: "Source data cross-check did not run when you generated",
   csvSkippedShareWarningBody:
-    "Deck totals were not automatically compared to your CSV. Review the report yourself before sharing with the client.",
+    "Deck totals were not automatically compared to your imported data. Review the report yourself before sharing with the client.",
   whatReportBuilding: "What report are you building?",
   reportTypeHint:
     "Each type needs a specific CSV date range (always day-wise from Ads Reporting). Hover a card for details.",
@@ -52,12 +52,12 @@ const EN_UI = {
   generateReport: "Generate Report",
   loading: "Loading…",
   campaignObjectives: "Campaign objectives",
-  objectivesIntro: "Detected from your CSV. Change a dropdown only if something looks wrong, then continue.",
+  objectivesIntro: "Detected from your imported data. Change a dropdown only if something looks wrong, then continue.",
   reviewMetrics: "Review metrics",
-  reviewMetricsHint: "Metric chips are pre-selected from your CSV — tweak only if needed.",
+  reviewMetricsHint: "Metric chips are pre-selected from your imported data — tweak only if needed.",
   includedMetrics: "Included metrics",
-  addFromCsv: "Add from your CSV",
-  addFromCsvHint: "Columns in this file that are not already chips.",
+  addFromCsv: "Available metrics",
+  addFromCsvHint: "Metrics in your imported data that are not already selected.",
   detectedChangeIfWrong: "Detected — change if wrong",
   csvResultTypeHeading: "CSV Result type",
   csvResultTypesHeading: "CSV Result types",
@@ -89,9 +89,9 @@ const EN_STEPS = {
   heading2Google: "Select campaigns, ad groups & objectives",
   heading3: "Review metrics",
   heading4: "Generate report",
-  subtitle1: "Choose a report type, then upload your CSV.",
+  subtitle1: "Choose a report type, then sync Meta or upload a CSV.",
   subtitle2: "Choose campaigns and confirm each primary result objective.",
-  subtitle3: "Metric chips are pre-selected from your CSV — tweak only if needed.",
+  subtitle3: "Metric chips are pre-selected from your imported data — tweak only if needed.",
   subtitle4: "Review your dates and settings, then generate your report.",
 };
 
@@ -115,12 +115,12 @@ const LOCALE_UI: Partial<Record<SiteLocaleId, Partial<typeof EN_UI>>> = {
     loading: "Cargando…",
     campaignObjectives: "Objetivos de campaña",
     objectivesIntro:
-      "Detectado desde tu CSV. Cambia un desplegable solo si algo no cuadra, luego continúa.",
+      "Detectado desde tus datos importados. Cambia un desplegable solo si algo no cuadra, luego continúa.",
     reviewMetrics: "Revisar métricas",
-    reviewMetricsHint: "Las métricas vienen preseleccionadas del CSV — ajusta solo si hace falta.",
+    reviewMetricsHint: "Las métricas vienen preseleccionadas de tus datos — ajusta solo si hace falta.",
     includedMetrics: "Métricas incluidas",
     addFromCsv: "Añadir desde tu CSV",
-    addFromCsvHint: "Columnas en este archivo que aún no son chips.",
+    addFromCsvHint: "Métricas de tus datos importados que aún no has seleccionado.",
     detectedChangeIfWrong: "Detectado — cámbialo si no es correcto",
     detectedConfirmLead: "Detectado — confirma el tipo de lead si no es correcto",
     previouslyConfirmed: "Confirmado antes",
@@ -198,7 +198,7 @@ const LOCALE_STEPS: Partial<Record<SiteLocaleId, Partial<typeof EN_STEPS>>> = {
     heading4: "Generar informe",
     subtitle1: "Elige el tipo de informe, sigue las instrucciones de descarga y sube el CSV.",
     subtitle2: "Elige campañas y confirma el objetivo de resultados de cada una.",
-    subtitle3: "Las métricas vienen preseleccionadas del CSV — ajusta solo si hace falta.",
+    subtitle3: "Las métricas vienen preseleccionadas de tus datos — ajusta solo si hace falta.",
     subtitle4: "Confirma fechas y vista previa, luego genera el deck.",
   },
   fr: {

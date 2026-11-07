@@ -152,7 +152,7 @@ export default async function ClientDetailPage({
 
       <div className="space-y-4">
         <Card accent id="generate-report">
-          <CardHeading hint="Upload a day-wise Meta CSV on Import — see the CSV export guide if you need help.">
+          <CardHeading hint="Choose Meta API sync or upload a day-wise CSV on Import.">
             Generate report
           </CardHeading>
           <Link
@@ -164,7 +164,7 @@ export default async function ClientDetailPage({
         </Card>
         {isClientPlatformConnectionsSectionVisible() ? (
           <Card id="platform-connections">
-            <CardHeading hint="Manage account-level connections. The report wizard currently supports manual Meta CSV only.">
+            <CardHeading hint="Connect Meta Ads for read-only API reporting, or continue with manual CSV upload. Other platform reporting is coming soon.">
               Platform connections
             </CardHeading>
             <ClientPlatformConnections

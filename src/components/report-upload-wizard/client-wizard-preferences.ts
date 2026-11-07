@@ -34,7 +34,7 @@ export function readClientWizardPreferences(clientId: string): ClientWizardPrefe
     if (parsed.reportType && !isLaunchReportTypeEnabled(parsed.reportType)) {
       return { ...parsed, reportType: "WEEKLY", dateMode: "last7", customStart: undefined, customEnd: undefined, generateBaseline: undefined, dataSourceMode: "csv" };
     }
-    // A saved API choice must not reopen controls hidden during CSV testing.
+    // Respect the source visibility policy when restoring an older preference.
     if (parsed.dataSourceMode === "api" && !isWizardApiSyncVisible()) return { ...parsed, dataSourceMode: "csv" };
     return parsed;
   } catch {

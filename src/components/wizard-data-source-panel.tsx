@@ -254,7 +254,7 @@ export function WizardDataSourcePanel({
         <div className="rounded-lg border border-dash-border bg-dash-bg p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[14px] font-semibold text-dash-ink">Meta Marketing API</p>
+              <p className="text-[14px] font-semibold text-dash-ink">Meta Ads API sync</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only ads reporting</p>
             </div>
             <StatusPill ok={metaConnected} label={metaConnected ? "Connected" : "Not connected"} />
@@ -467,7 +467,7 @@ export function WizardDataSourcePanel({
             className={
               importComplete
                 ? "h-10 w-full rounded-md border border-dash-border text-[14px] font-medium text-dash-ink-secondary hover:bg-dash-border disabled:opacity-40"
-                : "h-12 w-full rounded-md bg-dash-accent text-[14px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:opacity-40"
+                : "h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:opacity-40"
             }
           >
             {isSyncing ? "Syncing & analyzing…" : importComplete ? "Sync again" : "Analyze campaign data"}
@@ -481,13 +481,23 @@ export function WizardDataSourcePanel({
 export function WizardDataSourceToggle({
   value,
   onChange,
-  apiLaunchingSoon = false,
+  apiUnavailable = false,
+  compact = false,
 }: {
   value: WizardDataSource;
   onChange: (value: WizardDataSource) => void;
-  /** When true, API option stays visible but disabled — Meta CSV is live; API sync is not launched yet. */
-  apiLaunchingSoon?: boolean;
+  compact?: boolean;
+  /** Operational kill switch; does not change the public launch status. */
+  apiUnavailable?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  if (compact && !expanded && !apiUnavailable) return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg px-4 py-3">
+      <div><p className="text-[12px] text-dash-ink-secondary">Import method</p><p className="text-[14px] font-semibold text-dash-ink">{value === "api" ? "Meta API sync" : "Manual CSV upload"}</p></div>
+      <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="text-[13px] font-semibold text-dash-accent hover:underline">Change import method</button>
+    </div>
+  );
+  const choose = (source: WizardDataSource) => { onChange(source); setExpanded(false); };
   return (
     <div className="space-y-2">
       <p className="text-[15px] font-semibold text-dash-ink">Import data</p>
@@ -496,7 +506,8 @@ export function WizardDataSourceToggle({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => onChange("csv")}
+            aria-pressed={value === "csv"}
+            onClick={() => choose("csv")}
             className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
               value === "csv"
                 ? "border-dash-accent bg-dash-accent text-[#0d1b2e]"
@@ -513,12 +524,13 @@ export function WizardDataSourceToggle({
           </button>
           <button
             type="button"
-            disabled={apiLaunchingSoon}
+            aria-pressed={value === "api"}
+            disabled={apiUnavailable}
             onClick={() => {
-              if (!apiLaunchingSoon) onChange("api");
+              if (!apiUnavailable) choose("api");
             }}
             className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
-              apiLaunchingSoon
+              apiUnavailable
                 ? "cursor-not-allowed border-dash-border bg-dash-bg/60 opacity-90"
                 : value === "api"
                   ? "border-dash-accent bg-dash-accent text-[#0d1b2e]"
@@ -529,17 +541,17 @@ export function WizardDataSourceToggle({
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold">
                 Connect your data via API
-                {apiLaunchingSoon ? (
+                {apiUnavailable ? (
                   <span className="ml-1.5 inline-flex rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-                    Launching soon
+                    Temporarily unavailable
                   </span>
                 ) : null}
               </span>
               <span
-                className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiLaunchingSoon ? "text-[#0d1b2e]/80" : ""}`}
+                className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiUnavailable ? "text-[#0d1b2e]/80" : ""}`}
               >
-                {apiLaunchingSoon
-                  ? "Meta API sync — preview in Account settings"
+                {apiUnavailable
+                  ? "Manual CSV upload remains available"
                   : "Choose a report and sync daily data from Meta"}
               </span>
             </span>

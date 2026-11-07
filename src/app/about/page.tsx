@@ -12,7 +12,7 @@ import { AboutStoryDivider } from "@/components/about/about-story-divider";
 export const metadata: Metadata = pageMetadata({
   title: "About — Built for Agency Reporting",
   description:
-    "NextReport is a small team building Meta Ads reporting automation for agencies — branded decks from CSV exports in minutes. Meta live; Meta API sync launching soon.",
+    "NextReport is a small team building Meta Ads reporting automation for agencies — branded decks from Meta API sync or CSV uploads in minutes.",
   path: "/about",
 });
 
@@ -31,7 +31,7 @@ const STORY_SECTIONS: { heading: string; paragraphs: string[] }[] = [
       "We looked for tooling that matched how agencies actually ship work: the export you already pull from Ads Manager, the template your team already uses, and a finished deck in minutes — not a generic dashboard.",
       PRODUCT_DIFFERENTIATOR_LINE,
       "NextReport reads Meta Ads Manager CSV exports, detects campaign objectives, selects the right metrics, and generates PowerPoint, a live browser link, or Google Slides with AI-written insights — often in under two minutes.",
-      "Meta CSV reporting is live today. Meta API sync is available for testing while we verify it against manual exports.",
+      "Meta Ads reporting is live with CSV upload and read-only API sync, using the same report workflow and calculation engine.",
     ],
   },
   {
@@ -46,7 +46,7 @@ const STORY_SECTIONS: { heading: string; paragraphs: string[] }[] = [
 
 const STATS = [
   "Under 2 minutes per report",
-  "Meta Ads — CSV upload live",
+  "Meta Ads — API sync + CSV upload live",
   "White-label client decks",
 ];
 

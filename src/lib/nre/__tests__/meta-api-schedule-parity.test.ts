@@ -123,7 +123,7 @@ describe("website schedule detection is shared by CSV and API", () => {
   it("does not fill missing supporting metrics with another conversion event", () => {
     const headers = ["Campaign name", "Day", "Amount spent (USD)", "Reach", "Impressions", "Result type", "Results", "Cost per result", "CTR (all)", "Link clicks", "Website leads", "On-Facebook leads", "Purchases", "Website appointments scheduled"];
     const bundle = buildCampaignMetricBundle("META", headers, "WEBSITE SCHEDULE", "COST PER BOOKING");
-    expect(bundle.selection.map(metric => metric.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result", "ctr", "link_clicks", "cpm"]);
+    expect(bundle.selection.map(metric => metric.key)).toEqual(["spend", "reach", "impressions", "results", "cost_per_result", "ctr", "link_clicks", "cpc_link_click"]);
     expect(bundle.available.map(metric => metric.key)).not.toContain("website_appointments");
   });
   it("counts only the configured website schedule metric, preserving observed zero and excluding other locations", () => {

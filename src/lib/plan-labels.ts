@@ -22,7 +22,7 @@ export const PLATFORM_LIST_SHORT =
 
 /** API names for technical/how-it-works copy. */
 export const PLATFORM_LIST_API =
-  "Meta Marketing API (testing)";
+  "Meta Marketing API + CSV upload";
 
 /** Freelancer (starter) plan — max client workspaces; enforced in lib/subscription.ts. */
 export { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, AGENCY_PLUS_CLIENT_LIMIT } from "./launch-limits";
@@ -38,6 +38,6 @@ export { WHITE_LABEL_FEATURE } from "@/lib/report-branding";
 
 /** Short explainer for paywall / upgrade screens. */
 export const CLIENT_LIMIT_EXPLAINER =
-  "Each client is one brand workspace. Meta Ads CSV reporting uses one client slot today. Meta API sync is available for testing in the wizard.";
+  "Each client is one brand workspace. Meta Ads reporting uses one client slot whether you import by CSV or read-only API sync.";
 
 export const AGENCY_PLUS_CLIENT_LIMIT_FEATURE = "Up to 100 client workspaces — Meta Ads reporting live today";

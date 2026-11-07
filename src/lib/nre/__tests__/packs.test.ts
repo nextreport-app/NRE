@@ -18,7 +18,7 @@ describe("METRIC_PACKS", () => {
       "reach",
       "impressions",
       "meta_form_leads",
-      "cost_per_lead",
+      "cost_per_meta_form_lead",
       "ctr",
       "link_clicks",
       "cpc_link_click",

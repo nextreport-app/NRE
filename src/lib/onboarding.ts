@@ -44,7 +44,7 @@ export function buildOnboardingSteps(input: OnboardingStateInput): OnboardingSte
       id: "generate-report",
       title: "Generate your first report",
       description:
-        "Open New Report → Weekly (recommended) → upload a Meta CSV with Day breakdown (Last 30 days). Use the CSV Export Guide if you are unsure which export to pull.",
+        "Open New Report, choose a report type, then connect Meta Ads for API sync or upload a day-wise CSV. Both methods use the same campaign, objective and metric review steps.",
       href: reportHref,
       done: input.completeReportCount > 0,
     },
