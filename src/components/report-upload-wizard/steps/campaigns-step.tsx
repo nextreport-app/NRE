@@ -11,7 +11,6 @@ import {
 import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
-import { isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
 import { ObjectivePicker } from "../ui/objective-picker";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
@@ -81,6 +80,7 @@ export function WizardCampaignsStep() {
   const copy = useWizardCopy();
   const { locale } = useSiteTheme();
   const stepActive = w.step === 2;
+  const zeroSpendSet = new Set(w.zeroSpendCampaigns);
   const selectionKey = w.selectedCampaignsKey();
   const objectivesReady = w.metricsFetchedForSelection === selectionKey;
   const selectedCount = w.selectedCampaigns.size;
@@ -96,7 +96,6 @@ export function WizardCampaignsStep() {
 
   const {
     ADSET_CHIP_CLASS,
-    LOW_SPEND_CAMPAIGN_THRESHOLD,
     OBJECTIVE_DROPDOWN_OPTIONS,
     adSetGroups,
     metaCsvExportProfile,
@@ -114,7 +113,10 @@ export function WizardCampaignsStep() {
     expandedCampaigns,
     handleCampaignsContinue,
     hasBlockingObjectives,
-    lowSpendCampaigns,
+    zeroSpendCampaigns,
+    campaignSpendLabel,
+    campaignSpendLoading,
+    selectAllCampaigns,
     metricsStatus,
     objectiveConfidenceBadge,
     selectAllAdSetsForCampaign,
@@ -125,7 +127,6 @@ export function WizardCampaignsStep() {
     setCsvDateGuidance,
     setCsvWarningDismissed,
     setMtdFile,
-    setSelectedCampaigns,
     setStep,
     setUploadSessionId,
     toggleAdSet,
@@ -188,7 +189,7 @@ export function WizardCampaignsStep() {
             ref={(el) => {
               if (el) el.indeterminate = selectedCampaigns.size > 0 && selectedCampaigns.size < campaigns.length;
             }}
-            onChange={(e) => setSelectedCampaigns(e.target.checked ? new Set(campaigns) : new Set())}
+            onChange={(e) => selectAllCampaigns(e.target.checked)}
             className="h-4 w-4 flex-shrink-0 accent-accent"
           />
           <span className="text-[14px] text-dash-ink-secondary">
@@ -207,14 +208,8 @@ export function WizardCampaignsStep() {
         )}
       </div>
 
-      {lowSpendCampaigns.length > 0 && (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[14px] text-dash-ink">
-          <strong>{lowSpendCampaigns.length} campaign{lowSpendCampaigns.length === 1 ? "" : "s"}</strong> had less than{" "}
-          {currencySymbol}
-          {LOW_SPEND_CAMPAIGN_THRESHOLD} last-30-days spend and {lowSpendCampaigns.length === 1 ? "was" : "were"}{" "}
-          excluded by default. Check any you still want in the report.
-        </div>
-      )}
+      <p className="text-[13px] text-dash-ink-secondary">{campaignSpendLoading ? "Updating campaign spend…" : campaignSpendLabel}</p>
+      {zeroSpendCampaigns.length > 0 && <p className="text-[13px] text-dash-ink-secondary">Campaigns with no spend in this reporting period are excluded by default. Expand below to include any you need.</p>}
 
       <div className="space-y-3">
         {(() => {
@@ -237,10 +232,9 @@ export function WizardCampaignsStep() {
               !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
             const spend = campaignSpend[name];
             const spendKnown = typeof spend === "number" && Number.isFinite(spend);
-            const lowSpend = spendKnown && isLowSpendCampaign(name, campaignSpend);
             return (
               <li key={name} className="px-4 py-2.5">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <input
                     type="checkbox"
                     id={`campaign-${name}`}
@@ -256,12 +250,7 @@ export function WizardCampaignsStep() {
                     {name}
                   </label>
                   {!spendKnown ? <span className="shrink-0 text-[13px] text-dash-ink-secondary">Spend unavailable</span> : null}
-                  {lowSpend ? (
-                    <span className="shrink-0 text-[14px] font-semibold tabular-nums text-amber-400">
-                      Last 30 days spend detected · {currencySymbol}
-                      {Math.round(spend).toLocaleString("en-US")}
-                    </span>
-                  ) : null}
+                  {spendKnown ? <span className="shrink-0 text-[13px] tabular-nums text-dash-ink-secondary">{spend > 0 && spend < 0.01 ? `<${currencySymbol}0.01` : `${currencySymbol}${spend.toLocaleString("en-US", { maximumFractionDigits: 2 })}`} spend{zeroSpendSet.has(name) && !isSelected ? " · Excluded by default" : ""}</span> : null}
                   {isSingleAdSet && (
                     <button
                       type="button"
@@ -369,8 +358,8 @@ export function WizardCampaignsStep() {
           const listClass = "divide-y divide-dash-border rounded-lg border border-dash-border";
           // Search includes every campaign, even when the zero-spend group is collapsed.
           if (query) return <ul className={listClass}>{renderCampaigns(visible)}</ul>;
-          const zeroSpend = visible.filter(name => campaignSpend[name] === 0);
-          const withSpend = visible.filter(name => campaignSpend[name] !== 0);
+          const zeroSpend = visible.filter(name => zeroSpendSet.has(name));
+          const withSpend = visible.filter(name => !zeroSpendSet.has(name));
           const zeroSpendSelected = zeroSpend.filter(name => selectedCampaigns.has(name)).length;
           return (
             <>
@@ -521,7 +510,7 @@ export function WizardCampaignsStep() {
         </button>
         <button
           onClick={() => void handleCampaignsContinue()}
-          disabled={selectedCampaigns.size === 0 || objectivesLoading || hasBlockingObjectives()}
+          disabled={selectedCampaigns.size === 0 || objectivesLoading || campaignSpendLoading || hasBlockingObjectives()}
           className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {objectivesLoading ? copy.loading : copy.continueToMetrics}
@@ -536,7 +525,7 @@ export function WizardCampaignsStep() {
         backLabel={copy.back}
         primaryLabel={objectivesLoading ? copy.loading : copy.continueToMetrics}
         onPrimary={() => void handleCampaignsContinue()}
-        primaryDisabled={selectedCampaigns.size === 0 || objectivesLoading || hasBlockingObjectives()}
+        primaryDisabled={selectedCampaigns.size === 0 || objectivesLoading || campaignSpendLoading || hasBlockingObjectives()}
         primaryLoading={objectivesLoading}
       />
     </div>

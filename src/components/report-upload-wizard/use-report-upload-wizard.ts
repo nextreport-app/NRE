@@ -34,7 +34,6 @@ import {
 } from "@/lib/nre/result-type-map";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { buildCampaignMetricBundle } from "@/lib/nre/wizard-campaign-metrics";
-import { LOW_SPEND_CAMPAIGN_THRESHOLD, isLowSpendCampaign } from "@/lib/nre/campaigns";
 import { adSetKey } from "@/lib/nre/ad-sets";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
@@ -307,7 +306,10 @@ export function useReportUploadWizard({
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
-  const [lowSpendCampaigns, setLowSpendCampaigns] = useState<string[]>([]);
+  const [campaignSpendLabel, setCampaignSpendLabel] = useState("Reporting-period spend");
+  const [campaignSpendResolvedKey, setCampaignSpendResolvedKey] = useState("");
+  const campaignChoiceOverrides = useRef(new Map<string, boolean>());
+  const [zeroSpendCampaigns, setZeroSpendCampaigns] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [campaignSearch, setCampaignSearch] = useState("");
   const [expandedCsvExtras, setExpandedCsvExtras] = useState<Set<string>>(new Set());
@@ -929,7 +931,7 @@ export function useReportUploadWizard({
         const ctxRes = await fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uploadSessionId: draft.uploadSessionId }),
+          body: JSON.stringify({ uploadSessionId: draft.uploadSessionId, reportType: draft.reportType, dateSelection: {mode:draft.dateMode,customStart:draft.customStart,customEnd:draft.customEnd},comparisonPeriodA:draft.comparisonPeriodA,comparisonPeriodB:draft.comparisonPeriodB,historicalMonthCount:draft.historicalMonthCount }),
         });
         const ctx = await ctxRes.json().catch(() => null);
         if (cancelled) return;
@@ -969,10 +971,12 @@ export function useReportUploadWizard({
         setCustomEnd(restoredDates?.customEnd ?? draft.customEnd);
         const restoredCampaigns: string[] = ctx.campaigns;
         setCampaigns(restoredCampaigns);
+        campaignChoiceOverrides.current = new Map(restoredCampaigns.map(name => [name, (draft.selectedCampaigns ?? []).includes(name)]));
         setCampaignSpend(ctx.campaignSpend);
         setCurrencySymbol(ctx.currencySymbol ?? initialCurrencySymbol);
         if (ctx.currencySymbol && ctx.currencySymbol !== initialCurrencySymbol) setClientMonthlyBudget(null);
-        setLowSpendCampaigns(ctx.lowSpendCampaigns ?? []);
+        setCampaignSpendLabel(ctx.campaignSpendLabel ?? "Reporting-period spend");
+        setZeroSpendCampaigns(ctx.zeroSpendCampaigns ?? Object.keys(ctx.campaignSpend).filter(name => ctx.campaignSpend[name] === 0));
         const restoredGroups: AdSetGroup[] = ctx.adSetGroups;
         setAdSetGroups(restoredGroups);
         setExpandedCampaigns(new Set());
@@ -1182,7 +1186,10 @@ export function useReportUploadWizard({
     setCampaignSpend(json.campaignSpend || {});
     setCurrencySymbol(json.currencySymbol ?? initialCurrencySymbol);
     if (json.currencySymbol && json.currencySymbol !== initialCurrencySymbol) setClientMonthlyBudget(null);
-    setLowSpendCampaigns(json.lowSpendCampaigns || []);
+    setCampaignSpendLabel(json.campaignSpendLabel ?? "Reporting-period spend");
+    setZeroSpendCampaigns(json.zeroSpendCampaigns ?? Object.keys(json.campaignSpend ?? {}).filter(name => json.campaignSpend[name] === 0));
+    if (!preserve) campaignChoiceOverrides.current.clear();
+    setCampaignSpendResolvedKey("");
 
     if (preserve) {
       setSelectedCampaigns((prev) => {
@@ -1473,7 +1480,9 @@ export function useReportUploadWizard({
     setApiSyncError(null);
     setCampaigns([]);
     setCampaignSpend({});
-    setLowSpendCampaigns([]);
+    setZeroSpendCampaigns([]);
+    campaignChoiceOverrides.current.clear();
+    setCampaignSpendResolvedKey("");
     setSelectedCampaigns(new Set());
     setAdSetGroups([]);
     setSelectedAdSets(new Set());
@@ -1610,6 +1619,7 @@ export function useReportUploadWizard({
 
   // ── Step 2: Campaigns ───────────────────────────────────────────────────
   function toggleCampaign(name: string) {
+    campaignChoiceOverrides.current.set(name, !selectedCampaigns.has(name));
     setSelectedCampaigns((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
@@ -1617,6 +1627,40 @@ export function useReportUploadWizard({
       return next;
     });
   }
+
+  function selectAllCampaigns(include: boolean) {
+    campaignChoiceOverrides.current = new Map(campaigns.map(name => [name, include]));
+    setSelectedCampaigns(include ? new Set(campaigns) : new Set());
+  }
+
+  const campaignSpendRequest = JSON.stringify({reportType,dateSelection:currentDateSelection(),comparisonPeriodA:comparisonPeriodA ?? undefined,comparisonPeriodB:comparisonPeriodB ?? undefined,historicalMonthCount});
+  const campaignSpendLoading = step === 2 && !!uploadSessionId && campaignSpendResolvedKey !== `${uploadSessionId}\0${campaignSpendRequest}`;
+  useEffect(() => {
+    if (step !== 2 || !uploadSessionId) return;
+    const key = `${uploadSessionId}\0${campaignSpendRequest}`;
+    const controller = new AbortController();
+    void fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
+      method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,
+      body:JSON.stringify({uploadSessionId,...JSON.parse(campaignSpendRequest)}),
+    }).then(async response => {
+      const context = await response.json();
+      if (controller.signal.aborted) return;
+      if (!response.ok || !context.campaignSpend || !Array.isArray(context.selectedCampaigns) || !Array.isArray(context.campaigns)) throw new Error("Campaign spend unavailable");
+      setCampaigns(context.campaigns);
+      setCampaignSpend(context.campaignSpend);
+      setZeroSpendCampaigns(context.zeroSpendCampaigns ?? Object.keys(context.campaignSpend).filter(name => context.campaignSpend[name] === 0));
+      setCampaignSpendLabel(context.campaignSpendLabel ?? "Reporting-period spend");
+      const defaults = new Set<string>(context.selectedCampaigns);
+      setSelectedCampaigns(new Set<string>((context.campaigns as string[]).filter(name => campaignChoiceOverrides.current.get(name) ?? defaults.has(name))));
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      setCampaignSpend({}); setZeroSpendCampaigns([]);
+      setCampaignSpendLabel("Spend unavailable for the selected period. Return to Import and analyze again.");
+      // Preserve user choices; never label stale or unavailable values as zero.
+    })
+      .finally(() => { if (!controller.signal.aborted) setCampaignSpendResolvedKey(key); });
+    return () => controller.abort();
+  },[step,uploadSessionId,campaignSpendRequest,clientId]);
 
   /**
    * The Objective Confirmation dropdown's fixed option list is the common
@@ -1814,6 +1858,7 @@ export function useReportUploadWizard({
 
   // ── Step 2: Campaigns + Objectives -> Metric Cards ──────────────────────
   async function handleCampaignsContinue() {
+    if (campaignSpendLoading) return;
     await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
     const selectionKey = selectedCampaignsKey();
     await ensureObjectivesForSelection(selectionKey);
@@ -3078,13 +3123,16 @@ export function useReportUploadWizard({
     handleCancelPreviousMonthSummary,
     campaigns,
     campaignSpend,
-    lowSpendCampaigns,
+    zeroSpendCampaigns,
+    campaignSpendLabel,
+    campaignSpendLoading,
     selectedCampaigns,
     setSelectedCampaigns,
     selectedCampaignsKey,
     campaignSearch,
     setCampaignSearch,
     toggleCampaign,
+    selectAllCampaigns,
     adSetGroups,
     metaCsvExportProfile,
     selectedAdSets,
@@ -3265,7 +3313,7 @@ export function useReportUploadWizard({
     MAX_METRICS_PER_SLIDE,
     MAX_TOTAL_METRICS,
     OBJECTIVE_DROPDOWN_OPTIONS,
-    LOW_SPEND_CAMPAIGN_THRESHOLD,
+
     expandedCsvExtras,
     setExpandedCsvExtras,
     uploadSessionRecovery,

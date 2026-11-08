@@ -1,3 +1,4 @@
+import { campaignSelectionSpend } from "@/lib/nre/campaign-selection-spend";
 import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
@@ -8,7 +9,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
-import { extractCampaignNames, extractCampaignSpend, resolveCampaignSelectionWithLowSpend, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
+import { extractCampaignNames, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
@@ -121,25 +122,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    // Step 2 spec — campaigns sorted by total spend descending, with the
-    // spend value itself returned so the wizard can render each row's
-    // amber spend badge. Sorted BEFORE resolveCampaignSelection so its own
-    // order-preserving filter naturally keeps selectedCampaigns in the same
-    // spend-descending order.
-    const campaignSpend = extractCampaignSpend(mtdParsed.rows);
-    const campaigns = sortCampaignsBySpend(extractCampaignNames(mtdParsed.rows), campaignSpend);
-
     let campaignMemory: CampaignSelectionMemory | null = null;
     if (client.lastDeselectedCampaigns) {
       const parsed = campaignSelectionMemorySchema.safeParse(JSON.parse(client.lastDeselectedCampaigns));
       if (parsed.success) campaignMemory = parsed.data;
     }
-    const { selectedCampaigns, stepMode: campaignStepMode, lowSpendCampaigns } = resolveCampaignSelectionWithLowSpend(
-      campaigns,
-      campaignMemory,
-      campaignSpend,
-    );
-
     // Improvement 2 — the Campaigns step's per-campaign expandable ad-set
     // checklist. Every qualifying ad set (spend > 0) starts pre-checked;
     // there's no saved memory for this like campaigns have (see
@@ -167,6 +154,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     const requestedDates = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
     if (requestedDates) dateSelection = requestedDates;
+    let spendContext;
+    try {
+      spendContext = campaignSelectionSpend(mtdParsed.rows, {
+        reportType: requestedReportType ?? "WEEKLY", dateSelection,
+        comparisonPeriodA: formData ? parseJsonFormField(formData,"comparisonPeriodA",comparisonPeriodSchema) : undefined,
+        comparisonPeriodB: formData ? parseJsonFormField(formData,"comparisonPeriodB",comparisonPeriodSchema) : undefined,
+        historicalMonthCount: formData ? Number(formData.get("historicalMonthCount")) || 1 : 1,
+      }, client.timezone, new Date(), campaignMemory);
+    } catch (error) {
+      return NextResponse.json({valid:false,errors:[{field:"dateSelection",message:(error as Error).message}],warnings:[],detectedPlatform,platform});
+    }
+    const {campaignSpend,selectedCampaigns,campaignStepMode,zeroSpendCampaigns,campaignSpendLabel} = spendContext;
+    const campaigns = sortCampaignsBySpend(extractCampaignNames(mtdParsed.rows), campaignSpend);
     const hasAdLevelCsv = hasAdLevelData(mtdParsed.headers);
     const csvDateGuidance = (requestedReportType ?? "WEEKLY") === "WEEKLY" && !mtdParsed.rows.some(row => row._reportPeriod) ? analyzeCsvDateGuidance(mtdParsed.rows, new Date(), client.timezone) : null;
 
@@ -214,7 +214,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       campaignSpend,
       selectedCampaigns,
       campaignStepMode,
-      lowSpendCampaigns,
+      lowSpendCampaigns: zeroSpendCampaigns,
+      zeroSpendCampaigns,
+      campaignSpendLabel,
       adSetGroups,
       dateBounds,
       weeklyOptions,

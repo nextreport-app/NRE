@@ -9,7 +9,7 @@ vi.mock("../wizard-context", () => ({ useWizardContext: () => ({
   campaigns: ["Traffic", "Reach", "Small spend", "Credit adjustment", ...Array.from({ length: 1020 }, (_, i) => `Inactive ${i}`)],
   campaignSpend: { Traffic: state.missingSpend ? undefined : 100, Reach: 200, "Small spend": 2, "Credit adjustment": -1, ...Object.fromEntries(Array.from({ length: 1020 }, (_, i) => [`Inactive ${i}`, 0])) },
   campaignRequiresConfirmation: new Map(), touchedObjectiveCampaigns: new Set(), campaignObjectives: new Map(), campaignObjectiveConfidence: new Map(), campaignCsvResultTypes: new Map(),
-  adSetGroups: [], expandedCampaigns: new Set(), selectedAdSets: new Set(), lowSpendCampaigns: [], currencySymbol: "$", metricsStatus: "idle", hasBlockingObjectives: () => false,
+  adSetGroups: [], expandedCampaigns: new Set(), selectedAdSets: new Set(), zeroSpendCampaigns: Array.from({length:1020},(_,i)=>`Inactive ${i}`), campaignSpendLabel: "Reporting-period spend · 2026-11-01 – 2026-11-07", currencySymbol: "$", metricsStatus: "idle", hasBlockingObjectives: () => false,
 }) }));
 vi.mock("@/components/site-theme-provider", () => ({ useSiteTheme: () => ({ locale: "en" }) }));
 vi.mock("../ui/wizard-step-help", () => ({ WizardStepHelp: () => null }));
@@ -25,6 +25,9 @@ describe("zero-spend campaign disclosure", () => {
     for (const name of ["Traffic", "Reach", "Small spend", "Credit adjustment"]) expect(html).toContain(`id="campaign-${name}"`);
     expect(html).toContain("0 of 1024 included");
     expect(html).toContain("Select all campaigns");
+    expect(html).toContain("$100 spend"); expect(html).toContain("$200 spend"); expect(html).toContain("$2 spend");
+    expect(html).not.toContain("Last 30 days spend detected"); expect(html).not.toContain("text-amber-400");
+    expect(html).toContain("Campaigns with no spend in this reporting period are excluded by default");
   });
   it("does not label missing spend as a measured zero", () => {
     state.missingSpend = true;

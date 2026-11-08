@@ -23,8 +23,8 @@ export function extractCampaignNames(rows: NreRow[]): string[] {
 }
 
 /**
- * Per-campaign total spend across the uploaded CSV — Step 2's spend badge
- * ("C$234") and its spend-descending campaign sort. Keyed by the exact
+ * Per-campaign total spend across the supplied rows. Callers choose the
+ * reporting-period scope before computing selection badges and ordering. Keyed by the exact
  * campaign_name string as it appears in the CSV (matches extractCampaignNames'
  * own output), not normalized, since callers already look this map up by
  * the same names extractCampaignNames returned.
@@ -91,7 +91,10 @@ export function filterRowsByCampaigns<T extends NreRow>(rows: T[], selectedCampa
 }
 
 /** Full campaign list + excluded subset from the upload that last saved a selection — see Client.lastDeselectedCampaigns's schema comment. */
+export const CAMPAIGN_SELECTION_POLICY = "positive-period-spend-v1" as const;
+
 export interface CampaignSelectionMemory {
+  policy?: typeof CAMPAIGN_SELECTION_POLICY;
   campaigns: string[];
   deselected: string[];
 }
@@ -135,7 +138,7 @@ export function resolveCampaignSelection(
   return { selectedCampaigns, stepMode: "returning" };
 }
 
-/** Campaigns below this last-30-days spend (from the uploaded CSV) default unchecked on Step 2. */
+/** Legacy supplement-only threshold. Main wizard defaults use campaignSelectionSpend instead. */
 export const LOW_SPEND_CAMPAIGN_THRESHOLD = 10;
 
 export function isLowSpendCampaign(name: string, campaignSpend: Record<string, number>, threshold = LOW_SPEND_CAMPAIGN_THRESHOLD): boolean {
@@ -143,6 +146,7 @@ export function isLowSpendCampaign(name: string, campaignSpend: Record<string, n
 }
 
 /**
+ * Legacy helper retained for compatibility; not used by the main wizard.
  * Applies saved selection memory, then drops campaigns under the low-spend
  * threshold so tiny test/paused campaigns do not inflate slide count by default.
  */

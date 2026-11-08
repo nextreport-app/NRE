@@ -92,10 +92,11 @@ describe("buildHistoricalReportData", () => {
     expect(share.visibility?.combinedTotal).toBe(true);
   });
 
-  it("excludes campaigns under $10 spend for that month", () => {
+  it("keeps explicitly included low- and zero-spend campaigns in the monthly deck", () => {
     const rows: NreRow[] = [
       dailyRow("2026-05-01", "Tiny", "0.50"),
       dailyRow("2026-05-31", "Big", "15"),
+      {...dailyRow("2026-05-31", "Zero", "0"),results:"0"},
     ];
     const data = buildHistoricalReportData({
       accountName: "Acme",
@@ -103,11 +104,13 @@ describe("buildHistoricalReportData", () => {
       timezone: "UTC",
       monthlyBudget: null,
       mtdDailyRows: rows,
+      selectedCampaigns: ["Tiny","Big","Zero"],
       monthCount: 1,
       now: new Date("2026-06-07T12:00:00Z"),
     });
     const campaignSlides = data.slides.filter((s) => !s.isMonthTotal);
-    expect(campaignSlides.map((s) => s.campaignName)).toEqual(["Big"]);
+    expect(campaignSlides.map((s) => s.campaignName)).toEqual(expect.arrayContaining(["Tiny", "Big", "Zero"]));
+    expect(campaignSlides).toHaveLength(3);
     expect(data.slides.some(slide => slide.isMonthTotal)).toBe(true);
   });
 

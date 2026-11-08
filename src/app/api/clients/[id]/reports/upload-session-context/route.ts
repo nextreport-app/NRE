@@ -1,6 +1,7 @@
+import { campaignSelectionSpend } from "@/lib/nre/campaign-selection-spend";
 import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
-import { extractCampaignNames, extractCampaignSpend, isLowSpendCampaign, sortCampaignsBySpend } from "@/lib/nre/campaigns";
+import { extractCampaignNames, sortCampaignsBySpend } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { detectMetaCsvExportProfile } from "@/lib/nre/meta-csv-export-profile";
@@ -15,12 +16,17 @@ import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
 import { loadWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import { computeWizardUploadDateContext } from "@/lib/nre/wizard-upload-date-context";
-import { uploadSessionIdSchema } from "@/lib/validators/report-wizard";
+import { uploadSessionIdSchema, reportTypeSchema, dateSelectionSchema, comparisonPeriodSchema, campaignSelectionMemorySchema } from "@/lib/validators/report-wizard";
 
 export const maxDuration = 300;
 
 const bodySchema = z.object({
   uploadSessionId: uploadSessionIdSchema,
+  reportType: reportTypeSchema.optional(),
+  dateSelection: dateSelectionSchema.optional(),
+  comparisonPeriodA: comparisonPeriodSchema.optional(),
+  comparisonPeriodB: comparisonPeriodSchema.optional(),
+  historicalMonthCount: z.number().int().min(1).max(12).optional(),
 });
 
 /**
@@ -58,14 +64,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const context = computeWizardUploadDateContext(payload.rows, client.timezone);
 
-    const campaignSpend = extractCampaignSpend(payload.rows);
+    const memory = client.lastDeselectedCampaigns ? campaignSelectionMemorySchema.safeParse(JSON.parse(client.lastDeselectedCampaigns)) : null;
+    const spendContext = campaignSelectionSpend(payload.rows, {...parsed.data,reportType:parsed.data.reportType ?? "WEEKLY"},client.timezone,new Date(),memory?.success ? memory.data : null);
+    const {campaignSpend} = spendContext;
     const campaigns = sortCampaignsBySpend(extractCampaignNames(payload.rows), campaignSpend);
     return NextResponse.json({
       ok: true,
       currencySymbol: resolveReportCurrencySymbol(payload.headers, payload.rows, CURRENCY_SYMBOLS[client.currency]),
       campaigns,
-      campaignSpend,
-      lowSpendCampaigns: campaigns.filter(name => isLowSpendCampaign(name, campaignSpend)),
+      ...spendContext,
+      lowSpendCampaigns: spendContext.zeroSpendCampaigns,
       adSetGroups: extractSpendingAdSetGroups(payload.rows),
       hasAdLevelCsv: hasAdLevelData(payload.headers),
       metaCsvExportProfile: payload.platform === "META" ? detectMetaCsvExportProfile(payload.colMap, payload.rows, payload.headers) : null,
