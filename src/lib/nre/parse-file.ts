@@ -81,10 +81,22 @@ export function pickSheetName(workbook: XLSX.WorkBook, preferredSheetName?: stri
 /** Converts a workbook sheet to the same CSV text every other format is parsed through — see parseUploadedFileHeadersAndRows's own doc comment for why. Returns null if the workbook has no usable sheet. */
 function excelBufferToCsvText(buffer: Buffer, preferredSheetName?: string): string | null {
   assertWorkbookUploadBudget(buffer);
-  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const workbook = XLSX.read(buffer, { type: "buffer", cellNF: true });
   const sheetName = pickSheetName(workbook, preferredSheetName);
   if (!sheetName) return null;
   const sheet = workbook.Sheets[sheetName];
+  // Native workbook dates have an unambiguous serial value. Do not send
+  // locale-dependent display text (e.g. 11/6/26) through CSV date guessing.
+  // Keep ordinary numbers, textual dates and time-only metrics unchanged.
+  for (const [address, cell] of Object.entries(sheet)) {
+    if (address.startsWith("!") || cell.t !== "n" || typeof cell.v !== "number") continue;
+    const format = String(cell.z ?? "");
+    const dateTokens = format.replace(/"[^"]*"|\\./g, "");
+    if (!XLSX.SSF.is_date(format) || !/[yd]/i.test(dateTokens)) continue;
+    const date = XLSX.SSF.parse_date_code(cell.v, { date1904: workbook.Workbook?.WBProps?.date1904 === true });
+    if (!date) continue;
+    sheet[address] = { t: "s", v: `${String(date.y).padStart(4, "0")}-${String(date.m).padStart(2, "0")}-${String(date.d).padStart(2, "0")}` };
+  }
   return XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
 }
 
