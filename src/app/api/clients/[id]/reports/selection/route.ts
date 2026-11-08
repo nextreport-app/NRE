@@ -1,3 +1,4 @@
+import { CAMPAIGN_SELECTION_POLICY } from "@/lib/nre/campaigns";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
@@ -51,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (parsed.data.campaigns && parsed.data.selectedCampaigns) {
       const selected = new Set(parsed.data.selectedCampaigns);
       const deselected = parsed.data.campaigns.filter((name) => !selected.has(name));
-      data.lastDeselectedCampaigns = JSON.stringify({ campaigns: parsed.data.campaigns, deselected });
+      data.lastDeselectedCampaigns = JSON.stringify({ policy: CAMPAIGN_SELECTION_POLICY, campaigns: parsed.data.campaigns, deselected });
     }
     if (parsed.data.dateSelection) {
       data.lastDateSelection = JSON.stringify(parsed.data.dateSelection);

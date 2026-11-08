@@ -15,7 +15,8 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(req.method()==='PATCH')return route.fulfill({json:{client:{timezone:JSON.parse(req.postData()).timezone}}});
  if(url.pathname.endsWith('/wizard-draft'))return route.fulfill({json:{draft:null}});
  if(url.pathname.endsWith('/sync-api')){sent=req.postDataJSON();return route.fulfill({json:{ok:true,csvText:'Campaign name,Day,Amount spent (USD)\nTest leads,2026-11-04,100',rowCount:1,metaSyncDiagnostics:{mappedResultsSum:157,rowCount:81,sampleActionTypes:['offsite_conversion.fb_pixel_schedule']},hasPreviousMonthData:false,metaAdAccountId:'act_123'}});}
- if(url.pathname.endsWith('/analyze')){analyzed=req.postData();await (++analyzeCount===1?analysisGate:manualAnalysisGate);return route.fulfill({json:{valid:true,campaigns:['Test leads'],selectedCampaigns:['Test leads'],campaignSpend:{'Test leads':100},lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
+ if(url.pathname.endsWith('/analyze')){analyzed=req.postData();await (++analyzeCount===1?analysisGate:manualAnalysisGate);return route.fulfill({json:{valid:true,uploadSessionId:'fixture-session',campaigns:['Test leads','Small spend','Zero spend'],selectedCampaigns:['Test leads','Small spend'],campaignSpend:{'Test leads':100,'Small spend':4,'Zero spend':0},zeroSpendCampaigns:['Zero spend'],adSetGroups:[{campaignName:'Zero spend',adSetNames:['Previously active A','Previously active B']}],lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
+ if(url.pathname.endsWith('/upload-session-context')){const request=req.postDataJSON();const recent=request.dateSelection?.mode==='last7';return route.fulfill({json:{ok:true,campaigns:['Test leads','Small spend','Zero spend'],campaignSpend:{'Test leads':recent?200:100,'Small spend':recent?5:4,'Zero spend':0},selectedCampaigns:['Test leads','Small spend'],zeroSpendCampaigns:['Zero spend'],campaignSpendLabel:'Reporting-period spend',headers:['Campaign name','Day','Amount spent (USD)'],adSetGroups:[]}});}
  if(url.pathname.endsWith('/metrics'))return route.fulfill({json:{campaignObjectives:{},perCampaignSelection:{},perCampaignAvailable:{}}});
  return route.fulfill({json:{client:{monthlyBudget:null},ok:true}});
  });
@@ -94,6 +95,20 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(sent.reportType!==kind)throw Error('wrong report '+JSON.stringify(sent));
  if(kind==='WEEKLY'&&(sent.dateSelection.mode!=='custom'||sent.dateSelection.customStart!=='2026-10-01'||sent.dateSelection.customEnd!=='2026-10-07'))throw Error('API lost selected custom week '+JSON.stringify(sent));
  if(!analyzed.includes(kind))throw Error('report not sent to analyze');
+ await page.waitForFunction(()=>!window.w.campaignSpendLoading);
+ if(!(await page.getByLabel('Small spend',{exact:true}).isChecked()))throw Error('positive low spend defaulted unchecked');
+ if(await page.getByText('Last 30 days spend detected',{exact:false}).count())throw Error('obsolete spend warning still visible');
+ if(kind==='WEEKLY'){
+  await page.getByLabel('Small spend',{exact:true}).uncheck();
+  await page.getByRole('button',{name:/Zero-spend campaigns/}).click();
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('expanded zero-spend rows overflow the viewport');
+  await page.getByLabel('Zero spend',{exact:true}).check();
+  await page.evaluate(()=>window.w.setDateMode('last7'));
+  await page.waitForFunction(()=>!window.w.campaignSpendLoading && window.w.campaignSpend['Test leads']===200);
+  if(await page.getByLabel('Small spend',{exact:true}).isChecked())throw Error('period refresh erased explicit exclusion');
+  if(!(await page.getByLabel('Zero spend',{exact:true}).isChecked()))throw Error('period refresh erased explicit zero inclusion');
+ }
+
  await page.getByRole('button',{name:'Continue to metrics',exact:true}).click();await page.waitForFunction(()=>window.w.step===3);
  await page.getByRole('button',{name:'Continue to generate',exact:true}).click();await page.waitForFunction(()=>window.w.step===4);
  if(errors.length)throw Error(errors.join('\n'));

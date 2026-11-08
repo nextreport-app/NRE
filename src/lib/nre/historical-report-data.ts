@@ -9,7 +9,7 @@ import type { DateSelection } from "@/lib/validators/report-wizard";
  */
 
 import type { NreRow } from "./columns";
-import { filterRowsByCampaigns, LOW_SPEND_CAMPAIGN_THRESHOLD } from "./campaigns";
+import { filterRowsByCampaigns } from "./campaigns";
 import {
   computeHistoricalMonthRanges,
   filterNreRowsByDateRange,
@@ -136,10 +136,6 @@ function formatMonthsLabel(ranges: HistoricalMonthRange[]): string {
     return `${first.monthName} - ${last.monthName} ${last.year}${last.fullMonthLabel.endsWith("(MTD)") ? " (final month MTD)" : ""}`;
   }
   return `${first.fullMonthLabel} - ${last.fullMonthLabel}`;
-}
-
-function filterLowSpendCampaignSlides(slides: CampaignSlideData[]): CampaignSlideData[] {
-  return slides.filter((slide) => (slide.ai.spendNum ?? 0) >= LOW_SPEND_CAMPAIGN_THRESHOLD);
 }
 
 function buildMonthTotalSlide(
@@ -297,7 +293,7 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
       monthlyBudget,
       mtdDailyRows: monthRows,
       periodRows: [],
-      selectedCampaigns: null,
+      selectedCampaigns: selectedCampaigns ?? null,
       selectedAdSets: selectedAdSets ?? [],
       reportType: "MONTHLY",
       selectedMetrics,
@@ -310,16 +306,14 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
 
     tableHeaderLabels = monthData.tableHeaderLabels;
 
-    const monthCampaignSlides = filterLowSpendCampaignSlides(
-      monthData.campaignSlides.map((slide) => ({
+    const monthCampaignSlides = monthData.campaignSlides.map((slide) => ({
         ...slide,
         performanceHeader: monthRange.performanceHeader,
         ai: {
           ...slide.ai,
           dateRange: monthRange.fullMonthLabel,
         },
-      })),
-    );
+      }));
 
     slides.push(...monthCampaignSlides);
     adSetSlides.push(...monthData.adSetSlides.map(slide => ({ ...slide, performanceHeader: monthRange.performanceHeader, ai: { ...slide.ai, dateRange: monthRange.fullMonthLabel } })));
@@ -327,8 +321,7 @@ export function buildHistoricalReportData(input: BuildHistoricalReportDataInput)
 
     const monthTotal = buildMonthTotalSlide(monthRange, monthData, monthRows, currencySymbol, selectedMetrics);
     // A lone campaign already presents the same monthly totals. Keep the
-    // account overview when multiple campaigns contributed, including ones
-    // omitted by the low-spend campaign-slide filter.
+    // account overview when multiple campaigns contributed.
     if (monthTotal && (monthData.campaignSlides.length > 1 || monthCampaignSlides.length === 0)) {
       slides.push(monthTotal);
     }

@@ -1802,12 +1802,11 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
 
   // Campaign SUMMARY slide order uses plain default sort (not localeCompare) —
   // matches Object.keys(campaignGroups).sort() in the source exactly. A
-  // campaign with zero total spend in the selected weekly window gets no
-  // slide at all — even if it has rows in the window (all $0) or has real
-  // MTD data from earlier in the month — though it can still show up in the
-  // Combined Total table's MTD row, which sums mtdRows independently of this.
+  // zero-spend campaign is omitted from automatic engine selection, but an
+  // explicitly included campaign is retained. Campaign selection owns the
+  // default exclusions; rendering must not silently override the user.
   const campaignNames = Object.keys(campaignGroups)
-    .filter((name) => campaignGroups[name].reduce((sum, r) => sum + parseCellNum(r.spend), 0) > 0)
+    .filter((name) => campaignGroups[name].reduce((sum, r) => sum + parseCellNum(r.spend), 0) > 0 || selectedCampaigns?.some(selected => normalizeCampaignName(selected) === normalizeCampaignName(name)))
     .sort();
   // Ad-set slides (Phase A2 below) skip rows for any campaign excluded above.
   const keptCampaignNames = new Set(campaignNames);

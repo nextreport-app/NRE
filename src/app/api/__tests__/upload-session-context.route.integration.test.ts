@@ -29,6 +29,16 @@ describe("saved upload context recovery", () => {
     expect(result.dateBounds).toEqual({ minIso: "2026-11-01", maxIso: "2026-11-02" });
     expect(state.load).toHaveBeenCalledWith("owner", "client", sessionId);
   });
+  it("rehydrates spend and defaults for the requested report dates instead of the whole upload", async () => {
+    const parsed = parseCsvText("Campaign name,Day,Amount spent (USD)\nEarlier,2026-11-01,50\nEarlier,2026-11-02,0\nSmall,2026-11-02,4");
+    state.payload = {...parsed,platform:"META"};
+    const response = await POST(new Request("https://example.test/context", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uploadSessionId:sessionId,reportType:"DAY_BREAKDOWN",dateSelection:{mode:"custom",customStart:"2026-11-02",customEnd:"2026-11-02"}})}),{params:Promise.resolve({id:"client"})});
+    const result = await response.json();
+    expect(result.campaignSpend).toEqual({Earlier:0,Small:4});
+    expect(result.selectedCampaigns).toEqual(["Small"]);
+    expect(result.zeroSpendCampaigns).toEqual(["Earlier"]);
+    expect(result.campaignSpendLabel).toContain("2026-11-02");
+  });
   it("returns an expired state instead of fabricated empty facts when the upload is unavailable", async () => {
     state.payload = null;
     const result = await (await request()).json();

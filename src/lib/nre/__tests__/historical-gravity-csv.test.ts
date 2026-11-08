@@ -5,7 +5,6 @@ import { buildHistoricalReportData } from "../historical-report-data";
 import { getRowDate } from "../columns";
 import { parseDate } from "../dates";
 import { parseCellNum } from "../format";
-import { LOW_SPEND_CAMPAIGN_THRESHOLD } from "../campaigns";
 
 const CSV_PATH = "/home/ubuntu/.cursor/projects/workspace/uploads/DC-weekly-Gravity_4_months_4848.csv";
 
@@ -74,7 +73,7 @@ describe("Gravity 4-month CSV historical accuracy", () => {
       (s) => !s.isMonthTotal && s.performanceHeader === "YOUR MAY PERFORMANCE REPORT",
     );
     for (const slide of mayCampaignSlides) {
-      expect(slide.ai.spendNum ?? 0).toBeGreaterThanOrEqual(LOW_SPEND_CAMPAIGN_THRESHOLD);
+      expect(slide.ai.spendNum ?? 0).toBeGreaterThan(0);
     }
 
     expect(data.slides.some((s) => s.isMonthTotal && s.performanceHeader === "YOUR MAY MONTH TOTAL")).toBe(true);
