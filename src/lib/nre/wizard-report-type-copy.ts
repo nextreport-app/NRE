@@ -26,7 +26,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<ReportTypeValue, WizardReportTypeCo
   MONTHLY: {
     pickerLabel: "Monthly report",
     cardHeading: "Monthly report",
-    cardOneLiner: "One month, current MTD, or several months shown separately.",
+    cardOneLiner: "Monthly performance for one or more months.",
     cardYouGet: "Campaign performance, selected ad-set slides and a visual chart for each month, followed by a monthly overview table. No weekly slides.",
     defaultDeckTitle: "Monthly Performance Report",
   },
@@ -47,7 +47,7 @@ export const WIZARD_REPORT_TYPE_COPY: Record<ReportTypeValue, WizardReportTypeCo
   HISTORICAL: {
     pickerLabel: "Monthly report",
     cardHeading: "Monthly report",
-    cardOneLiner: "Monthly totals and campaign performance across 2–12 months.",
+    cardOneLiner: "Monthly performance for one or more months.",
     cardYouGet: "Campaign performance, selected ad-set slides and a visual chart for each month, followed by a multi-month overview table.",
     defaultDeckTitle: "Multi-Month Performance Report",
   },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { historicalPeriods, monthPeriod, reportCalendarYesterday, reportPeriodAnchor, selectedSinglePeriod } from "../report-period-selection";
+import { historicalPeriods, previousCompleteMonth, monthPeriod, reportCalendarYesterday, reportPeriodAnchor, selectedSinglePeriod } from "../report-period-selection";
 import { computeHistoricalMonthRanges, validateHistoricalCsvCoverage } from "../date-range";
 import { getCalendarDateInTimezone } from "../dates";
 
@@ -45,5 +45,18 @@ describe("report periods", () => {
   });
   it("handles leap February", () => {
     expect(monthPeriod("2024-02", now).endIso).toBe("2024-02-29");
+  });
+});
+
+
+describe("fresh monthly default", () => {
+  it.each([
+    ["2026-11-09T12:00:00Z", "UTC", "2026-10-01", "2026-10-31"],
+    ["2026-01-09T12:00:00Z", "UTC", "2025-12-01", "2025-12-31"],
+    ["2024-03-09T12:00:00Z", "UTC", "2024-02-01", "2024-02-29"],
+    ["2026-11-01T00:30:00Z", "America/Los_Angeles", "2026-09-01", "2026-09-30"],
+    ["2026-11-01T00:30:00Z", "Asia/Kolkata", "2026-10-01", "2026-10-31"],
+  ])("selects the previous complete month for %s in %s", (instant, timezone, startIso, endIso) => {
+    expect(previousCompleteMonth(new Date(instant), timezone)).toEqual({ startIso, endIso });
   });
 });

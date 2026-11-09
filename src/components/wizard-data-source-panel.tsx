@@ -492,7 +492,7 @@ export function WizardDataSourceToggle({
 }) {
   const [expanded, setExpanded] = useState(false);
   if (compact && !expanded && !apiUnavailable) return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg px-4 py-2.5">
       <div><p className="text-[12px] text-dash-ink-secondary">Import method</p><p className="text-[14px] font-semibold text-dash-ink">{value === "api" ? "Meta API sync" : "Manual CSV upload"}</p></div>
       <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="text-[13px] font-semibold text-dash-accent hover:underline">Change import method</button>
     </div>
