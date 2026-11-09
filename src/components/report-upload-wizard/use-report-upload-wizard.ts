@@ -10,7 +10,7 @@ import { comparisonOptionalMetrics, isComparisonCoreMetric, paginateComparisonMe
 import { comparisonPresetPeriods } from "@/lib/nre/comparison-period-selection";
 
 import { paginateExtraMetrics, allSlideMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "@/lib/nre/metric-pagination";
-import { historicalPeriods, selectedSinglePeriod, monthlySelectionFromBounds, reportCalendarYesterday, restoredMonthCount } from "@/lib/nre/report-period-selection";
+import { historicalPeriods, selectedSinglePeriod, monthlySelectionFromBounds, previousCompleteMonth, reportCalendarYesterday, restoredMonthCount } from "@/lib/nre/report-period-selection";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -588,10 +588,16 @@ export function useReportUploadWizard({
   ]);
 
   /** Report Type card's onSelect — also swaps the Report Title default text, unless the user has already typed their own. */
-  function handleReportTypeChange(next: ReportTypeValue) {
+  function handleReportTypeChange(next: ReportTypeValue, options?: { initializeDates?: boolean }) {
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
     setReportType(reportTypeChoice);
+    // Month controls supply exact dates/count themselves. Do not replace their
+    // one-month choice with every month found in an already uploaded CSV.
+    if (options?.initializeDates === false) {
+      setCsvWarningDismissed(false);
+      return;
+    }
     setDateMode("last7");
     setCustomStart("");
     setCustomEnd("");
@@ -600,8 +606,10 @@ export function useReportUploadWizard({
       const yesterday = csvReportingCalendar(dataSourceMode === "api" && step === 1 ? null : dateBounds, new Date(), clientTimezone).endIso;
       setCustomStart(yesterday); setCustomEnd(yesterday);
     }
-    if (next === "MONTHLY" && dateBounds && dataSourceMode !== "api") {
-      const selection = monthlySelectionFromBounds(dateBounds, new Date(), clientTimezone);
+    if (next === "MONTHLY") {
+      const selection = dateBounds && dataSourceMode !== "api"
+        ? monthlySelectionFromBounds(dateBounds, new Date(), clientTimezone)
+        : { count: 1, ...previousCompleteMonth(new Date(), clientTimezone) };
       setReportType(selection.count > 1 ? "HISTORICAL" : "MONTHLY");
       setHistoricalMonthCount(selection.count);
       setDateMode("custom"); setCustomStart(selection.startIso); setCustomEnd(selection.endIso);

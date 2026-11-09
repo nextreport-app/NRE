@@ -15,6 +15,13 @@ export function monthPeriod(month: string, now = new Date(), timezone = "UTC"): 
   return { startIso: `${month}-01`, endIso: end > yesterday ? yesterday : end };
 }
 
+/** A fresh monthly report starts with the previous complete account-calendar month. */
+export function previousCompleteMonth(now = new Date(), timezone = "UTC"): DateRangeIso {
+  const today = getCalendarDateInTimezone(now, timezone);
+  const month = new Date(Date.UTC(today.year, today.month - 1, 0)).toISOString().slice(0, 7);
+  return monthPeriod(month, now, timezone);
+}
+
 /** Anchor a monthly engine to the calendar day following the selected end. */
 export function reportPeriodAnchor(endIso: string, timezone: string): Date {
   const target = new Date(`${endIso}T12:00:00Z`);

@@ -62,7 +62,38 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(!await page.getByRole('group',{name:'Choose report type',exact:true}).isVisible())await page.getByRole('button',{name:'Change report type',exact:true}).click();
  const label=kind==='HISTORICAL'?'Monthly report':kind==='COMPARISON'?'Compare two periods':'Daily report';
  await page.getByRole('button').filter({has:page.getByText(label,{exact:true})}).first().click();
- if(kind==='HISTORICAL')await page.getByRole('button',{name:'Last 3 complete months',exact:true}).click();
+ if(kind==='HISTORICAL'){
+  await page.waitForFunction(()=>window.w.customStart==='2026-10-01' && window.w.customEnd==='2026-10-31');
+  if(await page.getByRole('button',{name:'From month',exact:true}).count())throw Error('preset shows unnecessary calendars');
+  await page.getByRole('button',{name:'Custom range',exact:true}).click();
+  await page.getByRole('button',{name:'From month',exact:true}).click();
+  await page.getByRole('button',{name:'August 2026',exact:true}).click();
+  await page.getByRole('button',{name:'To month',exact:true}).click();
+  if(!(await page.getByRole('button',{name:'December 2026',exact:true}).isDisabled()))throw Error('future month is selectable');
+  await page.getByRole('button',{name:'November 2026',exact:true}).click();
+  await page.waitForFunction(()=>window.w.customStart==='2026-08-01' && window.w.customEnd==='2026-11-04' && window.w.historicalMonthCount===4);
+  const summary=page.locator('[aria-label="Selected reporting months"]');
+  if(!(await summary.innerText()).includes('3 complete months + November to date'))throw Error('partial month is not explicit');
+  if(await summary.locator('ul').isVisible())throw Error('month breakdown is not collapsed');
+  await summary.locator('summary').click();
+  if(await summary.getByRole('listitem').count()!==4)throw Error('month breakdown has incorrect count');
+  const boxes=await summary.getByRole('listitem').evaluateAll(items=>items.map(item=>({x:item.getBoundingClientRect().x,y:item.getBoundingClientRect().y})));
+  if(boxes.some((box,index)=>index>0 && (box.x!==boxes[0].x || box.y<=boxes[index-1].y)))throw Error('month breakdown is not vertical');
+  await page.getByRole('button',{name:'From month',exact:true}).click();
+  await page.getByRole('button',{name:'Previous year',exact:true}).click();
+  await page.getByRole('button',{name:'August 2025',exact:true}).click();
+  await page.waitForFunction(()=>window.w.historicalMonthCount===12 && window.w.customEnd==='2026-07-31');
+  await page.getByRole('button',{name:'To month',exact:true}).click();
+  await page.getByRole('button',{name:'November 2026',exact:true}).click();
+  await page.waitForFunction(()=>window.w.historicalMonthCount===12 && window.w.customStart==='2025-12-01');
+  await page.getByRole('button',{name:'Last 3 complete months',exact:true}).click();
+  await page.waitForFunction(()=>window.w.customStart==='2026-08-01' && window.w.customEnd==='2026-10-31' && window.w.historicalMonthCount===3);
+  if(await page.getByRole('button',{name:'From month',exact:true}).count())throw Error('preset did not hide custom calendars');
+  if((await page.locator('body').innerText()).includes('Meta data needed:'))throw Error('redundant monthly fetch copy remains');
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth))throw Error('monthly UI overflows viewport');
+  await page.screenshot({path:path.join(output,`monthly-presets-${width}.png`),fullPage:true});
+ }
+
  if(kind==='COMPARISON'){if(await page.getByRole('heading',{name:'Which periods would you like to compare?',exact:true}).count()!==1)throw Error('duplicate comparison controls');await page.getByRole('button',{name:'Last 30 days vs previous 30 days',exact:true}).click();}
  if(kind==='DAY_BREAKDOWN'){
   await page.getByRole('button',{name:'Last 14 days',exact:true}).click();
@@ -137,6 +168,16 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  releaseManualAnalysis();await page.waitForFunction(()=>window.w.step===2);
  await page.getByRole('button',{name:'Continue to metrics',exact:true}).click();await page.waitForFunction(()=>window.w.step===3);
  await page.getByRole('button',{name:'Continue to generate',exact:true}).click();await page.waitForFunction(()=>window.w.step===4);
+ if(kind==='HISTORICAL'){
+  await page.evaluate(()=>window.w.setStep(1));
+  await page.getByRole('button',{name:'Previous month',exact:true}).click();
+  await page.waitForFunction(()=>window.w.reportType==='MONTHLY' && window.w.historicalMonthCount===1 && window.w.customStart==='2026-10-01' && window.w.customEnd==='2026-10-31');
+  if(await page.getByRole('button',{name:'From month',exact:true}).count())throw Error('CSV previous-month preset shows calendars');
+  await page.getByRole('button',{name:'This month so far',exact:true}).click();
+  await page.waitForFunction(()=>window.w.reportType==='MONTHLY' && window.w.customStart==='2026-11-01' && window.w.customEnd==='2026-11-04');
+  await page.getByRole('button',{name:'Last 3 complete months',exact:true}).click();
+  await page.waitForFunction(()=>window.w.reportType==='HISTORICAL' && window.w.historicalMonthCount===3 && window.w.customStart==='2026-08-01');
+ }
  await page.reload();await page.getByRole('button',{name:'Change import method',exact:true}).waitFor();
  if(await page.evaluate(()=>window.w.dataSourceMode)!=='csv')throw Error('CSV import preference not remembered after reload');
  if(await page.getByText('Connected as',{exact:false}).count())throw Error('CSV user still sees API connection form');

@@ -4,11 +4,10 @@ import { csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
 import { useState } from "react";
 import { dailyPeriodLabel, dailyPresetRange } from "@/lib/nre/daily-period-selection";
 import { ComparisonPeriodControls } from "./comparison-period-controls";
-import { ReportMonthPicker } from "./report-month-picker";
+import { MonthlyPeriodControls } from "./monthly-period-controls";
 import { WizardDatePicker, WizardDateRangeFields } from "./wizard-date-picker";
 import { useWizardContext } from "../wizard-context";
-import { historicalPeriods, monthPeriod, reportCalendarYesterday, reportPeriodAnchor } from "@/lib/nre/report-period-selection";
-import { getCalendarDateInTimezone } from "@/lib/nre/dates";
+import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
 
 /** Four visible report choices reuse the existing safe engine modes. */
 export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
@@ -20,8 +19,6 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
   const calendar = csvReportingCalendar(w.dataSourceMode === "api" && w.step === 1 ? null : w.dateBounds, new Date(), w.clientTimezone);
   const now = calendar.now;
   const yesterday = reportCalendarYesterday(now, w.clientTimezone);
-  const today = getCalendarDateInTimezone(now, w.clientTimezone);
-  const currentMonth = `${today.year}-${String(today.month).padStart(2, "0")}`;
   const custom = w.dateMode === "custom";
   const changeDates = <button type="button" aria-expanded={datesExpanded} onClick={() => setDatesExpanded(value => !value)} className="shrink-0 text-sm font-medium text-dash-accent hover:underline">{datesExpanded ? "Hide date options" : "Change dates"}</button>;
   if (stage === "generate" && ["DAILY", "DAY_BREAKDOWN"].includes(w.reportType)) {
@@ -47,59 +44,5 @@ export function ReportPeriodControls({ stage = "import" }: { stage?: "import" | 
       {w.customRangeError && <p className="text-sm text-red-400">{w.customRangeError}</p>}
     </section>;
   }
-  const count = w.reportType === "HISTORICAL" ? w.historicalMonthCount : 1;
-  const endMonth = custom && w.customEnd ? w.customEnd.slice(0, 7) : yesterday.slice(0, 7);
-  function periodEnd(month: string) {
-    return monthPeriod(month, now, w.clientTimezone).endIso;
-  }
-  function chooseMonths(number: number, month: string) {
-    const end = periodEnd(month);
-    const anchor = month === currentMonth ? reportPeriodAnchor(end, w.clientTimezone) : now;
-    const ranges = historicalPeriods(number, month, month === currentMonth, anchor, w.clientTimezone);
-    w.handleReportTypeChange(number > 1 ? "HISTORICAL" : "MONTHLY");
-    w.editHistoricalMonthCount(number);
-    chooseRange(ranges[0].startIso, end);
-  }
-  const end = custom && w.customEnd ? w.customEnd : periodEnd(endMonth);
-  const first = new Date(`${endMonth}-01T12:00:00Z`); first.setUTCMonth(first.getUTCMonth() - count + 1);
-  const start = first.toISOString().slice(0, 10);
-  const rangeLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).formatRange(new Date(start + "T12:00:00Z"), new Date(end + "T12:00:00Z"));
-  const startMonth = start.slice(0, 7);
-  function shiftMonth(month: string, offset: number) {
-    const date = new Date(`${month}-01T12:00:00Z`);
-    date.setUTCMonth(date.getUTCMonth() + offset);
-    return date.toISOString().slice(0, 7);
-  }
-  function chooseMonthRange(from: string, to: string) {
-    const a = new Date(`${from}-01T12:00:00Z`), b = new Date(`${to}-01T12:00:00Z`);
-    const months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1;
-    chooseMonths(months, to);
-  }
-  const latestMonth = yesterday.slice(0, 7);
-  const shortcuts = [
-    { label: "Current month to date", from: currentMonth, to: currentMonth },
-    { label: "Previous month", from: shiftMonth(currentMonth, -1), to: shiftMonth(currentMonth, -1) },
-    { label: "Last 3 complete months", from: shiftMonth(currentMonth, -3), to: shiftMonth(currentMonth, -1) },
-    { label: "Last 6 complete months", from: shiftMonth(currentMonth, -6), to: shiftMonth(currentMonth, -1) },
-  ];
-  const periods = historicalPeriods(count, endMonth, endMonth === currentMonth, endMonth === currentMonth ? reportPeriodAnchor(end, w.clientTimezone) : now, w.clientTimezone);
-  if (stage === "generate") return <section className="rounded-xl border border-dash-border bg-dash-card p-4">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{rangeLabel}</p></div>{changeDates}</div>
-    <p className="mt-3 text-xs text-dash-ink-secondary">{count === 1 ? "1 month" : `${count} months, shown separately`}</p>
-    <ul className="mt-2 grid grid-cols-1 gap-1.5 text-xs text-dash-ink-secondary">{periods.map((period, index) => <li key={period.startIso}>{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(period.startIso + "T12:00:00Z"))}: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).formatRange(new Date(period.startIso + "T12:00:00Z"), new Date((index === periods.length - 1 ? end : period.endIso) + "T12:00:00Z"))}{period.startIso.slice(0, 7) === currentMonth ? " (MTD)" : " (full month)"}</li>)}</ul>
-    {datesExpanded && <div className="mt-4 border-t border-dash-border pt-4"><ReportPeriodControls /></div>}
-  </section>;
-  return <section className="space-y-4 rounded-xl border border-dash-border bg-dash-bg/40 p-4">
-    <div><h3 className="text-sm font-semibold text-dash-ink">Which months would you like to report?</h3><p className="mt-1 text-xs text-dash-ink-secondary">Choose one month or a custom month range of up to 12 months. Each month is shown separately.</p></div>
-    <div className="flex flex-wrap gap-2">{shortcuts.filter(option => option.to <= latestMonth && !(w.dataSourceMode === "api" && option.label === "Last 6 complete months")).map(option => <button key={option.label} type="button" aria-pressed={startMonth === option.from && endMonth === option.to} onClick={() => chooseMonthRange(option.from, option.to)} className={`rounded-lg border px-3 py-2 text-xs font-medium ${startMonth === option.from && endMonth === option.to ? "border-dash-accent bg-dash-accent text-[#0b1728]" : "border-dash-border text-dash-ink hover:bg-dash-card"}`}>{option.label}</button>)}</div>
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">From month</p><ReportMonthPicker label="From month" showPartialLabel={false} value={startMonth} currentMonth={currentMonth} maxMonth={latestMonth} onChange={month => chooseMonthRange(month, month > endMonth ? month : endMonth > shiftMonth(month, 11) ? shiftMonth(month, 11) : endMonth)} /></div>
-      <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">To month</p><ReportMonthPicker label="To month" value={endMonth} currentMonth={currentMonth} maxMonth={latestMonth} partialLabel={end < yesterday ? "Month to date" : "Through yesterday"} onChange={month => chooseMonthRange(month < startMonth ? month : startMonth < shiftMonth(month, -11) ? shiftMonth(month, -11) : startMonth, month)} /></div>
-    </div>
-    <div className="rounded-lg border border-dash-border bg-dash-card/50 p-3">
-      <p className="text-xs font-semibold text-dash-ink">{count === 1 ? "1 month selected" : `${count} months selected`}</p>
-      <ul className="mt-2 grid grid-cols-1 gap-1.5 text-xs text-dash-ink-secondary">{periods.map((period, index) => <li key={period.startIso}>{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(period.startIso + "T12:00:00Z"))}: {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).formatRange(new Date(period.startIso + "T12:00:00Z"), new Date((index === periods.length - 1 ? end : period.endIso) + "T12:00:00Z"))}{period.startIso.slice(0, 7) === currentMonth ? " (MTD)" : " (full month)"}</li>)}</ul>
-    </div>
-    <p className="text-xs leading-relaxed text-dash-ink-secondary">{w.dataSourceMode === "api" ? "Meta data needed:" : "CSV coverage needed:"} {rangeLabel}. {w.dataSourceMode === "api" ? "Daily data will be fetched for these months." : "Your CSV must have Day-wise breakdown for this entire date range."}</p>
-  </section>;
+  return <MonthlyPeriodControls stage={stage} />;
 }

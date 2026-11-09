@@ -138,7 +138,7 @@ export function WizardImportStep() {
                   ? "Google Ads"
                   : "TikTok Ads"
             }
-            description={dataSourceMode === "api" ? "Import daily campaign data directly from your ad account" : wizardPlatformImportDescription(selectedPlatformCard)}
+            description={dataSourceMode === "api" ? "Import campaign data from your Meta ad account" : wizardPlatformImportDescription(selectedPlatformCard)}
             expanded={platformPickerExpanded}
             onToggle={() => setPlatformPickerExpanded((open) => !open)}
             allowPlatformChange={platformSwitchEnabled}
