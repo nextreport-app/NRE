@@ -57,6 +57,18 @@ function buildCsv(): Buffer {
 }
 
 describe("ad-set filter — full pipeline reproduction (CSV parse -> selection -> buildReportData)", () => {
+  it("unchecked defaults remove all optional slides without changing campaign results, spend, MTD or chart totals", () => {
+    const parsed = parseUploadedFile(buildCsv(), "MTD Daily CSV");
+    const input = { accountName: "Example", currencySymbol: "$", timezone: "UTC", monthlyBudget: null, mtdDailyRows: parsed.rows, now: NOW };
+    const all = buildReportData({ ...input, selectedAdSets: ["broad", "interests", "lookalike"].map(name => adSetKey("Growth Campaign", name)) });
+    const none = buildReportData({ ...input, selectedAdSets: [] });
+    expect(all.adSetSlides).toHaveLength(3);
+    expect(none.adSetSlides).toEqual([]);
+    expect(none.campaignSlides.map(slide => slide.metrics)).toEqual(all.campaignSlides.map(slide => slide.metrics));
+    expect(none.mtdRow).toEqual(all.mtdRow);
+    expect(none.chart).toEqual(all.chart);
+  });
+
   it("deselecting 'broad' removes only its own slide — MTD/chart/cover totals still show the full $1,200 account spend, never a filtered $251", () => {
     const buffer = buildCsv();
     const parsed = parseUploadedFile(buffer, "MTD Daily CSV");

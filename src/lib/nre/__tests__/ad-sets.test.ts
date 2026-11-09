@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { adSetKey, extractAdSetGroups, extractSpendingAdSetGroups, filterRowsByAdSets, resolveDefaultSelectedAdSets } from "../ad-sets";
+import { adSetKey, extractAdSetGroups, extractSpendingAdSetGroups, filterRowsByAdSets } from "../ad-sets";
+import { resolveDefaultSelectedAdSets, buildAdSetSlidePreferences, newAdSetSlideKeys, activeAdSetKeys, supportsAdSetSlides } from "../ad-set-slide-preferences";
 import type { NreRow } from "../columns";
 
 function row(campaignName: string, adSetName: string): NreRow {
@@ -115,52 +116,47 @@ describe("filterRowsByAdSets", () => {
   });
 });
 
-describe("resolveDefaultSelectedAdSets", () => {
+describe("optional ad-set slide preferences", () => {
   const groups = [
     { campaignName: "Shoes", adSetNames: ["Prospecting", "Retargeting"] },
     { campaignName: "Boots", adSetNames: ["Awareness"] },
   ];
-
-  it("selects everything when nothing was previously excluded", () => {
-    expect(resolveDefaultSelectedAdSets(groups, [])).toEqual([
-      adSetKey("Shoes", "Prospecting"),
-      adSetKey("Shoes", "Retargeting"),
-      adSetKey("Boots", "Awareness"),
-    ]);
+  it("leaves both single and multiple ad sets unchecked on a fresh import", () => {
+    expect(resolveDefaultSelectedAdSets(groups)).toEqual([]);
+    expect(newAdSetSlideKeys(groups)).toEqual([]);
   });
-
-  it("excludes exactly the previously-deselected ad sets, keeping the rest selected", () => {
-    const result = resolveDefaultSelectedAdSets(groups, [adSetKey("Shoes", "Retargeting")]);
-    expect(result).toEqual([adSetKey("Shoes", "Prospecting"), adSetKey("Boots", "Awareness")]);
+  it("does not reinterpret old exclusion arrays or malformed memory as opt-ins", () => {
+    for (const raw of ["[]", JSON.stringify([adSetKey("Shoes", "Retargeting")]), "invalid", '{"policy":"wrong"}']) {
+      expect(resolveDefaultSelectedAdSets(groups, raw)).toEqual([]);
+    }
   });
-
-  it("a brand new ad set (absent from the deselected list) defaults to selected", () => {
-    // Simulates a later upload where "Shoes" gained a third ad set that
-    // didn't exist when lastDeselectedAdSets was saved.
-    const laterGroups = [
-      { campaignName: "Shoes", adSetNames: ["Prospecting", "Retargeting", "Lookalike"] },
-      { campaignName: "Boots", adSetNames: ["Awareness"] },
-    ];
-    const previouslyDeselected = [adSetKey("Shoes", "Retargeting")]; // saved before "Lookalike" existed
-    const result = resolveDefaultSelectedAdSets(laterGroups, previouslyDeselected);
-    expect(result).toContain(adSetKey("Shoes", "Lookalike")); // new ad set, defaults to selected
-    expect(result).not.toContain(adSetKey("Shoes", "Retargeting")); // still excluded, as saved
-    expect(result).toContain(adSetKey("Shoes", "Prospecting"));
-    expect(result).toContain(adSetKey("Boots", "Awareness"));
+  it("restores exactly the user's explicit inclusions across JSON save/restore", () => {
+    const keys = [adSetKey("Shoes", "Prospecting"), adSetKey("Boots", "Awareness")];
+    const memory = JSON.stringify(buildAdSetSlidePreferences(groups, keys));
+    expect(resolveDefaultSelectedAdSets(groups, memory)).toEqual(keys);
   });
-
-  it("saved deselections persist correctly across a full save/restore round trip", () => {
-    // Round trip: user deselects "Retargeting", the selection route would
-    // compute the excluded set as (all - selected) exactly like this...
-    const allKeys = groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name)));
-    const userSelected = new Set(allKeys.filter((k) => k !== adSetKey("Shoes", "Retargeting")));
-    const persistedDeselected = allKeys.filter((k) => !userSelected.has(k));
-    expect(persistedDeselected).toEqual([adSetKey("Shoes", "Retargeting")]);
-
-    // ...and on the next upload, resolveDefaultSelectedAdSets must restore
-    // exactly that choice from the persisted (JSON round-tripped) value.
-    const restored = JSON.parse(JSON.stringify(persistedDeselected));
-    const result = resolveDefaultSelectedAdSets(groups, restored);
-    expect(result).toEqual([adSetKey("Shoes", "Prospecting"), adSetKey("Boots", "Awareness")]);
+  it("retains an explicit all-unchecked choice on the next import", () => {
+    const memory = JSON.stringify(buildAdSetSlidePreferences(groups, []));
+    expect(resolveDefaultSelectedAdSets(groups, memory)).toEqual([]);
+    expect(newAdSetSlideKeys(groups, memory)).toEqual([]);
   });
+  it("leaves new ad sets unchecked and labels only newly discovered keys", () => {
+    const memory = JSON.stringify(buildAdSetSlidePreferences(groups, [adSetKey("Shoes", "Prospecting")]));
+    const later = [{ campaignName: "Shoes", adSetNames: ["Prospecting", "Retargeting", "Lookalike"] }, groups[1]];
+    expect(resolveDefaultSelectedAdSets(later, memory)).toEqual([adSetKey("Shoes", "Prospecting")]);
+    expect(newAdSetSlideKeys(later, memory)).toEqual([adSetKey("Shoes", "Lookalike")]);
+  });
+  it("remembers a temporarily absent ad set without confusing same-named sets in other campaigns", () => {
+    const old = JSON.stringify(buildAdSetSlidePreferences(groups, [adSetKey("Boots", "Awareness")]));
+    const now = JSON.stringify(buildAdSetSlidePreferences([groups[0]], [adSetKey("Shoes", "Prospecting")], old));
+    expect(resolveDefaultSelectedAdSets(groups, now)).toEqual([adSetKey("Shoes", "Prospecting"), adSetKey("Boots", "Awareness")]);
+  });
+  it("drops unknown selection keys rather than persisting invented opt-ins", () => {
+    expect(buildAdSetSlidePreferences(groups, [adSetKey("Other", "Unknown")]).selectedKeys).toEqual([]);
+  });
+  it("excludes ad-set selections whose parent campaign is excluded", () => {
+    const chosen = new Set([adSetKey("Shoes", "Prospecting"), adSetKey("Boots", "Awareness")]);
+    expect(activeAdSetKeys(groups, chosen, new Set(["Boots"]))).toEqual([adSetKey("Boots", "Awareness")]);
+  });
+  it.each(["COMPARISON", "DAY_BREAKDOWN"])("does not offer separate ad-set slides for %s", type => expect(supportsAdSetSlides(type)).toBe(false));
 });

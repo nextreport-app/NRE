@@ -372,12 +372,9 @@ model Client {
   // lib/nre/campaigns.ts's resolveCampaignSelection, which drives the
   // report upload wizard's Campaigns step.
   lastDeselectedCampaigns String? @db.Text
-  // lastDeselectedAdSets: JSON string[] of EXCLUDED ad set composite keys
-  // (see ad-sets.ts's adSetKey — "campaign adset", since ad set names
-  // alone aren't unique across campaigns). Ad-set-level filtering was
-  // removed from the wizard (see report-upload-wizard.tsx's file header) —
-  // this column is no longer read or written, kept only so existing rows
-  // aren't silently dropped.
+  // Versioned JSON opt-in memory for optional ad-set slides: knownKeys +
+  // selectedKeys. The legacy column name is retained; old exclusion arrays
+  // are ignored because they cannot establish an explicit slide inclusion.
   lastDeselectedAdSets    String? @db.Text
   // lastDateSelection: JSON { mode: "last7" | "prev7" | "custom", customStart?: "YYYY-MM-DD", customEnd?: "YYYY-MM-DD" }.
   lastDateSelection       String? @db.Text
