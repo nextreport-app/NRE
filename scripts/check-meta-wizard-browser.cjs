@@ -6,7 +6,7 @@ const mocks=[[/next\/navigation$/,`const params=new URLSearchParams();const rout
 await r('esbuild').build({stdin:{contents:fixture,loader:'tsx',resolveDir:process.cwd()},bundle:true,define:{'process.env':'{}'},platform:'browser',jsx:'automatic',outfile:path.join(output,'browser.js'),plugins:[{name:'mock',setup(build){for(const[filter]of mocks)build.onResolve({filter},args=>({path:args.path,namespace:'mock'}));build.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:mocks.find(([filter])=>filter.test(args.path))[1],loader:'tsx'}));}}]});
 const css=await r('postcss')([r('@tailwindcss/postcss')({base:process.cwd()})]).process(fs.readFileSync('src/app/globals.css','utf8'),{from:process.cwd()+'/src/app/globals.css'});const browser=await r('playwright').chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
 for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARISON','DAY_BREAKDOWN']){
- const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed,releaseAnalysis,releaseManualAnalysis;let analyzeCount=0;const manualAnalysisGate=new Promise(resolve=>{releaseManualAnalysis=resolve;});const analysisGate=new Promise(resolve=>{releaseAnalysis=resolve;});page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
+ const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed,releaseAnalysis,releaseManualAnalysis;let analyzeCount=0;let savedAdSets=[];const manualAnalysisGate=new Promise(resolve=>{releaseManualAnalysis=resolve;});const analysisGate=new Promise(resolve=>{releaseAnalysis=resolve;});page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
  await page.clock.install({time:new Date('2026-11-05T12:00:00Z')});
  await page.addInitScript(()=>{if(!localStorage.getItem('nre.wizardPrefs.example'))localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7',includePreviousMonthComparison:true}));});
  await page.route('https://wizard.test/**',async route=>{const req=route.request(),url=new URL(req.url());
@@ -14,8 +14,9 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  if(url.pathname==='/api/meta/adaccounts')return route.fulfill({json:{accounts:[{id:'act_123',accountId:'123',name:'Example Ads',currency:'USD',timezone:'America/Los_Angeles'},{id:'act_456',accountId:'456',name:'Another Agency Account',currency:'USD',timezone:'America/Los_Angeles'}]}});
  if(req.method()==='PATCH')return route.fulfill({json:{client:{timezone:JSON.parse(req.postData()).timezone}}});
  if(url.pathname.endsWith('/wizard-draft'))return route.fulfill({json:{draft:null}});
+ if(url.pathname.endsWith('/selection')){const body=req.postDataJSON();if(Array.isArray(body.selectedAdSets))savedAdSets=body.selectedAdSets;return route.fulfill({json:{ok:true}});}
  if(url.pathname.endsWith('/sync-api')){sent=req.postDataJSON();return route.fulfill({json:{ok:true,csvText:'Campaign name,Day,Amount spent (USD)\nTest leads,2026-11-04,100',rowCount:1,metaSyncDiagnostics:{mappedResultsSum:157,rowCount:81,sampleActionTypes:['offsite_conversion.fb_pixel_schedule']},hasPreviousMonthData:false,metaAdAccountId:'act_123'}});}
- if(url.pathname.endsWith('/analyze')){analyzed=req.postData();await (++analyzeCount===1?analysisGate:manualAnalysisGate);return route.fulfill({json:{valid:true,uploadSessionId:'fixture-session',campaigns:['Test leads','Small spend','Zero spend'],selectedCampaigns:['Test leads','Small spend'],campaignSpend:{'Test leads':100,'Small spend':4,'Zero spend':0},zeroSpendCampaigns:['Zero spend'],adSetGroups:[{campaignName:'Zero spend',adSetNames:['Previously active A','Previously active B']}],lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
+ if(url.pathname.endsWith('/analyze')){analyzed=req.postData();await (++analyzeCount===1?analysisGate:manualAnalysisGate);return route.fulfill({json:{valid:true,uploadSessionId:'fixture-session',campaigns:['Test leads','Small spend','Zero spend'],selectedCampaigns:['Test leads','Small spend'],campaignSpend:{'Test leads':100,'Small spend':4,'Zero spend':0},zeroSpendCampaigns:['Zero spend'],selectedAdSets:savedAdSets,newAdSetKeys:analyzeCount>1?['Test leads\0New audience']:[],adSetGroups:[{campaignName:'Test leads',adSetNames:analyzeCount>1?['Audience A','Audience B','New audience']:['Audience A','Audience B']},{campaignName:'Small spend',adSetNames:['Only audience']},{campaignName:'Zero spend',adSetNames:['Previously active A','Previously active B']}],lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
  if(url.pathname.endsWith('/upload-session-context')){const request=req.postDataJSON();const recent=request.dateSelection?.mode==='last7';return route.fulfill({json:{ok:true,campaigns:['Test leads','Small spend','Zero spend'],campaignSpend:{'Test leads':recent?200:100,'Small spend':recent?5:4,'Zero spend':0},selectedCampaigns:['Test leads','Small spend'],zeroSpendCampaigns:['Zero spend'],campaignSpendLabel:'Reporting-period spend',headers:['Campaign name','Day','Amount spent (USD)'],adSetGroups:[]}});}
  if(url.pathname.endsWith('/metrics'))return route.fulfill({json:{campaignObjectives:{},perCampaignSelection:{},perCampaignAvailable:{}}});
  return route.fulfill({json:{client:{monthlyBudget:null},ok:true}});
@@ -129,7 +130,24 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await page.waitForFunction(()=>!window.w.campaignSpendLoading);
  if(!(await page.getByLabel('Small spend',{exact:true}).isChecked()))throw Error('positive low spend defaulted unchecked');
  if(await page.getByText('Last 30 days spend detected',{exact:false}).count())throw Error('obsolete spend warning still visible');
+ if(await page.evaluate(()=>window.w.selectedAdSets.size)!==0)throw Error('fresh import selected optional ad-set slides');
+ if(['COMPARISON','DAY_BREAKDOWN'].includes(kind) && await page.getByRole('button',{name:/\d+ ad sets?[ ▲▼]/}).count())throw Error('report type offers unsupported ad-set slides');
  if(kind==='WEEKLY'){
+  const parent=page.getByLabel('Test leads',{exact:true}).locator('..').locator('..');
+  await parent.getByRole('button',{name:/2 ad sets/}).click();
+  if(!(await parent.innerText()).includes('Campaign totals') && !(await page.locator('body').innerText()).includes('Campaign totals already include all ad sets'))throw Error('slide-only selection guidance missing');
+  if(await parent.getByRole('checkbox',{name:'Audience A',exact:true}).isChecked())throw Error('multi-ad-set default is checked');
+  await parent.getByRole('button',{name:'Include all ad-set slides',exact:true}).click();
+  await page.waitForFunction(()=>window.w.selectedAdSets.size===2);
+  await parent.getByRole('button',{name:'Exclude all',exact:true}).click();
+  await page.waitForFunction(()=>window.w.selectedAdSets.size===0);
+  await parent.getByRole('checkbox',{name:'Audience A',exact:true}).check();
+  await page.getByLabel('Test leads',{exact:true}).uncheck();
+  if(!(await page.locator('body').innerText()).includes('0 ad sets selected for separate slides'))throw Error('excluded campaign contributes ad-set count');
+  await page.getByLabel('Test leads',{exact:true}).check();
+  await page.waitForFunction(()=>window.w.selectedAdSets.has('Test leads\0Audience A'));
+  if(!(await page.locator('body').innerText()).includes('1 ad set selected for separate slides'))throw Error('active ad-set selection count incorrect');
+  await page.screenshot({path:path.join(output,`optional-ad-sets-${width}.png`),fullPage:true});
   await page.getByLabel('Small spend',{exact:true}).uncheck();
   await page.getByRole('button',{name:/Zero-spend campaigns/}).click();
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('expanded zero-spend rows overflow the viewport');
@@ -166,6 +184,18 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await page.evaluate(()=>{const transfer=new DataTransfer();transfer.items.add(new File(['replacement'],'replacement.csv',{type:'text/csv'}));document.querySelector('input[type=file]').closest('label').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));});
  if(await page.evaluate(()=>window.w.mtdFile.name)!=='manual.csv')throw Error('drop replaced CSV during analysis');
  releaseManualAnalysis();await page.waitForFunction(()=>window.w.step===2);
+ if(kind==='WEEKLY'){
+  await page.waitForFunction(()=>window.w.selectedAdSets.has('Test leads\0Audience A'));
+  if(await page.evaluate(()=>window.w.selectedAdSets.size)!==1)throw Error('CSV import did not restore exactly the saved opt-in');
+  if(await page.evaluate(()=>window.w.selectedAdSets.has('Test leads\0New audience')))throw Error('new audience defaulted selected');
+  const parent=page.getByLabel('Test leads',{exact:true}).locator('..').locator('..');
+  await parent.getByRole('button',{name:/3 ad sets/}).click();
+  if(!(await parent.innerText()).includes('New'))throw Error('new ad set badge missing');
+  await parent.getByRole('button',{name:'Exclude all',exact:true}).click();
+  await page.waitForFunction(()=>window.w.selectedAdSets.size===0);
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('ad-set options overflow viewport');
+ }
+
  await page.getByRole('button',{name:'Continue to metrics',exact:true}).click();await page.waitForFunction(()=>window.w.step===3);
  await page.getByRole('button',{name:'Continue to generate',exact:true}).click();await page.waitForFunction(()=>window.w.step===4);
  if(kind==='HISTORICAL'){

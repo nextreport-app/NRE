@@ -35,6 +35,7 @@ import {
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { buildCampaignMetricBundle } from "@/lib/nre/wizard-campaign-metrics";
 import { adSetKey } from "@/lib/nre/ad-sets";
+import { allAdSetKeys, activeAdSetKeys, supportsAdSetSlides } from "@/lib/nre/ad-set-slide-preferences";
 import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import { useToast } from "@/components/toast";
 import { useSiteTheme } from "@/components/site-theme-provider";
@@ -314,15 +315,11 @@ export function useReportUploadWizard({
   const [campaignSearch, setCampaignSearch] = useState("");
   const [expandedCsvExtras, setExpandedCsvExtras] = useState<Set<string>>(new Set());
 
-  // Improvement 2 — ad-set selection, collapsible under each campaign row
-  // (populated by /analyze's adSetGroups, only ad sets with real spend —
-  // see ad-sets.ts's extractSpendingAdSetGroups). Every ad set starts
-  // pre-checked; there's no saved memory for this like campaigns have (see
-  // ad-sets.ts's file header). expandedCampaigns tracks which campaigns'
-  // ad-set lists are currently shown — collapsed by default, per campaign.
+  // Optional slide choices are restored per client, never used to filter totals.
   const [adSetGroups, setAdSetGroups] = useState<AdSetGroup[]>([]);
   const [metaCsvExportProfile, setMetaCsvExportProfile] = useState<MetaCsvExportProfile | null>(null);
   const [selectedAdSets, setSelectedAdSets] = useState<Set<string>>(new Set());
+  const [newAdSetKeys, setNewAdSetKeys] = useState<Set<string>>(new Set());
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
 
   // Step 3 — Objective Confirmation (the permanent objective-detection fix,
@@ -689,15 +686,18 @@ export function useReportUploadWizard({
     campaigns?: string[];
     selectedCampaigns?: string[];
     dateSelection?: DateSelection;
+    selectedAdSets?: string[];
+    uploadSessionId?: string;
   }) {
     try {
-      await fetch(`/api/clients/${clientId}/reports/selection`, {
+      const response = await fetch(`/api/clients/${clientId}/reports/selection`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!response.ok) throw new Error("Selection preference save failed");
     } catch {
-      // Best-effort — losing a saved preference isn't worth blocking the wizard over.
+      showToast("Your report choices are kept for this session, but could not be saved for next time.", "error");
     }
   }
 
@@ -987,6 +987,7 @@ export function useReportUploadWizard({
         setZeroSpendCampaigns(ctx.zeroSpendCampaigns ?? Object.keys(ctx.campaignSpend).filter(name => ctx.campaignSpend[name] === 0));
         const restoredGroups: AdSetGroup[] = ctx.adSetGroups;
         setAdSetGroups(restoredGroups);
+        setNewAdSetKeys(new Set(ctx.newAdSetKeys ?? []));
         setExpandedCampaigns(new Set());
         setMetaCsvExportProfile(ctx.metaCsvExportProfile ?? null);
         setHasAdLevelCsv(!!ctx.hasAdLevelCsv);
@@ -1212,24 +1213,11 @@ export function useReportUploadWizard({
     const groups: AdSetGroup[] = json.adSetGroups || [];
     setAdSetGroups(groups);
     setMetaCsvExportProfile(json.metaCsvExportProfile ?? null);
-    if (preserve) {
-      setSelectedAdSets((prev) => {
-        const validKeys = new Set(
-          groups.flatMap((g) => g.adSetNames.map((name) => adSetKey(g.campaignName, name))),
-        );
-        const kept = [...prev].filter((key) => validKeys.has(key));
-        if (kept.length > 0) return new Set(kept);
-        return new Set(
-          groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
-        );
-      });
-    } else {
-      setSelectedAdSets(
-        new Set(
-          groups.flatMap((g) => (g.adSetNames.length === 1 ? [] : g.adSetNames.map((name) => adSetKey(g.campaignName, name)))),
-        ),
-      );
-    }
+    const validAdSets = new Set(allAdSetKeys(groups));
+    setNewAdSetKeys(new Set((json.newAdSetKeys ?? []).filter((key: string) => validAdSets.has(key))));
+    setSelectedAdSets(prev => new Set(
+      (preserve ? [...prev] : (json.selectedAdSets ?? [])).filter((key: string) => validAdSets.has(key)),
+    ));
     setExpandedCampaigns(new Set());
     setDateBounds(json.dateBounds || null);
     setCsvDateGuidance(json.csvDateGuidance || null);
@@ -1493,6 +1481,7 @@ export function useReportUploadWizard({
     setCampaignSpendResolvedKey("");
     setSelectedCampaigns(new Set());
     setAdSetGroups([]);
+    setNewAdSetKeys(new Set());
     setSelectedAdSets(new Set());
     setDateBounds(null);
     setWeeklyOptions(null);
@@ -1867,7 +1856,9 @@ export function useReportUploadWizard({
   // ── Step 2: Campaigns + Objectives -> Metric Cards ──────────────────────
   async function handleCampaignsContinue() {
     if (campaignSpendLoading) return;
-    await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns) });
+    await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns),
+      ...(supportsAdSetSlides(reportType) && uploadSessionId ? { uploadSessionId, selectedAdSets: Array.from(selectedAdSets) } : {}),
+    });
     const selectionKey = selectedCampaignsKey();
     await ensureObjectivesForSelection(selectionKey);
 
@@ -2259,7 +2250,7 @@ export function useReportUploadWizard({
         mtdFile,
         {
           selectedCampaigns: Array.from(selectedCampaigns),
-          selectedAdSets: Array.from(selectedAdSets),
+          selectedAdSets: supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns) : [],
           selectedMetrics: currentSelectedMetricsPayload(),
           campaignObjectives: currentCampaignObjectivesPayload(),
           campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
@@ -2442,7 +2433,7 @@ export function useReportUploadWizard({
         mtdFile,
         {
           selectedCampaigns: Array.from(selectedCampaigns),
-          selectedAdSets: Array.from(selectedAdSets),
+          selectedAdSets: supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns) : [],
           selectedMetrics: currentSelectedMetricsPayload(),
           campaignObjectives: currentCampaignObjectivesPayload(),
           campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
@@ -2744,6 +2735,7 @@ export function useReportUploadWizard({
     setCampaignSearch("");
     setExpandedCsvExtras(new Set());
     setAdSetGroups([]);
+    setNewAdSetKeys(new Set());
     setSelectedAdSets(new Set());
     setExpandedCampaigns(new Set());
 
@@ -3045,7 +3037,7 @@ export function useReportUploadWizard({
       const guideCount = new Set(slides.flatMap(slide => allSlideMetrics(slide).filter(metric => metric.key !== "spend").map(metric => metric.key))).size;
       return 1 + (data.isPaused ? 1 : slides.length + continuation) + (data.chart ? 1 : 0) + 1 + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
     }
-    return 1 + summaryCampaignNames().length + selectedAdSets.size + 1 + 1 + 1;
+    return 1 + summaryCampaignNames().length + (supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns).length : 0) + 1 + 1 + 1;
   }
 
   /** B3's friendly Drive link label, shown in place of the raw URL. */
@@ -3144,6 +3136,7 @@ export function useReportUploadWizard({
     adSetGroups,
     metaCsvExportProfile,
     selectedAdSets,
+    newAdSetKeys,
     expandedCampaigns,
     toggleCampaignExpanded,
     toggleAdSet,

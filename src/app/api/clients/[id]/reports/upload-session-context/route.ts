@@ -3,6 +3,7 @@ import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { extractCampaignNames, sortCampaignsBySpend } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
+import { resolveDefaultSelectedAdSets, newAdSetSlideKeys } from "@/lib/nre/ad-set-slide-preferences";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { detectMetaCsvExportProfile } from "@/lib/nre/meta-csv-export-profile";
 import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
@@ -68,13 +69,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const spendContext = campaignSelectionSpend(payload.rows, {...parsed.data,reportType:parsed.data.reportType ?? "WEEKLY"},client.timezone,new Date(),memory?.success ? memory.data : null);
     const {campaignSpend} = spendContext;
     const campaigns = sortCampaignsBySpend(extractCampaignNames(payload.rows), campaignSpend);
+    const adSetGroups = extractSpendingAdSetGroups(payload.rows);
     return NextResponse.json({
       ok: true,
       currencySymbol: resolveReportCurrencySymbol(payload.headers, payload.rows, CURRENCY_SYMBOLS[client.currency]),
       campaigns,
       ...spendContext,
       lowSpendCampaigns: spendContext.zeroSpendCampaigns,
-      adSetGroups: extractSpendingAdSetGroups(payload.rows),
+      adSetGroups,
+      selectedAdSets: resolveDefaultSelectedAdSets(adSetGroups, client.lastDeselectedAdSets),
+      newAdSetKeys: newAdSetSlideKeys(adSetGroups, client.lastDeselectedAdSets),
       hasAdLevelCsv: hasAdLevelData(payload.headers),
       metaCsvExportProfile: payload.platform === "META" ? detectMetaCsvExportProfile(payload.colMap, payload.rows, payload.headers) : null,
       csvDateGuidance: payload.rows.some(row => row._reportPeriod) ? null : analyzeCsvDateGuidance(payload.rows, new Date(), client.timezone),

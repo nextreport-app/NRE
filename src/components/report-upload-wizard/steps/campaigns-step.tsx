@@ -11,6 +11,7 @@ import {
 import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
+import { activeAdSetKeys, supportsAdSetSlides } from "@/lib/nre/ad-set-slide-preferences";
 import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
 import { ObjectivePicker } from "../ui/objective-picker";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
@@ -138,6 +139,9 @@ export function WizardCampaignsStep() {
   const useResultIndicatorHeading =
     metaCsvExportProfile?.kind === "campaigns_table" && metaCsvExportProfile.hasResultIndicatorColumn;
 
+  const showAdSetOptions = supportsAdSetSlides(w.reportType);
+  const activeAdSetCount = activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns).length;
+
   const objectivesLoading = selectedCampaigns.size > 0 && (metricsStatus === "loading" || !objectivesReady);
 
   const blockingCount = campaigns.filter((name) => {
@@ -180,6 +184,12 @@ export function WizardCampaignsStep() {
           </div>
           <p className="rounded-full border border-dash-border bg-dash-bg px-2.5 py-1 text-xs text-dash-ink-secondary" role="status">{selectedCampaigns.size} of {campaigns.length} included{campaigns.length > selectedCampaigns.size ? ` · ${campaigns.length - selectedCampaigns.size} excluded` : ""}</p>
         </div>
+
+      {showAdSetOptions && adSetGroups.length > 0 && <div className="space-y-1 text-[13px] text-dash-ink-secondary">
+        <p className="font-semibold text-dash-ink">Optional ad-set slides</p>
+        <p>Campaign totals already include all ad sets. Select any you want to show as separate slides.</p>
+        <p role="status">{selectedCampaigns.size} campaign{selectedCampaigns.size === 1 ? "" : "s"} included · {activeAdSetCount} ad set{activeAdSetCount === 1 ? "" : "s"} selected for separate slides</p>
+      </div>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex cursor-pointer items-center gap-2.5">
@@ -226,8 +236,8 @@ export function WizardCampaignsStep() {
             const isSelected = selectedCampaigns.has(name);
             const group = adSetGroups.find((g) => g.campaignName === name);
             const isExpanded = expandedCampaigns.has(name);
-            const isMultiAdSet = w.reportType !== "DAY_BREAKDOWN" && !!group && group.adSetNames.length >= 2;
-            const isSingleAdSet = w.reportType !== "DAY_BREAKDOWN" && !!group && group.adSetNames.length === 1;
+            const isMultiAdSet = showAdSetOptions && !!group && group.adSetNames.length >= 2;
+            const isSingleAdSet = showAdSetOptions && !!group && group.adSetNames.length === 1;
             const allAdSetsDeselected =
               !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
             const spend = campaignSpend[name];
@@ -279,24 +289,24 @@ export function WizardCampaignsStep() {
                   const selectedCount = group.adSetNames.filter((n) => selectedAdSets.has(adSetKey(name, n))).length;
                   return (
                     <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-[14px] text-dash-ink-secondary">
-                          {selectedCount} of {group.adSetNames.length} ad sets selected
+                          {selectedCount} of {group.adSetNames.length} selected for separate slides
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => selectAllAdSetsForCampaign(name, group.adSetNames)}
                             className="text-[14px] text-dash-accent hover:underline"
                           >
-                            Select all
+                            Include all ad-set slides
                           </button>
                           <button
                             type="button"
                             onClick={() => deselectAllAdSetsForCampaign(name, group.adSetNames)}
                             className="text-[14px] text-dash-accent hover:underline"
                           >
-                            Deselect all
+                            Exclude all
                           </button>
                         </div>
                       </div>
@@ -318,16 +328,17 @@ export function WizardCampaignsStep() {
                                 title={adSetName}
                               >
                                 {adSetName}
+                                {w.newAdSetKeys?.has(key) && <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-xs text-sky-400">New</span>}
                               </label>
                             </li>
                           );
                         })}
                       </ul>
                       <p className="text-[14px] text-dash-ink-secondary">
-                        Uncheck any ad sets you do not want as separate slides in your report.
+                        Add separate slides for the ad sets you want to discuss with your client.
                       </p>
                       {allAdSetsDeselected && (
-                        <p className="text-[14px] text-amber-300">No ad set slides will be generated for this campaign.</p>
+                        <p className="text-[13px] text-dash-ink-secondary">No ad set slides will be generated for this campaign.</p>
                       )}
                     </div>
                   );
@@ -337,6 +348,7 @@ export function WizardCampaignsStep() {
                   <div className="mt-3 rounded-md border border-dash-border bg-dash-bg p-3">
                     <p className="mb-2 truncate text-[14px] font-medium text-dash-ink" title={group.adSetNames[0]}>
                       {group.adSetNames[0]}
+                      {w.newAdSetKeys?.has(adSetKey(name, group.adSetNames[0])) && <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-xs text-sky-400">New</span>}
                     </p>
                     <label className="flex cursor-pointer items-center gap-2.5">
                       <input

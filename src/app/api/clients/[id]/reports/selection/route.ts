@@ -1,3 +1,6 @@
+import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
+import { buildAdSetSlidePreferences } from "@/lib/nre/ad-set-slide-preferences";
+import { loadWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import { CAMPAIGN_SELECTION_POLICY } from "@/lib/nre/campaigns";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -5,7 +8,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
-import { dateSelectionSchema, selectedCampaignsSchema } from "@/lib/validators/report-wizard";
+import { dateSelectionSchema, selectedCampaignsSchema, selectedAdSetsSchema, uploadSessionIdSchema } from "@/lib/validators/report-wizard";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -16,7 +19,9 @@ const bodySchema = z.object({
   campaigns: z.array(z.string()).optional(),
   selectedCampaigns: selectedCampaignsSchema.optional(),
   dateSelection: dateSelectionSchema.optional(),
-});
+  selectedAdSets: selectedAdSetsSchema.optional(),
+  uploadSessionId: uploadSessionIdSchema.optional(),
+}).refine(value => value.selectedAdSets === undefined || value.uploadSessionId !== undefined, { message: "An upload session is required for ad-set preferences." });
 
 /**
  * Saves the report upload wizard's campaign/date-range choices onto the
@@ -48,11 +53,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const data: {
       lastDeselectedCampaigns?: string;
       lastDateSelection?: string;
+      lastDeselectedAdSets?: string;
     } = {};
     if (parsed.data.campaigns && parsed.data.selectedCampaigns) {
       const selected = new Set(parsed.data.selectedCampaigns);
       const deselected = parsed.data.campaigns.filter((name) => !selected.has(name));
       data.lastDeselectedCampaigns = JSON.stringify({ policy: CAMPAIGN_SELECTION_POLICY, campaigns: parsed.data.campaigns, deselected });
+    }
+    if (parsed.data.selectedAdSets !== undefined && parsed.data.uploadSessionId) {
+      const upload = await loadWizardUploadSession(session.user.id, id, parsed.data.uploadSessionId);
+      if (!upload) return NextResponse.json({ error: "Upload session expired. Analyze again to save ad-set choices." }, { status: 410 });
+      const groups = extractSpendingAdSetGroups(upload.rows);
+      data.lastDeselectedAdSets = JSON.stringify(buildAdSetSlidePreferences(groups, parsed.data.selectedAdSets, client.lastDeselectedAdSets));
     }
     if (parsed.data.dateSelection) {
       data.lastDateSelection = JSON.stringify(parsed.data.dateSelection);

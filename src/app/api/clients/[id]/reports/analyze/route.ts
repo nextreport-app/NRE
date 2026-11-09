@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { validateMtdDailyCsv } from "@/lib/nre/validate";
 import { extractCampaignNames, sortCampaignsBySpend, type CampaignSelectionMemory } from "@/lib/nre/campaigns";
 import { extractSpendingAdSetGroups } from "@/lib/nre/ad-sets";
+import { resolveDefaultSelectedAdSets, newAdSetSlideKeys } from "@/lib/nre/ad-set-slide-preferences";
 import { analyzeCsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
@@ -127,11 +128,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const parsed = campaignSelectionMemorySchema.safeParse(JSON.parse(client.lastDeselectedCampaigns));
       if (parsed.success) campaignMemory = parsed.data;
     }
-    // Improvement 2 — the Campaigns step's per-campaign expandable ad-set
-    // checklist. Every qualifying ad set (spend > 0) starts pre-checked;
-    // there's no saved memory for this like campaigns have (see
-    // ad-sets.ts's file header — deselection only ever affects this one
-    // report's ad-set slides, nothing persists across uploads).
+    // Optional slides restore explicit choices shared by CSV and API imports.
     const adSetGroups = extractSpendingAdSetGroups(mtdParsed.rows);
 
     let dateSelection: DateSelection = DEFAULT_DATE_SELECTION;
@@ -218,6 +215,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       zeroSpendCampaigns,
       campaignSpendLabel,
       adSetGroups,
+      selectedAdSets: resolveDefaultSelectedAdSets(adSetGroups, client.lastDeselectedAdSets),
+      newAdSetKeys: newAdSetSlideKeys(adSetGroups, client.lastDeselectedAdSets),
       dateBounds,
       weeklyOptions,
       mtdRange,
