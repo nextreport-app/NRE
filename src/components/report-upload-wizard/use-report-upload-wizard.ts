@@ -99,18 +99,7 @@ import {
   saveWizardPlatformChoice,
 } from "./platform-storage";
 import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
-import {
-  clearWizardDraft,
-  isWizardServerDraftExpired,
-  loadWizardDraft,
-  parseWizardDraftSnapshot,
-  saveWizardDraft,
-} from "@/lib/nre/wizard-draft";
-import {
-  buildWizardDraftSnapshot,
-  campaignObjectivesFromDraft,
-  perCampaignMetricsFromDraft,
-} from "./wizard-draft-sync";
+import { clearWizardDraft } from "@/lib/nre/wizard-draft";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 import { normalizeReportBrandingMode, type ReportBrandingMode } from "@/lib/report-branding";
 
@@ -489,13 +478,6 @@ export function useReportUploadWizard({
 
   const resumeReportId = searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
-  const [wizardDraftBootstrapping, setWizardDraftBootstrapping] = useState(false);
-  const [savedWizardDraftAvailable, setSavedWizardDraftAvailable] = useState(false);
-  const [wizardDraftResumeRequested, setWizardDraftResumeRequested] = useState(false);
-  const draftOfferDismissedRef = useRef(false);
-  const draftRestoringRef = useRef(false);
-  const draftRestorePreviewPendingRef = useRef(false);
-  const draftPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
 
   /** After a successful generate, any config edit should bring the Generate CTA back. */
@@ -895,250 +877,9 @@ export function useReportUploadWizard({
     };
   }, [clientId, resumeReportId, router, showToast]);
 
-  useEffect(() => {
-    if (resumeReportId) return;
-
-    let cancelled = false;
-
-    async function bootstrapWizardDraft() {
-      let draft = loadWizardDraft(clientId);
-      if (!draft) {
-        try {
-          const res = await fetch(`/api/clients/${clientId}/wizard-draft`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.draft && typeof json.draft === "object") {
-              draft = parseWizardDraftSnapshot(JSON.stringify(json.draft));
-            }
-          }
-        } catch {
-          /* offline / transient */
-        }
-      }
-
-      if (cancelled || draftOfferDismissedRef.current) return;
-      if (!draft || isWizardServerDraftExpired(draft)) {
-        if (draft && isWizardServerDraftExpired(draft)) clearWizardDraft(clientId);
-        return;
-      }
-      // Preserve deferred-platform drafts without reopening their hidden wizard.
-      if (!isLaunchPlatformEnabled(draft.platform) || !isLaunchReportTypeEnabled(draft.reportType)) return;
-      if (draft.step < 2 || !draft.uploadSessionId) return;
-
-      // Discovery never applies CSVs, selections, previews or a later step.
-      // A new visit stays on Import until the customer explicitly resumes.
-      if (!wizardDraftResumeRequested) {
-        setSavedWizardDraftAvailable(true);
-        return;
-      }
-      setSavedWizardDraftAvailable(false);
-      setWizardDraftBootstrapping(true);
-      draftRestoringRef.current = true;
-
-      try {
-        const ctxRes = await fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uploadSessionId: draft.uploadSessionId, reportType: draft.reportType, dateSelection: {mode:draft.dateMode,customStart:draft.customStart,customEnd:draft.customEnd},comparisonPeriodA:draft.comparisonPeriodA,comparisonPeriodB:draft.comparisonPeriodB,historicalMonthCount:draft.historicalMonthCount }),
-        });
-        const ctx = await ctxRes.json().catch(() => null);
-        if (cancelled) return;
-
-        const completeCampaignContext = Array.isArray(ctx?.campaigns) && ctx.campaigns.length > 0
-          && ctx.campaignSpend && Array.isArray(ctx.adSetGroups)
-          && ctx.campaigns.every((name: unknown) => typeof name === "string" && typeof ctx.campaignSpend[name] === "number" && Number.isFinite(ctx.campaignSpend[name]));
-        if (!ctxRes.ok || !ctx?.ok || ctx.uploadSessionExpired || !completeCampaignContext) {
-          handleUploadSessionExpired(ctx?.error || "Saved setup could not be restored completely. Return to Import and sync or upload your data again to continue.");
-          stepRef.current = 1;
-          setStepState(1);
-          setVisitedSteps(new Set([1]));
-          return;
-        }
-
-        setUploadSessionId(draft.uploadSessionId);
-        const platformChoice = coerceLaunchPlatform(draft.platform);
-        setPlatform(platformChoice);
-        setSelectedPlatformCard(platformChoice);
-        setPlatformPickerExpanded(false);
-        setHasSavedPlatformPreference(true);
-        setReportType(draft.reportType as ReportTypeValue);
-        setComparisonMetricKeys(draft.comparisonMetricKeys ?? []);
-        setDailyMetricKeys(draft.dailyMetricKeys ?? []);
-        setDailyExcludedMetricKeys(draft.dailyExcludedMetricKeys ?? []);
-        setCsvHeaders(ctx.headers ?? draft.csvHeaders ?? []);
-        setMetricHeaderProfile(ctx.metricHeaderProfile ?? draft.metricHeaderProfile ?? null);
-        if (draft.comparisonPeriodA && draft.comparisonPeriodB) {
-          setComparisonPreset(draft.comparisonPreset === "thisMonth" ? "custom" : draft.comparisonPreset ?? "custom");
-          setComparisonPeriodA(draft.comparisonPeriodA);
-          setComparisonPeriodB(draft.comparisonPeriodB);
-        }
-        setHistoricalMonthCount(restoredMonthCount(draft.historicalMonthCount, draft.reportType, draft.customStart, draft.customEnd));
-        const restoredDates = alignCsvSelection({ mode: draft.dateMode, customStart: draft.customStart, customEnd: draft.customEnd }, ctx.dateBounds ?? draft.dateBounds, draft.reportType, new Date(), clientTimezone);
-        setDateMode(restoredDates?.mode ?? draft.dateMode);
-        setCustomStart(restoredDates?.customStart ?? draft.customStart);
-        setCustomEnd(restoredDates?.customEnd ?? draft.customEnd);
-        const restoredCampaigns: string[] = ctx.campaigns;
-        setCampaigns(restoredCampaigns);
-        campaignChoiceOverrides.current = new Map(restoredCampaigns.map(name => [name, (draft.selectedCampaigns ?? []).includes(name)]));
-        setCampaignSpend(ctx.campaignSpend);
-        setCurrencySymbol(ctx.currencySymbol ?? initialCurrencySymbol);
-        if (ctx.currencySymbol && ctx.currencySymbol !== initialCurrencySymbol) setClientMonthlyBudget(null);
-        setCampaignSpendLabel(ctx.campaignSpendLabel ?? "Reporting-period spend");
-        setZeroSpendCampaigns(ctx.zeroSpendCampaigns ?? Object.keys(ctx.campaignSpend).filter(name => ctx.campaignSpend[name] === 0));
-        const restoredGroups: AdSetGroup[] = ctx.adSetGroups;
-        setAdSetGroups(restoredGroups);
-        setNewAdSetKeys(new Set(ctx.newAdSetKeys ?? []));
-        setExpandedCampaigns(new Set());
-        setMetaCsvExportProfile(ctx.metaCsvExportProfile ?? null);
-        setHasAdLevelCsv(!!ctx.hasAdLevelCsv);
-        setCsvDateGuidance(ctx.csvDateGuidance ?? null);
-        const restoredSelection = draft.selectedCampaigns.filter(name => restoredCampaigns.includes(name));
-        setSelectedCampaigns(new Set(restoredSelection));
-        const validAdSets = new Set(restoredGroups.flatMap(group => group.adSetNames.map(name => adSetKey(group.campaignName, name))));
-        setSelectedAdSets(new Set(draft.selectedAdSets.filter(key => validAdSets.has(key))));
-        setPerCampaignMetrics(perCampaignMetricsFromDraft(draft.perCampaignMetrics));
-        setCampaignObjectives(campaignObjectivesFromDraft(draft.campaignObjectives));
-        setWeeklyOptions(ctx.weeklyOptions ?? draft.weeklyOptions ?? null);
-        setDateBounds(ctx.dateBounds ?? draft.dateBounds ?? null);
-        setMtdRange(ctx.mtdRange ?? draft.mtdRange ?? null);
-        setMonthComparisonOptions(ctx.monthComparisonOptions ?? null);
-        setDailyRange(ctx.dailyRange ?? draft.dailyRange ?? null);
-        const last7 = ctx.weeklyOptions?.last7 ?? draft.weeklyOptions?.last7 ?? null;
-        const prev7 = ctx.weeklyOptions?.prev7 ?? draft.weeklyOptions?.prev7 ?? null;
-        const a = draft.comparisonPeriodA ?? last7, b = draft.comparisonPeriodB ?? prev7;
-        const restoredPeriods = a && b ? alignCsvComparison(a, b, ctx.dateBounds ?? draft.dateBounds, new Date(), clientTimezone) : { periodA: a, periodB: b };
-        setComparisonPeriodA(restoredPeriods.periodA);
-        setComparisonPeriodB(restoredPeriods.periodB);
-        setPreviewKind(draft.previewKind);
-        setPreviewStatus(draft.previewStatus);
-        setData(draft.data);
-        setComparisonData(draft.comparisonData);
-        setHistoricalData(draft.historicalData);
-        setDayBreakdownData(draft.dayBreakdownData);
-        setAnalyzeStatus("idle");
-
-        if (draft.step >= 3) {
-          setObjectivesLockedForReport(true);
-          const selectionKey = restoredSelection.slice().sort().join("\0");
-          setMetricsFetchedForSelection(selectionKey);
-          metricsFetchedKeyRef.current = selectionKey;
-        }
-
-        stepRef.current = draft.step;
-        setStepState(draft.step);
-        setVisitedSteps(new Set(draft.visitedSteps as Step[]));
-
-        const hasPreviewPayload =
-          draft.data || draft.comparisonData || draft.historicalData || draft.dayBreakdownData;
-        if (draft.step >= 4 && !hasPreviewPayload) {
-          draftRestorePreviewPendingRef.current = true;
-        }
-      } catch {
-        if (!cancelled) {
-          handleUploadSessionExpired("Could not restore your saved setup. Return to Import and sync or upload your data again to continue.");
-          stepRef.current = 1;
-          setStepState(1);
-          setVisitedSteps(new Set([1]));
-        }
-      } finally {
-        draftRestoringRef.current = false;
-        if (!cancelled) setWizardDraftBootstrapping(false);
-      }
-    }
-
-    void bootstrapWizardDraft();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- discover on entry; restore only after the explicit resume request
-  }, [clientId, resumeReportId, wizardDraftResumeRequested]);
-
-  useEffect(() => {
-    if (wizardDraftBootstrapping || draftRestoringRef.current) return;
-    if (!draftRestorePreviewPendingRef.current) return;
-    if (step < 4 || !uploadSessionId) return;
-    draftRestorePreviewPendingRef.current = false;
-    void fetchPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional gate after draft restore
-  }, [wizardDraftBootstrapping, step, uploadSessionId]);
-
-  useEffect(() => {
-    if (resumeReportId) return;
-    if (draftRestoringRef.current || wizardDraftBootstrapping) return;
-    if (step < 2 || !uploadSessionId) return;
-    if (generateStatus === "done" || generateStatus === "loading") return;
-
-    const snapshot = buildWizardDraftSnapshot({
-      step,
-      visitedSteps,
-      uploadSessionId,
-      platform,
-      reportType,
-      historicalMonthCount,
-      comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders, metricHeaderProfile,
-      dateMode,
-      customStart,
-      customEnd,
-      selectedCampaigns,
-      selectedAdSets,
-      campaigns,
-      perCampaignMetrics,
-      campaignObjectives,
-      previewKind,
-      previewStatus,
-      data,
-      comparisonData,
-      historicalData,
-      dayBreakdownData,
-      mtdRange,
-      weeklyOptions,
-      dateBounds,
-      dailyRange,
-    });
-
-    if (draftPersistTimerRef.current) clearTimeout(draftPersistTimerRef.current);
-    draftPersistTimerRef.current = setTimeout(() => {
-      saveWizardDraft(clientId, snapshot);
-      void fetch(`/api/clients/${clientId}/wizard-draft`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft: snapshot }),
-      }).catch(() => undefined);
-    }, 400);
-
-    return () => {
-      if (draftPersistTimerRef.current) clearTimeout(draftPersistTimerRef.current);
-    };
-  }, [
-    clientId,
-    resumeReportId,
-    wizardDraftBootstrapping,
-    step,
-    visitedSteps,
-    uploadSessionId,
-    platform,
-    reportType,
-    historicalMonthCount,
-    dateMode,
-    customStart,
-    customEnd,
-    selectedCampaigns,
-    selectedAdSets,
-    campaigns,
-    perCampaignMetrics,
-    campaignObjectives,
-    previewKind,
-    previewStatus,
-    data,
-    comparisonData,
-    historicalData,
-    dayBreakdownData,
-    mtdRange,
-    weeklyOptions,
-    dateBounds,
-    dailyRange, comparisonPreset, comparisonPeriodA, comparisonPeriodB, comparisonMetricKeys, dailyMetricKeys, dailyExcludedMetricKeys, csvHeaders, metricHeaderProfile,
-    generateStatus,
-  ]);
+  // Unfinished setups are no longer persisted or resumed. Discard only the
+  // obsolete session draft; client preferences and completed reports remain.
+  useEffect(() => { clearWizardDraft(clientId); }, [clientId]);
 
   const accountBrandingSnapshotRef = useRef(
     `${initialReportBrandingMode}|${initialAgencyName?.trim() ?? ""}`,
@@ -1257,13 +998,6 @@ export function useReportUploadWizard({
       resetGenerateState();
     }
     setUploadSessionRecovery(null);
-  }
-
-  function clearAllWizardDrafts() {
-    draftOfferDismissedRef.current = true;
-    setSavedWizardDraftAvailable(false);
-    clearWizardDraft(clientId);
-    void fetch(`/api/clients/${clientId}/wizard-draft`, { method: "DELETE" }).catch(() => undefined);
   }
 
   /** Populates data/comparisonData from a successful /preview response, and clears any stale generate/Drive state left over from a previous attempt. */
@@ -1437,10 +1171,6 @@ export function useReportUploadWizard({
   }
 
   function handleMtdFileSelected(file: File | null) {
-    if (file) {
-      draftOfferDismissedRef.current = true;
-      setSavedWizardDraftAvailable(false);
-    }
     if (file !== mtdFile) {
       setUploadSessionId(null);
       setUploadSessionRecovery(null);
@@ -2511,7 +2241,6 @@ export function useReportUploadWizard({
     setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
     setGeneratedWithCsvVerifySkipped(csvSkippedAtGenerate);
     setGenerateStatus("done");
-    clearAllWizardDrafts();
     persistGenerateSnapshot(
       {
         reportId: json.reportId,
@@ -2774,7 +2503,6 @@ export function useReportUploadWizard({
     setComparisonData(null);
     resetGenerateState();
     clearWizardGenerateSnapshot(clientId);
-    clearAllWizardDrafts();
     setStep(1);
     setVisitedSteps(new Set([1]));
   }
@@ -3283,9 +3011,6 @@ export function useReportUploadWizard({
     handleCopyLink,
     handleGenerateAnother,
     resumeBootstrapping,
-    wizardDraftBootstrapping,
-    savedWizardDraftAvailable,
-    resumeSavedWizardDraft: () => setWizardDraftResumeRequested(true),
     spanDays,
     needsLongRangeConfirm,
     weeklyRangeIso,

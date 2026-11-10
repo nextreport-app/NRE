@@ -16,8 +16,7 @@ export function WizardLeaveDialog({
       <div className="w-full max-w-md rounded-xl border border-dash-border bg-dash-card p-5 shadow-xl">
         <h2 className="text-[17px] font-semibold text-dash-ink">Leave report setup?</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-dash-ink-secondary">
-          You have a report in progress. Your progress is saved for this client, but leaving now means you will need to
-          return to the wizard to finish generating.
+          Your unfinished setup will not be saved. If you leave, upload your CSV or sync Meta again to start a new report.
         </p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
