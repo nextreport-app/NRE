@@ -1,7 +1,6 @@
 "use client";
 
 import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
-import { SavedSetupBanner } from "./ui/saved-setup-banner";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
@@ -110,13 +109,13 @@ function ReportUploadWizardBody() {
     <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
   );
 
-  if (w.resumeBootstrapping || w.wizardDraftBootstrapping) {
+  if (w.resumeBootstrapping) {
     return (
       <div className="nre-report-wizard space-y-6">
         <div>
           {clientLine}
           <h1 className="mb-1 text-[20px] font-bold text-dash-ink">Choose report type and generate</h1>
-          <p className="text-[14px] text-dash-ink-secondary">{w.wizardDraftBootstrapping ? "Restoring your saved setup…" : "Loading your report…"}</p>
+          <p className="text-[14px] text-dash-ink-secondary">Loading your report…</p>
         </div>
       </div>
     );
@@ -186,7 +185,6 @@ function ReportUploadWizardBody() {
         />
       ) : null}
 
-      {w.step === 1 && w.savedWizardDraftAvailable && !w.mtdFile && !w.uploadSessionId && <SavedSetupBanner onResume={w.resumeSavedWizardDraft} />}
       <WizardImportStep />
       <WizardCampaignsStep />
       <WizardMetricsStep />

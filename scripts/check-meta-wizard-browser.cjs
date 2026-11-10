@@ -6,14 +6,14 @@ const mocks=[[/next\/navigation$/,`const params=new URLSearchParams();const rout
 await r('esbuild').build({stdin:{contents:fixture,loader:'tsx',resolveDir:process.cwd()},bundle:true,define:{'process.env':'{}'},platform:'browser',jsx:'automatic',outfile:path.join(output,'browser.js'),plugins:[{name:'mock',setup(build){for(const[filter]of mocks)build.onResolve({filter},args=>({path:args.path,namespace:'mock'}));build.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:mocks.find(([filter])=>filter.test(args.path))[1],loader:'tsx'}));}}]});
 const css=await r('postcss')([r('@tailwindcss/postcss')({base:process.cwd()})]).process(fs.readFileSync('src/app/globals.css','utf8'),{from:process.cwd()+'/src/app/globals.css'});const browser=await r('playwright').chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
 for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARISON','DAY_BREAKDOWN']){
- const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed,releaseAnalysis,releaseManualAnalysis;let analyzeCount=0;let savedAdSets=[];const manualAnalysisGate=new Promise(resolve=>{releaseManualAnalysis=resolve;});const analysisGate=new Promise(resolve=>{releaseAnalysis=resolve;});page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
+ const page=await browser.newPage({viewport:{width,height:950}});page.setDefaultTimeout(10000);const errors=[];let sent,analyzed,releaseAnalysis,releaseManualAnalysis;let analyzeCount=0;let savedAdSets=[];let draftRequests=0;const manualAnalysisGate=new Promise(resolve=>{releaseManualAnalysis=resolve;});const analysisGate=new Promise(resolve=>{releaseAnalysis=resolve;});page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
  await page.clock.install({time:new Date('2026-11-05T12:00:00Z')});
- await page.addInitScript(()=>{if(!localStorage.getItem('nre.wizardPrefs.example'))localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7',includePreviousMonthComparison:true}));});
+ await page.addInitScript(()=>{sessionStorage.setItem('nre.wizardDraft.example',JSON.stringify({version:1,savedAt:new Date().toISOString(),step:3,uploadSessionId:'expired-upload',platform:'META',reportType:'WEEKLY'}));if(!localStorage.getItem('nre.wizardPrefs.example'))localStorage.setItem('nre.wizardPrefs.example',JSON.stringify({dataSourceMode:'api',reportType:'WEEKLY',dateMode:'last7',includePreviousMonthComparison:true}));});
  await page.route('https://wizard.test/**',async route=>{const req=route.request(),url=new URL(req.url());
  if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:`<html lang="en" data-site-theme="dark"><head><style>${css.css}</style><style>body{background:#101217;padding:16px}#root{max-width:960px;margin:auto}</style></head><body><div class="nre-app-shell" id="root"></div><script>${fs.readFileSync(path.join(output,'browser.js'),'utf8').replaceAll('</script','<\\/script')}</script></body></html>`});
  if(url.pathname==='/api/meta/adaccounts')return route.fulfill({json:{accounts:[{id:'act_123',accountId:'123',name:'Example Ads',currency:'USD',timezone:'America/Los_Angeles'},{id:'act_456',accountId:'456',name:'Another Agency Account',currency:'USD',timezone:'America/Los_Angeles'}]}});
  if(req.method()==='PATCH')return route.fulfill({json:{client:{timezone:JSON.parse(req.postData()).timezone}}});
- if(url.pathname.endsWith('/wizard-draft'))return route.fulfill({json:{draft:null}});
+ if(url.pathname.endsWith('/wizard-draft')){draftRequests++;return route.fulfill({json:{draft:{version:1,savedAt:new Date().toISOString(),step:3,uploadSessionId:'expired-upload',platform:'META',reportType:'WEEKLY'}}});}
  if(url.pathname.endsWith('/selection')){const body=req.postDataJSON();if(Array.isArray(body.selectedAdSets))savedAdSets=body.selectedAdSets;return route.fulfill({json:{ok:true}});}
  if(url.pathname.endsWith('/sync-api')){sent=req.postDataJSON();return route.fulfill({json:{ok:true,csvText:'Campaign name,Day,Amount spent (USD)\nTest leads,2026-11-04,100',rowCount:1,metaSyncDiagnostics:{mappedResultsSum:157,rowCount:81,sampleActionTypes:['offsite_conversion.fb_pixel_schedule']},hasPreviousMonthData:false,metaAdAccountId:'act_123'}});}
  if(url.pathname.endsWith('/analyze')){analyzed=req.postData();await (++analyzeCount===1?analysisGate:manualAnalysisGate);return route.fulfill({json:{valid:true,uploadSessionId:'fixture-session',campaigns:['Test leads','Small spend','Zero spend'],selectedCampaigns:['Test leads','Small spend'],campaignSpend:{'Test leads':100,'Small spend':4,'Zero spend':0},zeroSpendCampaigns:['Zero spend'],selectedAdSets:savedAdSets,newAdSetKeys:analyzeCount>1?['Test leads\0New audience']:[],adSetGroups:[{campaignName:'Test leads',adSetNames:analyzeCount>1?['Audience A','Audience B','New audience']:['Audience A','Audience B']},{campaignName:'Small spend',adSetNames:['Only audience']},{campaignName:'Zero spend',adSetNames:['Previously active A','Previously active B']}],lowSpendCampaigns:[],headers:['Campaign name','Day','Amount spent (USD)'],dateBounds:{minIso:'2026-08-07',maxIso:'2026-11-04'},weeklyOptions:{last7:{startIso:'2026-10-29',endIso:'2026-11-04'},prev7:{startIso:'2026-10-22',endIso:'2026-10-28'},last14:{startIso:'2026-10-22',endIso:'2026-11-04'}},dateSelection:{mode:'custom',customStart:'2026-08-07',customEnd:'2026-11-04'}}});}
@@ -23,6 +23,9 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  });
  await page.goto('https://wizard.test/');
  await page.getByRole('button',{name:'Change import method',exact:true}).waitFor();
+ await page.waitForFunction(()=>sessionStorage.getItem('nre.wizardDraft.example')===null);
+ if(await page.evaluate(()=>window.w.step!==1 || window.w.uploadSessionId!==null || 'resumeSavedWizardDraft' in window.w))throw Error('unfinished setup was restored');
+
  if(await page.getByText('Manual export from Ads Manager',{exact:true}).count())throw Error('returning API user sees expanded CSV option');
  await page.getByRole('button',{name:'Select an ad account',exact:true}).click();
  const search=page.getByRole('combobox',{name:'Search ad accounts'});
@@ -210,6 +213,8 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  }
  await page.reload();await page.getByRole('button',{name:'Change import method',exact:true}).waitFor();
  if(await page.evaluate(()=>window.w.dataSourceMode)!=='csv')throw Error('CSV import preference not remembered after reload');
+ if(draftRequests!==0)throw Error('wizard still reads or writes unfinished setups');
+ if(await page.evaluate(()=>window.w.step!==1 || window.w.uploadSessionId!==null))throw Error('reload did not start a fresh import');
  if(await page.getByText('Connected as',{exact:false}).count())throw Error('CSV user still sees API connection form');
  if(errors.length)throw Error(errors.join('\n'));
  console.log('PASS',width,kind,{before,request:sent,sourceReset:'PASS'});await page.close();
