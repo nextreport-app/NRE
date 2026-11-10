@@ -133,12 +133,13 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
  await page.waitForFunction(()=>!window.w.campaignSpendLoading);
  if(!(await page.getByLabel('Small spend',{exact:true}).isChecked()))throw Error('positive low spend defaulted unchecked');
  if(await page.getByText('Last 30 days spend detected',{exact:false}).count())throw Error('obsolete spend warning still visible');
+ const campaignText=await page.locator('body').innerText();
+ for(const text of ['Optional ad-set slides','Campaign totals already include all ad sets','ad sets selected for separate slides','Reporting-period spend','Campaigns with no spend in this reporting period','then continue.'])if(campaignText.includes(text))throw Error('removed campaign copy remains: '+text);
  if(await page.evaluate(()=>window.w.selectedAdSets.size)!==0)throw Error('fresh import selected optional ad-set slides');
  if(['COMPARISON','DAY_BREAKDOWN'].includes(kind) && await page.getByRole('button',{name:/\d+ ad sets?[ ▲▼]/}).count())throw Error('report type offers unsupported ad-set slides');
  if(kind==='WEEKLY'){
   const parent=page.getByLabel('Test leads',{exact:true}).locator('..').locator('..');
   await parent.getByRole('button',{name:/2 ad sets/}).click();
-  if(!(await parent.innerText()).includes('Campaign totals') && !(await page.locator('body').innerText()).includes('Campaign totals already include all ad sets'))throw Error('slide-only selection guidance missing');
   if(await parent.getByRole('checkbox',{name:'Audience A',exact:true}).isChecked())throw Error('multi-ad-set default is checked');
   await parent.getByRole('button',{name:'Include all ad-set slides',exact:true}).click();
   await page.waitForFunction(()=>window.w.selectedAdSets.size===2);
@@ -146,13 +147,14 @@ for(const width of [390,1440])for(const kind of ['WEEKLY','HISTORICAL','COMPARIS
   await page.waitForFunction(()=>window.w.selectedAdSets.size===0);
   await parent.getByRole('checkbox',{name:'Audience A',exact:true}).check();
   await page.getByLabel('Test leads',{exact:true}).uncheck();
-  if(!(await page.locator('body').innerText()).includes('0 ad sets selected for separate slides'))throw Error('excluded campaign contributes ad-set count');
   await page.getByLabel('Test leads',{exact:true}).check();
   await page.waitForFunction(()=>window.w.selectedAdSets.has('Test leads\0Audience A'));
-  if(!(await page.locator('body').innerText()).includes('1 ad set selected for separate slides'))throw Error('active ad-set selection count incorrect');
   await page.screenshot({path:path.join(output,`optional-ad-sets-${width}.png`),fullPage:true});
   await page.getByLabel('Small spend',{exact:true}).uncheck();
-  await page.getByRole('button',{name:/Zero-spend campaigns/}).click();
+  const zeroToggle=page.getByRole('button',{name:/Zero-spend campaigns/});
+  if(!(await zeroToggle.innerText()).includes('0 included · Expand to review'))throw Error('collapsed zero-spend label incorrect');
+  await zeroToggle.click();
+  if((await zeroToggle.innerText()).includes('Expand to review') || (await zeroToggle.innerText()).includes('Hide campaigns'))throw Error('expanded zero-spend label has extra wording');
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('expanded zero-spend rows overflow the viewport');
   await page.getByLabel('Zero spend',{exact:true}).check();
   await page.evaluate(()=>window.w.setDateMode('last7'));
