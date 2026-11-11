@@ -2,6 +2,8 @@
 
 import type { MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import Link from "next/link";
+import { readClientWizardPreferences, saveClientWizardPreferences } from "./report-upload-wizard/client-wizard-preferences";
+import { resolveRememberedMetaAccount } from "@/lib/meta-account-selection";
 import { MetaAdAccountPicker } from "./meta-ad-account-picker";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
@@ -30,6 +32,8 @@ interface WizardDataSourcePanelProps {
   syncError: string | null;
   onSyncStart: () => void;
   onSyncError: (message: string) => void;
+  onUseCsv?: () => void;
+  onMetaAccountChanged?: (accountId: string) => void;
   /** When true, sync+analyze finished — hide the primary accent CTA so only Continue shows. */
   importComplete?: boolean;
   /** Optional Ads Manager CSV — server merges Result type / Results / Website leads over API delivery. */
@@ -101,6 +105,8 @@ export function WizardDataSourcePanel({
   syncError,
   onSyncStart,
   onSyncError,
+  onUseCsv,
+  onMetaAccountChanged,
   importComplete = false,
   referenceManualCsvText = null,
 }: WizardDataSourcePanelProps) {
@@ -119,44 +125,55 @@ export function WizardDataSourcePanel({
   const [timezoneSaving, setTimezoneSaving] = useState(false);
   const selectedAccount = metaAccounts.find(account => account.id === selectedMetaAccount);
   const timezoneMismatch = !!(showMeta && selectedAccount?.timezone && clientTimezone && new Intl.DateTimeFormat("en", { timeZone: selectedAccount.timezone }).resolvedOptions().timeZone !== new Intl.DateTimeFormat("en", { timeZone: clientTimezone }).resolvedOptions().timeZone);
-  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountSelectionNotice, setAccountSelectionNotice] = useState<string | null>(null);
+  const [accountsLoading, setAccountsLoading] = useState(connected);
   const [accountsError, setAccountsError] = useState<string | null>(null);
-  const loadAccounts = useCallback(async () => {
+  const loadAccounts = useCallback(async (signal?: AbortSignal) => {
     if (!connected) return;
     setAccountsLoading(true);
     setAccountsError(null);
     try {
       if (showMeta) {
-        const res = await fetch("/api/meta/adaccounts");
+        const res = await fetch("/api/meta/adaccounts", { signal });
         const data = await res.json();
+        if (signal?.aborted) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load Meta ad accounts");
         const accounts = (data.accounts ?? []) as MetaAccountOption[];
         setMetaAccounts(accounts);
-        if (accounts.length === 1) setSelectedMetaAccount(accounts[0].id);
+        const selection = resolveRememberedMetaAccount(accounts, readClientWizardPreferences(clientId)?.metaAdAccountId);
+        setSelectedMetaAccount(selection.id);
+        setAccountSelectionNotice(selection.unavailable ? "Previous ad account unavailable. Choose another." : null);
       } else if (showGoogle) {
-        const res = await fetch("/api/google-ads/customers");
+        const res = await fetch("/api/google-ads/customers", { signal });
         const data = await res.json();
+        if (signal?.aborted) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load Google Ads customers");
         const customers = (data.customers ?? []) as GoogleCustomerOption[];
         setGoogleCustomers(customers);
         if (customers.length === 1) setSelectedGoogleCustomer(customers[0].id);
       } else {
-        const res = await fetch("/api/tiktok/advertisers");
+        const res = await fetch("/api/tiktok/advertisers", { signal });
         const data = await res.json();
+        if (signal?.aborted) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load TikTok advertisers");
         const advertisers = (data.advertisers ?? []) as TikTokAdvertiserOption[];
         setTiktokAdvertisers(advertisers);
         if (advertisers.length === 1) setSelectedTikTokAdvertiser(advertisers[0].id);
       }
     } catch (err) {
+      if (signal?.aborted) return;
       setAccountsError(err instanceof Error ? err.message : "Failed to load accounts");
     } finally {
-      setAccountsLoading(false);
+      if (!signal?.aborted) setAccountsLoading(false);
     }
-  }, [connected, showMeta, showGoogle]);
+  }, [connected, showMeta, showGoogle, clientId]);
 
   useEffect(() => {
-    void loadAccounts();
+    const controller = new AbortController();
+    void Promise.resolve().then(() => {
+      if (!controller.signal.aborted) return loadAccounts(controller.signal);
+    });
+    return () => controller.abort();
   }, [loadAccounts]);
 
   async function handleSync() {
@@ -175,7 +192,7 @@ export function WizardDataSourcePanel({
             ? { platform: "GOOGLE" as const, googleCustomerId: selectedGoogleCustomer }
             : { platform: "TIKTOK" as const, tiktokAdvertiserId: selectedTikTokAdvertiser };
 
-      if (platform === "META" && !selectedMetaAccount) {
+      if (platform === "META" && !metaAccounts.some(account => account.id === selectedMetaAccount)) {
         onSyncError("Select a Meta ad account first.");
         return;
       }
@@ -188,6 +205,7 @@ export function WizardDataSourcePanel({
         return;
       }
 
+      if (platform === "META") saveClientWizardPreferences(clientId, { metaAdAccountId: selectedMetaAccount });
       const res = await fetch(`/api/clients/${clientId}/reports/sync-api`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -242,8 +260,10 @@ export function WizardDataSourcePanel({
   const canSync =
     connected &&
     configured &&
-    !isSyncing && !timezoneSaving && !timezoneMismatch && !selectionError &&
-    (showMeta ? !!selectedMetaAccount : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
+    !isSyncing && !timezoneSaving && !timezoneMismatch && !selectionError && !accountsLoading && !accountsError &&
+    (showMeta ? metaAccounts.some(account => account.id === selectedMetaAccount) : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
+
+  const csvFallback = onUseCsv ? <button type="button" onClick={onUseCsv} className="text-[13px] font-medium text-dash-accent underline">Use CSV instead</button> : null;
 
   return (
     <fieldset disabled={isSyncing || timezoneSaving} className="min-w-0 space-y-4">
@@ -265,7 +285,7 @@ export function WizardDataSourcePanel({
             </p>
           ) : null}
           {!metaConfigured ? (
-            <p className="mt-3 text-[13px] text-dash-ink-secondary">Meta API credentials are not configured on this server.</p>
+            <div className="mt-3 space-y-2"><p className="text-[13px] text-dash-ink-secondary">Meta connection is temporarily unavailable.</p>{!syncError && csvFallback}</div>
           ) : !metaConnected ? (
             <>
               <p className="mt-3 text-[13px] text-dash-ink-secondary">Connect your Meta account to sync data directly.</p>
@@ -286,20 +306,26 @@ export function WizardDataSourcePanel({
               ) : accountsError ? (
                 <div className="space-y-2">
                   <p className="text-[13px] text-red-300">{accountsError}</p>
-                  <button
+                  <div className="flex flex-wrap gap-4"><button
                     type="button"
                     onClick={() => void loadAccounts()}
                     className="text-[13px] text-dash-accent underline"
                   >
                     Retry
-                  </button>
+                  </button>{!syncError && csvFallback}</div>
                 </div>
               ) : metaAccounts.length === 0 ? (
-                <p className="text-[13px] text-amber-200">No ad accounts found for this Meta connection.</p>
+                <div className="space-y-2"><p className="text-[13px] text-dash-ink-secondary">No ad accounts available.</p><div className="flex flex-wrap gap-4"><button type="button" onClick={() => void loadAccounts()} className="text-[13px] text-dash-accent underline">Retry</button>{!syncError && csvFallback}</div></div>
               ) : (
                 <MetaAdAccountPicker accounts={metaAccounts} value={selectedMetaAccount}
-                  onChange={id => { setSelectedMetaAccount(id); setAccountsError(null); }} />
+                  onChange={id => {
+                    if (!metaAccounts.some(account => account.id === id)) return;
+                    if (id !== selectedMetaAccount) onMetaAccountChanged?.(id);
+                    setSelectedMetaAccount(id); setAccountsError(null); setAccountSelectionNotice(null);
+                    saveClientWizardPreferences(clientId, { metaAdAccountId: id });
+                  }} />
               )}
+              {accountSelectionNotice && !accountsLoading && !accountsError && <p className="text-[13px] text-dash-ink-secondary" role="status">{accountSelectionNotice}</p>}
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection
               </Link>
@@ -356,13 +382,13 @@ export function WizardDataSourcePanel({
               ) : accountsError ? (
                 <div className="space-y-2">
                   <p className="text-[13px] text-red-300">{accountsError}</p>
-                  <button
+                  <div className="flex flex-wrap gap-4"><button
                     type="button"
                     onClick={() => void loadAccounts()}
                     className="text-[13px] text-dash-accent underline"
                   >
                     Retry
-                  </button>
+                  </button>{!syncError && csvFallback}</div>
                 </div>
               ) : googleCustomers.length === 0 ? (
                 <p className="text-[13px] text-amber-200">No Google Ads customers found for this connection.</p>
@@ -421,13 +447,13 @@ export function WizardDataSourcePanel({
               ) : accountsError ? (
                 <div className="space-y-2">
                   <p className="text-[13px] text-red-300">{accountsError}</p>
-                  <button
+                  <div className="flex flex-wrap gap-4"><button
                     type="button"
                     onClick={() => void loadAccounts()}
                     className="text-[13px] text-dash-accent underline"
                   >
                     Retry
-                  </button>
+                  </button>{!syncError && csvFallback}</div>
                 </div>
               ) : tiktokAdvertisers.length === 0 ? (
                 <p className="text-[13px] text-amber-200">No TikTok advertisers found for this connection.</p>
@@ -453,13 +479,14 @@ export function WizardDataSourcePanel({
         </div>
       ) : null}
 
-      {connected && configured ? (
-        <>
-          {syncError ? (
-            <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
-              {syncError}
-            </div>
-          ) : null}
+      {syncError && <div role="alert" className="space-y-2 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-[13px] text-red-200">
+        <p>{syncError}</p>
+        <div className="flex flex-wrap items-center gap-4">
+          {connected && configured && <button type="button" onClick={() => void handleSync()} disabled={!canSync} className="font-medium text-dash-accent underline disabled:opacity-40">Retry</button>}
+          {csvFallback}
+        </div>
+      </div>}
+      {connected && configured && !syncError ? (
           <button
             type="button"
             onClick={() => void handleSync()}
@@ -470,9 +497,8 @@ export function WizardDataSourcePanel({
                 : "h-12 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:opacity-40"
             }
           >
-            {isSyncing ? "Syncing & analyzing…" : importComplete ? "Sync again" : "Analyze campaign data"}
+            {isSyncing ? "Syncing & analyzing…" : importComplete ? "Sync again" : "Sync & analyze"}
           </button>
-        </>
       ) : null}
     </fieldset>
   );
@@ -540,7 +566,7 @@ export function WizardDataSourceToggle({
             <DataSourceBadge label="API" />
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold">
-                Connect your data via API
+                Connect Meta
                 {apiUnavailable ? (
                   <span className="ml-1.5 inline-flex rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
                     Temporarily unavailable
@@ -552,7 +578,7 @@ export function WizardDataSourceToggle({
               >
                 {apiUnavailable
                   ? "Manual CSV upload remains available"
-                  : "Choose a report and sync daily data from Meta"}
+                  : "No CSV needed"}
               </span>
             </span>
           </button>
