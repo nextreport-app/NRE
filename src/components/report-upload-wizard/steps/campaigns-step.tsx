@@ -11,7 +11,7 @@ import {
 import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { adSetKey } from "@/lib/nre/ad-sets";
-import { activeAdSetKeys, supportsAdSetSlides } from "@/lib/nre/ad-set-slide-preferences";
+import { supportsAdSetSlides } from "@/lib/nre/ad-set-slide-preferences";
 import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
 import { ObjectivePicker } from "../ui/objective-picker";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
@@ -114,7 +114,6 @@ export function WizardCampaignsStep() {
     expandedCampaigns,
     handleCampaignsContinue,
     hasBlockingObjectives,
-    zeroSpendCampaigns,
     campaignSpendLabel,
     campaignSpendLoading,
     selectAllCampaigns,
@@ -140,7 +139,6 @@ export function WizardCampaignsStep() {
     metaCsvExportProfile?.kind === "campaigns_table" && metaCsvExportProfile.hasResultIndicatorColumn;
 
   const showAdSetOptions = supportsAdSetSlides(w.reportType);
-  const activeAdSetCount = activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns).length;
 
   const objectivesLoading = selectedCampaigns.size > 0 && (metricsStatus === "loading" || !objectivesReady);
 
@@ -185,12 +183,6 @@ export function WizardCampaignsStep() {
           <p className="rounded-full border border-dash-border bg-dash-bg px-2.5 py-1 text-xs text-dash-ink-secondary" role="status">{selectedCampaigns.size} of {campaigns.length} included{campaigns.length > selectedCampaigns.size ? ` · ${campaigns.length - selectedCampaigns.size} excluded` : ""}</p>
         </div>
 
-      {showAdSetOptions && adSetGroups.length > 0 && <div className="space-y-1 text-[13px] text-dash-ink-secondary">
-        <p className="font-semibold text-dash-ink">Optional ad-set slides</p>
-        <p>Campaign totals already include all ad sets. Select any you want to show as separate slides.</p>
-        <p role="status">{selectedCampaigns.size} campaign{selectedCampaigns.size === 1 ? "" : "s"} included · {activeAdSetCount} ad set{activeAdSetCount === 1 ? "" : "s"} selected for separate slides</p>
-      </div>}
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex cursor-pointer items-center gap-2.5">
           <input
@@ -218,8 +210,8 @@ export function WizardCampaignsStep() {
         )}
       </div>
 
-      <p className="text-[13px] text-dash-ink-secondary">{campaignSpendLoading ? "Updating campaign spend…" : campaignSpendLabel}</p>
-      {zeroSpendCampaigns.length > 0 && <p className="text-[13px] text-dash-ink-secondary">Campaigns with no spend in this reporting period are excluded by default. Expand below to include any you need.</p>}
+      {campaignSpendLoading && <p role="status" className="text-[13px] text-dash-ink-secondary">Updating spend…</p>}
+      {!campaignSpendLoading && campaignSpendLabel?.startsWith("Spend unavailable") && <p role="alert" className="text-[13px] text-dash-ink-secondary">Spend unavailable. Analyze again.</p>}
 
       <div className="space-y-3">
         {(() => {
@@ -387,7 +379,7 @@ export function WizardCampaignsStep() {
                   >
                     <span className="min-w-0">
                       <span className="block text-[14px] font-semibold text-dash-ink">Zero-spend campaigns ({zeroSpend.length.toLocaleString("en-US")})</span>
-                      <span className="mt-1 block text-[13px] text-dash-ink-secondary">{zeroSpendSelected} included · {zeroSpendExpanded ? "Hide campaigns" : "Expand to review or include"}</span>
+                      <span className="mt-1 block text-[13px] text-dash-ink-secondary">{zeroSpendSelected} included{!zeroSpendExpanded && " · Expand to review"}</span>
                     </span>
                     <span aria-hidden="true" className="shrink-0 text-dash-ink-secondary">{zeroSpendExpanded ? "▲" : "▼"}</span>
                   </button>

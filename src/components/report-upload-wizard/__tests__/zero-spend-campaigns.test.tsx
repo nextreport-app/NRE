@@ -27,7 +27,10 @@ describe("zero-spend campaign disclosure", () => {
     expect(html).toContain("Select all campaigns");
     expect(html).toContain("$100 spend"); expect(html).toContain("$200 spend"); expect(html).toContain("$2 spend");
     expect(html).not.toContain("Last 30 days spend detected"); expect(html).not.toContain("text-amber-400");
-    expect(html).toContain("Campaigns with no spend in this reporting period are excluded by default");
+    expect(html).not.toContain("Campaigns with no spend in this reporting period");
+    expect(html).not.toContain("Reporting-period spend");
+    expect(html).not.toContain("Optional ad-set slides");
+    expect(html).not.toContain("Campaign totals already include all ad sets");
   });
   it("does not label missing spend as a measured zero", () => {
     state.missingSpend = true;
@@ -48,7 +51,7 @@ describe("zero-spend campaign disclosure", () => {
     state.selected = new Set(["Traffic", "Inactive 1019"]);
     const html = renderToStaticMarkup(<WizardCampaignsStep />);
     expect(html).toContain("2 of 1024 included");
-    expect(html).toContain("1 included · Expand to review or include");
+    expect(html).toContain("1 included · Expand to review");
     expect(html).not.toContain('id="campaign-Inactive');
   });
 });
