@@ -47,6 +47,7 @@ export function WizardImportStep() {
     handleAnalyze,
     handleRetryAnalyze,
     handleApiSynced,
+    handleApiSyncStart,
     handleCancelPreviousMonthSummary,
     handleDataSourceModeChange,
     handleGeneratePreviousMonthSummary,
@@ -91,6 +92,12 @@ export function WizardImportStep() {
     setCsvWarningDismissed,
     setCsvDateGuidance,
   } = w;
+
+  const apiAnalysisError = analyzeStatus === "error"
+    ? analyzeMessage || "Could not analyze the synced data. Please retry."
+    : analyzeStatus === "invalid"
+      ? analyzeErrors.map(error => error.message).join(" ") || "Could not analyze the synced data. Please retry."
+      : null;
 
   const previousMonthInfo = getPreviousMonthComparisonInfo(
     previousMonthHasFile,
@@ -196,6 +203,7 @@ export function WizardImportStep() {
 
           {w.apiSyncEnabled && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
+              key={`${clientId}:${selectedPlatformCard}`}
               clientId={clientId}
               reportSelection={apiSelection}
               clientTimezone={clientTimezone}
@@ -212,12 +220,11 @@ export function WizardImportStep() {
               tiktokConfigured={tiktokConfigured}
               tiktokConnected={tiktokConnected}
               onSynced={handleApiSynced}
+              onUseCsv={() => handleDataSourceModeChange("csv")}
+              onMetaAccountChanged={w.handleApiAccountChange}
               syncStatus={analyzeStatus === "loading" ? "loading" : apiSyncStatus}
-              syncError={apiSyncError || (w.metaConnectError ? "Meta connection could not be completed. Try connecting again." : null)}
-              onSyncStart={() => {
-                setApiSyncStatus("loading");
-                setApiSyncError(null);
-              }}
+              syncError={apiSyncError || apiAnalysisError || (!metaConnected && w.metaConnectError ? "Meta connection could not be completed. Try connecting again." : null)}
+              onSyncStart={handleApiSyncStart}
               onSyncError={(message) => {
                 setApiSyncStatus("error");
                 setApiSyncError(message);
@@ -348,7 +355,7 @@ export function WizardImportStep() {
         </div>
       )}
 
-      {analyzeStatus === "invalid" && (
+      {dataSourceMode === "csv" && analyzeStatus === "invalid" && (
         <div className="space-y-3">
           {analyzeErrors.filter(isNoDataRowsError).map((e, i) =>
             previousMonthHasFile ? (
@@ -381,7 +388,7 @@ export function WizardImportStep() {
           )}
         </div>
       )}
-      {analyzeStatus === "error" && analyzeMessage && (
+      {dataSourceMode === "csv" && analyzeStatus === "error" && analyzeMessage && (
         <div className="space-y-3 rounded-lg border border-red-900 bg-red-950/40 p-4">
           <p className="text-[14px] text-red-300">{analyzeMessage}</p>
           {mtdFile ? (

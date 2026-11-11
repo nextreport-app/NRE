@@ -1255,6 +1255,19 @@ export function useReportUploadWizard({
     setDataSourceMode(mode);
   }
 
+  function handleApiAccountChange(accountId: string) {
+    if (metaAdAccountId && metaAdAccountId !== accountId) clearImportedWizardData();
+    setMetaAdAccountId(accountId);
+  }
+
+  function handleApiSyncStart() {
+    setApiSyncStatus("loading");
+    setApiSyncError(null);
+    setAnalyzeStatus("idle");
+    setAnalyzeErrors([]);
+    setAnalyzeMessage(null);
+  }
+
   /** After API sync returns a CSV File — analyze with the selected platform forced (no mismatch pause). */
   async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
@@ -2838,6 +2851,8 @@ export function useReportUploadWizard({
     ensureObjectivesForSelection,
     showImportContinue: false,
     handleApiSynced,
+    handleApiSyncStart,
+    handleApiAccountChange,
     handleMismatchContinueAnyway,
     handleMismatchGoBack,
     mismatchWarning,

@@ -12,6 +12,8 @@ export type ClientWizardPreferences = {
   includePreviousMonthComparison?: boolean;
   showBudgetOnCover?: boolean;
   dataSourceMode?: "csv" | "api";
+  /** ID only, scoped to this client/browser; always revalidated against current Meta access. */
+  metaAdAccountId?: string;
   /** User completed Metrics at least once for this client — metrics step may start collapsed. */
   metricsStepConfirmed?: boolean;
   /** Import download instructions start collapsed after first dismiss or successful CSV analyze. */
