@@ -1,6 +1,6 @@
 import {beforeEach,afterEach,describe,expect,it,vi} from "vitest";
 vi.mock("@/lib/auth",()=>({auth:vi.fn()}));
-vi.mock("@/lib/prisma",()=>({prisma:{client:{findUnique:vi.fn(),findUniqueOrThrow:vi.fn()},user:{findUnique:vi.fn(),update:vi.fn()}}}));
+vi.mock("@/lib/prisma",()=>({prisma:{client:{findUnique:vi.fn(),findUniqueOrThrow:vi.fn(),update:vi.fn()},user:{findUnique:vi.fn(),update:vi.fn()}}}));
 vi.mock("@/lib/subscription-guard",()=>({requireActiveSubscription:vi.fn().mockResolvedValue(null)}));
 vi.mock("@/lib/usage-rate-limit",()=>({enforceWizardLimits:vi.fn().mockResolvedValue(null)}));
 vi.mock("@/lib/meta-token-storage",()=>({decryptMetaToken:()=>"fake-token",encryptMetaToken:()=>"protected-token",isEncryptedMetaToken:()=>true}));
@@ -71,7 +71,23 @@ describe("Meta wizard import route",()=>{
   const payload = await response.json();
   expect(payload.error).toContain("Meta code 100"); expect(payload.error).not.toContain("Reconnect"); expect(payload.error).not.toContain("secret");
  });
- it("rejects a timezone mismatch instead of reporting the wrong yesterday",async()=>{vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"AUD",timezone_name:"Australia/Sydney"});const response=await POST(request(),params);expect(response.status).toBe(409);expect((await response.json()).code).toBe("meta_timezone_mismatch");expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
+ it.each([
+  ["Australia/Sydney", "2026-10-07", "2026-11-05"],
+  ["America/Los_Angeles", "2026-10-06", "2026-11-04"],
+ ])("automatically uses %s for relative dates and subsequent generation", async (timezone, sinceIso, untilIso) => {
+  vi.setSystemTime(new Date("2026-11-05T23:30:00Z"));
+  vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"AUD",timezone_name:timezone});
+  const response=await POST(request({...body,reportType:"WEEKLY",dateSelection:{mode:"last7"}}),params);
+  expect(response.status).toBe(200);
+  expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({timezone,sinceIso,untilIso}));
+  expect(prisma.client.update).toHaveBeenCalledWith({where:{id:"client_1"},data:{timezone}});
+  expect(await response.json()).toMatchObject({accountTimezone:timezone});
+ });
+ it("preserves explicit calendar dates when the account timezone differs", async () => {
+  vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"AUD",timezone_name:"Australia/Sydney"});
+  expect((await POST(request(),params)).status).toBe(200);
+  expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({timezone:"Australia/Sydney",sinceIso:"2026-10-01",untilIso:"2026-10-31"}));
+ });
  it("does not hide API mapping problems behind a manual reference CSV",async()=>{expect((await POST(request({...body,referenceManualCsvText:"CSV reference"}),params)).status).toBe(400);expect(fetchMetaReportCsv).not.toHaveBeenCalled();});
  it("honors the explicit server kill switch",async()=>{vi.stubEnv("AD_PLATFORM_API_SYNC_ENABLED","false");expect((await POST(request(),params)).status).toBe(410);});
 });

@@ -122,9 +122,14 @@ export function WizardDataSourcePanel({
   const [selectedMetaAccount, setSelectedMetaAccount] = useState("");
   const [selectedGoogleCustomer, setSelectedGoogleCustomer] = useState("");
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
-  const [timezoneSaving, setTimezoneSaving] = useState(false);
   const selectedAccount = metaAccounts.find(account => account.id === selectedMetaAccount);
-  const timezoneMismatch = !!(showMeta && selectedAccount?.timezone && clientTimezone && new Intl.DateTimeFormat("en", { timeZone: selectedAccount.timezone }).resolvedOptions().timeZone !== new Intl.DateTimeFormat("en", { timeZone: clientTimezone }).resolvedOptions().timeZone);
+  const accountTimezone = showMeta ? selectedAccount?.timezone : undefined;
+  // Align date presets before syncing; the server persists authoritative metadata.
+  useEffect(() => {
+    if (accountTimezone && accountTimezone !== clientTimezone) {
+      onTimezoneUpdated?.(accountTimezone);
+    }
+  }, [accountTimezone, clientTimezone, onTimezoneUpdated]);
   const [accountSelectionNotice, setAccountSelectionNotice] = useState<string | null>(null);
   const [accountsLoading, setAccountsLoading] = useState(connected);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -260,13 +265,13 @@ export function WizardDataSourcePanel({
   const canSync =
     connected &&
     configured &&
-    !isSyncing && !timezoneSaving && !timezoneMismatch && !selectionError && !accountsLoading && !accountsError &&
+    !isSyncing && !(accountTimezone && clientTimezone && accountTimezone !== clientTimezone) && !selectionError && !accountsLoading && !accountsError &&
     (showMeta ? metaAccounts.some(account => account.id === selectedMetaAccount) : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
   const csvFallback = onUseCsv ? <button type="button" onClick={onUseCsv} className="text-[13px] font-medium text-dash-accent underline">Use CSV instead</button> : null;
 
   return (
-    <fieldset disabled={isSyncing || timezoneSaving} className="min-w-0 space-y-4">
+    <fieldset disabled={isSyncing} className="min-w-0 space-y-4">
       {reportTypeControls}
       {setupControls}
 
@@ -334,19 +339,6 @@ export function WizardDataSourcePanel({
         </div>
       ) : null}
 
-      {timezoneMismatch ? <div className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
-        <p className="text-sm text-dash-ink-secondary">This ad account reports in <strong>{selectedAccount?.timezone}</strong>. Use the same timezone for this client so report dates match Ads Manager.</p>
-        <button type="button" className="min-h-10 rounded-lg bg-dash-accent px-3 py-2 text-sm font-semibold text-[#0b1728]" onClick={async () => {
-          setTimezoneSaving(true); setAccountsError(null);
-          try {
-            const res = await fetch(`/api/clients/${clientId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ timezone: selectedAccount!.timezone }) });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error ?? 'Unable to update timezone.');
-            onTimezoneUpdated?.(data.client.timezone);
-          } catch (error) { setAccountsError(error instanceof Error ? error.message : 'Unable to update timezone.'); }
-          finally { setTimezoneSaving(false); }
-        }}>{timezoneSaving ? 'Updating timezone…' : `Use ${selectedAccount?.timezone} for this client`}</button>
-      </div> : null}
       {selectionError ? <p role="alert" className="text-sm text-red-400">{selectionError}</p> : null}
 
       {showGoogle ? (
