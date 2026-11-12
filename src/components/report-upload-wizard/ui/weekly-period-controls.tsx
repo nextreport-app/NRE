@@ -29,8 +29,11 @@ export function WeeklyPeriodControls() {
     w.editDateMode("custom");
   }
 
-  return <section className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
-    <h3 className="text-sm font-semibold text-dash-ink">Weekly report period</h3>
+  return <details className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
+    <summary className="cursor-pointer text-sm font-semibold text-dash-ink">
+      Weekly report period
+      <span aria-live="polite" className="mt-1 block font-normal text-dash-ink-secondary">Report dates: {range.startIso || 'Choose start'} – {range.endIso || 'Choose end'}</span>
+    </summary>
     <div className="flex flex-wrap gap-2">
       {([['last7', 'Last 7 days'], ['custom', 'Custom date range']] as const).map(([mode, label]) => {
         const active = mode === "custom" ? custom : !custom;
@@ -46,6 +49,5 @@ export function WeeklyPeriodControls() {
       maxIso={importingApi ? reportCalendarYesterday(new Date(), w.clientTimezone) : calendar.endIso}
       onStartChange={iso => { w.editDateMode("custom"); w.editCustomStart(iso); w.editCustomEnd(range.endIso); }}
       onEndChange={iso => { w.editDateMode("custom"); w.editCustomStart(range.startIso); w.editCustomEnd(iso); }} />}
-    <p aria-live="polite" className="text-sm text-dash-ink-secondary">Report dates: {range.startIso || 'Choose start'} – {range.endIso || 'Choose end'}</p>
-  </section>;
+  </details>;
 }

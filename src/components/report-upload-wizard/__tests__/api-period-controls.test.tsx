@@ -11,6 +11,13 @@ afterEach(() => vi.useRealTimers());
 describe("shared report controls for API imports", () => {
  it("shows the selected weekly preset and current account dates, ignoring stale CSV bounds", () => {
   const html = renderToStaticMarkup(<WeeklyPeriodControls />);
+  const header = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)?.[1];
+  expect(html).toContain("<details");
+  expect(html).not.toMatch(/<details[^>]*\sopen(?:=|>)/);
+  expect(header).toContain("Weekly report period");
+  expect(header).toContain("2026-10-29");
+  expect(header).toContain("2026-11-04");
+  expect(html.indexOf("Last 7 days")).toBeGreaterThan(html.indexOf("</summary>"));
   expect(html).toContain('aria-pressed="true"');
   expect(html).toContain('bg-dash-accent');
   expect(html).toContain("2026-10-29"); expect(html).toContain("2026-11-04");

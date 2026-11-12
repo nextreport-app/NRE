@@ -154,8 +154,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       const account = await fetchMetaAdAccountMetadata(fresh.accessToken, metaAdAccountId);
-      const canonicalZone = (zone: string) => new Intl.DateTimeFormat("en-US", { timeZone: zone }).resolvedOptions().timeZone;
-      if (canonicalZone(account.timezone_name) !== canonicalZone(client.timezone)) return NextResponse.json({ error: `This Meta account uses ${account.timezone_name}; the client workspace uses ${client.timezone}. Update the client timezone to match the ad account before syncing.`, code: "meta_timezone_mismatch", accountTimezone: account.timezone_name }, { status: 409 });
       let range;
       try { range = metaApiImportRange(parsed.data, new Date(), account.timezone_name); }
       catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Choose valid report dates." }, { status: 400 }); }
@@ -165,6 +163,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         timezone: account.timezone_name, currency: account.currency,
         ...range, requireDirectResultEvidence: true,
       });
+      // Report generation reads the client timezone, so keep it aligned with
+      // the account calendar used for this import (including relative presets).
+      if (client.timezone !== account.timezone_name) {
+        await prisma.client.update({ where: { id: client.id }, data: { timezone: account.timezone_name } });
+      }
       return NextResponse.json({
         ok: true,
         platform: "META",
