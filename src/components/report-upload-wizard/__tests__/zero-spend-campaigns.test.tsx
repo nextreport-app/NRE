@@ -19,13 +19,13 @@ beforeEach(() => { state.search = ""; state.selected = new Set(); state.missingS
 describe("zero-spend campaign disclosure", () => {
   it("keeps 1,020 inactive campaigns out of the initial DOM while leaving small and negative spend visible", () => {
     const html = renderToStaticMarkup(<WizardCampaignsStep />);
-    expect(html).toContain("Zero-spend campaigns (1,020)");
+    expect(html).toContain("No spend in report dates (1,020)");
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain('id="campaign-Inactive');
     for (const name of ["Traffic", "Reach", "Small spend", "Credit adjustment"]) expect(html).toContain(`id="campaign-${name}"`);
     expect(html).toContain("0 of 1024 included");
     expect(html).toContain("Select all campaigns");
-    expect(html).toContain("$100 spend"); expect(html).toContain("$200 spend"); expect(html).toContain("$2 spend");
+    expect(html).not.toContain("$100"); expect(html).not.toContain("$200"); expect(html).not.toContain("$2 spend");
     expect(html).not.toContain("Last 30 days spend detected"); expect(html).not.toContain("text-amber-400");
     expect(html).not.toContain("Campaigns with no spend in this reporting period");
     expect(html).not.toContain("Reporting-period spend");
@@ -35,17 +35,17 @@ describe("zero-spend campaign disclosure", () => {
   it("does not label missing spend as a measured zero", () => {
     state.missingSpend = true;
     const html = renderToStaticMarkup(<WizardCampaignsStep />);
-    expect(html).toContain("Spend unavailable");
+    expect(html).not.toContain("Spend unavailable");
     expect(html).toContain('id="campaign-Traffic"');
     expect(html).not.toContain("Last 30 days spend detected · $0");
-    expect(html).toContain("Zero-spend campaigns (1,020)");
+    expect(html).toContain("No spend in report dates (1,020)");
   });
   it("searches inactive campaigns without requiring an expansion first", () => {
     state.search = "Inactive 1019";
     const html = renderToStaticMarkup(<WizardCampaignsStep />);
     expect(html).toContain('id="campaign-Inactive 1019"');
     expect(html).not.toContain('id="campaign-Traffic"');
-    expect(html).not.toContain("Zero-spend campaigns (");
+    expect(html).not.toContain("No spend in report dates (");
   });
   it("keeps included inactive campaigns counted when collapsed", () => {
     state.selected = new Set(["Traffic", "Inactive 1019"]);

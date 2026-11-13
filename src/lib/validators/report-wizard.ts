@@ -25,7 +25,7 @@ export const selectedCampaignsSchema = z.array(z.string());
 // campaigns.ts's resolveCampaignSelection, which is what actually reads
 // this shape.
 export const campaignSelectionMemorySchema = z.object({
-  policy: z.literal("positive-period-spend-v1").optional(),
+  policy: z.enum(["positive-report-window-spend-v2", "positive-period-spend-v1"]).optional(),
   campaigns: z.array(z.string()),
   deselected: z.array(z.string()),
 });

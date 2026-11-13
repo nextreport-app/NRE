@@ -1,16 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { parseCsvText } from "../parse-csv";
 import { campaignSelectionSpend } from "../campaign-selection-spend";
+import { buildReportData } from "../report-data";
 import { CAMPAIGN_SELECTION_POLICY } from "../campaigns";
 const now = new Date("2026-11-08T12:00:00Z");
-const rows = parseCsvText('Campaign name,Day,Amount spent (USD),Results,Result type,Reach,Impressions\nCurrent,2026-11-07,4,1,Link clicks,10,100\nSmall,2026-11-06,0.50,1,Link clicks,10,100\nMicro,2026-11-06,0.001,1,Link clicks,10,100\nOld,2026-10-10,100,1,Link clicks,10,100\nZero,2026-11-07,0,0,Link clicks,0,0').rows;
+const rows = parseCsvText('Campaign name,Day,Amount spent (USD),Results,Result type,Reach,Impressions\nCurrent,2026-11-07,4,1,Link clicks,10,100\nSmall,2026-11-06,0.50,1,Link clicks,10,100\nMicro,2026-11-06,0.001,1,Link clicks,10,100\nOld,2026-09-10,100,1,Link clicks,10,100\nZero,2026-11-07,0,0,Link clicks,0,0').rows;
 describe("campaign defaults follow report spend, never a fixed currency threshold", () => {
   it("checks every positive amount and keeps zero in-period campaigns available", () => {
     const facts = campaignSelectionSpend(rows,{reportType:"WEEKLY",dateSelection:{mode:"last7"}},"UTC",now);
     expect(facts.selectedCampaigns).toEqual(["Current","Small","Micro"]);
     expect(facts.campaignSpend).toEqual({Current:4,Small:0.5,Micro:0.001,Old:0,Zero:0});
     expect(facts.zeroSpendCampaigns).toEqual(["Old","Zero"]);
-    expect(facts.ranges).toEqual([{startIso:"2026-11-01",endIso:"2026-11-07"}]);
+    expect(facts.ranges).toEqual([{startIso:"2026-11-01",endIso:"2026-11-07"},{startIso:"2026-11-01",endIso:"2026-11-07"},{startIso:"2026-10-09",endIso:"2026-11-07"}]);
+  });
+  it("includes campaigns active only in MTD or the 30-day chart, not old upload history", () => {
+    const source = parseCsvText('Campaign name,Day,Amount spent (USD)\nWeekly,2026-11-12,834.65\nMtdOnly,2026-11-02,292.05\nChartOnly,2026-10-20,2117.80\nSeptemberOnly,2026-09-10,99\nInactive,2026-11-12,0').rows;
+    const facts = campaignSelectionSpend(source,{reportType:"WEEKLY",dateSelection:{mode:"custom",customStart:"2026-11-06",customEnd:"2026-11-12"}},"UTC",new Date("2026-11-13T12:00:00Z"));
+    expect(facts.selectedCampaigns).toEqual(["Weekly","MtdOnly","ChartOnly"]);
+    expect(facts.zeroSpendCampaigns).toEqual(["SeptemberOnly","Inactive"]);
+    const report = buildReportData({accountName:"Regression",currencySymbol:"$",timezone:"UTC",monthlyBudget:null,mtdDailyRows:source,selectedCampaigns:facts.selectedCampaigns,reportType:"WEEKLY",weeklyRange:{startIso:"2026-11-06",endIso:"2026-11-12"},now:new Date("2026-11-13T12:00:00Z")});
+    expect(report.mtdRow.spend).toBe("$1,127");
+    expect(report.chart?.totalAllSpend).toBeCloseTo(3244.50, 2);
+    const oldMemory = {policy:"positive-period-spend-v1" as const,campaigns:["Weekly","MtdOnly","ChartOnly"],deselected:["MtdOnly","ChartOnly"]};
+    // Persisted primary-week exclusions are migrated rather than repeated.
+    expect(campaignSelectionSpend(source,{reportType:"WEEKLY"},"UTC",new Date("2026-11-13T12:00:00Z"),oldMemory).selectedCampaigns).toContain("ChartOnly");
   });
   it("resets legacy automatic exclusions once but preserves current-policy exclusions", () => {
     const memory = {campaigns:["Current"],deselected:["Current"]};
