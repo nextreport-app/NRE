@@ -224,7 +224,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       rels: template.campaign.rels,
     });
   } else if (!skipStandardSlides) {
-    for (const slide of orderSlidesBySpend(data.campaignSlides)) {
+    for (const slide of orderSlidesBySpend(data.campaignSlides.filter(slide => slide.ai.spendNum > 0))) {
       if (!campaignVisible(slide.campaignName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
@@ -247,7 +247,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         rels: buildChartSlideRels(template.background.mediaTarget),
       }));
     }
-    for (const slide of orderSlidesBySpend(data.adSetSlides)) {
+    for (const slide of orderSlidesBySpend(data.adSetSlides.filter(slide => slide.ai.spendNum > 0))) {
       if (!adSetVisible(slide.campaignName, slide.adSetName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
@@ -386,7 +386,7 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     rels: template.cover.rels,
   });
 
-  for (const campaign of data.campaigns) {
+  for (const campaign of data.campaigns.filter(item => item.metricsA.spend.value > 0 || item.metricsB.spend.value > 0)) {
     slides.push({
       xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate, { a: data.periodATitle ?? "PERIOD A", b: data.periodBTitle ?? "PERIOD B" }),
       rels: buildComparisonSlideRels(template.background.mediaTarget),
@@ -476,13 +476,13 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
       ...(data.adSetSlides ?? []).map(slide => slide.ai.dateRange),
     ])];
     for (const monthLabel of months) {
-      for (const slide of orderSlidesBySpend(data.slides.filter(item => item.ai.dateRange === monthLabel))) {
+      for (const slide of orderSlidesBySpend(data.slides.filter(item => item.ai.dateRange === monthLabel && item.ai.spendNum > 0))) {
         const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
         slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
         const pages = additionalMetricPages(slide);
         pages.forEach((metrics, index) => slides.push({ xml: buildAdditionalMetricsSlideXml(slide, metrics, index, pages.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) }));
       }
-      for (const adSet of orderSlidesBySpend((data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel))) {
+      for (const adSet of orderSlidesBySpend((data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel && item.ai.spendNum > 0))) {
         const key = `adset:${monthLabel} — ${adSet.campaignName}/${adSet.adSetName}`;
         slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, adSet, aiCopyBySlideKey?.get(key) ?? buildHistoricalSlideCopy(adSet), "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
         const pages = additionalMetricPages(adSet);

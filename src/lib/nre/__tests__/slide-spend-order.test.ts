@@ -17,6 +17,20 @@ function orderingFixture() {
   return buildReportData({ accountName: "Slide ordering", currencySymbol: "₹", timezone: "UTC", monthlyBudget: null, mtdDailyRows: rows, now, weeklyRange: { startIso: "2026-11-06", endIso: "2026-11-12" }, selectedAdSets: rows.map(r => adSetKey(String(r.campaign_name), String(r.ad_set_name))) });
 }
 describe("report slide spend sequence", () => {
+  it("omits selected zero-period campaigns and ad sets while retaining earlier summary spend", () => {
+    const source = [...rows, row("Stopped", "Stopped set", 50, "2026-11-02"), row("Stopped", "Stopped set", 0), row("A low", "Stopped sibling", 30, "2026-11-02"), row("A low", "Stopped sibling", 0)];
+    const data = buildReportData({accountName:"Zero spend",currencySymbol:"$",timezone:"UTC",monthlyBudget:null,mtdDailyRows:source,selectedCampaigns:["Stopped","A low","Z high"],selectedAdSets:source.map(r=>adSetKey(String(r.campaign_name),String(r.ad_set_name))),weeklyRange:{startIso:"2026-11-06",endIso:"2026-11-12"},now});
+    expect(data.campaignSlides.map(s=>s.campaignName)).toEqual(["Z high","A low"]);
+    expect(data.adSetSlides.every(s=>s.ai.spendNum>0)).toBe(true);
+    expect(data.adSetSlides.map(s=>s.adSetName)).not.toContain("Stopped sibling");
+    expect(data.mtdRow.spend).toBe("$240");
+    expect(data.chart?.totalAllSpend).toBe(240);
+  });
+  it("omits comparison campaigns with no spend in either period", () => {
+    const data=buildComparisonReportData({accountName:"Compare",currencySymbol:"$",timezone:"UTC",mtdDailyRows:[...rows,row("Zero","Zero set",0)],selectedCampaigns:["A low","Z high","Zero"],periodA:{startIso:"2026-11-06",endIso:"2026-11-12"},periodB:{startIso:"2026-10-30",endIso:"2026-11-05"},now});
+    expect(data.campaigns.map(c=>c.campaignName)).toEqual(["Z high","A low"]);
+  });
+
   it("orders campaign totals and all ad sets by reporting-period spend rather than name", () => {
     const data = orderingFixture();
     expect(data.campaignSlides.map(slide => slide.campaignName)).toEqual(["Z high", "A low"]);
@@ -36,6 +50,9 @@ describe("report slide spend sequence", () => {
     const data = orderingFixture();
     // Deliberately reverse archived arrays: the renderer also enforces ordering.
     data.campaignSlides.reverse(); data.adSetSlides.reverse();
+    // Older persisted reports may already contain zero-spend detail slides.
+    data.campaignSlides.push({...data.campaignSlides[0],campaignName:"Zero campaign",ai:{...data.campaignSlides[0].ai,spendNum:0}});
+    data.adSetSlides.push({...data.adSetSlides[0],adSetName:"Zero ad set",ai:{...data.adSetSlides[0].ai,spendNum:0}});
     const originalCampaignOrder = data.campaignSlides.map(slide => slide.campaignName);
     const buffer = await renderPptx({ templateBuffer: fs.readFileSync(path.resolve("templates/dark.pptx")), data, currencySymbol: "₹" });
     const zip = await JSZip.loadAsync(buffer);
