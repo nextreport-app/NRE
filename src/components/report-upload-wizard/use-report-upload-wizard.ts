@@ -5,12 +5,12 @@ import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { selectedMetricHeaders, type CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { dailyBaseMetrics, dailyMetricIsExcluded, expandDailyExclusions } from "@/lib/nre/daily-metric-selection";
 import { alignCsvRange, alignCsvSelection, alignCsvComparison, csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
-import { dailyExtraMetricGuide, dailyOptionalMetrics } from "@/lib/nre/daily-extra-metrics";
+import { dailyOptionalMetrics } from "@/lib/nre/daily-extra-metrics";
 import { comparisonSummaryPages } from "@/lib/nre/comparison-summary-pagination";
 import { comparisonOptionalMetrics, isComparisonCoreMetric, paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 import { comparisonPresetPeriods } from "@/lib/nre/comparison-period-selection";
 
-import { paginateExtraMetrics, allSlideMetrics, METRIC_GUIDE_ENTRIES_PER_SLIDE } from "@/lib/nre/metric-pagination";
+import { paginateExtraMetrics } from "@/lib/nre/metric-pagination";
 import { historicalPeriods, selectedSinglePeriod, monthlySelectionFromBounds, previousCompleteMonth, reportCalendarYesterday, restoredMonthCount } from "@/lib/nre/report-period-selection";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -2763,25 +2763,21 @@ export function useReportUploadWizard({
   /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
   function estimatedSlideCount(): number {
     if (previewKind === "comparison") {
-      const extras = comparisonData?.campaigns.flatMap(campaign => campaign.additionalMetrics ?? []) ?? [];
-      const guideCount = Math.max(1, Math.ceil(new Set(extras.map(metric => metric.key)).size / METRIC_GUIDE_ENTRIES_PER_SLIDE));
-      return 1 + summaryCampaignNames().length + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + guideCount + (comparisonData?.campaigns.reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
+      return 1 + summaryCampaignNames().length + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + 1 + (comparisonData?.campaigns.reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
     }
     if (previewKind === "historical" && historicalData) {
       if (historicalData.isPaused) return 3;
       const monthlySlides = [...historicalData.slides, ...(historicalData.adSetSlides ?? [])];
-      const guideCount = new Set(monthlySlides.flatMap(slide => allSlideMetrics(slide).filter(metric => metric.key !== "spend").map(metric => metric.key))).size;
       const continuation = monthlySlides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
-      return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
+      return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + 1;
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
-      return dayBreakdownData.isPaused ? 3 : 1 + Math.max(1, Math.ceil(dailyExtraMetricGuide(dayBreakdownData.additionalTables, dayBreakdownData.tableHeaderLabels.resultColumns, dayBreakdownData.dailyExcludedMetricKeys).length / METRIC_GUIDE_ENTRIES_PER_SLIDE)) + dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.presentation?.summaryPages.length ?? 0);
+      return dayBreakdownData.isPaused ? 3 : 1 + 1 + dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.presentation?.summaryPages.length ?? 0);
     }
     if (data) {
       const slides = [...data.campaignSlides, ...data.adSetSlides];
       const continuation = slides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
-      const guideCount = new Set(slides.flatMap(slide => allSlideMetrics(slide).filter(metric => metric.key !== "spend").map(metric => metric.key))).size;
-      return 1 + (data.isPaused ? 1 : slides.length + continuation) + (data.chart ? 1 : 0) + 1 + Math.max(1, Math.ceil(guideCount / METRIC_GUIDE_ENTRIES_PER_SLIDE));
+      return 1 + (data.isPaused ? 1 : slides.length + continuation) + (data.chart ? 1 : 0) + 1 + 1;
     }
     return 1 + summaryCampaignNames().length + (supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns).length : 0) + 1 + 1 + 1;
   }

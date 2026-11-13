@@ -237,6 +237,16 @@ print(json.dumps({"rows": len(table.rows), "cols": len(table.columns)}))
 }
 
 describe("renderPptx — real template end-to-end", () => {
+  it("keeps exactly one final metric guide when selected metrics exceed its 12 slots", async () => {
+    const data = buildReportData({accountName:"Guide test",currencySymbol:"₹",timezone:"Asia/Kolkata",monthlyBudget:null,mtdDailyRows:[...prospecting,...retargeting,...awareness],now:NOW});
+    data.campaignSlides[0].additionalMetricsSlide = Array.from({length:25}, (_, index) => ({key:`guide_test_${index}`,label:`Metric ${index}`,format:"number" as const,value:"1"}));
+    const buffer = await renderPptx({templateBuffer:fs.readFileSync(PRODUCTION_TEMPLATE_PATH),data,currencySymbol:"₹"});
+    const zip = await JSZip.loadAsync(buffer);
+    const slides = await Promise.all(Object.keys(zip.files).filter(name => /^ppt\/slides\/slide\d+\.xml$/.test(name)).sort((a,b)=>Number(a.match(/slide(\d+)/)![1])-Number(b.match(/slide(\d+)/)![1])).map(name=>zip.file(name)!.async("string")));
+    expect(slides.filter(xml=>xml.includes("METRIC ABBREVIATION GUIDE"))).toHaveLength(1);
+    expect(slides.at(-1)).toContain("METRIC ABBREVIATION GUIDE");
+  });
+
   it("produces a valid .pptx that python-pptx can open, with the expected slide structure and content", async () => {
     if (!fs.existsSync(TEMPLATE_PATH)) {
       throw new Error(`Template fixture not found at ${TEMPLATE_PATH}`);
