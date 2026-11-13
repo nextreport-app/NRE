@@ -5,7 +5,7 @@ import Link from "next/link";
 import { readClientWizardPreferences, saveClientWizardPreferences } from "./report-upload-wizard/client-wizard-preferences";
 import { resolveRememberedMetaAccount } from "@/lib/meta-account-selection";
 import { MetaAdAccountPicker } from "./meta-ad-account-picker";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import type { ApiSyncMeta } from "@/components/report-upload-wizard/types";
 
 export type WizardDataSource = "csv" | "api";
@@ -502,15 +502,35 @@ export function WizardDataSourceToggle({ value, onChange, apiUnavailable = false
   /** Operational kill switch; CSV remains available. */
   apiUnavailable?: boolean;
 }) {
+  const labelId = useId();
   return <div className="space-y-2">
-    <p id="import-data-label" className="text-sm font-semibold text-dash-ink">Import data</p>
-    <div role="group" aria-labelledby="import-data-label" className="inline-flex w-full gap-1 rounded-lg border border-dash-border bg-dash-bg p-1 sm:w-auto">
-      {([['api', 'Meta API'], ['csv', 'Upload CSV']] as const).map(([method, label]) => <button
-        key={method} type="button" aria-pressed={value === method}
-        disabled={method === "api" && apiUnavailable}
-        onClick={() => onChange(method)}
-        className={`min-h-10 flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors sm:flex-none disabled:cursor-not-allowed disabled:opacity-40 ${value === method ? 'bg-dash-accent text-[#0d1b2e]' : 'text-dash-ink-secondary hover:bg-dash-card hover:text-dash-ink'}`}
-      >{label}</button>)}
+    <p id={labelId} className="text-sm font-semibold text-dash-ink">Import data</p>
+    <div role="group" aria-labelledby={labelId} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {([
+        ['api', 'Meta API', 'Sync directly from Meta'],
+        ['csv', 'Upload CSV', 'Upload an Ads Manager export'],
+      ] as const).map(([method, label, description]) => {
+        const selected = value === method;
+        return <button
+          key={method} type="button" aria-label={label} aria-describedby={`${labelId}-${method}-description`} aria-pressed={selected}
+          disabled={method === "api" && apiUnavailable}
+          onClick={() => onChange(method)}
+          className={`flex min-h-20 min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:cursor-not-allowed disabled:opacity-40 sm:p-4 ${selected ? 'border-dash-accent bg-dash-accent/5' : 'border-dash-border bg-dash-bg/40 hover:border-dash-ink-secondary/50 hover:bg-dash-bg'}`}
+        >
+          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dash-border text-dash-ink-secondary">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              {method === "api" ? <><path d="M8 3v5m8-5v5M6 8h12v4a6 6 0 0 1-12 0V8ZM12 18v3" /></> : <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6ZM14 3v6h6M12 17v-5m-3 3 3-3 3 3" /></>}
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-dash-ink">{label}</span>
+            <span id={`${labelId}-${method}-description`} className="mt-1 block text-xs leading-relaxed text-dash-ink-secondary">{description}</span>
+          </span>
+          <span aria-hidden="true" className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-dash-accent text-[#0d1b2e]' : 'border border-dash-border'}`}>
+            {selected && <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7" /></svg>}
+          </span>
+        </button>;
+      })}
     </div>
     {apiUnavailable && <p className="text-xs text-dash-ink-secondary">Meta API is temporarily unavailable. Upload a CSV to continue.</p>}
   </div>;
