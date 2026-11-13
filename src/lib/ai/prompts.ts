@@ -215,7 +215,7 @@ export function buildPausedZeroResultsSummary(ctx: AiContext): string {
  */
 export function buildPausedZeroResultsInsights(): string {
   return (
-    "This campaign was paused during the reporting week, so these figures reflect delivery before the pause rather than current performance. " +
+    "This campaign was paused during the reporting period, so these figures reflect delivery before the pause rather than current performance. " +
     "When you reactivate, confirm tracking and the landing experience are working before increasing budget."
   );
 }

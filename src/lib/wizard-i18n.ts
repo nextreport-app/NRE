@@ -30,8 +30,8 @@ const EN_UI = {
   confirmedPeriodWeeklyWeekSuffix: "week",
   confirmedPeriodWeeklyMtdPrefix: "MTD from",
   confirmedPeriodWeeklyChart: "Last 30 days in a visual chart slide",
-  weeklyReportScopeLine: "Includes last week, MTD, and a last-30-day chart.",
-  reportingWeekLabel: "Reporting week",
+  weeklyReportScopeLine: "Includes the last 7 days, MTD, and a last-30-day chart.",
+  reportingWeekLabel: "Reporting period",
   openLiveReportRecommended: "Open live report (recommended)",
   csvMismatchShareWarningTitle: "CSV check was not green when you generated",
   csvMismatchShareWarningBody:
@@ -127,8 +127,8 @@ const LOCALE_UI: Partial<Record<SiteLocaleId, Partial<typeof EN_UI>>> = {
     confirmationRequired: "Confirmación obligatoria",
     generateHeadingPrefix: "Generar:",
     moreReportTypes: "Más tipos de informe",
-    weeklyReportScopeLine: "Incluye la semana, MTD y un gráfico de 30 días.",
-    reportingWeekLabel: "Semana del informe",
+    weeklyReportScopeLine: "Incluye los últimos 7 días, MTD y un gráfico de 30 días.",
+    reportingWeekLabel: "Periodo del informe",
     openLiveReportRecommended: "Abrir informe en vivo (recomendado)",
   },
   fr: {

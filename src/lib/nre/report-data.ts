@@ -963,7 +963,7 @@ export function buildPausedAccountMessage(accountName: string, reportType: Repor
           ? "year to date"
           : reportType === "DAILY"
             ? "on the selected day"
-            : "in the last week";
+            : "in the selected reporting period";
   return (
     `Campaigns for ${accountName} were paused during the selected ${periodLabel} reporting period ` +
     `and did not generate impressions, spend, or results ${windowLabel}.`

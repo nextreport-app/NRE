@@ -26,7 +26,7 @@ import { resolveMetricIconId, type MetricIconId } from "@/lib/pptx/metric-icons"
 import {
   isWeeklyShareReportType,
   reportingWeekLabel,
-  WEEKLY_REPORT_SCOPE_LINE,
+  weeklyReportScopeLine,
 } from "@/lib/nre/weekly-report-labels";
 
 /**
@@ -826,7 +826,7 @@ export function ShareReportView({
               </p>
               {isWeeklyShareReportType(visibleData.reportType) ? (
                 <p className="mt-2 max-w-xl px-1 text-[12px] leading-snug text-ink-muted sm:text-[14px]">
-                  {WEEKLY_REPORT_SCOPE_LINE}
+                  {weeklyReportScopeLine(visibleData.fileDateRange, visibleData.generatedAt, clientTimezone)}
                 </p>
               ) : null}
               <p className="mt-1 text-[13px] text-ink-muted sm:mt-1.5 sm:text-[16px]">

@@ -27,7 +27,6 @@ import {
 } from "../utils";
 import { formatRelativeReportDate } from "@/lib/client-display";
 import type { ReportTypeValue } from "../types";
-import { reportingWeekLabel } from "@/lib/nre/weekly-report-labels";
 
 const chipClass =
   "nre-wizard-success-secondary inline-flex items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
@@ -39,7 +38,7 @@ const secondaryExportClass =
   "nre-wizard-success-secondary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
 
 const sectionTitleClass =
-  "text-[13px] font-semibold uppercase tracking-wide text-dash-ink-muted";
+  "text-sm font-semibold text-dash-ink";
 
 function formatGeneratedAt(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -94,7 +93,6 @@ export function WizardGenerateSuccessPanel({
   clientId,
   reportId,
   reportTitle,
-  reportType,
   reportTypeLabel,
   wizardSharePlatformLabel,
   slideCount,
@@ -127,10 +125,6 @@ export function WizardGenerateSuccessPanel({
   const reportUrl = shareToken ? buildShareReportAbsoluteUrl(shareToken) : null;
   const shareDateLabel = dateRangeLabel || "this period";
   const showDriveCollapsed = !!(hasGoogleDriveConnected && (driveView === "collapsed" || driveView === "success"));
-  const isWeekly = reportType === "WEEKLY";
-  const reportingPeriodLine =
-    isWeekly && dateRangeLabel ? reportingWeekLabel(dateRangeLabel) : dateRangeLabel;
-
   const shareInput: ClientReportShareMessageInput | null = reportUrl
     ? {
         clientName,
@@ -178,20 +172,18 @@ export function WizardGenerateSuccessPanel({
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg>
           </div>
           <div className="min-w-0 flex-1 text-left">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-ink-secondary">Ready to review</p>
             <h2 className="nre-wizard-generate-success__title text-[19px] font-semibold leading-tight sm:text-[22px]">
-              Report generated successfully!
+              Report ready
             </h2>
-            <p className="mt-3 text-[14px] font-semibold text-dash-ink">{clientName}</p>
             <dl className="nre-wizard-generate-success__meta mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] leading-snug sm:text-[13px]">
               <div className="w-full">
                 <dt className="sr-only">Report title</dt>
                 <dd className="font-medium text-dash-ink">{reportTitle}</dd>
               </div>
-              {reportingPeriodLine ? (
+              {dateRangeLabel ? (
                 <div className="w-full">
                   <dt className="sr-only">Reporting period</dt>
-                  <dd>{reportingPeriodLine}</dd>
+                  <dd>{dateRangeLabel}</dd>
                 </div>
               ) : null}
               {slideCount > 0 ? (
@@ -209,11 +201,7 @@ export function WizardGenerateSuccessPanel({
                 </div>
               ) : null}
             </dl>
-            {isWeekly ? (
-              <p className="nre-wizard-generate-success__meta mt-2 text-[12px] leading-snug sm:text-[13px]">
-                {copy.weeklyReportScopeLine}
-              </p>
-            ) : null}
+
           </div>
         </div>
       </div>
@@ -250,13 +238,11 @@ export function WizardGenerateSuccessPanel({
 
         {/* Section B — review and export */}
         <section aria-labelledby="success-review-heading">
-          <p id="success-review-heading" className="text-[14px] leading-relaxed text-dash-ink-secondary">
-            Review your slides before sharing with your client.
-          </p>
+          <h3 id="success-review-heading" className="sr-only">Review and download</h3>
           {previewHref && shareToken ? (
             <Link
               href={previewHref}
-              className={`${primaryActionClass} mt-3`}
+              className={primaryActionClass}
               onClick={() => {
                 persistGenerateSnapshot({ reportId: reportId!, downloadUrl, shareToken });
               }}
@@ -285,11 +271,9 @@ export function WizardGenerateSuccessPanel({
 
         {/* Section C — share with client */}
         {shareToken && reportUrl && shareInput ? (
-          <section aria-labelledby="success-share-heading" className="nre-wizard-success-share space-y-4 rounded-2xl border p-4 sm:p-5">
-            <div className="flex items-center gap-3"><span aria-hidden className="nre-wizard-success-share__icon flex h-10 w-10 items-center justify-center rounded-xl"><LinkIcon /></span><div><p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-dash-accent">The final touch</p><h3 id="success-share-heading" className={sectionTitleClass}>
-              Share with client
-            </h3></div></div>
-            <p className="text-[13px] text-dash-ink-secondary">Anyone with this link can view the report. Review it before sending.</p>
+          <section aria-labelledby="success-share-heading" className="space-y-3 rounded-lg border border-dash-border bg-dash-bg/30 p-4">
+            <h3 id="success-share-heading" className="text-sm font-semibold text-dash-ink">Share report</h3>
+            <p className="text-xs leading-relaxed text-dash-ink-secondary">Anyone with this link can view the report.</p>
             <label className="sr-only" htmlFor="wizard-live-report-url">
               Live report URL
             </label>
@@ -300,7 +284,7 @@ export function WizardGenerateSuccessPanel({
               >
                 {reportUrl.replace(/^https?:\/\//, "")}
               </div>
-              <div className="flex w-full shrink-0 flex-col gap-1 sm:w-[10.5rem]">
+              <div className="flex w-full shrink-0 flex-col gap-1 sm:w-auto">
                 <div className={shareViewCopySplitClass}>
                   <a
                     href={reportUrl}
@@ -314,17 +298,14 @@ export function WizardGenerateSuccessPanel({
                   <button
                     type="button"
                     onClick={() => void onCopyShareLink()}
-                    className="flex shrink-0 items-center justify-center px-3.5 py-2.5 text-dash-ink-secondary transition-colors hover:bg-dash-border/80 hover:text-dash-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-dash-accent"
+                    className="flex shrink-0 items-center justify-center gap-2 px-3.5 py-2.5 text-sm text-dash-ink-secondary transition-colors hover:bg-dash-border/80 hover:text-dash-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-dash-accent"
                     aria-label={shareLinkCopied ? "Link copied" : "Copy link"}
                   >
                     <LinkIcon />
+                    <span aria-live="polite">{shareLinkCopied ? "Copied" : "Copy link"}</span>
                   </button>
                 </div>
-                {shareLinkCopied ? (
-                  <p className="text-center text-[12px] font-medium text-emerald-400 sm:text-right" aria-live="polite">
-                    Link copied
-                  </p>
-                ) : null}
+
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -396,21 +377,16 @@ export function WizardGenerateSuccessPanel({
           </section>
         ) : (
           <section>
-            <p className="mb-2 text-[14px] text-dash-ink-secondary">Live link is still preparing — download the file below.</p>
-            <a href={downloadUrl} className={secondaryExportClass}>
-              <PptxDownloadIcon />
-              Download PPTX
-            </a>
+            <p className="mb-2 text-[14px] text-dash-ink-secondary">Live link is still preparing. Your PPTX is ready to download.</p>
+
           </section>
         )}
 
         {/* Section D — save and organize */}
         <section aria-labelledby="success-drive-heading" className="space-y-2">
-          <h3 id="success-drive-heading" className={sectionTitleClass}>
-            Save and organize
-          </h3>
           {hasGoogleDriveConnected ? (
             <>
+              <h3 id="success-drive-heading" className={sectionTitleClass}>Google Drive</h3>
               {showDriveCollapsed ? (
                 <>
                   {rememberedFolder ? (
@@ -442,22 +418,12 @@ export function WizardGenerateSuccessPanel({
               {children}
             </>
           ) : (
-            <div className="rounded-lg border border-dash-border bg-dash-sidebar/40 px-4 py-3">
-              <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-                Google Drive is not connected yet.{" "}
-                <Link
-                  href="/account#google-drive"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-dash-accent hover:underline"
-                >
-                  Connect in Account settings
-                </Link>{" "}
-                (opens in a new tab). On your next report you can use{" "}
-                <span className="font-medium text-dash-ink">Save to Drive</span> — pick a folder once and we&apos;ll
-                remember it for future reports.
+            <details className="rounded-lg border border-dash-border bg-dash-bg/30 px-4 py-3">
+              <summary id="success-drive-heading" className="cursor-pointer text-sm font-medium text-dash-ink-secondary">Save to Google Drive · optional</summary>
+              <p className="mt-3 text-sm leading-relaxed text-dash-ink-secondary">
+                <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" className="font-medium text-dash-accent hover:underline">Connect Google Drive</Link> in Account settings to save reports directly.
               </p>
-            </div>
+            </details>
           )}
         </section>
 
@@ -474,7 +440,7 @@ export function WizardGenerateSuccessPanel({
             onClick={handleGenerateAnother}
             className="text-left text-[14px] font-semibold text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
           >
-            Generate another report for {clientName}
+            Generate another report
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
             <button

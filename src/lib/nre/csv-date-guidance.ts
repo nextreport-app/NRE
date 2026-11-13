@@ -68,7 +68,7 @@ export function getMetaCsvDownloadTip(now: Date = new Date(), timezone = "UTC"):
   if (dayOfMonth === 1) {
     return (
       "It's the 1st — export Previous Month with Day breakdown. " +
-      "One file covers last week's slide and last month's totals."
+      "One file covers the last 7 days and last month's totals."
     );
   }
 
