@@ -57,3 +57,19 @@ export function saveClientWizardPreferences(clientId: string, patch: ClientWizar
     /* private mode */
   }
 }
+
+/** Most recently completed Meta import, shared across clients for this user/browser. */
+export function readRecentImportMethod(userId: string | undefined, apiAvailable: boolean): "csv" | "api" | null {
+  if (!userId) return null;
+  try {
+    const value = localStorage.getItem(`nre.recentImportMethod.${userId}`);
+    if (value === "api") return apiAvailable && isWizardApiSyncVisible() ? "api" : "csv";
+    return value === "csv" ? "csv" : null;
+  } catch { return null; }
+}
+
+export function rememberCompletedImportMethod(userId: string | undefined, mode: "csv" | "api"): void {
+  if (!userId) return;
+  try { localStorage.setItem(`nre.recentImportMethod.${userId}`, mode); }
+  catch { /* Storage can be unavailable in private browsing. */ }
+}

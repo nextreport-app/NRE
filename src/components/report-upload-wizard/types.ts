@@ -70,6 +70,8 @@ export type ApiSyncMeta = {
 };
 
 export interface ReportUploadWizardProps {
+  /** Scopes cross-client import preferences to the signed-in user. */
+  userId?: string;
   clientId: string;
   clientName: string;
   clientTimezone: string;

@@ -99,7 +99,7 @@ import {
   readStoredWizardPlatform,
   saveWizardPlatformChoice,
 } from "./platform-storage";
-import { readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
+import { readRecentImportMethod, rememberCompletedImportMethod, readClientWizardPreferences, saveClientWizardPreferences } from "./client-wizard-preferences";
 import { clearWizardDraft } from "@/lib/nre/wizard-draft";
 import { sharePlatformBadge } from "@/lib/nre/platform-reporting";
 import { normalizeReportBrandingMode, type ReportBrandingMode } from "@/lib/report-branding";
@@ -136,6 +136,7 @@ export function useReportUploadWizard({
   initialReportBrandingMode = "nextreport",
   initialShowAgencyNameOnCover = true,
   accountDisplayName = null,
+  userId,
 }: ReportUploadWizardProps) {
   const [clientTimezone, setClientTimezone] = useState(initialClientTimezone);
   const { locale } = useSiteTheme();
@@ -536,14 +537,18 @@ export function useReportUploadWizard({
       if (typeof prefs.showBudgetOnCover === "boolean") {
         setShowBudgetOnCover(prefs.showBudgetOnCover);
       }
-      if (prefs.dataSourceMode) { setDataSourceMode(prefs.dataSourceMode); setHasSavedImportSource(true); }
     }
+    // Recent completed usage takes precedence over a different client's old choice.
+    const recentMode = readRecentImportMethod(userId, apiSyncEnabled);
+    const source = recentMode ?? (prefs?.dataSourceMode === "api" && !apiSyncEnabled ? "csv" : prefs?.dataSourceMode) ?? "csv";
+    setDataSourceMode(source);
+    setHasSavedImportSource(recentMode !== null || !!prefs?.dataSourceMode);
     // Do not persist the initial defaults before restored state has committed.
     // This also keeps Strict Mode's second effect pass from overwriting the saved choice.
     let cancelled = false;
     queueMicrotask(() => { if (!cancelled) clientPrefsHydratedRef.current = true; });
     return () => { cancelled = true; clientPrefsHydratedRef.current = false; };
-  }, [clientId]);
+  }, [clientId, userId, apiSyncEnabled]);
 
   useEffect(() => {
     if (!clientPrefsHydratedRef.current) return;
@@ -2257,6 +2262,7 @@ export function useReportUploadWizard({
     setGeneratedAt(new Date().toISOString());
     setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
     setGeneratedWithCsvVerifySkipped(csvSkippedAtGenerate);
+    if (platform === "META") rememberCompletedImportMethod(userId, dataSourceMode);
     setGenerateStatus("done");
     persistGenerateSnapshot(
       {
@@ -2471,7 +2477,7 @@ export function useReportUploadWizard({
     setMismatchWarning(false);
     setDetectedPlatform(null);
     setPlatform("META");
-    setDataSourceMode("csv");
+    setDataSourceMode(readRecentImportMethod(userId, apiSyncEnabled) ?? "csv");
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(false);

@@ -86,6 +86,7 @@ export default async function NewReportPage({ params, searchParams }: { params: 
     <div className="mx-auto max-w-3xl">
       <Suspense fallback={<p className="p-6 text-[13px] text-dash-ink-secondary">Loading…</p>}>
         <ReportUploadWizard
+          userId={session.user.id}
           clientId={client.id}
           clientName={client.accountName}
           clientTimezone={client.timezone}
