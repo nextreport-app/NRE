@@ -213,6 +213,7 @@ export function WizardImportStep() {
 
               {w.reportType === "WEEKLY" && csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
                 <CsvDateGuidanceBanner
+              currency={w.clientCurrency}
                   guidance={csvDateGuidance}
                   onContinue={() => setCsvWarningDismissed(true)}
                   onRedownload={() => {

@@ -1,4 +1,5 @@
 "use client";
+import { formatClientCalendarDate } from "@/lib/client-date-format";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { formatIsoShort } from "../utils";
@@ -12,10 +13,11 @@ function parsed(iso: string): Date | null {
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
 export interface WizardDatePickerProps {
   value: string; onChange: (iso: string) => void; minIso?: string; maxIso?: string;
+  currency?: string;
   label?: string; placeholder?: string; disabled?: boolean;
 }
 /** Day grid using the same surface, navigation and focus rules as ReportMonthPicker. */
-export function WizardDatePicker({ value, onChange, minIso, maxIso, label, placeholder = "Select date", disabled = false }: WizardDatePickerProps) {
+export function WizardDatePicker({ value, onChange, minIso, maxIso, label, placeholder = "Select date", disabled = false, currency }: WizardDatePickerProps) {
   const id = useId(); const root = useRef<HTMLDivElement>(null); const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false); const [above, setAbove] = useState(false); const [right, setRight] = useState(false);
   const initial = parsed(value) ?? parsed(maxIso ?? "") ?? new Date();
@@ -55,21 +57,22 @@ export function WizardDatePicker({ value, onChange, minIso, maxIso, label, place
   }
   return <div ref={root} className="relative min-w-0 w-full" onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }} onKeyDown={event => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); close(); } }}>
     {label && <p className="mb-1 text-[13px] font-medium text-dash-ink-secondary">{label}</p>}
-    <button ref={trigger} type="button" aria-label={label ?? placeholder} disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => open ? close() : show()} className={CALENDAR_TRIGGER}><span>{value ? formatIsoShort(value) : placeholder}</span><CalendarIcon /></button>
+    <button ref={trigger} type="button" aria-label={label ?? placeholder} disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => open ? close() : show()} className={CALENDAR_TRIGGER}><span>{value ? currency ? formatClientCalendarDate(value, currency) : formatIsoShort(value) : placeholder}</span><CalendarIcon /></button>
     {open && <div id={id} role="dialog" aria-label={`Choose ${(label ?? "date").toLowerCase()}`} className={`${CALENDAR_PANEL} ${right ? "right-0" : "left-0"} ${above ? "bottom-full mb-2" : "top-full mt-2"}`}>
       <div className="mb-3 flex items-center justify-between"><button type="button" aria-label="Previous month" disabled={!canShift(-1)} onClick={() => setMonth(shifted(-1))} className={CALENDAR_NAV}>‹</button><p className="text-sm font-semibold text-dash-ink" aria-live="polite">{new Intl.DateTimeFormat("en-US",{month:"long",year:"numeric",timeZone:"UTC"}).format(first)}</p><button type="button" aria-label="Next month" disabled={!canShift(1)} onClick={() => setMonth(shifted(1))} className={CALENDAR_NAV}>›</button></div>
       <div role="group" aria-label={`Days in ${month}`} className="grid grid-cols-7 gap-1 text-center">{["Su","Mo","Tu","We","Th","Fr","Sa"].map(name => <span key={name} className="py-1 text-[11px] font-medium text-dash-ink-secondary">{name}</span>)}
         {Array.from({length:first.getUTCDay()},(_,index)=><span key={`empty-${index}`} aria-hidden />)}
-        {Array.from({length:days},(_,index)=>{const day=`${month}-${String(index+1).padStart(2,"0")}`;return <button key={day} type="button" data-date={day} aria-label={day} aria-pressed={day===value} disabled={!enabled(day)} onKeyDown={event=>navigate(event,day)} onClick={()=>{close();onChange(day);}} className={`h-9 rounded-md text-sm font-medium focus-visible:outline-2 focus-visible:outline-dash-accent disabled:cursor-not-allowed disabled:opacity-30 ${day===value?"bg-dash-accent text-[#0b1728]":"text-dash-ink hover:bg-dash-card"}`}>{index+1}</button>;})}
+        {Array.from({length:days},(_,index)=>{const day=`${month}-${String(index+1).padStart(2,"0")}`;return <button key={day} type="button" data-date={day} aria-label={currency ? formatClientCalendarDate(day, currency) : day} aria-pressed={day===value} disabled={!enabled(day)} onKeyDown={event=>navigate(event,day)} onClick={()=>{close();onChange(day);}} className={`h-9 rounded-md text-sm font-medium focus-visible:outline-2 focus-visible:outline-dash-accent disabled:cursor-not-allowed disabled:opacity-30 ${day===value?"bg-dash-accent text-[#0b1728]":"text-dash-ink hover:bg-dash-card"}`}>{index+1}</button>;})}
       </div>
     </div>}
   </div>;
 }
 export interface WizardDateRangeFieldsProps {
+  currency?: string;
   startIso: string; endIso: string; minIso?: string; maxIso?: string;
   onStartChange: (iso: string) => void; onEndChange: (iso: string) => void;
   startLabel?: string; endLabel?: string;
 }
-export function WizardDateRangeFields({startIso,endIso,minIso,maxIso,onStartChange,onEndChange,startLabel="Start date",endLabel="End date"}:WizardDateRangeFieldsProps){
-  return <div className="grid gap-3 sm:grid-cols-2"><WizardDatePicker label={startLabel} value={startIso} minIso={minIso} maxIso={maxIso} onChange={onStartChange}/><WizardDatePicker label={endLabel} value={endIso} minIso={minIso} maxIso={maxIso} onChange={onEndChange}/></div>;
+export function WizardDateRangeFields({currency,startIso,endIso,minIso,maxIso,onStartChange,onEndChange,startLabel="Start date",endLabel="End date"}:WizardDateRangeFieldsProps){
+  return <div className="grid gap-3 sm:grid-cols-2"><WizardDatePicker currency={currency} label={startLabel} value={startIso} minIso={minIso} maxIso={maxIso} onChange={onStartChange}/><WizardDatePicker currency={currency} label={endLabel} value={endIso} minIso={minIso} maxIso={maxIso} onChange={onEndChange}/></div>;
 }

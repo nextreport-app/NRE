@@ -1,3 +1,4 @@
+import { formatClientTimestamp, formatStoredDateText } from "@/lib/client-date-format";
 import { dailyClientCopy } from "@/lib/nre/daily-client-copy";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { paginateDayBreakdownRows } from "@/lib/nre/day-breakdown-report-data";
@@ -712,11 +713,14 @@ function MetricGuideSection({
 
 export function ShareReportView({
   data,
+  clientCurrency, clientTimezone,
   shareToken,
   mode = "share",
   assetBaseUrl = "",
 }: {
   data: ShareReportData;
+  clientCurrency?: string;
+  clientTimezone?: string;
   shareToken?: string;
   mode?: "share" | "print";
   /** Prefix for /metric-icons on the share page (e.g. https://nextreport.in). */
@@ -726,7 +730,7 @@ export function ShareReportView({
   const slideClass = isPrint ? "print-slide mb-0" : "mb-6";
   const coverSlideClass = isPrint ? "print-slide print-cover-slide mb-0" : slideClass;
   const visibleData = applyShareVisibility(data);
-  const generatedDate = new Date(visibleData.generatedAt).toLocaleDateString("en-US", {
+  const generatedDate = clientCurrency ? formatClientTimestamp(visibleData.generatedAt, clientCurrency, clientTimezone, false) : new Date(visibleData.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -876,7 +880,7 @@ export function ShareReportView({
         {showCombinedTotal && visibleData.dailyPresentation?.summaryPages.map((metrics, index) => <section key={`daily-summary-${index}`} className={slideClass}><SlideCard>
           <CardReportTypeLabel label={`Selected period totals${visibleData.dailyPresentation!.summaryPages.length > 1 ? ` · ${index + 1} of ${visibleData.dailyPresentation!.summaryPages.length}` : ""}`} />
           <h3 className="text-[22px] font-bold text-ink sm:text-[28px]">Selected campaigns · {visibleData.accountName}</h3>
-          <DateAndFrequency dateRange={visibleData.fileDateRange} adFrequency="" />
+          <DateAndFrequency dateRange={formatStoredDateText(visibleData.fileDateRange, clientCurrency)} adFrequency="" />
           <div className="mt-5"><MetricGrid metrics={dailySummaryMetrics(metrics)} assetBaseUrl={assetBaseUrl} /></div>
           <AiCopyBlock heading="Campaign Summary" text={dailyCopy.summary} />
           <AiCopyBlock heading="Key Insights & Updates" text={dailyCopy.insights} />

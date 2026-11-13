@@ -89,6 +89,7 @@ export default async function NewReportPage({ params, searchParams }: { params: 
           clientId={client.id}
           clientName={client.accountName}
           clientTimezone={client.timezone}
+          clientCurrency={client.currency}
           currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
           hasGoogleDriveConnected={!!user.googleRefreshToken}
           initialLastDriveFolderId={client.lastDriveFolderId}

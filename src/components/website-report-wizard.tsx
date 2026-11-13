@@ -1,4 +1,6 @@
 "use client";
+import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
+import { formatClientCalendarRange, formatStoredDateText } from "@/lib/client-date-format";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -142,12 +144,14 @@ const BREAKDOWN_OPTIONS: Array<{
 export function WebsiteReportWizard({
   clientId,
   clientName,
+  clientCurrency,
   hasGa4Property,
   ga4Connected,
   embedded = false,
 }: {
   clientId: string;
   clientName: string;
+  clientCurrency?: string;
   hasGa4Property: boolean;
   ga4Connected: boolean;
   /** When true, hides back link and cross-wizard info — used from the main report wizard. */
@@ -240,7 +244,7 @@ export function WebsiteReportWizard({
       const dims = (json.detectedDimensions as string[]) ?? [];
       setAnalyzeMessage(
         `CSV OK — ${json.rowCount} rows${dims.length ? `, dimensions: ${dims.join(", ")}` : ""}${
-          json.dateBounds ? `, dates ${json.dateBounds.startIso} – ${json.dateBounds.endIso}` : ""
+          json.dateBounds ? `, dates ${clientCurrency ? formatClientCalendarRange(json.dateBounds.startIso, json.dateBounds.endIso, clientCurrency) : `${json.dateBounds.startIso} – ${json.dateBounds.endIso}`}` : ""
         }`,
       );
       if (json.dateBounds && config.datePreset === "custom") {
@@ -478,31 +482,9 @@ export function WebsiteReportWizard({
           ))}
         </div>
         {config.datePreset === "custom" ? (
-          <div className="mt-4 flex flex-wrap gap-4">
-            <label className="text-[14px] text-dash-ink-secondary">
-              Start
-              <input
-                type="date"
-                value={config.startIso ?? ""}
-                onChange={(e) => {
-                  setConfig((prev) => ({ ...prev, startIso: e.target.value }));
-                  resetGenerateState();
-                }}
-                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
-              />
-            </label>
-            <label className="text-[14px] text-dash-ink-secondary">
-              End
-              <input
-                type="date"
-                value={config.endIso ?? ""}
-                onChange={(e) => {
-                  setConfig((prev) => ({ ...prev, endIso: e.target.value }));
-                  resetGenerateState();
-                }}
-                className="mt-1 block rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
-              />
-            </label>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <WizardDatePicker label="Start" currency={clientCurrency} value={config.startIso ?? ""} onChange={startIso => { setConfig(prev => ({ ...prev, startIso })); resetGenerateState(); }} />
+            <WizardDatePicker label="End" currency={clientCurrency} value={config.endIso ?? ""} onChange={endIso => { setConfig(prev => ({ ...prev, endIso })); resetGenerateState(); }} />
           </div>
         ) : null}
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-[14px] text-dash-ink">
@@ -644,9 +626,9 @@ export function WebsiteReportWizard({
               </div>
               <div>
                 <p className="text-[14px] uppercase tracking-wide text-dash-ink-secondary">Date range</p>
-                <p className="text-[14px] font-medium text-dash-ink">{preview.dateRangeLabel}</p>
+                <p className="text-[14px] font-medium text-dash-ink">{formatStoredDateText(preview.dateRangeLabel, clientCurrency)}</p>
                 {preview.comparisonRangeLabel ? (
-                  <p className="text-[14px] text-dash-ink-muted">vs {preview.comparisonRangeLabel}</p>
+                  <p className="text-[14px] text-dash-ink-muted">vs {formatStoredDateText(preview.comparisonRangeLabel, clientCurrency)}</p>
                 ) : null}
               </div>
             </div>

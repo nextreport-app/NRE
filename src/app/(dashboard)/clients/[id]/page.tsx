@@ -195,6 +195,8 @@ export default async function ClientDetailPage({
 
         <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
           <PreviousMonthDataUpload
+            clientCurrency={client.currency}
+            clientTimezone={client.timezone}
             clientId={client.id}
             initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
             initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
@@ -257,6 +259,7 @@ export default async function ClientDetailPage({
               initialReports={reportItems}
               hasMoreReports={reportCount > reportItems.length}
               clientTimezone={client.timezone}
+              clientCurrency={client.currency}
               reportRetentionDays={reportRetentionDays}
             />
             {reportCount > reportItems.length ? (

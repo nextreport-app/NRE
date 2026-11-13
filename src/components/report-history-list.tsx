@@ -47,6 +47,7 @@ export function ReportHistoryList({
   initialReports,
   hasMoreReports = false,
   clientTimezone,
+  clientCurrency,
   reportRetentionDays,
 }: {
   clientId: string;
@@ -54,6 +55,7 @@ export function ReportHistoryList({
   /** True when the client has reports beyond the ones shown here — see clients/[id]/page.tsx's total-count query. Drives the "View all reports →" link. */
   hasMoreReports?: boolean;
   clientTimezone: string;
+  clientCurrency?: string;
   reportRetentionDays: number;
 }) {
   const { showToast } = useToast();
@@ -244,6 +246,7 @@ export function ReportHistoryList({
                 {(() => {
                   const meta = reportHistoryMetaSubtitle(r, {
                     timeZone: clientTimezone,
+                    currency: clientCurrency,
                     retentionDays: reportRetentionDays,
                   });
                   return (

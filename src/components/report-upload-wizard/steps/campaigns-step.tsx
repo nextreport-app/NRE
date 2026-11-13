@@ -156,6 +156,7 @@ export function WizardCampaignsStep() {
     <div className="space-y-5 pb-24 md:pb-0">
       {w.reportType === "WEEKLY" && csvDateGuidance && csvDateGuidance.warnings.length > 0 && !csvWarningDismissed ? (
         <CsvDateGuidanceBanner
+              currency={w.clientCurrency}
           guidance={csvDateGuidance}
           onContinue={() => setCsvWarningDismissed(true)}
           onRedownload={() => {

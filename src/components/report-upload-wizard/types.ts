@@ -73,6 +73,7 @@ export interface ReportUploadWizardProps {
   clientId: string;
   clientName: string;
   clientTimezone: string;
+  clientCurrency?: string;
   currencySymbol: string;
   hasGoogleDriveConnected: boolean;
   initialLastDriveFolderId: string | null;

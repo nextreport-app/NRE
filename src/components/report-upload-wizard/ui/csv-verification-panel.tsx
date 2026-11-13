@@ -1,4 +1,5 @@
 "use client";
+import { formatClientCalendarDate, formatStoredDateText } from "@/lib/client-date-format";
 
 import { useState } from "react";
 import type { CsvCoverageWarning, CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
@@ -7,6 +8,7 @@ type Props = {
   verification: CsvVerificationResult | null;
   refreshing?: boolean;
   clientId?: string;
+  currency?: string;
 };
 
 function groupByScope(checks: CsvVerificationResult["checks"]) {
@@ -19,7 +21,7 @@ function groupByScope(checks: CsvVerificationResult["checks"]) {
   return map;
 }
 
-function DateCoverageNotice({ warnings }: { warnings: CsvCoverageWarning[] }) {
+function DateCoverageNotice({ warnings, currency }: { warnings: CsvCoverageWarning[]; currency?: string }) {
   if (!warnings.length) return null;
   return (
     <div className="nre-wizard-callout-warn rounded-lg px-4 py-3 text-[13px] leading-relaxed" role="status">
@@ -27,15 +29,15 @@ function DateCoverageNotice({ warnings }: { warnings: CsvCoverageWarning[] }) {
       {warnings.map(warning => (
         <div key={warning.scope} className="nre-wizard-callout-warn__body mt-2">
           <p className="font-medium">{warning.scope}</p>
-          <p>No source rows on: {warning.missingDays.join(", ")}.</p>
-          <p>{warning.message}</p>
+          <p>No source rows on: {warning.missingDays.map(day => currency ? formatClientCalendarDate(day, currency) : day).join(", ")}.</p>
+          <p>{formatStoredDateText(warning.message, currency)}</p>
         </div>
       ))}
     </div>
   );
 }
 
-export function CsvVerificationPanel({ verification, refreshing }: Props) {
+export function CsvVerificationPanel({ verification, refreshing, currency }: Props) {
   const copy = useWizardCopy();
   const [open, setOpen] = useState(true);
 
@@ -76,7 +78,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
     const textTone = coverageWarnings.length ? "nre-wizard-callout-neutral__body" : "nre-wizard-callout-success__detail";
     return (
       <div className="space-y-3">
-        <DateCoverageNotice warnings={coverageWarnings} />
+        <DateCoverageNotice currency={currency} warnings={coverageWarnings} />
         <div className={`${tone} rounded-lg px-4 py-3 text-[13px] leading-relaxed`} role="status">
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
@@ -119,7 +121,7 @@ export function CsvVerificationPanel({ verification, refreshing }: Props) {
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
           <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
-          <DateCoverageNotice warnings={coverageWarnings} />
+          <DateCoverageNotice currency={currency} warnings={coverageWarnings} />
 
           {[...byScope.entries()].map(([scope, scopeChecks]) => (
             <div key={scope} className="rounded-md border border-dash-border/40 bg-dash-bg/30 px-3 py-2.5">

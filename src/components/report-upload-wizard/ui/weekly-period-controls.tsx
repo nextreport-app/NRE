@@ -1,4 +1,5 @@
 "use client";
+import { formatClientCalendarDate } from "@/lib/client-date-format";
 
 import { computeWeeklyRangeOptions } from "@/lib/nre/date-range";
 import { csvReportingCalendar } from "@/lib/nre/csv-reporting-calendar";
@@ -32,7 +33,7 @@ export function WeeklyPeriodControls() {
   return <details className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
     <summary className="cursor-pointer text-sm font-semibold text-dash-ink">
       Weekly report period
-      <span aria-live="polite" className="mt-1 block font-normal text-dash-ink-secondary">Report dates: {range.startIso || 'Choose start'} – {range.endIso || 'Choose end'}</span>
+      <span aria-live="polite" className="mt-1 block font-normal text-dash-ink-secondary">Report dates: {range.startIso ? w.clientCurrency ? formatClientCalendarDate(range.startIso, w.clientCurrency) : range.startIso : 'Choose start'} – {range.endIso ? w.clientCurrency ? formatClientCalendarDate(range.endIso, w.clientCurrency) : range.endIso : 'Choose end'}</span>
     </summary>
     <div className="flex flex-wrap gap-2">
       {([['last7', 'Last 7 days'], ['custom', 'Custom date range']] as const).map(([mode, label]) => {
@@ -44,7 +45,7 @@ export function WeeklyPeriodControls() {
         </button>;
       })}
     </div>
-    {custom && <WizardDateRangeFields startIso={range.startIso} endIso={range.endIso}
+    {custom && <WizardDateRangeFields currency={w.clientCurrency} startIso={range.startIso} endIso={range.endIso}
       minIso={importingApi ? undefined : w.dateBounds?.minIso}
       maxIso={importingApi ? reportCalendarYesterday(new Date(), w.clientTimezone) : calendar.endIso}
       onStartChange={iso => { w.editDateMode("custom"); w.editCustomStart(iso); w.editCustomEnd(range.endIso); }}
