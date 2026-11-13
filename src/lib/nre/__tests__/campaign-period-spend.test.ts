@@ -19,6 +19,7 @@ describe("campaign defaults follow report spend, never a fixed currency threshol
     expect(facts.selectedCampaigns).toEqual(["Weekly","MtdOnly","ChartOnly"]);
     expect(facts.zeroSpendCampaigns).toEqual(["SeptemberOnly","Inactive"]);
     const report = buildReportData({accountName:"Regression",currencySymbol:"$",timezone:"UTC",monthlyBudget:null,mtdDailyRows:source,selectedCampaigns:facts.selectedCampaigns,reportType:"WEEKLY",weeklyRange:{startIso:"2026-11-06",endIso:"2026-11-12"},now:new Date("2026-11-13T12:00:00Z")});
+    expect(report.campaignSlides.map(slide=>slide.campaignName)).toEqual(["Weekly"]);
     expect(report.mtdRow.spend).toBe("$1,127");
     expect(report.chart?.totalAllSpend).toBeCloseTo(3244.50, 2);
     const oldMemory = {policy:"positive-period-spend-v1" as const,campaigns:["Weekly","MtdOnly","ChartOnly"],deselected:["MtdOnly","ChartOnly"]};
