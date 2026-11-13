@@ -10,9 +10,9 @@ import {
 } from "@/lib/nre/campaign-csv-result-type";
 import type { WizardCopy } from "@/lib/wizard-i18n";
 import { normalizeCampaignName } from "@/lib/nre/objective";
-import { adSetKey } from "@/lib/nre/ad-sets";
 import { supportsAdSetSlides } from "@/lib/nre/ad-set-slide-preferences";
 import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
+import { AdSetSlidePicker } from "../ui/ad-set-slide-picker";
 import { ObjectivePicker } from "../ui/objective-picker";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
@@ -230,8 +230,6 @@ export function WizardCampaignsStep() {
             const isExpanded = expandedCampaigns.has(name);
             const isMultiAdSet = showAdSetOptions && !!group && group.adSetNames.length >= 2;
             const isSingleAdSet = showAdSetOptions && !!group && group.adSetNames.length === 1;
-            const allAdSetsDeselected =
-              !!group && group.adSetNames.length > 0 && group.adSetNames.every((n) => !selectedAdSets.has(adSetKey(name, n)));
             const spend = campaignSpend[name];
             const spendKnown = typeof spend === "number" && Number.isFinite(spend);
             return (
@@ -277,84 +275,12 @@ export function WizardCampaignsStep() {
                   )}
                 </div>
 
-                {isSelected && group && isMultiAdSet && isExpanded && (() => {
-                  const selectedCount = group.adSetNames.filter((n) => selectedAdSets.has(adSetKey(name, n))).length;
-                  return (
-                    <div className="mt-3 space-y-2 rounded-md border border-dash-border bg-dash-bg p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[14px] text-dash-ink-secondary">
-                          {selectedCount} of {group.adSetNames.length} selected for separate slides
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => selectAllAdSetsForCampaign(name, group.adSetNames)}
-                            className="text-[14px] text-dash-accent hover:underline"
-                          >
-                            Include all ad-set slides
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deselectAllAdSetsForCampaign(name, group.adSetNames)}
-                            className="text-[14px] text-dash-accent hover:underline"
-                          >
-                            Exclude all
-                          </button>
-                        </div>
-                      </div>
-                      <ul className="space-y-1.5">
-                        {group.adSetNames.map((adSetName) => {
-                          const key = adSetKey(name, adSetName);
-                          return (
-                            <li key={key} className="flex items-center gap-2.5">
-                              <input
-                                type="checkbox"
-                                id={`adset-${key}`}
-                                checked={selectedAdSets.has(key)}
-                                onChange={() => toggleAdSet(name, adSetName)}
-                                className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
-                              />
-                              <label
-                                htmlFor={`adset-${key}`}
-                                className="min-w-0 flex-1 cursor-pointer truncate text-[14px] text-dash-ink-secondary"
-                                title={adSetName}
-                              >
-                                {adSetName}
-                                {w.newAdSetKeys?.has(key) && <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-xs text-sky-400">New</span>}
-                              </label>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <p className="text-[14px] text-dash-ink-secondary">
-                        Add separate slides for the ad sets you want to discuss with your client.
-                      </p>
-                      {allAdSetsDeselected && (
-                        <p className="text-[13px] text-dash-ink-secondary">No ad set slides will be generated for this campaign.</p>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {isSelected && group && isSingleAdSet && isExpanded && (
-                  <div className="mt-3 rounded-md border border-dash-border bg-dash-bg p-3">
-                    <p className="mb-2 truncate text-[14px] font-medium text-dash-ink" title={group.adSetNames[0]}>
-                      {group.adSetNames[0]}
-                      {w.newAdSetKeys?.has(adSetKey(name, group.adSetNames[0])) && <span className="ml-2 rounded bg-sky-500/10 px-1.5 py-0.5 text-xs text-sky-400">New</span>}
-                    </p>
-                    <label className="flex cursor-pointer items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        id={`adset-${adSetKey(name, group.adSetNames[0])}`}
-                        checked={selectedAdSets.has(adSetKey(name, group.adSetNames[0]))}
-                        onChange={() => toggleAdSet(name, group.adSetNames[0])}
-                        className="h-3.5 w-3.5 flex-shrink-0 accent-accent"
-                      />
-                      <span className="text-[14px] text-dash-ink-secondary">
-                        Optional ad set slide — mirrors campaign data. Enable only if you want a separate slide.
-                      </span>
-                    </label>
-                  </div>
+                {isSelected && group && showAdSetOptions && isExpanded && group.adSetNames.length > 0 && (
+                  <AdSetSlidePicker
+                    campaignName={name} adSetNames={group.adSetNames}
+                    selectedAdSets={selectedAdSets} newAdSetKeys={w.newAdSetKeys}
+                    onToggle={toggleAdSet} onSelectAll={selectAllAdSetsForCampaign} onClear={deselectAllAdSetsForCampaign}
+                  />
                 )}
               </li>
             );
