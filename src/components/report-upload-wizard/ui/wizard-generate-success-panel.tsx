@@ -1,6 +1,7 @@
 "use client";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
+import { WizardReportHelp } from "./wizard-report-help";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -168,7 +169,7 @@ export function WizardGenerateSuccessPanel({
       {/* Section A — success header */}
       <div className="nre-wizard-generate-success__header border-b border-dash-border px-4 py-5 sm:px-6" role="status">
         <div className="flex items-start gap-3 sm:gap-4">
-          <div className="nre-wizard-generate-success__check flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" aria-hidden="true">
+          <div className="nre-wizard-generate-success__check flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden="true">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg>
           </div>
           <div className="min-w-0 flex-1 text-left">
@@ -438,9 +439,9 @@ export function WizardGenerateSuccessPanel({
           <button
             type="button"
             onClick={handleGenerateAnother}
-            className="text-left text-[14px] font-semibold text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+            className="max-w-full break-words text-left text-[14px] font-medium text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
           >
-            Generate another report
+            Generate another report for <span className="font-semibold">{clientName}</span>
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
             <button
@@ -450,15 +451,9 @@ export function WizardGenerateSuccessPanel({
             >
               View all reports
             </button>
-            <button
-              type="button"
-              onClick={() => openExitLink("/clients")}
-              className="font-medium text-dash-ink-secondary hover:text-dash-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
-            >
-              All clients
-            </button>
           </div>
         </section>
+        <WizardReportHelp clientId={clientId} reportId={reportId ?? undefined} />
       </div>
     </div>
   );
