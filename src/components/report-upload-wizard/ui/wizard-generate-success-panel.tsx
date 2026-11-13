@@ -165,6 +165,7 @@ export function WizardGenerateSuccessPanel({
     "nre-wizard-success-secondary inline-flex min-h-[44px] shrink-0 overflow-hidden rounded-lg border border-dash-border bg-dash-sidebar/60";
 
   return (
+    <>
     <div className="nre-wizard-generate-success overflow-hidden rounded-xl border bg-dash-card shadow-sm nre-dash-surface">
       {/* Section A — success header */}
       <div className="nre-wizard-generate-success__header border-b border-dash-border px-4 py-5 sm:px-6" role="status">
@@ -453,8 +454,11 @@ export function WizardGenerateSuccessPanel({
             </button>
           </div>
         </section>
-        <WizardReportHelp clientId={clientId} reportId={reportId ?? undefined} />
       </div>
     </div>
+    <div className="pt-2">
+      <WizardReportHelp clientId={clientId} reportId={reportId ?? undefined} />
+    </div>
+    </>
   );
 }
