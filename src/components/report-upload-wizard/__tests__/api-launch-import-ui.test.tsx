@@ -8,6 +8,9 @@ describe("live Meta import choice", () => {
     const html = renderToStaticMarkup(<WizardDataSourceToggle value="csv" onChange={() => {}} />);
     expect(html).toContain("Upload CSV"); expect(html).toContain("Meta API");
     expect(html).toContain('role="group"');
+    expect(html).toContain("Sync directly from Meta");
+    expect(html).toContain("Upload an Ads Manager export");
+    expect(html).toContain("sm:grid-cols-2");
     expect(html).not.toContain('disabled=""'); expect(html).not.toContain("Launching soon");
   });
   it.each(["csv","api"] as const)("keeps the remembered %s method with an obvious way to change", value => {
