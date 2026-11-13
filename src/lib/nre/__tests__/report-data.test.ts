@@ -122,7 +122,7 @@ describe("buildReportData — multi-campaign integration", () => {
     expect(data.cover.reportDate).toBe("07-20-2026");
   });
 
-  it("builds one campaign summary slide per campaign, in default-sorted order", () => {
+  it("builds one campaign summary slide per campaign, in descending spend order", () => {
     expect(data.campaignSlides.map((s) => s.campaignName)).toEqual([
       "Brand - Reach",
       "Shoes - Purchases",
@@ -3106,7 +3106,7 @@ describe("buildReportData — campaign selection and weekly-range wizard steps",
       now: NOW,
     });
     const names = data.campaignSlides.map((s) => s.campaignName);
-    expect(names).toEqual(["Boots - Leads", "Shoes - Purchases"]);
+    expect(names).toEqual(["Shoes - Purchases", "Boots - Leads"]);
   });
 
   it("uses an explicit weeklyRange for the campaign/chart slides' date window", () => {

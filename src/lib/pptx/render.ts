@@ -1,3 +1,4 @@
+import { orderSlidesBySpend } from "../nre/slide-spend-order";
 import { dailyClientCopy } from "../nre/daily-client-copy";
 import { dailyMainTablePages } from "../nre/daily-report-presentation";
 import { buildDailySummarySlide } from "./daily-presentation-slides";
@@ -223,7 +224,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
       rels: template.campaign.rels,
     });
   } else if (!skipStandardSlides) {
-    for (const slide of data.campaignSlides) {
+    for (const slide of orderSlidesBySpend(data.campaignSlides)) {
       if (!campaignVisible(slide.campaignName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
@@ -246,7 +247,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
         rels: buildChartSlideRels(template.background.mediaTarget),
       }));
     }
-    for (const slide of data.adSetSlides) {
+    for (const slide of orderSlidesBySpend(data.adSetSlides)) {
       if (!adSetVisible(slide.campaignName, slide.adSetName)) continue;
       const ai = aiCopyBySlideKey?.get(slideAiKey(slide));
       slides.push({
@@ -475,13 +476,13 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
       ...(data.adSetSlides ?? []).map(slide => slide.ai.dateRange),
     ])];
     for (const monthLabel of months) {
-      for (const slide of data.slides.filter(item => item.ai.dateRange === monthLabel)) {
+      for (const slide of orderSlidesBySpend(data.slides.filter(item => item.ai.dateRange === monthLabel))) {
         const ai = aiCopyBySlideKey?.get(`campaign:${historicalSlideShareKey(slide)}`);
         slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, slide, ai, "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
         const pages = additionalMetricPages(slide);
         pages.forEach((metrics, index) => slides.push({ xml: buildAdditionalMetricsSlideXml(slide, metrics, index, pages.length, template.background, isLightTemplate), rels: buildChartSlideRels(template.background.mediaTarget) }));
       }
-      for (const adSet of (data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel)) {
+      for (const adSet of orderSlidesBySpend((data.adSetSlides ?? []).filter(item => item.ai.dateRange === monthLabel))) {
         const key = `adset:${monthLabel} — ${adSet.campaignName}/${adSet.adSetName}`;
         slides.push({ xml: buildCampaignOrAdSetSlideXml(template.campaign, adSet, aiCopyBySlideKey?.get(key) ?? buildHistoricalSlideCopy(adSet), "MONTHLY", data.platform, false, false, isLightTemplate), rels: template.campaign.rels });
         const pages = additionalMetricPages(adSet);
