@@ -31,7 +31,14 @@ describe("optional weekly comparisons", () => {
     expect(html).toContain('aria-checked="true"');
     expect(html).toContain('type="file"');
     expect(html).toContain("full previous month");
-    expect(html).toContain("No percentage change");
+    expect(html).not.toContain("No percentage change");
+    expect(html).not.toContain("Combined Total");
+  });
+  it("embeds directly in final settings without a second disclosure", () => {
+    const html = renderToStaticMarkup(<WizardOptionalComparisons embedded />);
+    expect(html).not.toContain("<details");
+    expect(html).toContain('aria-label="Include previous-month totals"');
+    expect(html).not.toContain("Off by default");
   });
   it.each(["api", "MONTHLY", "DAILY", "COMPARISON"])("omits the option for %s", mode => {
     if (mode === "api") state.dataSourceMode = mode; else state.reportType = mode;

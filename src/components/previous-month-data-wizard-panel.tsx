@@ -150,8 +150,8 @@ export function PreviousMonthDataWizardPanel({
               {includeInReport
                 ? info.status === "current"
                   ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length || "—"} campaigns selected`
-                  : `Set up ${info.expectedMonthName} for the Combined Total previous-month row`
-                : "Add a full previous-month row to Monthly Overview. Off by default."}
+                  : `Add ${info.expectedMonthName} totals to Monthly Overview.`
+                : "Add a full previous-month row to Monthly Overview."}
             </p>
           </div>
         </div>
@@ -175,7 +175,7 @@ export function PreviousMonthDataWizardPanel({
               />
             </button>
           </label>
-          {includeInReport ? <StatusBadge status={info.status} /> : null}
+          {includeInReport && info.status === "current" ? <StatusBadge status={info.status} /> : null}
         </div>
       </div>
 
@@ -235,7 +235,7 @@ function PreviousMonthDataWizardContent({
       <div className="space-y-3">
         <div className="space-y-1">
           <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-            {info.expectedMonthName} data adds a full previous-month row to Monthly Overview. These are reference totals, not a percentage comparison with the current partial month.
+            {info.expectedMonthName} data adds a full previous-month row to Monthly Overview.
           </p>
           <Link href={manageHref} className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
             Manage on client page
@@ -273,13 +273,13 @@ function PreviousMonthDataWizardContent({
   const title =
     info.status === "missing"
       ? `Add ${info.expectedMonthName} for the previous-month row`
-      : `Update ${info.expectedMonthName} — file is from an older month`;
+      : `Update ${info.expectedMonthName} CSV`;
 
   return (
     <div className="space-y-2">
       <p className="text-[13px] font-medium text-[#f6ad55]">{title}</p>
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-        Upload the full previous month&apos;s CSV to include its totals. No percentage change against the partial current month is shown.
+        Upload the full previous month&apos;s CSV to include its totals.
       </p>
       {needsUpload ? (
         <label className="block">
