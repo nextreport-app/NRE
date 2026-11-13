@@ -2,9 +2,10 @@
 import { dailyBaseMetrics, dailyMetricIsExcluded } from "@/lib/nre/daily-metric-selection";
 import { paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 
+import { CampaignMetricPanel } from "../ui/campaign-metric-panel";
 import { MetricChipPicker } from "../ui/metric-chip-picker";
 import { paginateExtraMetrics } from "@/lib/nre/metric-pagination";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useWizardContext } from "../wizard-context";
 import { normalizeCampaignName } from "@/lib/nre/objective";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
@@ -24,8 +25,6 @@ export function WizardMetricsStep() {
     return w.campaigns.filter((name) => w.selectedCampaigns.has(name));
   }, [stepActive, w.campaigns, w.selectedCampaigns]);
 
-  const [showAllCampaignMetrics, setShowAllCampaignMetrics] = useState(false);
-
   if (!stepActive) return null;
 
   const {
@@ -43,50 +42,31 @@ export function WizardMetricsStep() {
     setStep,
   } = w;
 
-  const defaultPreviewCount = 1;
-  const hasSelectionWarning = !!perCampaignMinWarning || activeCampaigns.some(name => { const metrics = perCampaignMetrics.get(normalizeCampaignName(name)) ?? []; return metrics.length < MIN_SELECTED_METRICS; });
-
-  const visibleCampaigns =
-    activeCampaigns.length <= 1 || showAllCampaignMetrics || hasSelectionWarning
-      ? activeCampaigns
-      : activeCampaigns.slice(0, defaultPreviewCount);
-
-  const hiddenCampaignCount = activeCampaigns.length - visibleCampaigns.length;
+  const hasInvalidSelection = activeCampaigns.some(name => {
+    const count = perCampaignMetrics.get(normalizeCampaignName(name))?.length ?? 0;
+    return count < MIN_SELECTED_METRICS || count > MAX_TOTAL_METRICS;
+  });
 
   const metricSource = w.dataSourceMode === "api" ? "Meta API" : "CSV";
 
-  function renderCampaignMetrics(name: string) {
+  function renderCampaignMetrics(name: string, index: number) {
     const normalized = normalizeCampaignName(name);
     const objective = campaignObjectives.get(normalized);
     const selectedForCampaign = perCampaignMetrics.get(normalized) ?? [];
     const availableForCampaign = campaignAvailableMetrics(normalized);
     const pages = [selectedForCampaign.slice(0, MAX_METRICS_PER_SLIDE), ...paginateExtraMetrics(selectedForCampaign.slice(MAX_METRICS_PER_SLIDE))];
 
+    const needsAttention = metricsStatus !== "loading" && (selectedForCampaign.length < MIN_SELECTED_METRICS || selectedForCampaign.length > MAX_TOTAL_METRICS);
     return (
-      <div
-        key={name}
-        className="mb-4 rounded-lg border border-dash-border bg-dash-bg/30 p-4 last:mb-0"
+      <CampaignMetricPanel
+        key={name} name={name} objective={objective?.resultLabel}
+        metricCount={selectedForCampaign.length} slideCount={pages.length}
+        collapsible={activeCampaigns.length > 1} initiallyExpanded={index === 0} needsAttention={needsAttention}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="min-w-0 flex-1 break-words text-[15px] font-semibold text-dash-ink" title={name}>
-            {name}
-          </span>
-          {objective && (
-            <span
-              className="shrink-0 rounded-md bg-dash-bg px-2 py-1 text-[11px] font-medium text-dash-ink-secondary"
-            >
-              {objective.resultLabel}
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">
-          {selectedForCampaign.length} metrics · {pages.length} {pages.length === 1 ? "slide" : "slides"}
-        </p>
-
         <MetricChipPicker selected={selectedForCampaign} groups={pages.map((page, index) => ({ label: pages.length > 1 ? index === 0 ? "Main slide" : `Additional metrics · page ${index}` : "", keys: page.map(metric => metric.key) }))} available={availableForCampaign} onAdd={metric => { const candidate = availableForCampaign.find(item => item.key === metric.key); if (candidate) addCampaignMetric(normalized, candidate); }} onRemove={key => removeCampaignMetric(normalized, key)} limit={MAX_TOTAL_METRICS} source={metricSource} />
         {pages.length > 1 && <p className="mt-2 text-xs text-dash-ink-secondary">Additional metrics are paginated automatically. No empty slots or repeated metrics.</p>}
-        {perCampaignMinWarning && <p className="mt-2 text-sm text-amber-300">{perCampaignMinWarning}</p>}
-      </div>
+        {needsAttention && <p role="alert" className="mt-2 text-sm text-dash-accent">{selectedForCampaign.length > MAX_TOTAL_METRICS ? `Choose up to ${MAX_TOTAL_METRICS} metrics for this campaign.` : `Choose at least ${MIN_SELECTED_METRICS} metrics for this campaign.`}</p>}
+      </CampaignMetricPanel>
     );
   }
 
@@ -128,31 +108,11 @@ export function WizardMetricsStep() {
         </p>
       ) : null}
 
-      {perCampaignMinWarning && activeCampaigns.length === 1 ? (
+      {perCampaignMinWarning ? (
         <p className="text-[14px] text-amber-300">{perCampaignMinWarning}</p>
       ) : null}
 
-      <div>{visibleCampaigns.map((name) => renderCampaignMetrics(name))}</div>
-
-      {hiddenCampaignCount > 0 ? (
-        <button
-          type="button"
-          onClick={() => setShowAllCampaignMetrics(true)}
-          className="text-[14px] font-medium text-dash-accent hover:underline"
-        >
-          Show metrics for {hiddenCampaignCount} more campaign{hiddenCampaignCount === 1 ? "" : "s"}
-        </button>
-      ) : null}
-
-      {showAllCampaignMetrics && activeCampaigns.length > 1 ? (
-        <button
-          type="button"
-          onClick={() => setShowAllCampaignMetrics(false)}
-          className="text-[14px] text-dash-ink-secondary hover:underline"
-        >
-          Show fewer campaigns
-        </button>
-      ) : null}
+      <div className="space-y-3">{activeCampaigns.map(renderCampaignMetrics)}</div>
 
       <div className="hidden gap-3 md:flex">
         <button
@@ -163,9 +123,7 @@ export function WizardMetricsStep() {
         </button>
         <button
           onClick={handleMetricsContinue}
-          disabled={[...perCampaignMetrics.values()].some(
-            (metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS,
-          )}
+          disabled={hasInvalidSelection}
           className="rounded-md bg-dash-accent px-6 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {copy.continueToGenerate}
@@ -180,9 +138,7 @@ export function WizardMetricsStep() {
         backLabel={copy.back}
         primaryLabel={copy.continueToGenerate}
         onPrimary={handleMetricsContinue}
-        primaryDisabled={[...perCampaignMetrics.values()].some(
-          (metrics) => metrics.length > 0 && metrics.length < MIN_SELECTED_METRICS,
-        )}
+        primaryDisabled={hasInvalidSelection}
       />
 
 
