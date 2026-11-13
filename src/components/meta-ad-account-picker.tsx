@@ -112,7 +112,7 @@ export function MetaAdAccountPicker({ accounts, value, onChange, disabled = fals
           <input ref={search} disabled={disabled} role="combobox" type="search" autoComplete="off" value={query} placeholder="Search by account name or ID" aria-label="Search ad accounts"
             aria-autocomplete="list" aria-expanded="true" aria-controls={`${prefix}-list`} aria-activedescendant={active >= 0 ? optionId(active) : undefined}
             onChange={event => { setQuery(event.target.value); setActiveIndex(0); }} onKeyDown={navigate}
-            className="min-h-9 min-w-0 flex-1 bg-transparent text-sm text-dash-ink outline-none placeholder:text-dash-ink-muted" />
+            className="nre-ad-account-search min-h-9 min-w-0 flex-1 bg-transparent text-sm text-dash-ink outline-none placeholder:text-dash-ink-muted" />
         </div>
         <p role="status" aria-live="polite" className="mt-2 text-xs text-dash-ink-secondary">{matches.length} {matches.length === 1 ? "account" : "accounts"}{query.trim() ? " found" : " available"}</p>
       </div>

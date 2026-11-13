@@ -101,6 +101,12 @@ html:not([data-site-theme="light"]) .nre-app-shell .nre-report-wizard {
   outline-offset: 3px;
 }
 
+/* The rounded search wrapper owns the visible focus indicator. */
+.nre-app-shell .nre-report-wizard .nre-ad-account-search:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
 html:not([data-site-theme="light"]) .nre-app-shell .nre-wizard-section-marker {
   background-color: var(--nre-dash-inset);
   border-color: var(--nre-dash-border);
