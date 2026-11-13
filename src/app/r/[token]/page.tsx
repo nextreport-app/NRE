@@ -11,10 +11,10 @@ import { ShareWebsiteReportView, websiteReportTypeLabel } from "@/components/sha
 import { isShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { reportBrandingFromShareJson, sharePageTitleSuffix } from "@/lib/report-branding";
 
-type SharedReportPayload =
+type SharedReportPayload = (
   | { kind: "ads"; data: ShareReportData }
   | { kind: "website"; data: ShareWebsiteReportData }
-  | { kind: "comparison"; data: import("@/lib/nre/share-comparison-report").ShareComparisonReportData };
+  | { kind: "comparison"; data: import("@/lib/nre/share-comparison-report").ShareComparisonReportData }) & { currency?: string; timezone?: string };
 
 /**
  * Public, read-only, no-login report page — a client-shareable alternative
@@ -30,19 +30,20 @@ type SharedReportPayload =
  * component below, which both need the same report within one request.
  */
 const getReportByToken = cache(async (token: string): Promise<SharedReportPayload | null> => {
-  const report = await prisma.report.findUnique({ where: { shareToken: token } });
+  const report = await prisma.report.findUnique({ where: { shareToken: token }, include: { client: { select: { currency: true, timezone: true } } } });
   if (!report || report.status !== "COMPLETE" || !report.summaryJson) return null;
   try {
     const parsed = JSON.parse(report.summaryJson);
+    const dateContext = { currency: report.client?.currency, timezone: report.client?.timezone };
     if (parsed?.version !== 1) return null;
     if (isShareWebsiteReportData(parsed)) {
-      return { kind: "website", data: parsed };
+      return { ...dateContext, kind: "website", data: parsed };
     }
     if (isShareComparisonReportData(parsed)) {
-      return { kind: "comparison", data: parsed };
+      return { ...dateContext, kind: "comparison", data: parsed };
     }
     if (Array.isArray(parsed.campaigns) && parsed.version === 1) {
-      return { kind: "ads", data: restoreHistoricalShareCharts(parsed as ShareReportData) };
+      return { ...dateContext, kind: "ads", data: restoreHistoricalShareCharts(parsed as ShareReportData) };
     }
     return null;
   } catch {
@@ -99,8 +100,8 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
   }
 
   if (payload.kind === "comparison") {
-    return <ShareComparisonReportView data={payload.data} shareToken={token} />;
+    return <ShareComparisonReportView clientCurrency={payload.currency} clientTimezone={payload.timezone} data={payload.data} shareToken={token} />;
   }
 
-  return <ShareReportView data={payload.data} shareToken={token} />;
+  return <ShareReportView clientCurrency={payload.currency} clientTimezone={payload.timezone} data={payload.data} shareToken={token} />;
 }

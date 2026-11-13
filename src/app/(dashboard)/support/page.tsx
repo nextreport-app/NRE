@@ -1,3 +1,4 @@
+import { formatClientTimestamp } from "@/lib/client-date-format";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
@@ -35,14 +36,14 @@ export default async function SupportPage({
 
   const reports = await prisma.report.findMany({
     where: { client: { userId: session.user.id } },
-    select: { id: true, displayName: true, fileName: true, createdAt: true, client: { select: { accountName: true } } },
+    select: { id: true, displayName: true, fileName: true, createdAt: true, client: { select: { accountName: true, currency: true, timezone: true } } },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
 
   const reportOptions = reports.map((r) => ({
     id: r.id,
-    label: `${r.client.accountName} — ${r.displayName ?? r.fileName ?? "Report"} (${r.createdAt.toLocaleDateString("en-IN")})`,
+    label: `${r.client.accountName} — ${r.displayName ?? r.fileName ?? "Report"} (${formatClientTimestamp(r.createdAt, r.client.currency, r.client.timezone, false)})`,
   }));
 
   return (

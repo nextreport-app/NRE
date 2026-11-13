@@ -1,3 +1,4 @@
+import { formatUnambiguousDate } from "./client-date-format";
 import { getPreviousMonthComparisonInfo, type PreviousMonthDataStatus } from "@/lib/nre/previous-month-data-status";
 import type { Currency } from "@/generated/prisma/enums";
 
@@ -46,7 +47,7 @@ export function formatReportTypeLabel(reportType: string | null | undefined): st
 }
 
 export function formatAbsoluteReportDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return formatUnambiguousDate(iso);
 }
 
 /** Short relative label for last report — full date goes in a tooltip. */

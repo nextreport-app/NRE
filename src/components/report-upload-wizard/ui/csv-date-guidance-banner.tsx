@@ -1,13 +1,16 @@
 "use client";
+import { formatStoredDateText } from "@/lib/client-date-format";
 
 import type { CsvDateGuidance } from "@/lib/nre/csv-date-guidance";
 
 export function CsvDateGuidanceBanner({
   guidance,
+  currency,
   onContinue,
   onRedownload,
 }: {
   guidance: CsvDateGuidance;
+  currency?: string;
   onContinue: () => void;
   onRedownload: () => void;
 }) {
@@ -25,8 +28,8 @@ export function CsvDateGuidanceBanner({
   return (
     <div className={`space-y-3 rounded-lg border border-l-4 bg-dash-card nre-dash-surface p-4 ${borderClass}`}>
       <div className="space-y-1.5">
-        <p className="text-[15px] font-semibold leading-snug text-dash-ink">{warning.title}</p>
-        <p className="text-[14px] leading-relaxed text-dash-ink-secondary">{warning.message}</p>
+        <p className="text-[15px] font-semibold leading-snug text-dash-ink">{formatStoredDateText(warning.title, currency)}</p>
+        <p className="text-[14px] leading-relaxed text-dash-ink-secondary">{formatStoredDateText(warning.message, currency)}</p>
       </div>
       <div className="flex flex-wrap gap-2 pt-1">
         <button

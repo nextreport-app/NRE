@@ -1,4 +1,5 @@
 "use client";
+import { formatClientCalendarDate, formatClientCalendarRange } from "@/lib/client-date-format";
 import { fetchWizardUpload, uploadFailureMessage } from "./upload-transport";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
 import { selectedMetricHeaders, type CsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
@@ -87,9 +88,9 @@ import {
   buildShareReportAbsoluteUrl,
   buildUploadFormData,
   defaultReportTitleFor,
-  formatIso,
-  formatIsoRange,
-  formatSummaryRange,
+  formatIso as formatIsoDefault,
+  formatIsoRange as formatIsoRangeDefault,
+  formatSummaryRange as formatSummaryRangeDefault,
   downloadWizardCsvFile,
   isApiSyncArtifact,
 } from "./utils";
@@ -107,6 +108,7 @@ export function useReportUploadWizard({
   clientId,
   clientName,
   clientTimezone: initialClientTimezone,
+  clientCurrency,
   currencySymbol: initialCurrencySymbol,
   hasGoogleDriveConnected,
   initialLastDriveFolderId,
@@ -138,6 +140,9 @@ export function useReportUploadWizard({
   const [clientTimezone, setClientTimezone] = useState(initialClientTimezone);
   const { locale } = useSiteTheme();
   const [currencySymbol, setCurrencySymbol] = useState(initialCurrencySymbol);
+  const formatIso = (iso: string) => clientCurrency ? formatClientCalendarDate(iso, clientCurrency) : formatIsoDefault(iso);
+  const formatIsoRange = (range: { startIso: string; endIso: string }) => clientCurrency ? formatClientCalendarRange(range.startIso, range.endIso, clientCurrency) : formatIsoRangeDefault(range);
+  const formatSummaryRange = (range: { startIso: string; endIso: string }) => clientCurrency ? formatClientCalendarRange(range.startIso, range.endIso, clientCurrency) : formatSummaryRangeDefault(range);
   const [clientMonthlyBudget, setClientMonthlyBudget] = useState<number | null>(initialClientMonthlyBudget);
   const [wizardKind, setWizardKind] = useState<"ads" | "website">("ads");
   const [step, setStepState] = useState<Step>(1);
@@ -2800,6 +2805,7 @@ export function useReportUploadWizard({
     clientId,
     clientName,
     clientTimezone,
+    clientCurrency,
     updateApiTimezone,
     currencySymbol,
     hasGoogleDriveConnected,

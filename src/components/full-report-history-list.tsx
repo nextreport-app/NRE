@@ -49,11 +49,13 @@ export function FullReportHistoryList({
   clientId,
   initialReports,
   clientTimezone,
+  clientCurrency,
   reportRetentionDays,
 }: {
   clientId: string;
   initialReports: FullReportHistoryItem[];
   clientTimezone: string;
+  clientCurrency?: string;
   reportRetentionDays: number;
 }) {
   const { showToast } = useToast();
@@ -251,6 +253,7 @@ export function FullReportHistoryList({
                     {(() => {
                       const meta = reportHistoryMetaSubtitle(r, {
                         timeZone: clientTimezone,
+                    currency: clientCurrency,
                         retentionDays: reportRetentionDays,
                       });
                       return (

@@ -1,4 +1,5 @@
 "use client";
+import { formatClientTimestamp } from "@/lib/client-date-format";
 
 import { comparisonTone, comparisonPercent } from "@/lib/nre/comparison-presentation";
 import type { ComparisonChange, ComparisonCampaignData, ComparisonMetricSet } from "@/lib/nre/report-data";
@@ -98,10 +99,13 @@ function CampaignComparisonSection({
 
 export function ShareComparisonReportView({
   data,
+  clientCurrency, clientTimezone,
   shareToken,
   isPrint = false,
 }: {
   data: ShareComparisonReportData;
+  clientCurrency?: string;
+  clientTimezone?: string;
   shareToken?: string;
   isPrint?: boolean;
 }) {
@@ -114,7 +118,7 @@ export function ShareComparisonReportView({
   const branding = reportBrandingFromShareJson(data);
   const brandingDisplay = resolveShareBrandingDisplay(branding);
   const coverPreparedByLine = preparedByCoverLine(branding);
-  const generatedDate = new Date(data.generatedAt).toLocaleDateString("en-US", {
+  const generatedDate = clientCurrency ? formatClientTimestamp(data.generatedAt, clientCurrency, clientTimezone, false) : new Date(data.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",

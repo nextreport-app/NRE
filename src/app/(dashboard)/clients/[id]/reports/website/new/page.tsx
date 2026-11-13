@@ -38,6 +38,7 @@ export default async function NewWebsiteReportPage({ params }: { params: Promise
 
       <WebsiteReportWizard
         clientId={client.id}
+        clientCurrency={client.currency}
         clientName={client.accountName}
         hasGa4Property={!!client.ga4PropertyId}
         ga4Connected={ga4Connected}

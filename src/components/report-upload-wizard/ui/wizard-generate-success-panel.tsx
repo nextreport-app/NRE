@@ -1,4 +1,5 @@
 "use client";
+import { formatClientTimestamp } from "@/lib/client-date-format";
 
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -51,6 +52,8 @@ function formatGeneratedAt(iso: string): string {
 }
 
 type WizardGenerateSuccessPanelProps = {
+  clientCurrency?: string;
+  clientTimezone?: string;
   clientName: string;
   clientId: string;
   reportId: string | null;
@@ -86,6 +89,7 @@ type WizardGenerateSuccessPanelProps = {
 };
 
 export function WizardGenerateSuccessPanel({
+  clientCurrency, clientTimezone,
   clientName,
   clientId,
   reportId,
@@ -201,7 +205,7 @@ export function WizardGenerateSuccessPanel({
               {generatedAt ? (
                 <div>
                   <dt className="sr-only">Generated</dt>
-                  <dd>Generated {formatGeneratedAt(generatedAt)}</dd>
+                  <dd>Generated {clientCurrency ? formatClientTimestamp(generatedAt, clientCurrency, clientTimezone) : formatGeneratedAt(generatedAt)}</dd>
                 </div>
               ) : null}
             </dl>

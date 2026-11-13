@@ -1,4 +1,5 @@
 "use client";
+import { formatClientCalendarRange } from "@/lib/client-date-format";
 
 import { useState } from "react";
 import { useWizardContext } from "../wizard-context";
@@ -21,6 +22,7 @@ function shiftMonth(month: string, offset: number) {
 /** CSV and API share the same month selection; only source-coverage guidance differs. */
 export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
   const w = useWizardContext();
+  const displayRange = (start: string, end: string) => w.clientCurrency ? formatClientCalendarRange(start, end, w.clientCurrency) : dayName.formatRange(date(start), date(end));
   const [customMonths, setCustomMonths] = useState(false);
   const [datesExpanded, setDatesExpanded] = useState(false);
   const calendar = csvReportingCalendar(w.dataSourceMode === "api" && w.step === 1 ? null : w.dateBounds, new Date(), w.clientTimezone);
@@ -69,19 +71,19 @@ export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" |
 
   const selectionSummary = <div className="rounded-lg border border-dash-border bg-dash-card/50 p-3" aria-label="Selected reporting months">
     <p className="text-sm font-semibold text-dash-ink">{monthsLabel} · {summary}</p>
-    {partial && <p className="mt-1 text-xs text-dash-ink-secondary">{dayName.formatRange(date(`${endMonth}-01`), date(end))} · {partialNote}</p>}
+    {partial && <p className="mt-1 text-xs text-dash-ink-secondary">{displayRange(`${endMonth}-01`, end)} · {partialNote}</p>}
     <details className="mt-2 text-xs text-dash-ink-secondary">
       <summary className="cursor-pointer font-medium hover:text-dash-ink">View monthly breakdown</summary>
       <ul className="mt-2 grid grid-cols-1 gap-1.5">{periods.map((period, index) => {
         const through = index === periods.length - 1 ? end : period.endIso;
-        return <li key={period.startIso}>{monthName.format(date(period.startIso))}: {dayName.formatRange(date(period.startIso), date(through))}{index === periods.length - 1 && partial ? " (MTD)" : " (full month)"}</li>;
+        return <li key={period.startIso}>{monthName.format(date(period.startIso))}: {displayRange(period.startIso, through)}{index === periods.length - 1 && partial ? " (MTD)" : " (full month)"}</li>;
       })}</ul>
     </details>
   </div>;
 
   if (stage === "generate") return <section className="rounded-xl border border-dash-border bg-dash-card p-4">
     <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{fullDate.formatRange(date(start), date(end))}</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{w.clientCurrency ? formatClientCalendarRange(start, end, w.clientCurrency) : fullDate.formatRange(date(start), date(end))}</p></div>
       <button type="button" aria-expanded={datesExpanded} onClick={() => setDatesExpanded(value => !value)} className="shrink-0 text-sm font-medium text-dash-accent hover:underline">{datesExpanded ? "Hide date options" : "Change dates"}</button>
     </div>
     {selectionSummary}

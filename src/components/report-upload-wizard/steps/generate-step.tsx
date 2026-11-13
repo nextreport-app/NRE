@@ -172,6 +172,7 @@ export function WizardGenerateStep() {
     return (
       <div className="space-y-6">
         <WizardGenerateSuccessPanel
+          clientCurrency={w.clientCurrency} clientTimezone={w.clientTimezone}
           clientName={clientName}
           clientId={clientId}
           generatedWithCsvMismatch={generatedWithCsvMismatch}
@@ -432,7 +433,7 @@ export function WizardGenerateStep() {
                 previewKind === "dayBreakdown") &&
               generateStepPreviewReady &&
               generateStatus === "idle" ? (
-                <CsvVerificationPanel verification={csvVerification} refreshing={previewRefreshing} />
+                <CsvVerificationPanel currency={w.clientCurrency} verification={csvVerification} refreshing={previewRefreshing} />
               ) : null}
 
               {(generateStatus === "idle" || generateStatus === "error") && (

@@ -31,7 +31,7 @@ export default async function ReportCopyPage({
       <Link href={backHref} className="text-sm text-dash-accent">{backLabel}</Link>
       <h1 className="text-xl font-semibold text-dash-ink">Review comparison report</h1>
       <p className="text-sm text-dash-ink-secondary">Review both periods below. To change campaigns, metrics or dates, return to the report setup and generate again.</p>
-      <ShareComparisonReportView data={comparison} shareToken={report.shareToken ?? undefined} />
+      <ShareComparisonReportView clientCurrency={report.client.currency} clientTimezone={report.client.timezone} data={comparison} shareToken={report.shareToken ?? undefined} />
     </div>
   );
 

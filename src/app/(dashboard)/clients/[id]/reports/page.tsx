@@ -1,3 +1,4 @@
+import { ClientDateInput } from "@/components/client-date-input";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -151,24 +152,8 @@ export default async function ClientAllReportsPage({
             <option value="COMPARISON">Comparison</option>
           </select>
         </div>
-        <div>
-          <label className="mb-1 block text-[13px] text-dash-ink-secondary">From</label>
-          <input
-            type="date"
-            name="from"
-            defaultValue={sp.from ?? ""}
-            className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-[13px] text-dash-ink-secondary">To</label>
-          <input
-            type="date"
-            name="to"
-            defaultValue={sp.to ?? ""}
-            className="rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink outline-none focus:border-dash-accent"
-          />
-        </div>
+        <ClientDateInput key={`from-${sp.from ?? ""}`} name="from" label="From" defaultValue={sp.from ?? ""} currency={client.currency} />
+        <ClientDateInput key={`to-${sp.to ?? ""}`} name="to" label="To" defaultValue={sp.to ?? ""} currency={client.currency} />
         <button type="submit" className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover">
           Filter
         </button>
@@ -188,6 +173,7 @@ export default async function ClientAllReportsPage({
           clientId={client.id}
           initialReports={reportItems}
           clientTimezone={client.timezone}
+              clientCurrency={client.currency}
           reportRetentionDays={reportRetentionDays}
         />
       )}

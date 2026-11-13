@@ -141,6 +141,7 @@ function ReportUploadWizardBody() {
         </button>
         <WebsiteReportWizard
           clientId={w.clientId}
+          clientCurrency={w.clientCurrency}
           clientName={w.clientName}
           hasGa4Property={w.hasGa4Property}
           ga4Connected={w.ga4Connected}
@@ -174,7 +175,7 @@ function ReportUploadWizardBody() {
         <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
       ) : null}
 
-      {w.step === 2 && <CsvReportingDateNote bounds={w.dateBounds} timezone={w.clientTimezone} />}
+      {w.step === 2 && <CsvReportingDateNote currency={w.clientCurrency} bounds={w.dateBounds} timezone={w.clientTimezone} />}
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
           message={w.uploadSessionRecovery}

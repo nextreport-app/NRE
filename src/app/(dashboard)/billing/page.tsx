@@ -1,3 +1,4 @@
+import { formatUnambiguousDate } from "@/lib/client-date-format";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -16,7 +17,7 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return formatUnambiguousDate(date);
 }
 
 /** Active (subscribed or admin override) / Trial / Expired — the badge the plan card leads with. */

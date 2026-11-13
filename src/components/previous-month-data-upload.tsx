@@ -1,4 +1,5 @@
 "use client";
+import { formatClientTimestamp } from "@/lib/client-date-format";
 
 import { useState, useRef } from "react";
 import Link from "next/link";
@@ -18,6 +19,8 @@ function formatUploadDate(iso: string): string {
  */
 export function PreviousMonthDataUpload({
   clientId,
+  clientCurrency,
+  clientTimezone,
   initialFileName,
   initialUpdatedAt,
   initialCampaigns,
@@ -26,6 +29,8 @@ export function PreviousMonthDataUpload({
   currencySymbol = "$",
 }: {
   clientId: string;
+  clientCurrency?: string;
+  clientTimezone?: string;
   initialFileName: string | null;
   /** ISO date string, or null if nothing has been uploaded yet. */
   initialUpdatedAt: string | null;
@@ -118,7 +123,7 @@ export function PreviousMonthDataUpload({
         <div className="flex items-center justify-between gap-3 rounded-md border border-dash-border bg-dash-bg p-3">
           <div className="min-w-0">
             <p className="truncate text-sm text-dash-ink">{fileName}</p>
-            {updatedAt && <p className="text-[13px] text-dash-ink-secondary">Uploaded {formatUploadDate(updatedAt)}</p>}
+            {updatedAt && <p className="text-[13px] text-dash-ink-secondary">Uploaded {clientCurrency ? formatClientTimestamp(updatedAt, clientCurrency, clientTimezone, false) : formatUploadDate(updatedAt)}</p>}
           </div>
           <button
             type="button"
