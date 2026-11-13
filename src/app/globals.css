@@ -797,8 +797,9 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
 }
 
 .nre-wizard-generate-success__check {
-  background-color: #2563eb;
-  color: #ffffff;
+  background-color: rgb(16 185 129 / 0.12);
+  border: 1px solid rgb(52 211 153 / 0.28);
+  color: #6ee7b7;
 }
 
 .nre-wizard-generate-success__title {
@@ -848,8 +849,9 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__heade
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__check {
-  background-color: #2563eb;
-  color: #ffffff;
+  background-color: #ecfdf5;
+  border-color: #b5e8cf;
+  color: #047857;
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__title {

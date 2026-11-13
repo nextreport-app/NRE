@@ -14,6 +14,16 @@ describe("concise generated-report panel",()=>{
     expect(html).toContain("Anyone with this link can view the report.");
     expect(html).toContain("Save to Google Drive · optional");
   });
+  it("includes report-aware help and a client-specific restart with one client-switch location",()=>{
+    const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props}/>);
+    expect(html).toContain("Need help with this report?");
+    expect(html).toContain("Support ticket");
+    expect(html).toContain("WhatsApp chat");
+    expect(html).toContain("clientId=client&amp;reportId=report");
+    expect(html).toContain('Generate another report for <span class="font-semibold">Example account</span>');
+    expect(html).not.toContain("All clients");
+    expect(html.indexOf("Report help")).toBeGreaterThan(html.indexOf("Continue working"));
+  });
   it("retains discrepancy warnings prominently",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props} generatedWithCsvMismatch/>);
     expect(html).toContain(wizardCopy("en").csvMismatchShareWarningTitle);
