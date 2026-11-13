@@ -384,6 +384,7 @@ export function useReportUploadWizard({
   const [previousMonthCampaignSpend, setPreviousMonthCampaignSpend] = useState<Record<string, number>>(
     initialPreviousMonthCampaignSpend,
   );
+  const [previousMonthUploading, setPreviousMonthUploading] = useState(false);
   const [manualPreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
   const includePreviousMonthComparison = dataSourceMode === "csv" && manualPreviousMonthComparison;
 
@@ -527,9 +528,6 @@ export function useReportUploadWizard({
           setDateMode(prefs.dateMode);
         }
       }
-      if (typeof prefs.includePreviousMonthComparison === "boolean") {
-        setIncludePreviousMonthComparison(prefs.includePreviousMonthComparison);
-      }
       if (typeof prefs.showBudgetOnCover === "boolean") {
         setShowBudgetOnCover(prefs.showBudgetOnCover);
       }
@@ -550,7 +548,6 @@ export function useReportUploadWizard({
       dateMode,
       customStart: dateMode === "custom" ? customStart : undefined,
       customEnd: dateMode === "custom" ? customEnd : undefined,
-      includePreviousMonthComparison: manualPreviousMonthComparison,
       showBudgetOnCover,
       dataSourceMode,
     });
@@ -561,7 +558,6 @@ export function useReportUploadWizard({
     dateMode,
     customStart,
     customEnd,
-    manualPreviousMonthComparison,
     showBudgetOnCover,
     dataSourceMode,
   ]);
@@ -2057,6 +2053,7 @@ export function useReportUploadWizard({
   // report was already generated naturally clears the stale download links
   // and brings the Generate button back — no separate "back to dates"
   // navigation needed.
+  const previousMonthSelectionFingerprint = previousMonthSelectedCampaigns?.join("\0") ?? "";
   const selectedCampaignsFingerprint = useMemo(
     () => Array.from(selectedCampaigns).sort().join("\0"),
     [selectedCampaigns],
@@ -2135,6 +2132,8 @@ export function useReportUploadWizard({
     comparisonPeriodB?.endIso,
     historicalMonthCount,
     includePreviousMonthComparison,
+    previousMonthUpdatedAt,
+    previousMonthSelectionFingerprint,
     csvAlignResults,
     generateStatus,
     uploadSessionId,
@@ -2637,13 +2636,14 @@ export function useReportUploadWizard({
 
   const generateStepPreviewReady = useMemo(() => {
     if (!usesFullAdWizard(platform)) return true;
-    if (previewStatus === "invalid" || previewStatus === "error") return false;
+    if (previousMonthUploading || previewStatus === "invalid" || previewStatus === "error") return false;
     if (previewStatus === "loading" || previewRefreshing) return false;
     return !!(data || comparisonData || historicalData || dayBreakdownData);
   }, [
     platform,
     previewStatus,
     previewRefreshing,
+    previousMonthUploading,
     data,
     comparisonData,
     historicalData,
@@ -2914,6 +2914,9 @@ export function useReportUploadWizard({
     setPreviousMonthHasFile,
     previousMonthUpdatedAt,
     setPreviousMonthUpdatedAt,
+    previousMonthUploading,
+    setPreviousMonthUploading,
+    onPreviousMonthSettingsChanged: () => setPreviewRefreshing(true),
     previousMonthCampaigns,
     setPreviousMonthCampaigns,
     previousMonthSelectedCampaigns,

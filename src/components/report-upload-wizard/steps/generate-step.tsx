@@ -1,4 +1,5 @@
 "use client";
+import { WizardOptionalComparisons } from "../ui/wizard-optional-comparisons";
 import { ReportRecoveryPanel } from "../ui/report-recovery-panel";
 import { ReportPeriodControls } from "../ui/report-period-controls";
 
@@ -327,6 +328,8 @@ export function WizardGenerateStep() {
               <button type="button" onClick={() => setLongRangeConfirmed(true)} className="mt-3 rounded-md bg-dash-accent px-3 py-2 text-sm font-semibold text-[#0b1728]">Confirm reporting period</button>
             </div> : null}
           </> : null}
+
+              <WizardOptionalComparisons />
 
               {previewStatus === "invalid" && (
                 <div className="space-y-3">
