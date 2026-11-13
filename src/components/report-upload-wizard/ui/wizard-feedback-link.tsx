@@ -5,7 +5,8 @@ import Link from "next/link";
 /** General product feedback — separate from per-report support tickets. */
 export function WizardFeedbackLink() {
   return (
-    <p className="text-center text-[13px] text-dash-ink-muted">
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-dash-ink-secondary">
+      <span>Have an idea?</span>
       <Link
         href="/feedback"
         target="_blank"
@@ -14,7 +15,6 @@ export function WizardFeedbackLink() {
       >
         Send product feedback
       </Link>
-      <span className="text-dash-ink-muted"> — ideas or improvements for NextReport</span>
     </p>
   );
 }
