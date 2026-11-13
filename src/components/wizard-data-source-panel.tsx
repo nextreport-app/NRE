@@ -496,86 +496,22 @@ export function WizardDataSourcePanel({
   );
 }
 
-export function WizardDataSourceToggle({
-  value,
-  onChange,
-  apiUnavailable = false,
-  compact = false,
-}: {
+export function WizardDataSourceToggle({ value, onChange, apiUnavailable = false }: {
   value: WizardDataSource;
   onChange: (value: WizardDataSource) => void;
-  compact?: boolean;
-  /** Operational kill switch; does not change the public launch status. */
+  /** Operational kill switch; CSV remains available. */
   apiUnavailable?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  if (compact && !expanded && !apiUnavailable) return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg px-4 py-2.5">
-      <div><p className="text-[12px] text-dash-ink-secondary">Import method</p><p className="text-[14px] font-semibold text-dash-ink">{value === "api" ? "Meta API sync" : "Manual CSV upload"}</p></div>
-      <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="text-[13px] font-semibold text-dash-accent hover:underline">Change import method</button>
+  return <div className="space-y-2">
+    <p id="import-data-label" className="text-sm font-semibold text-dash-ink">Import data</p>
+    <div role="group" aria-labelledby="import-data-label" className="inline-flex w-full gap-1 rounded-lg border border-dash-border bg-dash-bg p-1 sm:w-auto">
+      {([['api', 'Meta API'], ['csv', 'Upload CSV']] as const).map(([method, label]) => <button
+        key={method} type="button" aria-pressed={value === method}
+        disabled={method === "api" && apiUnavailable}
+        onClick={() => onChange(method)}
+        className={`min-h-10 flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors sm:flex-none disabled:cursor-not-allowed disabled:opacity-40 ${value === method ? 'bg-dash-accent text-[#0d1b2e]' : 'text-dash-ink-secondary hover:bg-dash-card hover:text-dash-ink'}`}
+      >{label}</button>)}
     </div>
-  );
-  const choose = (source: WizardDataSource) => { onChange(source); setExpanded(false); };
-  return (
-    <div className="space-y-2">
-      <p className="text-[15px] font-semibold text-dash-ink">Import data</p>
-      <div>
-        <p className="mb-1.5 text-[12px] font-medium text-dash-ink-secondary">Import source</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            aria-pressed={value === "csv"}
-            onClick={() => choose("csv")}
-            className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
-              value === "csv"
-                ? "border-dash-accent bg-dash-accent text-[#0d1b2e]"
-                : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
-            }`}
-          >
-            <DataSourceBadge label="CSV" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold">Manual CSV upload</span>
-              <span className={`mt-0.5 block text-[11px] leading-snug ${value === "csv" ? "text-[#0d1b2e]/80" : ""}`}>
-                Manual export from Ads Manager
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={value === "api"}
-            disabled={apiUnavailable}
-            onClick={() => {
-              if (!apiUnavailable) choose("api");
-            }}
-            className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
-              apiUnavailable
-                ? "cursor-not-allowed border-dash-border bg-dash-bg/60 opacity-90"
-                : value === "api"
-                  ? "border-dash-accent bg-dash-accent text-[#0d1b2e]"
-                  : "border-dash-border bg-dash-bg text-dash-ink-secondary hover:border-dash-ink-secondary/40 hover:text-dash-ink"
-            }`}
-          >
-            <DataSourceBadge label="API" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold">
-                Connect Meta
-                {apiUnavailable ? (
-                  <span className="ml-1.5 inline-flex rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-                    Temporarily unavailable
-                  </span>
-                ) : null}
-              </span>
-              <span
-                className={`mt-0.5 block text-[11px] leading-snug ${value === "api" && !apiUnavailable ? "text-[#0d1b2e]/80" : ""}`}
-              >
-                {apiUnavailable
-                  ? "Manual CSV upload remains available"
-                  : "No CSV needed"}
-              </span>
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    {apiUnavailable && <p className="text-xs text-dash-ink-secondary">Meta API is temporarily unavailable. Upload a CSV to continue.</p>}
+  </div>;
 }

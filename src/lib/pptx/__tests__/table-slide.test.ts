@@ -408,7 +408,7 @@ describe("buildTableSlideXml — Fix 8: Monthly reports show only the MTD row", 
   it("shows both the Period and MTD rows for a Weekly report when Period has data", () => {
     const xml = buildFixtureTable();
     const out = buildTableSlideXml({ xml, rels: "" }, periodRow, mtdRow, headers, "WEEKLY");
-    expect(out).toContain("PERIOD-LABEL");
+    expect(out).toContain("Previous month · Jun 2026 PERIOD-LABEL");
     expect(out).toContain("MTD-LABEL");
   });
 

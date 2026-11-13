@@ -38,20 +38,7 @@ function StatusBadge({ status }: { status: PreviousMonthComparisonInfo["status"]
   return null;
 }
 
-function collapsedHint(info: PreviousMonthComparisonInfo): string {
-  if (info.status === "current") {
-    return `${info.expectedMonthName} data is saved — turn on to include a previous-month row on Combined Total.`;
-  }
-  if (info.status === "stale") {
-    return `Update ${info.expectedMonthName} CSV once this month, then turn on to add the comparison row.`;
-  }
-  return `Upload ${info.expectedMonthName} CSV once to add a previous-month row on Combined Total.`;
-}
-
-/**
- * Compact Previous Month Data block on wizard Step 1 — collapsed by default;
- * expands when the user turns on "Include in report".
- */
+/** Optional weekly-report content, configured on the final wizard step. */
 export function PreviousMonthDataWizardPanel({
   clientId,
   clientTimezone,
@@ -64,6 +51,7 @@ export function PreviousMonthDataWizardPanel({
   includeInReport,
   onIncludeInReportChange,
   onUploaded,
+  onUploadingChange,
   onCampaignsChange,
 }: {
   clientId: string;
@@ -76,6 +64,7 @@ export function PreviousMonthDataWizardPanel({
   initialCampaignSpend?: Record<string, number>;
   includeInReport: boolean;
   onIncludeInReportChange: (include: boolean) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   onUploaded?: (meta?: {
     campaigns: string[];
     selectedCampaigns: string[];
@@ -111,6 +100,7 @@ export function PreviousMonthDataWizardPanel({
 
     setError(null);
     setUploading(true);
+    onUploadingChange?.(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -139,6 +129,7 @@ export function PreviousMonthDataWizardPanel({
       setError("Could not reach the server. Please try again.");
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -154,25 +145,22 @@ export function PreviousMonthDataWizardPanel({
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <CalendarIcon />
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold text-white">Previous-month totals</p>
+            <p className="text-[14px] font-semibold text-white">Include previous-month totals</p>
             <p className="mt-0.5 text-[12px] leading-relaxed text-dash-ink-secondary">
               {includeInReport
                 ? info.status === "current"
                   ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length || "—"} campaigns selected`
                   : `Set up ${info.expectedMonthName} for the Combined Total previous-month row`
-                : collapsedHint(info)}
+                : "Add a full previous-month row to Monthly Overview. Off by default."}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          {!includeInReport && (info.status === "current" || info.status === "stale") ? (
-            <StatusBadge status={info.status} />
-          ) : null}
           <label className="flex cursor-pointer items-center gap-2">
-            <span className="text-[12px] font-medium text-dash-ink-secondary">Include in report</span>
             <button
               type="button"
               role="switch"
+              aria-label="Include previous-month totals"
               aria-checked={includeInReport}
               aria-expanded={includeInReport}
               onClick={() => onIncludeInReportChange(!includeInReport)}
@@ -247,8 +235,7 @@ function PreviousMonthDataWizardContent({
       <div className="space-y-3">
         <div className="space-y-1">
           <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-            {info.expectedMonthName} data powers the previous-month row on Monthly Overview and month-vs-month
-            comparisons.
+            {info.expectedMonthName} data adds a full previous-month row to Monthly Overview. These are reference totals, not a percentage comparison with the current partial month.
           </p>
           <Link href={manageHref} className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
             Manage on client page
@@ -292,9 +279,7 @@ function PreviousMonthDataWizardContent({
     <div className="space-y-2">
       <p className="text-[13px] font-medium text-[#f6ad55]">{title}</p>
       <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-        Skip this if you don&apos;t need a previous-month row.{" "}
-        Upload last month&apos;s CSV manually when you want a previous-month comparison row
-        below.
+        Upload the full previous month&apos;s CSV to include its totals. No percentage change against the partial current month is shown.
       </p>
       {needsUpload ? (
         <label className="block">

@@ -5,12 +5,9 @@ import { ReportPeriodControls } from "../ui/report-period-controls";
 
 import { useWizardContext } from "../wizard-context";
 import { WizardImportDownloadInstructions } from "../ui/wizard-import-download-instructions";
-import Link from "next/link";
-import { PreviousMonthDataWizardPanel } from "@/components/previous-month-data-wizard-panel";
 import { isWizardApiSyncVisible } from "@/lib/ad-platform-api-sync";
 import { WizardDataSourcePanel, WizardDataSourceToggle } from "@/components/wizard-data-source-panel";
 import { MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
-import { getPreviousMonthComparisonInfo } from "@/lib/nre/previous-month-data-status";
 import {
   wizardPlatformImportDescription,
   isNoDataRowsError,
@@ -55,7 +52,6 @@ export function WizardImportStep() {
     handleMismatchGoBack,
     handleMtdFileSelected,
     hasSavedPlatformPreference,
-    includePreviousMonthComparison,
     metaConfigured,
     metaConnected,
     metaConnectedName,
@@ -65,22 +61,11 @@ export function WizardImportStep() {
     pmsError,
     pmsResult,
     pmsStatus,
-    currencySymbol,
-    previousMonthCampaigns,
-    previousMonthCampaignSpend,
     previousMonthHasFile,
-    previousMonthSelectedCampaigns,
-    previousMonthUpdatedAt,
     selectedPlatformCard,
     setApiSyncError,
     setApiSyncStatus,
-    setIncludePreviousMonthComparison,
     setPlatformPickerExpanded,
-    setPreviousMonthCampaigns,
-    setPreviousMonthCampaignSpend,
-    setPreviousMonthHasFile,
-    setPreviousMonthSelectedCampaigns,
-    setPreviousMonthUpdatedAt,
     showTikTokOption,
     tiktokConfigured,
     tiktokConnected,
@@ -99,13 +84,6 @@ export function WizardImportStep() {
       ? analyzeErrors.map(error => error.message).join(" ") || "Could not analyze the synced data. Please retry."
       : null;
 
-  const previousMonthInfo = getPreviousMonthComparisonInfo(
-    previousMonthHasFile,
-    previousMonthUpdatedAt,
-    clientTimezone,
-  );
-  const showCompactPreviousMonth =
-    previousMonthInfo.status === "current" && !includePreviousMonthComparison;
   const platformSwitchEnabled = isWizardPlatformSwitchEnabled();
 
   const setupPlatform = selectedPlatformCard ?? "META";
@@ -180,19 +158,17 @@ export function WizardImportStep() {
 
       {selectedPlatformCard && (
         <div className="space-y-3">
+          {reportSetup}
           {isWizardApiSyncVisible() && <WizardDataSourceToggle
             value={dataSourceMode}
             onChange={handleDataSourceModeChange}
             apiUnavailable={!w.apiSyncEnabled}
-            compact={w.hasSavedImportSource}
           />}
           {isWizardApiSyncVisible() && !w.apiSyncEnabled && dataSourceMode === "api" ? (
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100/90">
               <span className="font-semibold text-amber-300">API sync is temporarily unavailable.</span> Use Manual CSV upload to continue.
             </p>
           ) : null}
-
-          {dataSourceMode === "csv" ? reportSetup : null}
 
           {dataSourceMode === "csv" && <WizardImportDownloadInstructions
             clientId={clientId}
@@ -209,8 +185,6 @@ export function WizardImportStep() {
               clientTimezone={clientTimezone}
               onTimezoneUpdated={w.updateApiTimezone}
               selectionError={apiSelectionError}
-              reportTypeControls={reportTypeSetup}
-              setupControls={reportPeriods}
               platform={selectedPlatformCard}
               metaConnected={metaConnected}
               metaConnectedName={metaConnectedName}
@@ -259,64 +233,7 @@ export function WizardImportStep() {
             </>
           )}
 
-          {dataSourceMode === "csv" && reportType === "WEEKLY" && (showCompactPreviousMonth ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dash-border bg-dash-bg/60 px-4 py-3">
-              <p className="text-[14px] text-dash-ink-secondary">
-                <span className="font-medium text-emerald-400">{previousMonthInfo.expectedMonthName} on file ✓</span>
-                {" · "}
-                <Link
-                  href={`/clients/${clientId}#previous-month-data`}
-                  className="font-medium text-dash-accent hover:underline"
-                >
-                  Manage
-                </Link>
-              </p>
-              <label className="flex cursor-pointer items-center gap-2">
-                <span className="text-[12px] font-medium text-dash-ink-secondary">Include in report</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={includePreviousMonthComparison}
-                  onClick={() => setIncludePreviousMonthComparison(!includePreviousMonthComparison)}
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-                    includePreviousMonthComparison ? "bg-dash-accent" : "bg-dash-border"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                      includePreviousMonthComparison ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </label>
-            </div>
-          ) : (
-            <PreviousMonthDataWizardPanel
-              clientId={clientId}
-              clientTimezone={clientTimezone}
-              currencySymbol={currencySymbol}
-              initialHasFile={previousMonthHasFile}
-              initialUpdatedAt={previousMonthUpdatedAt}
-              initialCampaigns={previousMonthCampaigns}
-              initialSelectedCampaigns={previousMonthSelectedCampaigns}
-              initialCampaignSpend={previousMonthCampaignSpend}
-              includeInReport={includePreviousMonthComparison}
-              onIncludeInReportChange={setIncludePreviousMonthComparison}
-              onUploaded={(meta) => {
-                setPreviousMonthHasFile(true);
-                setPreviousMonthUpdatedAt(new Date().toISOString());
-                if (meta) {
-                  setPreviousMonthCampaigns(meta.campaigns);
-                  setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
-                  if (meta.campaignSpend) setPreviousMonthCampaignSpend(meta.campaignSpend);
-                }
-              }}
-              onCampaignsChange={(meta) => {
-                setPreviousMonthCampaigns(meta.campaigns);
-                setPreviousMonthSelectedCampaigns(meta.selectedCampaigns);
-              }}
-            />
-          ))}
+
         </div>
       )}
 

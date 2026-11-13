@@ -886,11 +886,15 @@ export function buildTableSlideXml(
     reportType === "MONTHLY" || reportType === "QUARTER" || reportType === "YTD" || !periodRow.hasData;
   const hideMtdRow = !hidePeriodRow && periodRow.sameMonthAsCurrentMTD;
   const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
+  // Explicitly distinguish the optional previous month from current MTD.
+  const labelledPeriodRow = reportType === "WEEKLY" && periodRow.hasData
+    ? { ...periodRow, monthLabel: `Previous month · ${periodRow.monthLabel}` }
+    : periodRow;
   const stacked = shouldUseStackedCombinedTotalLayout(headers.resultColumns.length);
   const grid =
     platform === "GOOGLE"
-      ? buildGoogleCombinedTotalTableGrid(periodRow, mtdRow, headers, tableOptions)
-      : buildCombinedTotalTableGrid(periodRow, mtdRow, headers, tableOptions);
+      ? buildGoogleCombinedTotalTableGrid(labelledPeriodRow, mtdRow, headers, tableOptions)
+      : buildCombinedTotalTableGrid(labelledPeriodRow, mtdRow, headers, tableOptions);
   if (reportType === "DAILY") grid[0][0] = "Date";
   const periodHighlightRowIndex =
     stacked && !hidePeriodRow && !hideMtdRow ? 2 : stacked || hidePeriodRow || hideMtdRow ? undefined : 1;
