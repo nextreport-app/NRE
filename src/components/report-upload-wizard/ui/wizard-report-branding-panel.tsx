@@ -70,7 +70,7 @@ export function WizardReportBrandingPanel({
             >
               Account settings
             </Link>{" "}
-            opens in a new tab. When you return here, branding updates automatically — you stay on this step.
+            opens in a new tab. When you return here, branding updates automatically.
           </p>
         </div>
       ) : null}
