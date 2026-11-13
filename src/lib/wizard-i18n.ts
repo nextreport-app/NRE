@@ -52,7 +52,7 @@ const EN_UI = {
   generateReport: "Generate Report",
   loading: "Loading…",
   campaignObjectives: "Campaign objectives",
-  objectivesIntro: "Detected from your imported data. Change a dropdown only if something looks wrong.",
+  objectivesIntro: "Detected from your CSV. Change a dropdown only if something looks wrong.",
   reviewMetrics: "Review metrics",
   reviewMetricsHint: "Metric chips are pre-selected from your imported data — tweak only if needed.",
   includedMetrics: "Included metrics",

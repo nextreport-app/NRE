@@ -13,6 +13,7 @@ import { normalizeCampaignName } from "@/lib/nre/objective";
 import { supportsAdSetSlides } from "@/lib/nre/ad-set-slide-preferences";
 import { META_CAMPAIGNS_TABLE_ADSET_SKIP_HINT } from "@/lib/nre/meta-csv-export-profile";
 import { AdSetSlidePicker } from "../ui/ad-set-slide-picker";
+import { CampaignObjectiveReview } from "../ui/campaign-objective-review";
 import { ObjectivePicker } from "../ui/objective-picker";
 import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
@@ -332,7 +333,7 @@ export function WizardCampaignsStep() {
           >
           <div className="flex items-start gap-3 border-b border-dash-border pb-4">
             <span className="nre-wizard-section-marker flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sm font-semibold text-sky-400" aria-hidden="true">2</span>
-            <div><h3 id="wizard-objectives-section-heading" className="text-[16px] font-semibold text-dash-ink">{copy.campaignObjectives}</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">{copy.objectivesIntro}</p></div>
+            <div><h3 id="wizard-objectives-section-heading" className="text-[16px] font-semibold text-dash-ink">{copy.campaignObjectives}</h3><p className="mt-1 text-[13px] text-dash-ink-secondary">{w.dataSourceMode === "api" ? "Detected from Meta API. Change a dropdown only if something looks wrong." : copy.objectivesIntro}</p></div>
           </div>
 
           {blockingCount > 0 ? (
@@ -346,7 +347,7 @@ export function WizardCampaignsStep() {
           {objectivesLoading ? (
             <p className="text-[14px] text-dash-ink-secondary">Loading objectives…</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-dash-border overflow-hidden rounded-lg border border-dash-border">
               {campaigns
                 .filter((name) => selectedCampaigns.has(name))
                 .map((name) => {
@@ -372,13 +373,11 @@ export function WizardCampaignsStep() {
                     !touchedObjectiveCampaigns.has(normalized);
                   return (
                     <li key={name}>
-                      <details key={`${normalized}-${csvAlign}-${isBlocking}`} open={csvAlign !== true || isBlocking} className={`group/objective overflow-hidden rounded-lg border ${isBlocking ? "border-[#fc8181] bg-red-950/10" : csvAlign === true ? "border-emerald-500/25 bg-emerald-500/5" : "border-dash-border"}`}>
-                        <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm focus-visible:outline-2 focus-visible:outline-dash-accent [&::-webkit-details-marker]:hidden">
-                          <span aria-hidden className={csvAlign === true && !isBlocking ? "text-emerald-400" : "text-dash-accent"}>{csvAlign === true && !isBlocking ? "✓" : "!"}</span>
-                          <span className="min-w-0 flex-1"><span className="block break-words font-medium text-dash-ink" title={name}>{name}</span><span className="text-xs text-dash-ink-secondary">{detectedLabel}{csvAlign === true && !isBlocking ? " · Matches imported data" : " · Review objective"}</span></span>
-                          <span aria-hidden className="text-dash-ink-secondary transition-transform group-open/objective:rotate-180">▾</span>
-                        </summary>
-                        <div className="space-y-2 border-t border-dash-border px-4 py-3">
+                      <CampaignObjectiveReview
+                        key={`${normalized}-${csvAlign}-${isBlocking}`}
+                        name={name} objective={detectedLabel} matched={csvAlign === true}
+                        needsConfirmation={isBlocking} source={w.dataSourceMode === "api" ? "Meta API" : "CSV"}
+                      >
                         <ObjectivePicker options={options} value={currentKey} label={`Objective for ${name}`} needsConfirmation={isBlocking} onChange={key => setCampaignObjective(name, key)} />
                       {showCsvObjectivePanel && csvSummary && (csvAlign === false || csvSummary.distinct.length > 1) ? (
                         <div
@@ -420,8 +419,7 @@ export function WizardCampaignsStep() {
                           <span>{badge.text}</span>
                         </div>
                       ) : null}
-                        </div>
-                      </details>
+                      </CampaignObjectiveReview>
                     </li>
                   );
                 })}
