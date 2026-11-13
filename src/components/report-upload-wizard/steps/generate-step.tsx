@@ -1,4 +1,5 @@
 "use client";
+import { WizardFinalSettings } from "../ui/wizard-final-settings";
 import { WizardOptionalComparisons } from "../ui/wizard-optional-comparisons";
 import { ReportRecoveryPanel } from "../ui/report-recovery-panel";
 import { ReportPeriodControls } from "../ui/report-period-controls";
@@ -329,8 +330,6 @@ export function WizardGenerateStep() {
             </div> : null}
           </> : null}
 
-              <WizardOptionalComparisons />
-
               {previewStatus === "invalid" && (
                 <div className="space-y-3">
                   {previewErrors.filter(isNoDataRowsError).map((e, i) =>
@@ -388,21 +387,20 @@ export function WizardGenerateStep() {
             {reportType === "WEEKLY" && (periodConfirmation || periodConfirmationBullets) &&
             generateStepPreviewReady &&
             generateStatus === "idle" ? (
-              <div className="nre-wizard-callout-success rounded-lg px-4 py-3">
+              <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="nre-wizard-callout-success__label">Confirmed period</p>
+                    <p className="text-sm font-semibold text-dash-ink">Report includes</p>
                     {periodConfirmationBullets ? (
                       <div className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">
-                        <p>{copy.confirmedPeriodWeeklyLead}</p>
                         <ul className="mt-2 space-y-2 text-[14px] font-normal leading-snug">
                           {periodConfirmationBullets.map((line) => (
                             <li key={line} className="flex items-start gap-2.5">
                               <span
-                                className="nre-wizard-callout-success__icon mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-[10px] font-semibold leading-none text-emerald-200"
+                                className="shrink-0 text-dash-ink-secondary"
                                 aria-hidden
                               >
-                                ✓
+                                ·
                               </span>
                               <span className="min-w-0 text-dash-ink">{line}</span>
                             </li>
@@ -437,26 +435,38 @@ export function WizardGenerateStep() {
                 <CsvVerificationPanel verification={csvVerification} refreshing={previewRefreshing} />
               ) : null}
 
-              {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
-                <WizardCoverBudgetSection
-                  clientId={clientId}
-                  clientMonthlyBudget={clientMonthlyBudget}
-                  coverBudgetPreviewLine={coverBudgetPreviewLine}
-                  showBudgetOnCover={showBudgetOnCover}
-                  onShowBudgetOnCoverChange={handleShowBudgetOnCoverChange}
-                  coverBudgetPacingWarning={coverBudgetPacingWarning}
-                  budgetToggleSaving={budgetToggleSaving}
-                  previewReady={Boolean(data)}
-                />
-              ) : null}
-
-              {generateStepPreviewReady && generateStatus === "idle" ? (
-                <WizardReportBrandingPanel
-                  agencyName={agencyName}
-                  reportBrandingMode={reportBrandingMode}
+              {(generateStatus === "idle" || generateStatus === "error") && (
+                <WizardFinalSettings
+                  hasComparisons={reportType === "WEEKLY" && w.dataSourceMode === "csv"}
+                  previousMonthEnabled={includePreviousMonthComparison}
+                  previousMonthReady={previousMonthComparisonReady}
+                  hasCoverBudget={showStandardCoverBudget}
                   error={reportBrandingError}
-                />
-              ) : null}
+                >
+                  <WizardOptionalComparisons embedded />
+                  {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
+                    <WizardCoverBudgetSection
+                      clientId={clientId}
+                      clientMonthlyBudget={clientMonthlyBudget}
+                      coverBudgetPreviewLine={coverBudgetPreviewLine}
+                      showBudgetOnCover={showBudgetOnCover}
+                      onShowBudgetOnCoverChange={handleShowBudgetOnCoverChange}
+                      coverBudgetPacingWarning={coverBudgetPacingWarning}
+                      budgetToggleSaving={budgetToggleSaving}
+                      previewReady={Boolean(data)}
+                    />
+                  ) : null}
+
+                  {generateStepPreviewReady && generateStatus === "idle" ? (
+                    <WizardReportBrandingPanel
+                      agencyName={agencyName}
+                      reportBrandingMode={reportBrandingMode}
+                      error={reportBrandingError}
+                    />
+                  ) : null}
+
+                </WizardFinalSettings>
+              )}
 
             {previewKind === "normal" && data?.isPaused && (
               <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
