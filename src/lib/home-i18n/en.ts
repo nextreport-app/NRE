@@ -60,7 +60,7 @@ export const HOME_EN: HomeCopy = {
     {
       title: "Comparison reports",
       description:
-        "Compare any two periods side by side, campaign by campaign — this week vs last week or a custom range.",
+        "Compare any two periods side by side, campaign by campaign — the last 7 days vs the previous 7 days, or a custom range.",
     },
     {
       title: "Share a browser link",

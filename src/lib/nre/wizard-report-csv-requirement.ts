@@ -30,7 +30,7 @@ export function wizardCsvRequirementForReportType(input: {
     case "WEEKLY":
       return {
         shortNote: "Last 30 days · Day-wise breakdown CSV",
-        detail: `One export covers last week, MTD, and the last-30 chart. ${DAY_WISE}`,
+        detail: `One export covers the last 7 days (ending yesterday), MTD, and the last-30-day chart. ${DAY_WISE}`,
         dayWiseRequired: true,
       };
 
