@@ -1,3 +1,4 @@
+import { orderSlidesBySpend } from "./slide-spend-order";
 import { comparisonPeriodDescription } from "./comparison-period-description";
 import { buildComparisonExtraMetrics, type ComparisonExtraMetric } from "./comparison-extra-metrics";
 /**
@@ -1592,8 +1593,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   }
 
   // ── Campaign grouping ─────────────────────────────────────────────────
-  // primaryRows is sorted by campaign_name (localeCompare) — this governs
-  // ad-set slide append order (Phase A2) and which rows land in which group.
+  // Keep source grouping stable; presentation order is applied by spend.
   const sortedWeeklyRows = [...primaryRows].sort((a, b) =>
     String(a.campaign_name || "").localeCompare(String(b.campaign_name || "")),
   );
@@ -1800,14 +1800,18 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     mtdAdSetSpend[key] = (mtdAdSetSpend[key] || 0) + parseCellNum(row.spend);
   });
 
-  // Campaign SUMMARY slide order uses plain default sort (not localeCompare) —
-  // matches Object.keys(campaignGroups).sort() in the source exactly. A
+  // Campaign slides use descending reporting-period spend, with name ties. A
   // zero-spend campaign is omitted from automatic engine selection, but an
   // explicitly included campaign is retained. Campaign selection owns the
   // default exclusions; rendering must not silently override the user.
+  const campaignSlideSpend = new Map(Object.entries(campaignGroups).map(([name, rows]) =>
+    [name, rows.reduce((sum, row) => sum + parseCellNum(row.spend), 0)] as const,
+  ));
   const campaignNames = Object.keys(campaignGroups)
     .filter((name) => campaignGroups[name].reduce((sum, r) => sum + parseCellNum(r.spend), 0) > 0 || selectedCampaigns?.some(selected => normalizeCampaignName(selected) === normalizeCampaignName(name)))
-    .sort();
+    .sort((a, b) => {
+      return campaignSlideSpend.get(b)! - campaignSlideSpend.get(a)! || (a < b ? -1 : a > b ? 1 : 0);
+    });
   // Ad-set slides (Phase A2 below) skip rows for any campaign excluded above.
   const keptCampaignNames = new Set(campaignNames);
 
@@ -2100,7 +2104,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     reportType,
     cover,
     campaignSlides,
-    adSetSlides,
+    adSetSlides: orderSlidesBySpend(adSetSlides),
     creative: buildCreativeSections(globalWeekDateRange, primaryRawRows),
     creativeOnly: false,
     pausedMessage: null,
@@ -2424,7 +2428,9 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
         )
       : null;
 
-  const campaignNames = Array.from(new Set([...Object.keys(byCampaignA), ...Object.keys(byCampaignB)])).sort();
+  const campaignNames = Array.from(new Set([...Object.keys(byCampaignA), ...Object.keys(byCampaignB)])).sort((a, b) =>
+    sumField(byCampaignA[b] ?? [], "spend") - sumField(byCampaignA[a] ?? [], "spend") || (a < b ? -1 : a > b ? 1 : 0),
+  );
 
   // Single source of truth (reported bug: the chart slide showed "ADD TO
   // CART" for a purchase campaign — same audit flagged Comparison Reports as
