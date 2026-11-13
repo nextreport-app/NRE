@@ -150,9 +150,9 @@ export interface RenderPptxInput {
 
 /** Every exported deck ends with the guide, including paused and regenerated reports. */
 function appendMetricGuide(template: LoadedTemplate, slides: SlideToInsert[], isLightTemplate: boolean, entries: LegendEntry[] = []) {
-  for (let offset = 0; offset < Math.max(1, entries.length); offset += METRIC_GUIDE_ENTRIES_PER_SLIDE) {
-    slides.push({ xml: buildLegendSlideXml(template.legend.xml, entries.slice(offset, offset + METRIC_GUIDE_ENTRIES_PER_SLIDE), isLightTemplate), rels: template.legend.rels });
-  }
+  // Keep the guide to one readable template slide; additional metric cards
+  // must not create a second page filled with repeated template definitions.
+  slides.push({ xml: buildLegendSlideXml(template.legend.xml, entries.slice(0, METRIC_GUIDE_ENTRIES_PER_SLIDE), isLightTemplate), rels: template.legend.rels });
 }
 
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
