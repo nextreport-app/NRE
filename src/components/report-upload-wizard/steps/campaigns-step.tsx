@@ -106,11 +106,10 @@ export function WizardCampaignsStep() {
     campaignObjectives,
     campaignRequiresConfirmation,
     campaignSearch,
-    campaignSpend,
+    reportType,
     campaigns,
     csvDateGuidance,
     csvWarningDismissed,
-    currencySymbol,
     deselectAllAdSetsForCampaign,
     expandedCampaigns,
     handleCampaignsContinue,
@@ -212,8 +211,9 @@ export function WizardCampaignsStep() {
         )}
       </div>
 
-      {campaignSpendLoading && <p role="status" className="text-[13px] text-dash-ink-secondary">Updating spend…</p>}
-      {!campaignSpendLoading && campaignSpendLabel?.startsWith("Spend unavailable") && <p role="alert" className="text-[13px] text-dash-ink-secondary">Spend unavailable. Analyze again.</p>}
+      {reportType === "WEEKLY" && <p className="text-[13px] text-dash-ink-secondary">Campaign selection applies to weekly slides, month-to-date totals and the 30-day chart.</p>}
+      {campaignSpendLoading && <p role="status" className="text-[13px] text-dash-ink-secondary">Updating campaign availability…</p>}
+      {!campaignSpendLoading && campaignSpendLabel?.startsWith("Spend unavailable") && <p role="alert" className="text-[13px] text-dash-ink-secondary">Campaign availability could not be checked. Return to Import and analyze again.</p>}
 
       <div className="space-y-3">
         {(() => {
@@ -232,8 +232,6 @@ export function WizardCampaignsStep() {
             const isExpanded = expandedCampaigns.has(name);
             const isMultiAdSet = showAdSetOptions && !!group && group.adSetNames.length >= 2;
             const isSingleAdSet = showAdSetOptions && !!group && group.adSetNames.length === 1;
-            const spend = campaignSpend[name];
-            const spendKnown = typeof spend === "number" && Number.isFinite(spend);
             return (
               <li key={name} className="px-4 py-2.5">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -251,8 +249,6 @@ export function WizardCampaignsStep() {
                   >
                     {name}
                   </label>
-                  {!spendKnown ? <span className="shrink-0 text-[13px] text-dash-ink-secondary">Spend unavailable</span> : null}
-                  {spendKnown ? <span className="shrink-0 text-[13px] tabular-nums text-dash-ink-secondary">{spend > 0 && spend < 0.01 ? `<${currencySymbol}0.01` : `${currencySymbol}${spend.toLocaleString("en-US", { maximumFractionDigits: 2 })}`} spend{zeroSpendSet.has(name) && !isSelected ? " · Excluded by default" : ""}</span> : null}
                   {isSingleAdSet && (
                     <button
                       type="button"
@@ -306,14 +302,14 @@ export function WizardCampaignsStep() {
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-dash-accent"
                   >
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-semibold text-dash-ink">Zero-spend campaigns ({zeroSpend.length.toLocaleString("en-US")})</span>
+                      <span className="block text-[14px] font-semibold text-dash-ink">No spend in report dates ({zeroSpend.length.toLocaleString("en-US")})</span>
                       <span className="mt-1 block text-[13px] text-dash-ink-secondary">{zeroSpendSelected} included{!zeroSpendExpanded && " · Expand to review"}</span>
                     </span>
                     <span aria-hidden="true" className="shrink-0 text-dash-ink-secondary">{zeroSpendExpanded ? "▲" : "▼"}</span>
                   </button>
                   <div id={zeroSpendListId} hidden={!zeroSpendExpanded}>
                     {zeroSpendExpanded ? (
-                      <div role="region" aria-label="Zero-spend campaigns" tabIndex={0} className="max-h-96 overflow-y-auto overscroll-contain border-t border-dash-border focus-visible:outline-2 focus-visible:outline-dash-accent">
+                      <div role="region" aria-label="Campaigns with no spend in report dates" tabIndex={0} className="max-h-96 overflow-y-auto overscroll-contain border-t border-dash-border focus-visible:outline-2 focus-visible:outline-dash-accent">
                         <ul className="divide-y divide-dash-border">{renderCampaigns(zeroSpend)}</ul>
                       </div>
                     ) : null}

@@ -91,10 +91,10 @@ export function filterRowsByCampaigns<T extends NreRow>(rows: T[], selectedCampa
 }
 
 /** Full campaign list + excluded subset from the upload that last saved a selection — see Client.lastDeselectedCampaigns's schema comment. */
-export const CAMPAIGN_SELECTION_POLICY = "positive-period-spend-v1" as const;
+export const CAMPAIGN_SELECTION_POLICY = "positive-report-window-spend-v2" as const;
 
 export interface CampaignSelectionMemory {
-  policy?: typeof CAMPAIGN_SELECTION_POLICY;
+  policy?: typeof CAMPAIGN_SELECTION_POLICY | "positive-period-spend-v1";
   campaigns: string[];
   deselected: string[];
 }
