@@ -19,9 +19,8 @@ import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
 import { Spinner } from "../ui/icons";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
-import { SupportTicketLink } from "@/components/support-ticket-link";
-import { WizardFeedbackLink } from "../ui/wizard-feedback-link";
-import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
+import { WizardPeriodSummary } from "../ui/wizard-period-summary";
+import { WizardReportHelp } from "../ui/wizard-report-help";
 import { useWizardCopy } from "@/hooks/use-wizard-copy";
 import { WizardReportBrandingPanel } from "../ui/wizard-report-branding-panel";
 import { WizardCoverBudgetSection } from "../ui/wizard-cover-budget-section";
@@ -107,8 +106,6 @@ export function WizardGenerateStep() {
     setStep,
     shareToken,
     showBudgetOnCover,
-    reportPeriodConfirmationLine,
-    reportPeriodConfirmationBullets,
     wizardSharePlatformLabel,
     driveDateRangeLabel,
     agencyName,
@@ -117,8 +114,6 @@ export function WizardGenerateStep() {
     reportBrandingBlocksGenerate,
   } = w;
 
-  const periodConfirmation = reportPeriodConfirmationLine();
-  const periodConfirmationBullets = reportPeriodConfirmationBullets();
   const slideCount = estimatedSlideCount();
 
   const weeklyPeriodNeedsAttention =
@@ -385,45 +380,16 @@ export function WizardGenerateStep() {
           )}
 
 
-            {reportType === "WEEKLY" && (periodConfirmation || periodConfirmationBullets) &&
-            generateStepPreviewReady &&
-            generateStatus === "idle" ? (
-              <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-dash-ink">Report includes</p>
-                    {periodConfirmationBullets ? (
-                      <div className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">
-                        <ul className="mt-2 space-y-2 text-[14px] font-normal leading-snug">
-                          {periodConfirmationBullets.map((line) => (
-                            <li key={line} className="flex items-start gap-2.5">
-                              <span
-                                className="shrink-0 text-dash-ink-secondary"
-                                aria-hidden
-                              >
-                                ·
-                              </span>
-                              <span className="min-w-0 text-dash-ink">{line}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : periodConfirmation ? (
-                      <p className="mt-1 text-[15px] font-medium leading-snug text-dash-ink">{periodConfirmation}</p>
-                    ) : null}
-                  </div>
-                  {reportType === "WEEKLY" && !showWeeklyPeriodEditor ? (
-                    <button
-                      type="button"
-                      onClick={() => setWeeklyPeriodExpanded(true)}
-                      className="shrink-0 text-[14px] font-medium text-dash-accent hover:underline"
-                    >
-                      Change dates
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
+            {reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
+              <WizardPeriodSummary
+                rows={[
+                  { label: "Weekly period", value: w.formatIsoRange(w.weeklyRangeIso) },
+                  { label: "Month to date", value: w.formatIsoRange(w.mtdRange) },
+                  ...(previewKind === "normal" && data?.chart ? [{ label: "Trend chart", value: "Last 30 days" }] : []),
+                ]}
+                onChangeDates={!showWeeklyPeriodEditor ? () => setWeeklyPeriodExpanded(true) : undefined}
+              />
+            )}
 
             <div className="space-y-4">
               {csvVerification?.qualityIncidentId && (generateStatus === "idle" || generateStatus === "error") && <ReportRecoveryPanel key={csvVerification.qualityIncidentId} clientId={clientId} incidentId={csvVerification.qualityIncidentId} hasMismatch={csvVerification.status === "mismatch"} onRecheck={w.recheckRecovery} />}
@@ -583,17 +549,7 @@ export function WizardGenerateStep() {
             />
           ) : null}
 
-          {generateStatus !== "done" ? (
-            <div className="mt-10 space-y-4 border-t border-dash-border pt-8">
-              <p className="text-center text-[14px] leading-relaxed text-dash-ink-secondary">
-                Have a question or an issue with this report?{" "}
-                <SupportTicketLink clientId={clientId} openInNewTab className="text-dash-accent" /> or{" "}
-                <WhatsAppChatLink message="Hi — I need help with a report in NextReport." />
-                .
-              </p>
-              <WizardFeedbackLink />
-            </div>
-          ) : null}
+          {generateStatus !== "done" ? <WizardReportHelp clientId={clientId} /> : null}
         </div>
 
   );
