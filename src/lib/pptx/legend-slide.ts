@@ -19,6 +19,8 @@ export function metricDefinition(term: string, fallback = ""): string {
   if (t === "AD SPEND") return "Total amount spent during the displayed report period.";
   if (t === "WEBSITE LEADS") return "Attributed lead events on the advertiser’s website.";
   if (t === "LANDING PAGE VIEWS") return "Attributed visits where the destination page loaded after an ad click.";
+  if (/COST PER LPV|COST PER LANDING PAGE VIEW/.test(t)) return "Spend divided by landing page views: visits where the destination page loaded.";
+  if (/META FORM LEADS/.test(t)) return "Lead forms submitted within Meta platforms, rather than on the advertiser’s website.";
   if (/^COST PER /.test(t)) return `Spend divided by the corresponding ${t.replace(/^COST PER /, "").toLowerCase()} results. Unavailable when no results were recorded.`;
   return fallback && fallback.toUpperCase() !== t ? fallback : `Attributed ${term.toLowerCase()} recorded for the displayed period.`;
 }

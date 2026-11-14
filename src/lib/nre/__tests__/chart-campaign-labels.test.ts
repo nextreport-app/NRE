@@ -109,6 +109,17 @@ describe("client-facing campaign bar identities", () => {
       expect(fitCampaignNameForSingleBarLine(name, rank + 1, resultBarColumns(true).trackW - 96, resultBarLayout(2).nameSizePt)).toBe(name);
     }
   });
+  it("preserves purpose rather than date metadata in structured campaign names", () => {
+    const names = ["Agency - LEADS - INSTANT FORMS - Q3 - JUN 2026", "Agency - TRAFFIC - RETARGETING - Q3 - AUG 2026"];
+    const labels = buildCampaignBarLabels(names);
+    expect(labels.get(names[0])).toMatch(/^LEADS - INSTANT FORMS/);
+    expect(labels.get(names[1])).toMatch(/^TRAFFIC - RETARGETING/);
+    for (const [index, label] of [...labels.values()].entries()) {
+      const fitted = fitCampaignNameForSingleBarLine(label, index + 1, 356, 18);
+      expect(fitted).toMatch(/^(LEADS|TRAFFIC)/);
+      expect(estimateTextWidthPt(`${index + 1}. ${fitted}`, 18)).toBeLessThanOrEqual(356);
+    }
+  });
   it("restores context for colliding suffixes and avoids repeating Campaign", () => {
     const labels = buildCampaignBarLabels(["BrandA_Traffic_LinkClicks", "BrandB_Traffic_LinkClicks", "Summer Campaign"]);
     expect(labels.get("BrandA_Traffic_LinkClicks")).not.toBe(labels.get("BrandB_Traffic_LinkClicks"));

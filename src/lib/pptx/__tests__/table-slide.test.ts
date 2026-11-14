@@ -62,7 +62,7 @@ describe("fillCombinedTotalTable", () => {
     const xml = buildFixtureTable();
     const grid = grid3x10((r, c) => (c === 2 ? ["Reach", "46,266", "—"][r] : `V${r}-${c}`));
     const out = fillCombinedTotalTable(xml, grid);
-    expect(out).toContain("<a:t>Reach</a:t>");
+    expect(out).toContain("<a:t>CAMPAIGN REACH*</a:t>");
     expect(out).toContain("<a:t>46,266</a:t>");
     // Column 2 in the MTD row (row 2) is literally the em dash, not absent.
     const mtdRowXml = out.split("<a:tr").slice(-1)[0];
@@ -538,7 +538,7 @@ function buildFixtureTableWithFills(): string {
 }
 
 describe("fillCombinedTotalTable — Fix 4: Previous Month row background", () => {
-  it("overrides only row 1's (Previous Month) cell background, leaving the header and MTD rows untouched", () => {
+  it("highlights Previous Month separately from the neutral header and unchanged MTD row", () => {
     const xml = buildFixtureTableWithFills();
     const grid = grid3x10((r, c) => `V${r}-${c}`);
     const out = fillCombinedTotalTable(xml, grid);
@@ -548,7 +548,7 @@ describe("fillCombinedTotalTable — Fix 4: Previous Month row background", () =
     expect((rows[1].match(/<a:srgbClr val="111F35"\/>/g) || []).length).toBe(NATIVE_COLS);
     expect(rows[0]).not.toContain("111F35");
     expect(rows[2]).not.toContain("111F35");
-    expect((rows[0].match(/<a:srgbClr val="0D1B2E"\/>/g) || []).length).toBe(NATIVE_COLS);
+    expect((rows[0].match(/<a:srgbClr val="1e3a5f"\/>/g) || []).length).toBe(NATIVE_COLS);
     expect((rows[2].match(/<a:srgbClr val="0D1B2E"\/>/g) || []).length).toBe(NATIVE_COLS);
   });
 
@@ -570,3 +570,13 @@ describe("fillCombinedTotalTable — Fix 4: Previous Month row background", () =
   });
 });
 
+
+describe("explicit overview cell backgrounds", () => {
+  it("adds a real cell fill when the template only defines border fills", () => {
+    const xml = buildFixtureTable().replaceAll("</a:tc>", '<a:tcPr><a:lnB><a:solidFill><a:srgbClr val="ABCDEF"/></a:solidFill></a:lnB></a:tcPr></a:tc>');
+    const out = fillCombinedTotalTable(xml, grid3x10((r,c) => `V${r}-${c}`));
+    const header = out.match(/<a:tr[^>]*>[\s\S]*?<\/a:tr>/)![0];
+    expect((header.match(/<a:lnB><a:solidFill><a:srgbClr val="ABCDEF"\/><\/a:solidFill><\/a:lnB>/g) ?? []).length).toBe(10);
+    expect((header.match(/<\/a:lnB><a:solidFill><a:srgbClr val="1e3a5f"\/><\/a:solidFill><\/a:tcPr>/g) ?? []).length).toBe(10);
+  });
+});

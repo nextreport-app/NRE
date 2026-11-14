@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseCsvText } from "../parse-csv";
 import { buildCampaignObjectiveMapWithConfidence, normalizeCampaignName } from "../objective";
-import { pickResultAction } from "../fetch-meta-report-rows";
+import { directlyEvidencedResult } from "../meta-api-sync/direct-result-evidence";
 import type { MetaInsightRow } from "@/lib/meta-api";
 
 const WEEKLY_CSV_PATH = resolve(
@@ -11,7 +11,7 @@ const WEEKLY_CSV_PATH = resolve(
   "src/lib/nre/__tests__/fixtures/bumpertech-sep-weekly-quote-requests.csv",
 );
 
-/** Build a synthetic API insight row from one manual CSV row (same shape the sync pipeline emits). */
+/** Synthetic provider counterpart with explicit configured-event evidence; not a captured API response. */
 function csvRowToSyntheticInsight(row: {
   campaign_name?: string | null;
   ad_set_name?: string | null;
@@ -41,6 +41,8 @@ function csvRowToSyntheticInsight(row: {
     date_start: "2026-09-18",
     spend: String(row.spend ?? "0"),
     optimization_goal: "OUTCOME_LEADS",
+    configured_result_action: customAction,
+    configured_result_type: "Quote Request Submitted",
     actions,
     cost_per_action_type:
       quotes > 0 && row.result_type?.toLowerCase().includes("quote")
@@ -73,7 +75,7 @@ describe("BumperTech CSV vs API-sync parity", () => {
     }
   });
 
-  it("API pickResultAction prefers custom quote conversions over fb_pixel_lead and messaging noise", () => {
+  it("configured event counts ignore incidental pixel leads and messaging noise", () => {
     const sampleByCampaign = new Map<string, (typeof rows)[number]>();
     for (const row of rows) {
       const key = normalizeCampaignName(row.campaign_name);
@@ -85,7 +87,7 @@ describe("BumperTech CSV vs API-sync parity", () => {
 
     for (const [key, csvRow] of sampleByCampaign) {
       const insight = csvRowToSyntheticInsight(csvRow);
-      const picked = pickResultAction(insight);
+      const picked = directlyEvidencedResult(insight);
       expect(picked?.action_type, key).toMatch(/custom\.|quote/i);
     }
   });
@@ -95,11 +97,11 @@ describe("BumperTech CSV vs API-sync parity", () => {
       .filter((r) => r.result_type === "Quote Request Submitted")
       .map((csvRow) => {
         const insight = csvRowToSyntheticInsight(csvRow);
-        const picked = pickResultAction(insight);
+        const picked = directlyEvidencedResult(insight);
         return {
           ...csvRow,
-          result_type: picked ? "Quote Request Submitted" : csvRow.result_type,
-          results: picked?.value ?? csvRow.results,
+          result_type: picked?.csvResultType ?? "",
+          results: picked?.value ?? "",
         };
       });
 

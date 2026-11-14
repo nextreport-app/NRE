@@ -383,12 +383,14 @@ export function fillCombinedTotalTable(
   for (let r = grid.length - 1; r >= 0; r--) {
     const row = rowsToFill[r];
     const isHeaderRow = r === 0;
-    const rowValues = isHeaderRow && objectivePairCount >= 3 && !options.preserveHeaderLabels ? abbreviateHeaderRow(grid[r]) : grid[r];
+    const rowValues = isHeaderRow && !options.preserveHeaderLabels
+      ? (objectivePairCount >= 3 ? abbreviateHeaderRow(grid[r]) : grid[r].map((cell, index) => index === 2 && /^reach$/i.test(cell) ? "CAMPAIGN REACH*" : cell))
+      : grid[r];
     const fontSizeForCol = isHeaderRow
       ? () => headerFontSizeHundredths
       : (c: number) => (c === 0 ? ROW_LABEL_FONT_SIZE : DATA_VALUE_FONT_SIZE);
     let filled = fillRow(row.xml, rowValues, r, fontSizeForCol);
-    if (isHeaderRow) filled = filled.replace(/(<a:tcPr[^>]*>[\s\S]*?<a:solidFill><a:srgbClr val=")[^"]+("\/?>)/g, "$1" + "1e3a5f" + "$2");
+    if (isHeaderRow) filled = setRowCellFill(filled, "1e3a5f");
     newTbl = newTbl.slice(0, row.start) + filled + newTbl.slice(row.end);
   }
 
@@ -441,13 +443,9 @@ const PERIOD_ROW_FILL_HEX = "111F35";
 /** Light-template Previous Month row — warm sand tint readable on white table cells. */
 const PERIOD_ROW_FILL_HEX_LIGHT = "EDE6DA";
 
-/**
- * Overrides the background fill of every cell in a row. A cell's <a:tcPr>
- * has one <a:solidFill> per border line (lnL/lnR/lnT/lnB) plus exactly one
- * more for the cell's own background — always the LAST direct child of
- * <a:tcPr>, appearing right before its closing tag — so replacing the last
- * <a:solidFill> match reliably targets the background without disturbing
- * any border styling.
+/** Override direct cell backgrounds without changing nested border fills.
+ * Templates can inherit their background entirely from a table style; add an
+ * explicit fill in that case so the style cannot retain a rainbow header.
  */
 function setRowCellFill(rowXml: string, hexColor: string): string {
   const cells = findSpans(rowXml, /<a:tc[\s\S]*?<\/a:tc>/g);
@@ -455,15 +453,21 @@ function setRowCellFill(rowXml: string, hexColor: string): string {
   for (let i = cells.length - 1; i >= 0; i--) {
     const cell = cells[i];
     const tcPrMatch = /<a:tcPr[^>]*>[\s\S]*?<\/a:tcPr>/.exec(cell.xml);
-    if (!tcPrMatch) continue;
-    const fills = [...tcPrMatch[0].matchAll(/<a:solidFill>[\s\S]*?<\/a:solidFill>/g)];
-    if (fills.length === 0) continue;
-    const lastFill = fills[fills.length - 1];
-    const fillStart = lastFill.index as number;
-    const newTcPr =
-      tcPrMatch[0].slice(0, fillStart) +
-      `<a:solidFill><a:srgbClr val="${hexColor}"/></a:solidFill>` +
-      tcPrMatch[0].slice(fillStart + lastFill[0].length);
+    if (!tcPrMatch) {
+      const newCell = cell.xml.replace("</a:tc>", `<a:tcPr><a:solidFill><a:srgbClr val="${hexColor}"/></a:solidFill></a:tcPr></a:tc>`);
+      out = out.slice(0, cell.start) + newCell + out.slice(cell.end);
+      continue;
+    }
+    // Border line colors are nested fills, not the cell background. A table
+    // style can supply the background without any direct fill in tcPr.
+    const borderSpans = findSpans(tcPrMatch[0], /<a:ln[LRTB][^>]*>[\s\S]*?<\/a:ln[LRTB]>/g);
+    const fills = [...tcPrMatch[0].matchAll(/<a:solidFill>[\s\S]*?<\/a:solidFill>/g)]
+      .filter(fill => !borderSpans.some(border => fill.index! >= border.start && fill.index! < border.end));
+    const lastFill = fills.at(-1);
+    const background = `<a:solidFill><a:srgbClr val="${hexColor}"/></a:solidFill>`;
+    const newTcPr = lastFill
+      ? tcPrMatch[0].slice(0, lastFill.index) + background + tcPrMatch[0].slice(lastFill.index! + lastFill[0].length)
+      : tcPrMatch[0].replace(/(<a:extLst\b|<\/a:tcPr>)/, background + "$1");
     const newCellXml = cell.xml.slice(0, tcPrMatch.index) + newTcPr + cell.xml.slice(tcPrMatch.index + tcPrMatch[0].length);
     out = out.slice(0, cell.start) + newCellXml + out.slice(cell.end);
   }

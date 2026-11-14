@@ -210,67 +210,53 @@ describe("BumperTech API sync — Re-Targeting Quote Requests", () => {
     expect(resolveCampaignObjectiveWithConfidence(retargetRows).resultLabel).toBe("QUOTE REQUESTS");
   });
 
-  it("detects QUOTE REQUESTS for website-leads-named campaigns when API returns custom conversions", async () => {
-    expect(
-      pickResultAction({
-        campaign_name: WEBSITE_LEADS_CAMPAIGN,
-        adset_name: WEBSITE_LEADS_ADSET,
+  it("does not promote an incidental custom event on an unconfigured website-lead campaign", () => {
+    expect(pickResultAction({
+      campaign_name: WEBSITE_LEADS_CAMPAIGN,
+      adset_name: WEBSITE_LEADS_ADSET,
+      optimization_goal: "OUTCOME_LEADS",
+      actions: [
+        { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
+        { action_type: "offsite_conversion.custom.9876543210", value: "3" },
+        { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
+      ],
+    })).toBeNull();
+  });
+
+  it("uses the configured custom conversion and catalog label despite a website-leads campaign name", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/777")) return new Response(JSON.stringify({
+        id: "777", optimization_goal: "OFFSITE_CONVERSIONS",
+        promoted_object: { custom_conversion_id: "9876543210" },
+      }));
+      if (url.pathname.endsWith("/customconversions")) return new Response(JSON.stringify({
+        data: [{ id: "9876543210", name: "Quote Request Submitted" }],
+      }));
+      return new Response(JSON.stringify({ data: [{
+        campaign_id: "100", campaign_name: WEBSITE_LEADS_CAMPAIGN,
+        adset_id: "777", adset_name: WEBSITE_LEADS_ADSET,
+        date_start: "2026-09-18", date_stop: "2026-09-18",
+        spend: "11.89", reach: "621", impressions: "764",
         optimization_goal: "OUTCOME_LEADS",
         actions: [
           { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
           { action_type: "offsite_conversion.custom.9876543210", value: "3" },
-          { action_type: "onsite_conversion.messaging_conversation_started_7d", value: "1" },
         ],
-      }),
-    ).toEqual({
-      action_type: "offsite_conversion.custom.9876543210",
-      value: "3",
-    });
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          data: [
-            {
-              campaign_name: WEBSITE_LEADS_CAMPAIGN,
-              adset_name: WEBSITE_LEADS_ADSET,
-              date_start: "2026-09-18",
-              spend: "11.89",
-              reach: "621",
-              impressions: "764",
-              optimization_goal: "OUTCOME_LEADS",
-              actions: [
-                { action_type: "offsite_conversion.fb_pixel_lead", value: "1" },
-                { action_type: "offsite_conversion.custom.9876543210", value: "3" },
-              ],
-              cost_per_action_type: [
-                { action_type: "offsite_conversion.custom.9876543210", value: "3.96" },
-              ],
-            },
-          ],
-        }),
-      })),
-    );
-
+      }] }));
+    }));
     const result = await fetchMetaReportCsv({
-      currency: "USD",
-      accessToken: "token",
-      adAccountId: "act_123",
-      timezone: "UTC",
-      sinceIso: "2026-09-18",
-      untilIso: "2026-09-18",
+      currency: "USD", accessToken: "fixture", adAccountId: "act_123", timezone: "UTC",
+      sinceIso: "2026-09-18", untilIso: "2026-09-18", requireDirectResultEvidence: true,
     });
-
     const lines = result.csvText.split("\n");
-    const headers = lines[0].split(",");
-    const dataRows = lines.slice(1).map((line) => line.split(","));
-    const { rows } = readRowsWithAutoMap(headers, dataRows);
-    const campRows = rows.filter((r) => r.campaign_name === WEBSITE_LEADS_CAMPAIGN);
-
-    expect(campRows[0]?.result_type).toBe("Quote Request Submitted");
-    expect(resolveCampaignObjectiveWithConfidence(campRows).resultLabel).toBe("QUOTE REQUESTS");
+    const { rows } = readRowsWithAutoMap(lines[0].split(","), lines.slice(1).map(line => line.split(",")));
+    const campaignRows = rows.filter(row => row.campaign_name === WEBSITE_LEADS_CAMPAIGN);
+    expect(campaignRows[0]?.result_type).toBe("Quote Request Submitted");
+    expect(Number(campaignRows[0]?.results)).toBe(3);
+    expect(Number(campaignRows[0]?.cpr)).toBeCloseTo(11.89 / 3);
+    expect(resolveCampaignObjectiveWithConfidence(campaignRows).resultLabel).toBe("QUOTE REQUESTS");
+    expect(result.csvText).toContain("actions.value");
   });
 
   it("detects QUOTE REQUESTS (not MESSAGING) for API-sync rows on first import", async () => {
