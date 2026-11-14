@@ -361,7 +361,7 @@ export function WizardDataSourcePanel({
                   setConfirmedAccountKey(null);
                 } : undefined}
               />}
-              {accountTimezone && <p className="mt-2 text-xs text-dash-ink-secondary">Account calendar: {accountTimezone}. Data ends on the last completed day.</p>}
+              {accountTimezone && <p className="mt-2 text-xs text-dash-ink-secondary">Account calendar: {accountTimezone}. Report dates follow this calendar.</p>}
               {accountSelectionNotice && !accountsLoading && !accountsError && <p className="text-[13px] text-dash-ink-secondary" role="status">{accountSelectionNotice}</p>}
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection
