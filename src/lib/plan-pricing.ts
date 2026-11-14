@@ -44,6 +44,7 @@ export function formattedPlanPrice(
   return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
     style: "currency",
     currency,
+    currencyDisplay: currency === "USD" ? "code" : "symbol",
     minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(amount);

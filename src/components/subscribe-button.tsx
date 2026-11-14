@@ -90,7 +90,7 @@ export function SubscribeButton({
   loggedIn: boolean;
   userEmail?: string | null;
   userName?: string | null;
-  /** Which currency to charge in — defaults to INR when omitted; paywall, billing, and upgrade flows pass the visitor's selected currency from SubscribeCheckoutControls. Razorpay bills USD directly via international cards, no FX conversion. */
+  /** Which currency to charge in — defaults to INR when omitted; paywall, billing, and upgrade flows pass the visitor's selected currency from SubscribeCheckoutControls. Checkout charges the selected currency; the card issuer may convert it to the customer’s local currency. */
   currency?: PricingCurrency;
   interval?: BillingInterval;
 }) {
@@ -168,7 +168,7 @@ export function SubscribeButton({
       // the value into Vercel's env var UI — see lib/razorpay.ts.
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() ?? "",
       name: "NextReport",
-      description: `${PLAN_NAMES[planId]} — ${interval === "annual" ? "1 year" : "1 month"}${checkoutData.mode === "order" ? ", one-time payment; no auto-renewal" : ", auto-renews until cancelled"}`,
+      description: `${PLAN_NAMES[planId]} — ${currency} — ${interval === "annual" ? "1 year" : "1 month"}${checkoutData.mode === "order" ? ", one-time payment; no auto-renewal" : ", auto-renews until cancelled"}`,
       prefill: { name: userName ?? undefined, email: userEmail ?? undefined },
       theme: { color: "#4a90d9" },
       handler: async (response) => {
