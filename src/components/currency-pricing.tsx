@@ -16,7 +16,7 @@ import { CtaTrustBadges } from "@/components/marketing/cta-trust-badges";
 import type { BillingInterval } from "@/lib/razorpay";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 
-import { formattedPlanPrice } from "@/lib/plan-pricing";
+import { PlanPriceAmount } from "./plan-price-amount";
 
 function CheckIcon() {
   return (
@@ -56,9 +56,6 @@ function PlanCard({
   const p = home.pricing;
   const planCopy = home.pricing.plans[planId];
   const name = getPlanDisplayName(planId);
-  const monthlyPrice = formattedPlanPrice(planId, currency);
-  const annualPrice = formattedPlanPrice(planId, currency, "annual");
-  const displayPrice = interval === "annual" ? annualPrice : monthlyPrice;
   const ctaClassName = `min-h-11 w-full rounded-md px-5 py-2.5 text-center text-sm font-medium ${
     highlighted
       ? "bg-accent text-[#0d1b2e] hover:bg-accent-hover"
@@ -91,7 +88,7 @@ function PlanCard({
 
       <div className="mt-5 flex items-baseline gap-1">
         <span className="text-4xl font-semibold text-white">
-          {displayPrice}
+          <PlanPriceAmount planId={planId} currency={currency} interval={interval} />
         </span>
         <span className="text-sm text-ink-muted">
           {interval === "annual" ? p.perYear : p.perMonth}

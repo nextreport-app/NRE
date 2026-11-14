@@ -10,7 +10,7 @@ import type { PricingCurrency } from "@/lib/currency";
 import type { BillingInterval } from "@/lib/razorpay";
 
 import { AGENCY_CLIENT_LIMIT, PROFESSIONAL_CLIENT_LIMIT, AGENCY_PLUS_CLIENT_LIMIT } from "@/lib/launch-limits";
-import { formattedPlanPrice } from "@/lib/plan-pricing";
+import { PlanPriceAmount } from "./plan-price-amount";
 
 const PLAN_OPTIONS: { id: BillablePlanId; highlighted?: boolean }[] = [
   { id: "starter" },
@@ -27,12 +27,10 @@ function PlanPrice({
   currency: PricingCurrency;
   interval: BillingInterval;
 }) {
-  const price =
-    formattedPlanPrice(planId, currency, interval);
   return (
     <>
       <p className="mt-1 text-lg font-semibold text-dash-ink">
-        {price}
+        <PlanPriceAmount planId={planId} currency={currency} interval={interval} />
         <span className="text-[13px] font-normal text-dash-ink-secondary">
           {interval === "annual" ? "/year" : "/month"}
         </span>
