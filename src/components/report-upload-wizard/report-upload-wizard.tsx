@@ -176,7 +176,7 @@ function ReportUploadWizardBody() {
         <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
       ) : null}
 
-      {w.step === 2 && <CsvReportingDateNote currency={w.clientCurrency} bounds={w.dateBounds} timezone={w.clientTimezone} />}
+      {w.step === 2 && <CsvReportingDateNote automaticPreset={w.reportType === "COMPARISON" ? w.comparisonPreset !== "custom" : ["WEEKLY", "DAY_BREAKDOWN"].includes(w.reportType) && w.dateMode !== "custom"} source={w.dataSourceMode} reportType={w.reportType} dateMode={w.dateMode} currency={w.clientCurrency} bounds={w.dateBounds} timezone={w.clientTimezone} />}
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
           message={w.uploadSessionRecovery}

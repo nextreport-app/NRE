@@ -89,6 +89,8 @@ export default async function NewReportPage({ params, searchParams }: { params: 
           userId={session.user.id}
           clientId={client.id}
           clientName={client.accountName}
+          linkedMetaAdAccountId={client.metaAdAccountId}
+          linkedMetaAdAccountName={client.metaAdAccountName}
           clientTimezone={client.timezone}
           clientCurrency={client.currency}
           currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}

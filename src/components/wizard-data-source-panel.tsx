@@ -1,4 +1,6 @@
 "use client";
+import { metaClientAccountStatus, normalizeMetaAccountId } from "@/lib/meta-client-account";
+import { MetaClientAccountNotice } from "./meta-client-account-notice";
 
 import type { MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import Link from "next/link";
@@ -12,6 +14,9 @@ export type WizardDataSource = "csv" | "api";
 
 interface WizardDataSourcePanelProps {
   clientId: string;
+  clientName?: string;
+  linkedMetaAdAccountId?: string | null;
+  linkedMetaAdAccountName?: string | null;
   reportSelection?: MetaApiReportSelection;
   clientTimezone?: string;
   onTimezoneUpdated?: (timezone: string) => void;
@@ -90,6 +95,9 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
  */
 export function WizardDataSourcePanel({
   clientId,
+  clientName = "this client",
+  linkedMetaAdAccountId = null,
+  linkedMetaAdAccountName = null,
   reportSelection,
   clientTimezone, onTimezoneUpdated, reportTypeControls, setupControls, selectionError,
   platform,
@@ -123,6 +131,12 @@ export function WizardDataSourcePanel({
   const [selectedGoogleCustomer, setSelectedGoogleCustomer] = useState("");
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const selectedAccount = metaAccounts.find(account => account.id === selectedMetaAccount);
+  const [confirmedAccountKey, setConfirmedAccountKey] = useState<string | null>(null);
+  const accountStatus = metaClientAccountStatus(linkedMetaAdAccountId, selectedMetaAccount);
+  const confirmationKey = JSON.stringify([clientId, normalizeMetaAccountId(linkedMetaAdAccountId), normalizeMetaAccountId(selectedMetaAccount)]);
+  const accountConfirmed = confirmedAccountKey === confirmationKey;
+  const accountNeedsConfirmation = showMeta && (accountStatus === "unlinked" || accountStatus === "mismatch");
+  const linkedAccount = metaAccounts.find(account => normalizeMetaAccountId(account.id) === normalizeMetaAccountId(linkedMetaAdAccountId));
   const accountTimezone = showMeta ? selectedAccount?.timezone : undefined;
   // Align date presets before syncing; the server persists authoritative metadata.
   useEffect(() => {
@@ -145,7 +159,7 @@ export function WizardDataSourcePanel({
         if (!res.ok) throw new Error(data.error ?? "Failed to load Meta ad accounts");
         const accounts = (data.accounts ?? []) as MetaAccountOption[];
         setMetaAccounts(accounts);
-        const selection = resolveRememberedMetaAccount(accounts, readClientWizardPreferences(clientId)?.metaAdAccountId);
+        const selection = resolveRememberedMetaAccount(accounts, linkedMetaAdAccountId ?? readClientWizardPreferences(clientId)?.metaAdAccountId);
         setSelectedMetaAccount(selection.id);
         setAccountSelectionNotice(selection.unavailable ? "Previous ad account unavailable. Choose another." : null);
       } else if (showGoogle) {
@@ -171,7 +185,7 @@ export function WizardDataSourcePanel({
     } finally {
       if (!signal?.aborted) setAccountsLoading(false);
     }
-  }, [connected, showMeta, showGoogle, clientId]);
+  }, [connected, showMeta, showGoogle, clientId, linkedMetaAdAccountId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,6 +196,10 @@ export function WizardDataSourcePanel({
   }, [loadAccounts]);
 
   async function handleSync() {
+    if (accountNeedsConfirmation && !accountConfirmed) {
+      onSyncError("Review and confirm the client and ad account before syncing.");
+      return;
+    }
     onSyncStart();
     try {
       const refText = referenceManualCsvText?.trim() || undefined;
@@ -190,6 +208,7 @@ export function WizardDataSourcePanel({
           ? {
               platform: "META" as const,
               metaAdAccountId: selectedMetaAccount,
+              confirmedMetaAdAccountId: accountConfirmed ? selectedMetaAccount : undefined,
               ...reportSelection,
               ...(refText ? { referenceManualCsvText: refText } : {}),
             }
@@ -255,6 +274,8 @@ export function WizardDataSourcePanel({
         previousMonthUpdatedAt: typeof data.previousMonthUpdatedAt === "string" ? data.previousMonthUpdatedAt : null,
         campaignPeriodReachMaps: data.campaignPeriodReachMaps,
         metaAdAccountId: platform === "META" ? selectedMetaAccount : undefined,
+        linkedMetaAdAccountId: data.linkedMetaAdAccountId,
+        linkedMetaAdAccountName: data.linkedMetaAdAccountName,
       });
     } catch (err) {
       onSyncError(err instanceof Error ? err.message : "Sync failed");
@@ -265,7 +286,7 @@ export function WizardDataSourcePanel({
   const canSync =
     connected &&
     configured &&
-    !isSyncing && !(accountTimezone && clientTimezone && accountTimezone !== clientTimezone) && !selectionError && !accountsLoading && !accountsError &&
+    !isSyncing && (!accountNeedsConfirmation || accountConfirmed) && !(accountTimezone && clientTimezone && accountTimezone !== clientTimezone) && !selectionError && !accountsLoading && !accountsError &&
     (showMeta ? metaAccounts.some(account => account.id === selectedMetaAccount) : showGoogle ? !!selectedGoogleCustomer : !!selectedTikTokAdvertiser);
 
   const csvFallback = onUseCsv ? <button type="button" onClick={onUseCsv} className="text-[13px] font-medium text-dash-accent underline">Use CSV instead</button> : null;
@@ -326,10 +347,20 @@ export function WizardDataSourcePanel({
                   onChange={id => {
                     if (!metaAccounts.some(account => account.id === id)) return;
                     if (id !== selectedMetaAccount) onMetaAccountChanged?.(id);
-                    setSelectedMetaAccount(id); setAccountsError(null); setAccountSelectionNotice(null);
+                    setSelectedMetaAccount(id); setConfirmedAccountKey(null); setAccountsError(null); setAccountSelectionNotice(null);
                     saveClientWizardPreferences(clientId, { metaAdAccountId: id });
                   }} />
               )}
+              {selectedAccount && !accountsLoading && !accountsError && <MetaClientAccountNotice
+                clientName={clientName} linkedId={linkedMetaAdAccountId} linkedName={linkedMetaAdAccountName}
+                selectedId={selectedAccount.id} selectedName={selectedAccount.name} confirmed={accountConfirmed}
+                onConfirm={value => setConfirmedAccountKey(value ? confirmationKey : null)}
+                onUseLinked={accountStatus === "mismatch" && linkedAccount ? () => {
+                  onMetaAccountChanged?.(linkedAccount.id);
+                  setSelectedMetaAccount(linkedAccount.id);
+                  setConfirmedAccountKey(null);
+                } : undefined}
+              />}
               {accountTimezone && <p className="mt-2 text-xs text-dash-ink-secondary">Account calendar: {accountTimezone}. Data ends on the last completed day.</p>}
               {accountSelectionNotice && !accountsLoading && !accountsError && <p className="text-[13px] text-dash-ink-secondary" role="status">{accountSelectionNotice}</p>}
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">

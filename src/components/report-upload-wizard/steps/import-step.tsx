@@ -180,6 +180,9 @@ export function WizardImportStep() {
 
           {w.apiSyncEnabled && dataSourceMode === "api" ? (
             <WizardDataSourcePanel
+                clientName={w.clientName}
+                linkedMetaAdAccountId={w.linkedMetaAdAccountId}
+                linkedMetaAdAccountName={w.linkedMetaAdAccountName}
               key={`${clientId}:${selectedPlatformCard}`}
               clientId={clientId}
               reportSelection={apiSelection}

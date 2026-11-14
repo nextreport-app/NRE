@@ -286,6 +286,9 @@ enum Platform {
 }
 
 model Client {
+  // Confirmed Meta source; a one-report override never replaces this binding.
+  metaAdAccountId   String?
+  metaAdAccountName String?
   id            String         @id @default(cuid())
   userId        String
   accountName   String
