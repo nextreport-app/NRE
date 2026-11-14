@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
@@ -9,5 +9,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // These use node:test and run via test:quality-agents / test:all.
+    // Importing them into Vitest executes them outside its suite lifecycle.
+    exclude: [...configDefaults.exclude, "scripts/agents/**/*.test.mjs"],
   },
 });

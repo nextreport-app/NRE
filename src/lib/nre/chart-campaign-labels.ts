@@ -97,11 +97,19 @@ export function buildCampaignBarLabels(names: string[]): Map<string, string> {
   const unique = [...new Set(names.map(name => name.trim()).filter(Boolean))];
   const parts = unique.map(name => name.split(/_| \| | - | – | — | \/ |: | · /).map(part => part.trim()).filter(Boolean));
   const labels = new Map<string, string>();
+  const commonPrefix = longestCommonPrefix(unique);
   unique.forEach((name, index) => {
     const tokens = parts[index]!;
     let count = Math.min(2, tokens.length);
     const separator = name.includes("_") ? "_" : " - ";
     let label = tokens.slice(-count).join(separator);
+    if (!name.includes("_") && name.split(" - ").length >= 4 && /\b(?:19|20)\d{2}\b/.test(tokens.at(-1) ?? "")) {
+      // Structured campaign names often end in quarter/month/year metadata.
+      // Preserve the differentiated leading purpose, not just those dates.
+      label = suffixAfterPrefix(name, commonPrefix);
+      labels.set(name, /\bcampaign\b/i.test(label) ? label : `${label} Campaign`);
+      return;
+    }
     // Restore more of the original identity when short suffixes collide.
     while (count < tokens.length && parts.some((other, otherIndex) => otherIndex !== index && other.slice(-count).join(separator).toLowerCase() === label.toLowerCase())) {
       label = tokens.slice(-++count).join(separator);

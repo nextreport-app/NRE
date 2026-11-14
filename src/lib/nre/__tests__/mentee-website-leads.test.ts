@@ -1,24 +1,26 @@
-import { describe, expect, it, beforeAll } from "vitest";
-import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import { parseCsvText } from "../parse-csv";
 import { buildReportData } from "../report-data";
+import { getRowDate } from "../columns";
 
-beforeAll(() => {
-  process.env.TZ = "UTC";
-});
-
-const CSV_PATH = "/home/ubuntu/.cursor/projects/workspace/uploads/DC-weekly-Mentee_0944.csv";
-
-describe("Mentee CSV — website leads match Results column", () => {
-  const { rows } = parseCsvText(readFileSync(CSV_PATH, "utf8"));
+describe("website lead Results precedence — self-contained daily fixture", () => {
+  // The original test depended on a developer's private upload directory.
+  // Reproduce its accounting contract with generated, non-client data.
+  const lines = ["Campaign name,Ad set name,Day,Amount spent (USD),Results,Result type,Website leads,Reach,Impressions"];
+  for (let i = 0; i < 30; i++) {
+    const day = new Date(Date.UTC(2026, 7, 17 + i)).toISOString().slice(0, 10);
+    const results = i < 3 ? 2 : i < 26 ? 1 : 0;
+    lines.push(`Example Website Leads,Main,${day},${i === 29 ? 11 : 10},${results},Website leads,${results + 5},100,200`);
+  }
+  const { rows } = parseCsvText(lines.join("\n"));
 
   const sepRows = rows.filter((r) => {
-    const d = r.date_start || "";
+    const d = getRowDate(r);
     return d >= "2026-09-01" && d <= "2026-09-15";
   });
 
   const last30Rows = rows.filter((r) => {
-    const d = r.date_start || "";
+    const d = getRowDate(r);
     return d >= "2026-08-17" && d <= "2026-09-15";
   });
 

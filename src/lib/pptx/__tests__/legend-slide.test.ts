@@ -20,6 +20,8 @@ describe("selected metric guide",()=>{
     expect(metricDefinition("COST PER LINK CLICK")).toContain("link clicks");
     expect(metricDefinition("COST PER 1K REACH")).toContain("people reached");
     expect(metricDefinition("CPM")).toContain("impressions");
+    expect(metricDefinition("COST PER LPV")).toContain("landing page views");
+    expect(metricDefinition("META FORM LEADS")).toContain("within Meta platforms");
   });
   it("keeps one readable page and explicitly discloses overflow",async()=>{
     const template=await loadTemplate(fs.readFileSync("templates/dark.pptx"));

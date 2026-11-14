@@ -44,8 +44,12 @@ describe("BumperTech August Previous Month — Quote Request Submitted", () => {
     const col = data.periodRow.resultColumns.find((c) => c.label === "QUOTE REQUESTS");
     expect(data.periodRow.spend).toBe("A$1,634.60");
     expect(col?.value).toBe(String(totalQuotes));
-    // CPR uses quote-attributed spend only (excludes zero-quote days in lead campaigns).
-    expect(col?.cprValue).toBe("A$8.52");
+    // Every day of spend for the quote objective belongs in the denominator,
+    // including days with no conversions. Dropping those days understates CPR.
+    const totalSpend = periodRows.reduce((sum, row) => sum + Math.round(parseCellNum(row.spend) * 100), 0) / 100;
+    expect(periodRows.some(row => parseCellNum(row.results) === 0 && parseCellNum(row.spend) > 0)).toBe(true);
+    expect(col?.cprValue).toBe(`A$${(totalSpend / totalQuotes).toFixed(2)}`);
+    expect(col?.cprValue).toBe("A$11.04");
   });
 
   it("groupResultsByCampaignObjective totals all quote rows when the map uses QUOTE REQUESTS from aggregated MTD", () => {
