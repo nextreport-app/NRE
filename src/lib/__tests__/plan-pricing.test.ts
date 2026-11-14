@@ -7,6 +7,9 @@ describe("shared checkout and display prices", () => {
     ["starter", "USD", 500, 5000], ["professional", "USD", 1200, 12000], ["agency_plus", "USD", 2000, 20000],
   ] as const)("preserves %s %s charges and formats the exact annual amount", (plan, currency, monthly, annual) => {
     expect(amountForCurrency(plan, currency)).toBe(monthly);
+    const display = formattedPlanPrice(plan, currency);
+    expect(display).toContain(currency === "USD" ? "USD" : "₹");
+    if (currency === "USD") expect(display).not.toContain("$");
     expect(amountForCurrency(plan, currency, "annual")).toBe(annual);
     expect(Number(formattedPlanPrice(plan, currency, "annual").replace(/[^\d.]/g, ""))).toBe(annual / 100);
   });

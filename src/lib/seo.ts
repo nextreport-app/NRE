@@ -240,7 +240,7 @@ export const HOME_JSON_LD = {
           "@type": "Offer",
           price: "5",
           priceCurrency: "USD",
-          description: `${getPlanDisplayName("starter")} plan from $5/month with 7-day free trial`,
+          description: `${getPlanDisplayName("starter")} plan from USD 5/month with 7-day free trial`,
         },
       ],
       description:

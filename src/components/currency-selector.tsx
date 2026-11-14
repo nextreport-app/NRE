@@ -46,5 +46,5 @@ export function CurrencySelector({ compact = false, className = "" }: CurrencySe
 }
 
 export function pricingCurrencySymbol(currency: PricingCurrency): string {
-  return currency === "INR" ? "₹" : "$";
+  return currency === "INR" ? "₹" : "USD";
 }
