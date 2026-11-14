@@ -54,3 +54,24 @@ describe('offline Meta row evidence diff', () => {
     expect(() => insightEvidence({ data: input, paging: { next: 'more' } })).toThrow('all pages');
   });
 });
+
+
+describe("saved API export metadata", () => {
+ it("accepts both display type and raw indicator without replacing either", () => {
+  const manual=csvEvidence(csv([example]));
+  const exported=csv([example]).replace("Cost per result\n", "Cost per result,Result indicator\n")+",actions:offsite_conversion.fb_pixel_lead";
+  const api=csvEvidence(exported);
+  expect(api[0]).toMatchObject({resultType:"website submission",resultIndicator:"actions:offsite_conversion.fb_pixel_lead",results:2});
+  expect(diffRows(manual,api).summary.equal).toBe(1);
+ });
+ it("preserves blank explicit types and still rejects actual duplicate headers", () => {
+  const input=csv(['Campaign A,Set A,2026-10-01,,0,20,']).replace("Cost per result\n","Cost per result,Result indicator\n")+",actions:lead";
+  expect(csvEvidence(input)[0]).toMatchObject({resultType:"",resultIndicator:"actions:lead"});
+  expect(()=>csvEvidence(input.replace("Result type,","Result type,Result type,").replace('2026-10-01,,','2026-10-01,,,'))).toThrow("exactly one Result type");
+  expect(()=>csvEvidence(input.replace("Result indicator\n","Result indicator,Result indicator\n")+",actions:lead")).toThrow("exactly one Result indicator");
+ });
+ it("retains indicator-only export compatibility without silently equating labels", () => {
+  const api=csvEvidence(csv([example]).replace("Result type,","Result indicator,"));
+  expect(api[0]).toMatchObject({resultType:"website submission",resultIndicator:"website submission"});
+ });
+});
