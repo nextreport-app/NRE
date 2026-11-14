@@ -1820,7 +1820,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   // comment for what "low confidence" means and why it's surfaced here.
   const objectiveWarnings: ObjectiveWarning[] = [];
 
-  const weeklyReachPeriod: DateRangeIso | undefined = displayWeeklyRange ?? resolvedWeeklyRange;
+  const weeklyReachPeriod: DateRangeIso | undefined = isCalendarSpanReport ? mtdCalendarRange : displayWeeklyRange ?? resolvedWeeklyRange;
   const weeklyReachOpts: ReachAggregationOptions | undefined =
     metaCampaignPeriodReach && weeklyReachPeriod
       ? { metaCampaignPeriodReach, periodRange: weeklyReachPeriod, scope: "campaign" }
@@ -2001,7 +2001,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
       adSetImpr += parseCellNum(r.impressions);
     });
     if (adSetSpend <= 0) return;
-    const adSetReach = aggregateReach(blendSource, weeklyReachOpts);
+    const adSetReachOpts: ReachAggregationOptions = { ...weeklyReachOpts, scope: "adset" };
+    const adSetReach = aggregateReach(blendSource, adSetReachOpts);
     const { resultLabel, costLabel, resultValue, cprValue } = platformAdapter.singleRowResultDisplay(
       row,
       adSetRaw,
@@ -2076,7 +2077,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         freq: rowFreq,
         resultsNum: parseCellNum(resultValue),
         hasResults: parseCellNum(resultValue) > 0,
-        reachEstimated: isEstimatedReach(blendSource, weeklyReachOpts),
+        reachEstimated: isEstimatedReach(blendSource, adSetReachOpts),
         spendNum: adSetSpend,
         isInactive: statusIndicator !== null,
       },
@@ -2212,6 +2213,7 @@ export function buildPreviousMonthSummaryReportData(input: BuildPreviousMonthSum
 
 /** One metric's raw numeric value alongside its already-formatted display string — comparison-slides.ts renders `formatted`; buildComparisonReportData's own % change math (see computeChange) uses `value`. */
 export interface ComparisonMetricValue {
+  estimated?: boolean;
   value: number;
   formatted: string;
 }
@@ -2357,10 +2359,10 @@ function comparisonObjectiveTotals(
   return { count, cpr };
 }
 
-function comparisonMetricSet(spend: number, reach: number, results: number, cpr: number, currencySymbol: string): ComparisonMetricSet {
+function comparisonMetricSet(spend: number, reach: number, results: number, cpr: number, currencySymbol: string, estimatedReach = false): ComparisonMetricSet {
   return {
     spend: { value: spend, formatted: fmtCurrency(spend, currencySymbol) },
-    reach: { value: reach, formatted: fmtNumber(reach) },
+    reach: { value: reach, formatted: fmtNumber(reach), ...(estimatedReach ? { estimated: true } : {}) },
     results: { value: results, formatted: fmtNumber(results) },
     cpr: { value: cpr, formatted: cpr > 0 ? fmtCurrency2dp(cpr, currencySymbol) : "—" },
   };
@@ -2488,8 +2490,8 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
       additionalMetrics: buildComparisonExtraMetrics({ rowsA: byCampaignRawA[campaignName] ?? [], rowsB: byCampaignRawB[campaignName] ?? [], keys: comparisonMetricKeys, headers: csvHeaders ?? Object.keys(mtdDailyRows[0]?._raw ?? {}), platform, currencySymbol, objective, costLabel }),
       objective,
       costLabel,
-      metricsA: comparisonMetricSet(spendA, reachA, resultsA, cprA, currencySymbol),
-      metricsB: comparisonMetricSet(spendB, reachB, resultsB, cprB, currencySymbol),
+      metricsA: comparisonMetricSet(spendA, reachA, resultsA, cprA, currencySymbol, !isGoogle && isEstimatedReach(campRowsA.flatMap<MetricRow>(row => row.sourceRows ?? [row]))),
+      metricsB: comparisonMetricSet(spendB, reachB, resultsB, cprB, currencySymbol, !isGoogle && isEstimatedReach(campRowsB.flatMap<MetricRow>(row => row.sourceRows ?? [row]))),
       changes: {
         spend: computeChange(spendA, spendB),
         reach: computeChange(reachA, reachB),
@@ -2525,8 +2527,8 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
     periodBLabel: getComparisonPeriodLabel(periodB.startIso, periodB.endIso),
     campaigns,
     totals: {
-      metricsA: comparisonMetricSet(totalSpendA, totalReachA, totalResultsA, totalCprA, currencySymbol),
-      metricsB: comparisonMetricSet(totalSpendB, totalReachB, totalResultsB, totalCprB, currencySymbol),
+      metricsA: comparisonMetricSet(totalSpendA, totalReachA, totalResultsA, totalCprA, currencySymbol, campaigns.some(campaign => campaign.metricsA.reach.estimated)),
+      metricsB: comparisonMetricSet(totalSpendB, totalReachB, totalResultsB, totalCprB, currencySymbol, campaigns.some(campaign => campaign.metricsB.reach.estimated)),
       changes: {
         spend: computeChange(totalSpendA, totalSpendB),
         reach: computeChange(totalReachA, totalReachB),

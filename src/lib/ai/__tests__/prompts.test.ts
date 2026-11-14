@@ -41,7 +41,7 @@ describe("buildSummaryPrompt", () => {
   it("asks for 2 sentences that interpret, without dumping every card metric", () => {
     const prompt = buildSummaryPrompt(ctx());
     expect(prompt).toContain(
-      "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.",
+      "Write a campaign performance summary for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.",
     );
     expect(prompt).toContain("Do NOT re-list every card metric");
     expect(prompt).toContain('using the result label "PURCHASES" exactly as given');
@@ -73,7 +73,7 @@ describe("buildSummaryPrompt", () => {
 describe("buildInsightPrompt", () => {
   it("asks for exactly 2 sentences and bans the four-action laundry list", () => {
     const prompt = buildInsightPrompt(ctx());
-    expect(prompt).toContain("Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.");
+    expect(prompt).toContain("Write the Key Insights section for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.");
     expect(prompt).toContain("Sentence 1: One data read from the numbers");
     expect(prompt).toContain("Sentence 2: One next step that follows from that read");
     expect(prompt).toContain("FORBIDDEN: do not list four generic actions");
@@ -156,7 +156,7 @@ describe("buildFallbackSummary", () => {
     const result = buildFallbackSummary(ctx());
     expect(result).toBe(
       "This campaign is running for purchases and produced 21 purchases at ₹50.00 cost per purchase, on ₹1,050 " +
-        "spend. Efficiency this period sits at a 2.00% CTR.",
+        "spend. Click-through rate was 2.00%.",
     );
     expect(result.endsWith(".")).toBe(true);
     expect(result).not.toContain("During");
@@ -179,7 +179,7 @@ describe("buildFallbackSummary", () => {
 
   it("never double-appends a percent sign, since ctx.ctr already carries its own '%'", () => {
     const result = buildFallbackSummary(ctx({ ctr: "0.35%" }));
-    expect(result).toContain("sits at a 0.35% CTR");
+    expect(result).toContain("Click-through rate was 0.35%");
     expect(result).not.toContain("0.35%%");
   });
 });
@@ -354,16 +354,16 @@ describe("buildFallbackInsights", () => {
   it("builds 2 sentences from real data, with one next step and no laundry list", () => {
     const result = buildFallbackInsights(ctx());
     expect(result).toBe(
-      "Delivery produced 21 purchases at ₹50.00 on ₹1,050 spend. CTR is holding at 2.00% while cost per purchase is ₹50.00 — inspect the landing page before changing targeting.",
+      "Delivery produced 21 purchases at ₹50.00 on ₹1,050 spend. CTR is 2.00% while cost per purchase is ₹50.00 — inspect the landing page before changing targeting.",
     );
     expect(result.endsWith(".")).toBe(true);
     expect(result).not.toContain("pausing underperformers");
     expect(result).not.toContain("testing new creatives");
   });
 
-  it("calls out high frequency as creative fatigue", () => {
+  it("suggests checking trends instead of diagnosing fatigue from frequency", () => {
     const result = buildFallbackInsights(ctx({ freq: 4.2 }));
-    expect(result).toContain("Frequency is 4.2x, so refresh creatives before adding budget.");
+    expect(result).toContain("Frequency is 4.2x; compare click and result trends before testing a creative refresh.");
   });
 
   it("never double-appends a percent sign", () => {
@@ -399,4 +399,29 @@ describe("aiCopyViolatesObjectiveRules", () => {
     ).toBe(true);
     expect(aiCopyViolatesObjectiveRules("refresh the instant form fields", ctx({ resultLabel: "META FORM LEADS" }))).toBe(false);
   });
+});
+
+
+describe("source-bounded client narrative", () => {
+ it.each([
+  "Efficiency remains solid against your target.",
+  "This is performing profitably against typical Q3 benchmarks.",
+  "Performance was steady week-over-week.",
+  "Frequency indicates audience fatigue is likely suppressing CTR.",
+  "The audience remains engaged without saturation.",
+  "Push frequency toward 3.5x to maximize reach.",
+  "Strong click volume often masks downstream conversion leaks.",
+ ])("rejects an unsupported claim: %s", text => {
+  expect(aiCopyViolatesObjectiveRules(text,ctx())).toBe(true);
+ });
+ it("allows period facts and a controlled test without an invented benchmark", () => {
+  expect(aiCopyViolatesObjectiveRules("Recorded 21 purchases at ₹50.00 each. Compare the next reporting period before increasing spend.",ctx())).toBe(false);
+ });
+ it("keeps successful instant-form fallback advice on Meta rather than a landing page", () => {
+  const context=ctx({resultLabel:"META FORM LEADS",costLabel:"COST PER LEAD"});
+  const copy=buildFallbackInsights(context);
+  expect(copy).toContain("instant-form completion");
+  expect(copy).not.toContain("landing page");
+  expect(aiCopyViolatesObjectiveRules(copy,context)).toBe(false);
+ });
 });

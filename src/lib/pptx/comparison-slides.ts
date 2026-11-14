@@ -108,8 +108,8 @@ export function buildComparisonCampaignSlideXml(
 ): string {
   const rows: ComparisonMetricRow[] = [
     { key: "spend", label: "AD SPEND", valueA: campaign.metricsA.spend.formatted, valueB: campaign.metricsB.spend.formatted, change: campaign.changes.spend },
-    { key: "reach", label: "REACH", valueA: campaign.metricsA.reach.formatted, valueB: campaign.metricsB.reach.formatted, change: campaign.changes.reach },
-    { key: "results", label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
+    { key: "reach", label: campaign.metricsA.reach.estimated || campaign.metricsB.reach.estimated ? "REACH (EST.)" : "REACH", valueA: campaign.metricsA.reach.formatted, valueB: campaign.metricsB.reach.formatted, change: campaign.changes.reach },
+    { key: "results", label: campaign.objective === "REACH" && (campaign.metricsA.reach.estimated || campaign.metricsB.reach.estimated) ? "REACH (EST.)" : campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
     { key: "cpr", label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
   ];
   return buildComparisonMetricSlideXml(campaign.campaignName, campaign.objective === "REACH" ? rows.filter(row => row.key !== "reach") : rows, periodALabel, periodBLabel, background, isLightTemplate, undefined, periodTitles);
