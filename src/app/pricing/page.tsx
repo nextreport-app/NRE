@@ -9,7 +9,6 @@ import { PricingComparisonTable } from "@/components/pricing/pricing-comparison-
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, faqPageJsonLd, pageMetadata } from "@/lib/seo";
 import { PRICING_FAQS } from "@/lib/pricing-faq";
-import { PLATFORM_LIST_SHORT } from "@/lib/plan-labels";
 
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
@@ -42,17 +41,13 @@ export default async function PricingPage() {
         <Breadcrumbs current="Pricing" />
         <div className="text-center">
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">Launch pricing for agencies of every size</h1>
-          <p className="mx-auto mt-4 max-w-xl text-base text-ink-muted">
-            {PLATFORM_LIST_SHORT} — share PowerPoint (.pptx), live links, or Google Slides.
-          </p>
         </div>
 
-        <PricingCurrencyBanner />
-
-        <p className="mb-8 mt-8 text-center text-xs leading-relaxed text-ink-muted">
-          ✓ 7-day trial: 3 clients, 10 reports · ✓ White-label client reports · ✓ No credit card required · ✓ Cancel anytime · ✓
-          INR or USD billing
+        <p className="mt-4 text-center text-sm leading-relaxed text-ink-muted">
+          7-day free trial · 3 clients, 10 reports · No credit card required
         </p>
+
+        <PricingCurrencyBanner />
 
         <CurrencyPricing loggedIn={loggedIn} userEmail={session?.user?.email} userName={session?.user?.name} />
 
