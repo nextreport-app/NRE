@@ -12,7 +12,7 @@ export function PlanPriceAmount({ planId, currency, interval = "monthly" }: {
   return <span className="inline-flex items-baseline gap-0.5 whitespace-nowrap">
     <span className="sr-only">{formattedPlanPrice(planId, currency, interval)}</span>
     <span aria-hidden="true" className="text-sm font-normal">{currency === "INR" ? "₹" : "$"}</span>
-    <span aria-hidden="true">{amount}</span>
+    <span aria-hidden="true" className="font-sans font-normal tracking-tight">{amount}</span>
     {currency === "USD" && <span aria-hidden="true" className="ml-0.5 text-xs font-medium">USD</span>}
   </span>;
 }
