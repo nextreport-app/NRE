@@ -99,16 +99,12 @@ describe("buildCoverSlideXml — account name auto-shrink (regression)", () => {
 describe("buildCoverSlideXml — readability font sizes (Fix 3)", () => {
   it("renders the date line at 14pt", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
-    expect(sizeOfRunContaining(xml, BASE_COVER.reportDate)).toBe(15);
+    expect(sizeOfRunContaining(xml, BASE_COVER.dateRange + " · 2026")).toBe(15);
   });
 
-  it("renders the Performance Score line at 14pt bold", () => {
+  it("omits the heuristic performance verdict", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
-    const idx = xml.indexOf(`<a:t>${BASE_COVER.healthBadge}</a:t>`);
-    const runStart = xml.lastIndexOf("<a:r>", idx);
-    const rPr = xml.slice(runStart, idx);
-    expect(sizeOfRunContaining(xml, BASE_COVER.healthBadge)).toBe(15);
-    expect(rPr).toContain('b="1"');
+    expect(xml).not.toContain(BASE_COVER.healthBadge);
   });
 
   it("never renders any cover-slide text below 12pt", () => {
@@ -185,7 +181,7 @@ describe("buildCoverSlideXml — Prepared By line", () => {
     const withAgency = buildCoverSlideXml(template.cover, BASE_COVER, { agencyName: "Bright Path Marketing" });
 
     const presentedToY = (xml: string) => {
-      const idx = xml.indexOf("PRESENTED TO");
+      const idx = xml.indexOf("META ADS REPORT");
       const spStart = xml.lastIndexOf("<p:sp>", idx);
       return Number(/<a:off x="\d+" y="(\d+)"/.exec(xml.slice(spStart, idx))![1]);
     };
@@ -233,7 +229,7 @@ describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon
 
   it("shows only the badge text, with no ⓘ icon appended", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
-    expect(xml).toContain("<a:t>Healthy</a:t>");
+    expect(xml).not.toContain("<a:t>Healthy</a:t>");
     expect(xml).not.toContain("ⓘ");
   });
 
@@ -245,7 +241,7 @@ describe("buildCoverSlideXml — health badge (Fix 2 revert: no tooltip, no icon
 
   it("leaves the health badge shape at the template's original, unshifted position", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER);
-    expect(shapeY(xml, "Healthy")).toBe(6119872);
+    expect(xml).not.toContain("<a:t>Healthy</a:t>");
   });
 });
 

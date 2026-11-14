@@ -1,169 +1,49 @@
-/**
- * Metric Abbreviation Guide slide — in-place retext of the template's 12 fixed card slots.
- */
+/** One selected-metric guide; card labels and definitions are rendered together. */
+import { rectangle, resetShapeIdCounter, textBox } from "./shapes";
+import { slideSurfacePalette } from "./slide-surface-palette";
 
-import { enforceMinFontSize, forceRunStyle, replaceLiteralText, setShapeNormAutofit } from "./ooxml";
-import { REPORT_HEADER_SIZE_PT } from "./fill-tags";
-import { reportHeaderColor } from "./light-theme-colors";
+export interface LegendEntry { term: string; explanation: string }
 
-export interface LegendEntry {
-  term: string;
-  explanation: string;
-}
-
-interface TemplateLegendSlot {
-  titleRuns: string[];
-  descText: string;
-  matchKeys: string[];
-}
-
-function extractSpBlocks(xml: string): string[] {
-  const blocks: string[] = [];
-  const re = /<p:sp>[\s\S]*?<\/p:sp>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(xml))) blocks.push(m[0]);
-  return blocks;
-}
-
-function extractRunTexts(block: string): string[] {
-  const texts: string[] = [];
-  const re = /<a:t>([^<]*)<\/a:t>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(block))) if (m[1]) texts.push(m[1]);
-  return texts;
-}
-
-function normalize(s: string): string {
-  return s
-    .toUpperCase()
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Splits long metric names into the template's abbreviation + expansion pattern. */
-function splitLegendTitle(term: string, slot: TemplateLegendSlot): { primary: string; secondary: string } {
-  const upper = term.toUpperCase();
-  const maxSecondaryLen = 18;
-
-  function trimSecondary(text: string): string {
-    if (text.length <= maxSecondaryLen) return text;
-    return `${text.slice(0, maxSecondaryLen - 1)}…`;
-  }
-
-  if (slot.titleRuns.length < 2) {
-    const words = upper.split(/\s+/);
-    if (words.length >= 4 || upper.length > 16) {
-      return { primary: words.map((w) => w[0]).join("").slice(0, 6), secondary: "" };
-    }
-    return { primary: upper.length > 20 ? `${upper.slice(0, 19)}…` : upper, secondary: "" };
-  }
-
-  const paren = upper.match(/^(.+?)\s*\((.+)\)$/);
-  if (paren) {
-    const expansion = `(${paren[2].trim()})`;
-    return { primary: `${paren[1].trim().slice(0, 14)} `, secondary: trimSecondary(expansion) };
-  }
-
-  const words = upper.split(/\s+/);
-  if (words.length >= 4 || upper.length > 18) {
-    const acronym = words.map((w) => w[0]).join("").slice(0, 5);
-    return { primary: `${acronym} `, secondary: trimSecondary(`(${upper.slice(0, 16)}…)`) };
-  }
-  if (words.length === 3 && !/^\d+$/.test(words[2] ?? "")) {
-    return { primary: `${words.slice(0, 2).join(" ")} `, secondary: trimSecondary(`(${words[2]})`) };
-  }
-  return { primary: upper.length > 16 ? `${upper.slice(0, 15)}…` : upper, secondary: "" };
-}
-
-const LEGEND_DESC_OVERRIDES: Record<string, string> = {
-  "The period during which Facebook's algorithm is learning the best ways to  achieve your campaign objective.":
-    "When Meta's system is still learning the best way to deliver your ads.",
-  "The actual number of clicks on links within the ad, leading to your chosen destination.":
-    "Clicks on links in your ad that go to your website or app.",
-};
-
-const TERM_ALIASES: Record<string, string> = {
-  FREQUENCY: "AD FREQUENCY",
-};
-
-function parseTemplateLegendSlots(templateXml: string): TemplateLegendSlot[] {
-  const textBlocks = extractSpBlocks(templateXml)
-    .map((block) => extractRunTexts(block))
-    .filter((texts) => texts.length > 0);
-
-  const cardBlocks = textBlocks.slice(1);
-  const slots: TemplateLegendSlot[] = [];
-
-  for (let i = 0; i + 1 < cardBlocks.length; i += 2) {
-    const titleRuns = cardBlocks[i];
-    const descText = cardBlocks[i + 1].join(" ");
-    const matchKeys = new Set<string>();
-    for (const run of titleRuns) {
-      const norm = normalize(run);
-      if (norm) matchKeys.add(norm);
-    }
-    for (const [shortForm, canonical] of Object.entries(TERM_ALIASES)) {
-      if (matchKeys.has(canonical)) matchKeys.add(shortForm);
-    }
-    slots.push({ titleRuns, descText, matchKeys: [...matchKeys] });
-  }
-
-  return slots;
+export function metricDefinition(term: string, fallback = ""): string {
+  const t = term.toUpperCase().replace(/\s*\(EST\.\)/g, "").trim();
+  if (/1K|1,?000/.test(t) && /REACH/.test(t)) return "Spend divided by people reached, multiplied by 1,000. Reach-based rates may use estimated reach.";
+  if (/CPM|COST PER.*IMPRESSION/.test(t)) return "Spend per 1,000 impressions. This differs from cost per 1,000 people reached.";
+  if (t === "REACH" || t === "REACH (CAMPAIGNS)") return "People reached. Period values may be estimated; campaign audiences can overlap.";
+  if (t === "IMPRESSIONS") return "The number of times ads were displayed, including repeat views.";
+  if (/FREQUENCY/.test(t)) return "Impressions divided by reach: average views per person. Estimated when reach is estimated.";
+  if (/CPC.*ALL/.test(t)) return "Spend divided by all ad clicks, including interactions beyond link clicks.";
+  if (/COST PER LINK CLICK|CPLC/.test(t)) return "Spend divided by link clicks. This differs from CPC (all).";
+  if (/CTR.*ALL/.test(t)) return "All ad clicks divided by impressions, expressed as a percentage.";
+  if (/LINK CTR/.test(t)) return "Link clicks divided by impressions, expressed as a percentage.";
+  if (t === "LINK CLICKS") return "Clicks on links in an ad that lead to the selected destination.";
+  if (t === "AD SPEND") return "Total amount spent during the displayed report period.";
+  if (t === "WEBSITE LEADS") return "Attributed lead events on the advertiser’s website.";
+  if (t === "LANDING PAGE VIEWS") return "Attributed visits where the destination page loaded after an ad click.";
+  if (/^COST PER /.test(t)) return `Spend divided by the corresponding ${t.replace(/^COST PER /, "").toLowerCase()} results. Unavailable when no results were recorded.`;
+  return fallback && fallback.toUpperCase() !== t ? fallback : `Attributed ${term.toLowerCase()} recorded for the displayed period.`;
 }
 
 export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[], isLightTemplate = false): string {
-  const slots = parseTemplateLegendSlots(templateXml);
-  const usedSlotIndex = new Set<number>();
-  const unmatchedEntries: LegendEntry[] = [];
-
+  const unique = new Map<string, LegendEntry>();
   for (const entry of entries) {
-    const normTerm = normalize(entry.term);
-    const slotIndex = slots.findIndex((slot, i) => !usedSlotIndex.has(i) && slot.matchKeys.includes(normTerm));
-    if (slotIndex === -1) {
-      unmatchedEntries.push(entry);
-    } else {
-      usedSlotIndex.add(slotIndex);
-    }
+    const key = entry.term.toUpperCase().replace(/\s*\(EST\.\)/g, "").trim();
+    if (!unique.has(key)) unique.set(key, {...entry, explanation: metricDefinition(entry.term, entry.explanation)});
   }
-
-  let xml = templateXml;
-  let cursor = 0;
-  for (const entry of unmatchedEntries) {
-    while (cursor < slots.length && usedSlotIndex.has(cursor)) cursor++;
-    if (cursor >= slots.length) break;
-    const slot = slots[cursor];
-    usedSlotIndex.add(cursor);
-    cursor++;
-
-    const { primary, secondary } = splitLegendTitle(entry.term, slot);
-    xml = replaceLiteralText(xml, slot.titleRuns[0], primary);
-    if (slot.titleRuns[1]) {
-      xml = replaceLiteralText(xml, slot.titleRuns[1], secondary || " ");
-    }
-    const explanation =
-      entry.explanation.length > 90 ? `${entry.explanation.slice(0, 87).trimEnd()}…` : entry.explanation;
-    xml = replaceLiteralText(xml, slot.descText, explanation);
-    xml = setShapeNormAutofit(xml, slot.titleRuns[0]);
-    xml = setShapeNormAutofit(xml, explanation);
-  }
-
-  for (const [original, replacement] of Object.entries(LEGEND_DESC_OVERRIDES)) {
-    xml = replaceLiteralText(xml, original, replacement);
-  }
-
-  // Description floor only — title shapes keep template sizing so headings
-  // don't grow into the description area below.
-  for (const slot of slots) {
-    xml = setShapeNormAutofit(xml, slot.descText);
-  }
-  xml = enforceMinFontSize(xml, 11);
-
-  xml = forceRunStyle(xml, "METRIC ABBREVIATION GUIDE", {
-    bold: true,
-    sizePt: REPORT_HEADER_SIZE_PT,
-    color: reportHeaderColor(isLightTemplate),
+  const concepts = unique.size ? [...unique.values()] : ["AD SPEND", "REACH", "IMPRESSIONS", "CTR (ALL)", "CPC (ALL)", "CPM"].map(term => ({term, explanation:metricDefinition(term)}));
+  const shown = concepts.slice(0, 12);
+  const palette = slideSurfacePalette(isLightTemplate);
+  resetShapeIdCounter(2000);
+  const shapes = [textBox({x:35,y:25,w:890,h:42,text:"METRIC ABBREVIATION GUIDE",sizePt:28,bold:true,colorHex:palette.text})];
+  shown.forEach((entry,index) => {
+    const x=35+(index%3)*300, y=87+Math.floor(index/3)*100;
+    shapes.push(rectangle({x,y,w:288,h:91,fillHex:palette.cardFill}));
+    shapes.push(textBox({x:x+12,y:y+8,w:264,h:26,text:entry.term,sizePt:13,bold:true,colorHex:palette.text,align:"l"}));
+    shapes.push(textBox({x:x+12,y:y+35,w:264,h:51,text:entry.explanation,sizePt:11.5,colorHex:palette.label,align:"l"}));
   });
-
-  return xml;
+  const footer = concepts.length > 12 ? `12 of ${concepts.length} selected terms shown. Full definitions: nextreport.in/help/metrics` : "Estimated reach is not an exact unique audience total. Full definitions: nextreport.in/help/metrics";
+  shapes.push(textBox({x:35,y:503,w:890,h:20,text:footer,sizePt:11,colorHex:palette.label}));
+  // Retain the real slide layout/master and relationships, but replace the
+  // entire card tree atomically. No cross-card literal replacements or filler.
+  const scaffold=templateXml.match(/<p:spTree>([\s\S]*?<\/p:grpSpPr>)/)?.[1] ?? "";
+  return templateXml.replace(/<p:spTree>[\s\S]*?<\/p:spTree>/, `<p:spTree>${scaffold}${shapes.join("")}</p:spTree>`);
 }

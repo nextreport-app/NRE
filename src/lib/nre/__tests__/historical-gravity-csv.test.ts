@@ -1,4 +1,3 @@
-import { readFileSync } from "fs";
 import { describe, expect, it } from "vitest";
 import { parseMtdCsvForAdPlatform } from "../tiktok-columns";
 import { buildHistoricalReportData } from "../historical-report-data";
@@ -6,7 +5,16 @@ import { getRowDate } from "../columns";
 import { parseDate } from "../dates";
 import { parseCellNum } from "../format";
 
-const CSV_PATH = "/home/ubuntu/.cursor/projects/workspace/uploads/DC-weekly-Gravity_4_months_4848.csv";
+// Self-contained public synthetic data; never depend on an uploaded customer file.
+function fixtureBuffer() {
+ const lines=["Campaign name,Ad set name,Day,Amount spent (USD),Results,Result type,Reach,Impressions,Landing page views"];
+ for(let month=5;month<=8;month++) for(let day=1;day<=new Date(2026,month,0).getDate();day++) {
+  const date=`2026-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  lines.push(`Grade School | Leads,Main,${date},7.01,1,Website leads,100,200,2`);
+  lines.push(`Secondary,Main,${date},1,1,Website leads,20,40,1`);
+ }
+ return Buffer.from(lines.join("\n"));
+}
 
 function sumMayGradeSchool(rows: ReturnType<typeof parseMtdCsvForAdPlatform>["rows"]) {
   let spend = 0;
@@ -27,7 +35,7 @@ function sumMayGradeSchool(rows: ReturnType<typeof parseMtdCsvForAdPlatform>["ro
 
 describe("Gravity 4-month CSV historical accuracy", () => {
   it("matches full-month CSV totals for May Grade School", () => {
-    const buf = readFileSync(CSV_PATH);
+    const buf = fixtureBuffer();
     const parsed = parseMtdCsvForAdPlatform(buf, "META");
     const now = new Date("2026-09-07T12:00:00Z");
     const manual = sumMayGradeSchool(parsed.rows);
@@ -56,8 +64,8 @@ describe("Gravity 4-month CSV historical accuracy", () => {
     expect(parseCellNum(mayGrade!.metrics.results)).toBeGreaterThanOrEqual(manual.results);
   });
 
-  it("excludes sub-$10 campaigns and includes month totals + comparison rows", () => {
-    const buf = readFileSync(CSV_PATH);
+  it("retains positive-spend campaigns and includes month totals + comparison rows", () => {
+    const buf = fixtureBuffer();
     const parsed = parseMtdCsvForAdPlatform(buf, "META");
     const data = buildHistoricalReportData({
       accountName: "Gravity",

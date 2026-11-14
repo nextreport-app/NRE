@@ -209,6 +209,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       metricHeaderProfile: buildCsvMetricHeaderProfile(mtdParsed.headers,mtdParsed.rows),
       campaigns,
       campaignSpend,
+      detailCampaigns: spendContext.detailCampaigns,
       selectedCampaigns,
       campaignStepMode,
       lowSpendCampaigns: zeroSpendCampaigns,

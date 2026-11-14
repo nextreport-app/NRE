@@ -16,9 +16,11 @@ export function WizardReportSetupPanel({
   clientTimezone,
   onReportTypeChange,
   source = "csv",
+  firstVisit = false,
   variant = "full",
   onEditSetup,
 }: {
+  firstVisit?: boolean;
   source?: "csv" | "api";
   reportType: ReportTypeValue;
   reportTypeLabel: string;
@@ -30,7 +32,7 @@ export function WizardReportSetupPanel({
 }) {
   const { locale } = useSiteTheme();
   const choicesId = useId();
-  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(firstVisit);
   const selectedCopy = wizardReportTypeCopyForLocale(locale, reportType) ?? WIZARD_REPORT_TYPE_COPY[reportType];
   const requirement = wizardCsvRequirementForReportType({ reportType, clientTimezone });
 
@@ -55,7 +57,7 @@ export function WizardReportSetupPanel({
       <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-0.5 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3></div>
       <button type="button" onClick={() => setSetupOpen(open => !open)} aria-expanded={setupOpen} aria-controls={choicesId} className="text-[13px] font-medium text-dash-accent hover:underline">{setupOpen ? "Close choices" : "Change report type"}</button>
     </div>
-    <p className="text-[13px] leading-relaxed text-dash-ink-secondary" title={selectedCopy.cardYouGet}>{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</p>
+    <p className="text-sm leading-relaxed text-dash-ink-secondary" title={selectedCopy.cardYouGet}>{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</p>
     </div>
     {!["MONTHLY", "HISTORICAL"].includes(reportType) && <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">{source === "api" ? "Report data:" : "CSV needed:"}</span> {source === "api" ? requirement.shortNote.replace(/CSV/g, "data") : requirement.shortNote}</p>}
     {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">

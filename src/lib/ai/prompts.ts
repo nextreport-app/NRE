@@ -49,6 +49,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
       "Sentence 1: What this campaign is for (reach/awareness) and the one reach result that matters this period.\n" +
       "Sentence 2: One efficiency read (CPM, frequency, or CTR) — interpret, do not dump the scorecard.\n" +
       "Rules:\n" +
+      "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
       "- Do NOT mention results, purchases, leads, link clicks, or any conversion count\n" +
       "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
       "- Use real numbers from the data — never invent or estimate\n" +
@@ -67,6 +68,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
     "Sentence 1: What this campaign is for, using the result label \"" + resultLabel + "\" exactly as given, and the one result that matters this period.\n" +
     "Sentence 2: One efficiency read (cost per result, CTR, or spend vs results) — interpret or compare, do not dump the full scorecard.\n" +
     "Rules:\n" +
+      "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
     "- Use the same result label as the chips: " + resultLabel + "\n" +
     "- If results = 0, say the campaign recorded no " + resultLabel.toLowerCase() + " this week — do not claim the algorithm is learning unless this is clearly a brand-new campaign (it is not, unless the data says so)\n" +
     "- Do NOT mention ad sets, combined ad sets, delivery status, or technical implementation details\n" +
@@ -81,6 +83,8 @@ export function buildSummaryPrompt(ctx: AiContext): string {
 }
 
 export function buildInsightPrompt(ctx: AiContext): string {
+  if (isReachCampaign(ctx)) return "Write exactly two short sentences for an awareness report. Use only supplied figures. CPM means cost per 1,000 impressions; cost per 1,000 reached is a separate rate. Do not interchange them. Reach may be estimated. Give one cautious next step, not a proven causal diagnosis. Do not infer audience quality or delivery learning status. Data: Spend " + ctx.spend + ", Reach " + ctx.reach + ", Impressions " + ctx.impressions + ", CPM " + ctx.cpm + ", Cost per 1,000 reached " + ctx.cpr + ", CTR " + ctx.ctr + ", Frequency " + ctx.freq.toFixed(2) + ".";
+
   if (isMetaFormLeadsCampaign(ctx)) {
     return (
       "This is a META INSTANT FORM LEADS campaign — leads submit inside Meta's own lead form, NOT on a website.\n" +
@@ -90,6 +94,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
       "FORBIDDEN: pixel, landing page, website tracking, checkout, or any off-site conversion setup.\n" +
       "FORBIDDEN: do not list four generic actions as a laundry list. Give one specific next step only.\n" +
       "Rules:\n" +
+      "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
       "- Always use actual numbers from the data when you cite them\n" +
       "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
       "- Do not use bullet points, headers, dashes, or line breaks\n" +
@@ -108,6 +113,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
     "Sentence 2: One next step that follows from that read. Examples: high frequency (about 3.5x+) → creative fatigue; spend with 0 results → check the form, pixel, or conversion setup; strong CTR with an expensive cost per result → landing page; paused → do not invent a strategy.\n" +
     "FORBIDDEN: do not list four generic actions (shift budget, pause underperformers, test new creatives, and refine targeting) as a laundry list. Give one specific next step only.\n" +
     "Rules:\n" +
+      "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
     "- Always use actual numbers from the data when you cite them\n" +
     "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
     "- Do not use bullet points, headers, dashes, or line breaks\n" +
@@ -368,6 +374,8 @@ export function aiCopyViolatesObjectiveRules(
   ctx: AiContext,
   platform: "META" | "GOOGLE" | "TIKTOK" = "META",
 ): boolean {
+  if (/\b(proves?|definitely caused|confirms? a|conversion funnel problem|in (?:the )?learning phase)\b/i.test(text)) return true;
+  if (ctx.resultLabel === "REACH" && ctx.cpr !== ctx.cpm && text.includes(ctx.cpr) && /per (?:one )?thousand impressions|per 1,000 impressions/i.test(text)) return true;
   if (platform !== "META") return false;
   if (!isMetaFormLeadsCampaign(ctx)) return false;
   const lower = text.toLowerCase();

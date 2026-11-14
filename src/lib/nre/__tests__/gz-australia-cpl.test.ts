@@ -53,7 +53,7 @@ describe("GZ Australia CSV — CPL matches spend / leads", () => {
     const col = data.mtdRow.resultColumns.find((c) => c.label === "META FORM LEADS");
     expect(col?.value).toBe("17");
     expect(col?.cprValue).toBe("A$56.27");
-    expect(data.mtdRow.spend).toBe("A$957");
+    expect(data.mtdRow.spend).toBe("A$956.63");
   });
 
   it("Aug partial as previous month: CPL equals total spend / total leads", () => {

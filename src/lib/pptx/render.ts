@@ -8,7 +8,6 @@ import { findGoogleMetricByKey } from "../nre/google-dictionary";
 import { buildComparisonExtraSlide } from "./comparison-extra-slide";
 import { comparisonSummaryPages } from "../nre/comparison-summary-pagination";
 import { paginateComparisonMetrics } from "../nre/comparison-extra-metrics";
-import { METRIC_GUIDE_ENTRIES_PER_SLIDE } from "../nre/metric-pagination";
 import { additionalMetricPages, buildAdditionalMetricsSlideXml } from "./additional-metrics-slide";
 /**
  * Top-level PPTX render orchestrator — builds the final ordered slide list
@@ -152,7 +151,7 @@ export interface RenderPptxInput {
 function appendMetricGuide(template: LoadedTemplate, slides: SlideToInsert[], isLightTemplate: boolean, entries: LegendEntry[] = []) {
   // Keep the guide to one readable template slide; additional metric cards
   // must not create a second page filled with repeated template definitions.
-  slides.push({ xml: buildLegendSlideXml(template.legend.xml, entries.slice(0, METRIC_GUIDE_ENTRIES_PER_SLIDE), isLightTemplate), rels: template.legend.rels });
+  slides.push({ xml: buildLegendSlideXml(template.legend.xml, entries, isLightTemplate), rels: template.legend.rels });
 }
 
 export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
@@ -386,7 +385,7 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     rels: template.cover.rels,
   });
 
-  for (const campaign of data.campaigns.filter(item => item.metricsA.spend.value > 0 || item.metricsB.spend.value > 0)) {
+  for (const campaign of data.campaigns.filter(item => item.metricsA.spend.value > 0)) {
     slides.push({
       xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate, { a: data.periodATitle ?? "PERIOD A", b: data.periodBTitle ?? "PERIOD B" }),
       rels: buildComparisonSlideRels(template.background.mediaTarget),
@@ -401,7 +400,19 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     rels: buildComparisonSlideRels(template.background.mediaTarget),
   }));
 
-  appendMetricGuide(template, slides, isLightTemplate, [...new Map(data.campaigns.flatMap(campaign => (campaign.additionalMetrics ?? []).map(metric => [metric.key, { term: metric.label, explanation: findMetaMetricByKey(metric.key)?.explanation ?? findGoogleMetricByKey(metric.key)?.explanation ?? metric.label } ] as const))).values()]);
+  const comparisonGuideEntries: LegendEntry[] = [
+    { term: "AD SPEND", explanation: "" },
+    { term: "REACH", explanation: "" },
+    ...data.campaigns.flatMap(campaign => [
+      { term: campaign.objective, explanation: "" },
+      { term: campaign.costLabel, explanation: "" },
+      ...(campaign.additionalMetrics ?? []).map(metric => ({
+        term: metric.label,
+        explanation: findMetaMetricByKey(metric.key)?.explanation ?? findGoogleMetricByKey(metric.key)?.explanation ?? metric.label,
+      })),
+    ]),
+  ];
+  appendMetricGuide(template, slides, isLightTemplate, comparisonGuideEntries);
   return assemblePptx(template, slides);
 }
 
@@ -563,7 +574,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
     },
   ];
 
-  if (!data.isPaused && input.shareVisibility?.combinedTotal !== false) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,dailyClientCopy(data.presentation!.summaryPages.flat(),data.dayRows),index,pages.length,isLightTemplate),rels:template.campaign.rels}));
+  if (!data.isPaused && input.shareVisibility?.combinedTotal !== false) (data.presentation?.summaryPages ?? []).forEach((metrics,index,pages)=>slides.push({xml:buildDailySummarySlide(template.campaign,metrics,data.accountName,`${data.periodLabel ?? "Daily report"} · ${data.rangeLabel}`,index === 0 ? dailyClientCopy(data.presentation!.summaryPages.flat(),data.dayRows) : {summary:"Additional metrics for the same selected period.",insights:"See the first summary slide for the overall observations."},index,pages.length,isLightTemplate),rels:template.campaign.rels}));
 
   if (data.isPaused) {
     slides.push({

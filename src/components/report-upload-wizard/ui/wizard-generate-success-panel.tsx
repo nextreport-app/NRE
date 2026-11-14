@@ -1,6 +1,7 @@
 "use client";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
+import { ReportShareAccess } from "./report-share-access";
 import { WizardReportHelp } from "./wizard-report-help";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -52,6 +53,7 @@ function formatGeneratedAt(iso: string): string {
 }
 
 type WizardGenerateSuccessPanelProps = {
+  onShareTokenChange?: (token: string | null) => void;
   clientCurrency?: string;
   clientTimezone?: string;
   clientName: string;
@@ -102,6 +104,7 @@ export function WizardGenerateSuccessPanel({
   shareToken,
   publishedAt,
   generatedAt,
+  onShareTokenChange,
   clientShareMessageCopied,
   shareLinkCopied,
   onCopyClientShareMessage,
@@ -271,6 +274,8 @@ export function WizardGenerateSuccessPanel({
           </div>
         </section>
 
+        <p className="text-sm text-dash-ink-secondary">{publishedAt ? "Published edits are live." : "Generated report · review the slides before sharing. Edits go live when you publish them."}</p>
+        {reportId && onShareTokenChange && <ReportShareAccess reportId={reportId} enabled={!!shareToken} onChanged={onShareTokenChange} />}
         {/* Section C — share with client */}
         {shareToken && reportUrl && shareInput ? (
           <section aria-labelledby="success-share-heading" className="space-y-3 rounded-lg border border-dash-border bg-dash-bg/30 p-4">

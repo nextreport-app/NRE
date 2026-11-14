@@ -69,7 +69,7 @@ function metaExportLines(reportType: ReportTypeValue, now: Date, timezone: strin
     case "DAY_BREAKDOWN":
       return [
         "Export every day you want as a table row, with Day breakdown.",
-        "Match Ads Manager to the date range you will pick after upload.",
+        "Match Ads Manager to the selected date range above.",
         cal.isFirstDayOfMonth
           ? "On the 1st, your range may start in the previous month — that is fine if those days are in the file."
           : "Last 30 Days works only if every day you need is inside that window.",

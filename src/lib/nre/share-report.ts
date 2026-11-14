@@ -303,7 +303,7 @@ export function buildShareReportData(
     cover: {
       reportDate: data.cover.reportDate,
       dateRange: data.cover.dateRange,
-      healthBadge: data.cover.healthBadge,
+      healthBadge: "",
       healthScore: data.cover.healthScore,
       budgetSummary: data.cover.budgetSummary,
     },

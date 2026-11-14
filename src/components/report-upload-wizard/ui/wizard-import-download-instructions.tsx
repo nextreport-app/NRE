@@ -115,7 +115,7 @@ export function WizardImportDownloadInstructions({
   const showExpandedBody = open && resolved;
 
   return (
-    <section className="text-[13px] leading-relaxed text-dash-ink-secondary" aria-labelledby="wizard-download-instructions-heading">
+    <section className="text-sm leading-relaxed text-dash-ink-secondary" aria-labelledby="wizard-download-instructions-heading">
       <div className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3">
         <div className="flex items-center gap-2">
         {platform === "META" ? <WizardMetaCsvImportTooltip monthly={["MONTHLY", "HISTORICAL"].includes(reportType)} /> : null}

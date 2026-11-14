@@ -19,7 +19,7 @@ const EN_UI = {
     "Review the differing metrics, date windows, and objective choices below. Generation is paused until these listed checks agree. Rebuild and recheck the preview; the investigation details are saved automatically when available.",
   csvVerifiedTitle: "Source data checks passed",
   csvVerifiedDetail: () =>
-    "The checked metrics match your imported data for each reporting period.",
+    "The listed checks match your source for each period. Daily-data reach can be estimated; this is not an independent verification of unique audiences or AI commentary.",
   csvSkippedTitle: "Source data cross-check not run",
   csvSkippedLead:
     "This is not a pass — deck totals were not compared to your imported data for this report setup.",
@@ -74,7 +74,7 @@ const EN_UI = {
   previouslyConfirmed: "Previously confirmed",
   confirmationRequired: "Confirmation required",
   stepOf: (step: number, total: number, label: string) => `Step ${step} of ${total} · ${label}`,
-  generateHeadingPrefix: "Generate:",
+  generateHeadingPrefix: "Review & generate:",
   moreReportTypes: "More report types",
 };
 
@@ -82,7 +82,7 @@ const EN_STEPS = {
   stepImport: "Import",
   stepCampaigns: "Campaigns",
   stepMetrics: "Metrics",
-  stepGenerate: "Generate",
+  stepGenerate: "Review & generate",
   heading1Meta: "Add your ad data",
   heading1Google: "Add your Google Ads data",
   heading2Meta: "Select campaigns & objectives",

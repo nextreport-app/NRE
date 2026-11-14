@@ -11,7 +11,7 @@ describe("Campaigns-table Result indicator → objective matchup", () => {
     const { rows } = parseCsvText(readFileSync(FIXTURE, "utf8"));
     const map = buildCampaignCsvResultTypeMap(rows);
     const summary = map.get("dc leads campaign main");
-    expect(summary?.primary).toBe("website submission (custom conversion)");
+    expect(summary?.primary).toBe("website submission");
     expect(summary?.expectedResultLabel).toBe("WEBSITE LEADS");
     expect(csvResultTypeMatchesDetection(summary!, "WEBSITE LEADS")).toBe(true);
   });

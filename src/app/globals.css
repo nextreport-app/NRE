@@ -1114,3 +1114,8 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
   background-color: #101217;
   color: #eff0f5;
 }
+
+/* Semantic statuses must stay legible on light wizard surfaces. */
+html[data-site-theme="light"] .nre-report-wizard :is(.text-emerald-400,.text-emerald-300,.text-dash-success) { color: #047857; }
+html[data-site-theme="light"] .nre-report-wizard :is(.text-amber-300,.text-amber-200,.text-sky-400) { color: #854d0e; }
+.nre-report-wizard :is(input,select,textarea) { font-family: inherit; }

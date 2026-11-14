@@ -63,7 +63,7 @@ describe("buildShareReportData", () => {
   it("mirrors the cover slide's data exactly", () => {
     expect(share.cover.dateRange).toBe(data.cover.dateRange);
     expect(share.cover.healthScore).toBe(data.cover.healthScore);
-    expect(share.cover.healthBadge).toBe(data.cover.healthBadge);
+    expect(share.cover.healthBadge).toBe("");
     expect(share.cover.budgetSummary).toBe(data.cover.budgetSummary);
   });
 

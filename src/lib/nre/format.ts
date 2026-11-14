@@ -34,9 +34,10 @@ export function parseCellNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Port of fmtCurrency_ — rounds to whole units, comma-grouped. */
+/** Comma-grouped money; retain cents so positive sub-unit spend remains visible. */
 export function fmtCurrency(v: unknown, symbol: string): string {
-  return symbol + Math.round(parseCellNum(v)).toLocaleString("en-US");
+  const n = parseCellNum(v);
+  return symbol + n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
 }
 
 /** Port of fmtCurrency2dp_ — 2 decimal places, comma-grouped. */

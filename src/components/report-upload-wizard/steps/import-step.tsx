@@ -88,7 +88,7 @@ export function WizardImportStep() {
 
   const setupPlatform = selectedPlatformCard ?? "META";
 
-  const reportTypeSetup = <WizardReportSetupPanel source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />;
+  const reportTypeSetup = <WizardReportSetupPanel key={w.hasSavedImportSource ? "returning" : "first"} firstVisit={!w.hasSavedImportSource} source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />;
   const reportPeriods = <>
     <ReportPeriodControls />
     {reportType === "WEEKLY" ? <WeeklyPeriodControls /> : null}
@@ -159,6 +159,7 @@ export function WizardImportStep() {
       {selectedPlatformCard && (
         <div className="space-y-3">
           {reportSetup}
+          <a href="/sample-report.pptx" className="inline-block text-sm text-dash-accent hover:underline">See a sample report ↓</a>
           {isWizardApiSyncVisible() && <WizardDataSourceToggle
             value={dataSourceMode}
             onChange={handleDataSourceModeChange}

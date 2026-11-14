@@ -35,6 +35,7 @@ function changeBadgeColors(change: ComparisonChange, palette: SlideSurfacePalett
 }
 
 function changeBadgeText(change: ComparisonChange): string {
+  if (change.percent === null && change.direction !== "new") return "N/A";
   if (change.direction === "new") return "NEW";
   const arrow = change.direction === "up" ? "↑" : change.direction === "down" ? "↓" : "→";
   return `${comparisonPercent(change.percent)} ${arrow}`;
@@ -111,7 +112,7 @@ export function buildComparisonCampaignSlideXml(
     { key: "results", label: campaign.objective, valueA: campaign.metricsA.results.formatted, valueB: campaign.metricsB.results.formatted, change: campaign.changes.results },
     { key: "cpr", label: campaign.costLabel, valueA: campaign.metricsA.cpr.formatted, valueB: campaign.metricsB.cpr.formatted, change: campaign.changes.cpr },
   ];
-  return buildComparisonMetricSlideXml(campaign.campaignName, rows, periodALabel, periodBLabel, background, isLightTemplate, undefined, periodTitles);
+  return buildComparisonMetricSlideXml(campaign.campaignName, campaign.objective === "REACH" ? rows.filter(row => row.key !== "reach") : rows, periodALabel, periodBLabel, background, isLightTemplate, undefined, periodTitles);
 }
 
 export function buildComparisonMetricSlideXml(
@@ -256,7 +257,7 @@ export function buildComparisonSummarySlideXml(
   resetShapeIdCounter();
   const shapes = [backgroundImage({ relId: COMPARISON_BG_REL_ID, ...background })];
   shapes.push(textBox({ x: 40, y: 20, w: 880, h: 32, text: `CAMPAIGN COMPARISON SUMMARY${options && options.pages > 1 ? ` (${options.page + 1}/${options.pages})` : ""}`, sizePt: 25, bold: true, colorHex: palette.heading }));
-  shapes.push(textBox({ x: 40, y: 56, w: 880, h: 24, text: `Period A: ${comparison.periodALabel}   vs   Period B: ${comparison.periodBLabel}`, sizePt: 16, colorHex: palette.label }));
+  shapes.push(textBox({ x: 40, y: 56, w: 880, h: 24, text: `Selected: ${comparison.periodALabel}   vs   Comparison: ${comparison.periodBLabel}`, sizePt: 16, colorHex: palette.label }));
   const campaigns = options?.campaigns ?? comparison.campaigns;
   const includeTotal = options?.includeTotal ?? true;
   const objectives = new Set(comparison.campaigns.map(campaign => campaign.objective.trim().toUpperCase()));
@@ -278,7 +279,7 @@ export function buildComparisonSummarySlideXml(
   const cell = (column: number, y: number, height: number, text: string, fill: string, color: string, bold: boolean, header = false) => {
     const col = columns[column];
     shapes.push(rectangle({ x: col.x, y, w: col.w, h: height, fillHex: fill }));
-    shapes.push(textBox({ x: col.x + 10, y: y + (height - 24) / 2, w: col.w - 20, h: 24, text, sizePt: header ? 14 : column === 0 ? 15 : 17, colorHex: color, bold, align: col.align }));
+    shapes.push(setShapeWrap(textBox({ x: col.x + 10, y: y + (height - 24) / 2, w: col.w - 20, h: 24, text, sizePt: header ? 14 : column === 0 ? 14 : 17, colorHex: color, bold, align: col.align }), text, "none"));
   };
   sections.forEach((section, index) => {
     const top = 94 + index * sectionHeight;
@@ -287,7 +288,7 @@ export function buildComparisonSummarySlideXml(
     const draw = (name: string, a: string, b: string, change: ComparisonChange, row: number, total: boolean, comparable = true) => {
       const y = top + 46 + row * rowHeight;
       const fill = total ? palette.tableTotalFill : row % 2 ? palette.tablePeriodBFill : palette.tablePeriodAFill;
-      const values = [name.length > 48 ? name.slice(0, 48) + "…" : name, comparable ? a : "N/A", comparable ? b : "N/A", comparable ? deltaText(change) : "N/A"];
+      const values = [name.length > 40 ? name.slice(0, 23) + "…" + name.slice(-15) : name, comparable ? a : "N/A", comparable ? b : "N/A", comparable ? deltaText(change) : "N/A"];
       values.forEach((value, column) => cell(column, y, rowHeight, value, fill, column === 3 && comparable ? deltaColor(change, palette, section.key) : palette.text, total || column > 0));
     };
     campaigns.forEach((campaign, row) => draw(!sameObjective && section.key !== "spend" ? `${campaign.campaignName.slice(0, Math.max(12, 45 - campaign.objective.slice(0, 24).length))} · ${campaign.objective.slice(0, 24)}` : campaign.campaignName, campaign.metricsA[section.key].formatted, campaign.metricsB[section.key].formatted, campaign.changes[section.key], row, false));
