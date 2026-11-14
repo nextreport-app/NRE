@@ -49,7 +49,7 @@ export default async function PricingPage() {
 
         <PricingCurrencyBanner />
 
-        <p className="mt-8 text-center text-xs text-ink-muted">
+        <p className="mb-8 mt-8 text-center text-xs leading-relaxed text-ink-muted">
           ✓ 7-day trial: 3 clients, 10 reports · ✓ White-label client reports · ✓ No credit card required · ✓ Cancel anytime · ✓
           INR or USD billing
         </p>

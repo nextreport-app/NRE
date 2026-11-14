@@ -6,7 +6,7 @@ import { PRICING_CURRENCY_NOTE, type PricingCurrency } from "@/lib/currency";
 
 const REGION_HINT: Record<PricingCurrency, string> = {
   INR: "Showing Indian pricing — detected or selected for India.",
-  USD: "Showing international pricing in US Dollars — detected or selected for your region.",
+  USD: "Showing international pricing in US Dollars — detected for your region.",
 };
 
 /** Pricing page currency line — synced with the header toggle and checkout. */
