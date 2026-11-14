@@ -11,6 +11,8 @@ export type EvidenceRow = {
   adSet: string;
   day: string;
   resultType: string;
+  /** Provider metadata may coexist with the human-readable result label. */
+  resultIndicator?: string;
   results: number | null;
   spend: number | null;
   cpr: number | null;
@@ -56,7 +58,15 @@ export function csvEvidence(csv: string): EvidenceRow[] {
     ? column("Day/Date", h => h === "day" || h === "date")
     : column("Reporting starts", h => h === "reporting starts");
   const end = daily ? undefined : column("Reporting ends", h => h === "reporting ends");
-  const resultType = column("Result type/indicator", h => h === "result type" || h === "result indicator");
+  // Our API export contains both a display Result type and the raw indicator.
+  // They are distinct fields, not two ambiguous instances of one header.
+  // Prefer the explicit display column without backfilling blank row values.
+  const resultType = normalized.includes("result type")
+    ? column("Result type", h => h === "result type")
+    : column("Result indicator", h => h === "result indicator");
+  const resultIndicator = normalized.includes("result indicator")
+    ? column("Result indicator", h => h === "result indicator")
+    : undefined;
   const results = column("Results", h => h === "results");
   const spend = column("Amount spent", h => /^amount spent(?: \([a-z]{3}\))?$/.test(h));
   const cpr = column("Cost per result", h => /^cost per result(?: \([a-z]{3}\))?$/.test(h));
@@ -70,6 +80,7 @@ export function csvEvidence(csv: string): EvidenceRow[] {
       sourceRow: i + 2,
       campaign: value(campaign), adSet: value(adSet), day: iso,
       resultType: value(resultType),
+      ...(resultIndicator !== undefined ? { resultIndicator: value(resultIndicator) } : {}),
       results: numeric(value(results), "Results", i + 2),
       spend: numeric(value(spend), "Amount spent", i + 2),
       cpr: numeric(value(cpr), "Cost per result", i + 2),
