@@ -107,6 +107,8 @@ import { normalizeReportBrandingMode, type ReportBrandingMode } from "@/lib/repo
 export function useReportUploadWizard({
   clientId,
   clientName,
+  linkedMetaAdAccountId: initialLinkedMetaAdAccountId = null,
+  linkedMetaAdAccountName: initialLinkedMetaAdAccountName = null,
   clientTimezone: initialClientTimezone,
   clientCurrency,
   currencySymbol: initialCurrencySymbol,
@@ -138,6 +140,8 @@ export function useReportUploadWizard({
   accountDisplayName = null,
   userId,
 }: ReportUploadWizardProps) {
+  const [linkedMetaAdAccountId, setLinkedMetaAdAccountId] = useState(initialLinkedMetaAdAccountId);
+  const [linkedMetaAdAccountName, setLinkedMetaAdAccountName] = useState(initialLinkedMetaAdAccountName);
   const [clientTimezone, setClientTimezone] = useState(initialClientTimezone);
   const { locale } = useSiteTheme();
   const [currencySymbol, setCurrencySymbol] = useState(initialCurrencySymbol);
@@ -1285,6 +1289,10 @@ export function useReportUploadWizard({
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
     setMetaSyncDiagnostics(meta?.metaSyncDiagnostics ?? null);
     if (meta?.metaAdAccountId) setMetaAdAccountId(meta.metaAdAccountId);
+    if (meta?.linkedMetaAdAccountId) {
+      setLinkedMetaAdAccountId(meta.linkedMetaAdAccountId);
+      setLinkedMetaAdAccountName(meta.linkedMetaAdAccountName ?? null);
+    }
     setMtdFile(file);
     setAnalyzeStatus("loading");
     setAnalyzeErrors([]);
@@ -2809,6 +2817,8 @@ export function useReportUploadWizard({
   return {
     clientId,
     clientName,
+    linkedMetaAdAccountId,
+    linkedMetaAdAccountName,
     clientTimezone,
     clientCurrency,
     updateApiTimezone,

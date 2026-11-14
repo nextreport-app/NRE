@@ -1,3 +1,4 @@
+import { attachmentContentDisposition } from "@/lib/download-filename";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "Content-Disposition": `attachment; filename="${fileName.replace(/"/g, "")}"`,
+        "Content-Disposition": attachmentContentDisposition(fileName),
         "Content-Length": String(buffer.length),
       },
     });

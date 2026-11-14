@@ -57,6 +57,8 @@ export type MetaSyncDiagnosticsSummary = {
 };
 
 export type ApiSyncMeta = {
+  linkedMetaAdAccountId?: string | null;
+  linkedMetaAdAccountName?: string | null;
   previousMonthWarning?: string;
   metaSyncDiagnostics?: MetaSyncDiagnosticsSummary;
   mergedWithManualReference?: boolean;
@@ -74,6 +76,8 @@ export interface ReportUploadWizardProps {
   userId?: string;
   clientId: string;
   clientName: string;
+  linkedMetaAdAccountId?: string | null;
+  linkedMetaAdAccountName?: string | null;
   clientTimezone: string;
   clientCurrency?: string;
   currencySymbol: string;

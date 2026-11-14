@@ -129,3 +129,29 @@ describe("CSV-first reporting cutoff", () => {
     expect(renderToStaticMarkup(<CsvReportingDateNote bounds={{...bounds,maxIso:"2026-11-01"}} timezone={timezone} now={now}/>)).toBe("");
   });
 });
+
+
+describe("cutoff notice respects selected report scope and source", () => {
+ const oldBounds = {minIso:"2026-10-01",maxIso:"2026-10-31"};
+ const clock = new Date("2026-11-14T12:00:00Z");
+ it.each(["MONTHLY","HISTORICAL","COMPARISON","DAY_BREAKDOWN"])("does not demand yesterday for %s", reportType => {
+  expect(renderToStaticMarkup(<CsvReportingDateNote bounds={oldBounds} timezone="UTC" now={clock} reportType={reportType}/>)).toBe("");
+ });
+ it("never calls API data an outdated CSV", () => {
+  expect(renderToStaticMarkup(<CsvReportingDateNote bounds={oldBounds} timezone="UTC" now={clock} source="api"/>)).toBe("");
+ });
+ it("does not warn about an intentional custom weekly range", () => {
+  expect(renderToStaticMarkup(<CsvReportingDateNote bounds={oldBounds} timezone="UTC" now={clock} dateMode="custom"/>)).toBe("");
+ });
+ it("retains the warning for automatic weekly presets on stale CSV data", () => {
+  expect(renderToStaticMarkup(<CsvReportingDateNote bounds={oldBounds} timezone="UTC" now={clock}/>)).toContain("does not include yesterday");
+ });
+});
+
+
+it("retains stale-data guidance for automatic comparison and daily presets", () => {
+ const bounds={minIso:"2026-10-01",maxIso:"2026-10-31"};
+ for(const reportType of ["COMPARISON","DAY_BREAKDOWN"]){
+  expect(renderToStaticMarkup(<CsvReportingDateNote bounds={bounds} timezone="UTC" now={new Date("2026-11-14T12:00:00Z")} reportType={reportType} automaticPreset/>)).toContain("does not include yesterday");
+ }
+});

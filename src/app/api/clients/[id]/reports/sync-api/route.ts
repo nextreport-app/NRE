@@ -1,3 +1,4 @@
+import { metaClientAccountStatus, normalizeMetaAccountId } from "@/lib/meta-client-account";
 import { metaApiCsvTransport } from "@/lib/meta-api-csv-transport";
 import { metaApiImportRange } from "@/lib/nre/meta-api-import-range";
 import { dateSelectionSchema, comparisonPeriodSchema, reportTypeSchema } from "@/lib/validators/report-wizard";
@@ -36,6 +37,7 @@ const syncApiBodySchema = z.object({
   comparisonPeriodA: comparisonPeriodSchema.optional(),
   comparisonPeriodB: comparisonPeriodSchema.optional(),
   historicalMonthCount: z.number().int().min(1).max(12).optional(),
+  confirmedMetaAdAccountId: z.string().trim().regex(/^(act_)?\d+$/).optional(),
   metaAdAccountId: z.string().trim().regex(/^(act_)?\d+$/).optional(),
   googleCustomerId: z.string().trim().min(1).optional(),
   tiktokAdvertiserId: z.string().trim().min(1).optional(),
@@ -115,6 +117,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { platform, metaAdAccountId, googleCustomerId, tiktokAdvertiserId, referenceManualCsvText } =
       parsed.data;
 
+    if (platform === "META" && metaAdAccountId) {
+      const status = metaClientAccountStatus(client.metaAdAccountId, metaAdAccountId);
+      if ((status === "mismatch" || status === "unlinked") && normalizeMetaAccountId(parsed.data.confirmedMetaAdAccountId) !== normalizeMetaAccountId(metaAdAccountId)) {
+        return NextResponse.json({
+          error: status === "mismatch" ? "This ad account differs from the account linked to this client. Review and confirm it on Import before syncing." : "Confirm that this ad account belongs to this client before syncing.",
+          accountConfirmationRequired: true,
+          linkedMetaAdAccountId: client.metaAdAccountId ?? null,
+          linkedMetaAdAccountName: client.metaAdAccountName ?? null,
+        }, { status: 409 });
+      }
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -168,9 +182,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (client.timezone !== account.timezone_name) {
         await prisma.client.update({ where: { id: client.id }, data: { timezone: account.timezone_name } });
       }
+      // Bind only the first explicitly confirmed, successful nonempty import.
+      // Acknowledging a mismatch permits one report, never silent relinking.
+      let linkedMetaAdAccountId = client.metaAdAccountId ?? null;
+      let linkedMetaAdAccountName = client.metaAdAccountName ?? null;
+      if (!linkedMetaAdAccountId && result.rowCount > 0) {
+        const linked = await prisma.client.updateMany({
+          where: { id: client.id, userId: session.user.id, metaAdAccountId: null },
+          data: { metaAdAccountId: normalizeMetaAccountId(metaAdAccountId), metaAdAccountName: account.name ?? null },
+        });
+        if (!linked.count) {
+          return NextResponse.json({ error: "The client’s linked ad account changed while syncing. Reload Import and review the account before retrying." }, { status: 409 });
+        }
+        linkedMetaAdAccountId = normalizeMetaAccountId(metaAdAccountId);
+        linkedMetaAdAccountName = account.name ?? null;
+      }
       return NextResponse.json({
         ok: true,
         platform: "META",
+        linkedMetaAdAccountId,
+        linkedMetaAdAccountName,
         accountCurrency: account.currency,
         accountTimezone: account.timezone_name,
         ...metaApiCsvTransport(result.csvText),
