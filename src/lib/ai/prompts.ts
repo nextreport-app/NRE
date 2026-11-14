@@ -44,11 +44,12 @@ export function buildSummaryPrompt(ctx: AiContext): string {
   if (isReachCampaign(ctx)) {
     return (
       "This is a REACH/AWARENESS campaign. Do NOT mention results, purchases, leads or conversions.\n" +
-      "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+      "Write a campaign performance summary for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.\n" +
       "Do NOT re-list every number already on the metric cards unless you are comparing two figures.\n" +
       "Sentence 1: What this campaign is for (reach/awareness) and the one reach result that matters this period.\n" +
       "Sentence 2: One efficiency read (CPM, frequency, or CTR) — interpret, do not dump the scorecard.\n" +
       "Rules:\n" +
+    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
       "- Do NOT mention results, purchases, leads, link clicks, or any conversion count\n" +
       "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
@@ -63,14 +64,15 @@ export function buildSummaryPrompt(ctx: AiContext): string {
   }
   const resultLabel = ctx.resultLabel;
   return (
-    "Write a campaign performance summary for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+    "Write a campaign performance summary for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.\n" +
     "Do NOT re-list every card metric. The slide already shows the numbers.\n" +
     "Sentence 1: What this campaign is for, using the result label \"" + resultLabel + "\" exactly as given, and the one result that matters this period.\n" +
     "Sentence 2: One efficiency read (cost per result, CTR, or spend vs results) — interpret or compare, do not dump the full scorecard.\n" +
     "Rules:\n" +
+    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
     "- Use the same result label as the chips: " + resultLabel + "\n" +
-    "- If results = 0, say the campaign recorded no " + resultLabel.toLowerCase() + " this week — do not claim the algorithm is learning unless this is clearly a brand-new campaign (it is not, unless the data says so)\n" +
+    "- If results = 0, say the campaign recorded no " + resultLabel.toLowerCase() + " during this period — do not claim the algorithm is learning unless this is clearly a brand-new campaign (it is not, unless the data says so)\n" +
     "- Do NOT mention ad sets, combined ad sets, delivery status, or technical implementation details\n" +
     "- Use real numbers from the data — never invent or estimate\n" +
     "- Do not start with the campaign name or date range — those are already on the slide\n" +
@@ -88,12 +90,13 @@ export function buildInsightPrompt(ctx: AiContext): string {
   if (isMetaFormLeadsCampaign(ctx)) {
     return (
       "This is a META INSTANT FORM LEADS campaign — leads submit inside Meta's own lead form, NOT on a website.\n" +
-      "Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+      "Write the Key Insights section for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.\n" +
       "Sentence 1: One data read from the numbers — cite at most one or two real figures. Do not re-list the cards.\n" +
       "Sentence 2: One next step about the instant form, creative, or audience — NOT website pixels, landing pages, or off-site tracking.\n" +
       "FORBIDDEN: pixel, landing page, website tracking, checkout, or any off-site conversion setup.\n" +
       "FORBIDDEN: do not list four generic actions as a laundry list. Give one specific next step only.\n" +
       "Rules:\n" +
+    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
       "- Always use actual numbers from the data when you cite them\n" +
       "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
@@ -108,11 +111,12 @@ export function buildInsightPrompt(ctx: AiContext): string {
     );
   }
   return (
-    "Write the Key Insights section for a Meta Ads weekly client report. Write exactly 2 sentences.\n" +
+    "Write the Key Insights section for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.\n" +
     "Sentence 1: One data read from the numbers — cite at most one or two real figures. Do not re-list the cards.\n" +
-    "Sentence 2: One next step that follows from that read. Examples: high frequency (about 3.5x+) → creative fatigue; spend with 0 results → check the form, pixel, or conversion setup; strong CTR with an expensive cost per result → landing page; paused → do not invent a strategy.\n" +
+    "Sentence 2: One next step that follows from that read. Frequency alone does not establish fatigue. For zero results, suggest checking the relevant conversion journey; otherwise suggest a controlled test or a comparison to the next period. Do not invent a frequency goal.\n" +
     "FORBIDDEN: do not list four generic actions (shift budget, pause underperformers, test new creatives, and refine targeting) as a laundry list. Give one specific next step only.\n" +
     "Rules:\n" +
+    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
     "- Always use actual numbers from the data when you cite them\n" +
     "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
@@ -249,13 +253,13 @@ export function buildFallbackSummary(ctx: AiContext): string {
   return (
     "This campaign is running for " + ctx.resultLabel.toLowerCase() + " and produced " + ctx.results + " " +
     ctx.resultLabel.toLowerCase() + " at " + ctx.cpr + " " + ctx.costLabel.toLowerCase() + ", on " + ctx.spend +
-    " spend. Efficiency this period sits at a " + ctrNumberOnly(ctx.ctr) + "% CTR."
+    " spend. Click-through rate was " + ctrNumberOnly(ctx.ctr) + "%."
   );
 }
 
 function nextStepFromData(ctx: AiContext): string {
   if (ctx.freq >= 3.5) {
-    return "Frequency is " + ctx.freq.toFixed(1) + "x, so refresh creatives before adding budget.";
+    return "Frequency is " + ctx.freq.toFixed(1) + "x; compare click and result trends before testing a creative refresh.";
   }
   if (ctx.resultsNum === 0 && ctx.spendNum > 0 && !isReachCampaign(ctx)) {
     if (isMetaFormLeadsCampaign(ctx)) {
@@ -264,12 +268,15 @@ function nextStepFromData(ctx: AiContext): string {
     }
     return "Spend landed with no " + ctx.resultLabel.toLowerCase() + " — check the form, pixel, or landing page before scaling.";
   }
+  if (isMetaFormLeadsCampaign(ctx) && ctx.hasResults) {
+    return "Review instant-form completion before testing a change to its questions.";
+  }
   const ctrNum = parseFloat(ctrNumberOnly(ctx.ctr));
   if (!Number.isNaN(ctrNum) && ctrNum >= 2 && ctx.hasResults) {
-    return "CTR is holding at " + ctrNumberOnly(ctx.ctr) + "% while " + ctx.costLabel.toLowerCase() + " is " + ctx.cpr +
+    return "CTR is " + ctrNumberOnly(ctx.ctr) + "% while " + ctx.costLabel.toLowerCase() + " is " + ctx.cpr +
       " — inspect the landing page before changing targeting.";
   }
-  return "Keep spend on the ads that produced " + ctx.resultLabel.toLowerCase() + " at " + ctx.cpr + ".";
+  return "Compare the next reporting period with this one before increasing spend.";
 }
 
 /**
@@ -374,6 +381,10 @@ export function aiCopyViolatesObjectiveRules(
   ctx: AiContext,
   platform: "META" | "GOOGLE" | "TIKTOK" = "META",
 ): boolean {
+  // No targets, historical periods, margins or audience diagnostics are in AiContext.
+  if (/\b(?:benchmarks?|targets?|profitab\w*|historical|week[- ]over[- ]week|fatigue|saturation|efficient(?:ly)?|expected range|solid efficiency|strong efficiency|resonat\w*|conversion leaks)\b/i.test(text)) return true;
+  if (/\b(?:steady|consistent) (?:performance|engagement|lead generation)\b/i.test(text)) return true;
+  if (/\b(?:qualified|responsive|engaged) audience\b|\baudience (?:remains? |is )?engaged\b|\bpush(?:ing)?\b.{0,65}\bfrequency\b|\bcombat (?:the )?low\b/i.test(text)) return true;
   if (/\b(proves?|definitely caused|confirms? a|conversion funnel problem|in (?:the )?learning phase)\b/i.test(text)) return true;
   if (ctx.resultLabel === "REACH" && ctx.cpr !== ctx.cpm && text.includes(ctx.cpr) && /per (?:one )?thousand impressions|per 1,000 impressions/i.test(text)) return true;
   if (platform !== "META") return false;

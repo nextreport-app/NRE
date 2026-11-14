@@ -1,5 +1,6 @@
 "use client";
 
+import { ApiSourceDownload } from "./ui/api-source-download";
 import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
@@ -192,6 +193,7 @@ function ReportUploadWizardBody() {
       <WizardMetricsStep />
       <WizardGenerateStep />
 
+      {w.dataSourceMode === "api" && w.mtdFile && <ApiSourceDownload file={w.mtdFile} />}
       <details className="mt-6 text-xs text-dash-ink-secondary"><summary className="cursor-pointer">Display &amp; language</summary><div className="mt-3"><SiteThemeControls /></div></details>
       <WizardLeaveDialog
         open={!!w.pendingLeaveHref}

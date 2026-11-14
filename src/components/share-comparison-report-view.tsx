@@ -89,7 +89,7 @@ function CampaignComparisonSection({
       </div>
       <div className="mt-4 space-y-3">
         <MetricComparisonRow label="Ad Spend" metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.spend} valueKey="spend" />
-        <MetricComparisonRow label="Reach" metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.reach} valueKey="reach" />
+        <MetricComparisonRow label={campaign.metricsA.reach.estimated || campaign.metricsB.reach.estimated ? "Reach (est.)" : "Reach"} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.reach} valueKey="reach" />
         <MetricComparisonRow label={campaign.objective} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.results} valueKey="results" />
         <MetricComparisonRow label={campaign.costLabel} metricsA={campaign.metricsA} metricsB={campaign.metricsB} change={campaign.changes.cpr} valueKey="cpr" />
       </div>
@@ -197,7 +197,7 @@ export function ShareComparisonReportView({
               <h2 className="text-lg font-bold text-ink sm:text-xl">Account totals</h2>
               <div className="mt-4 space-y-3">
                 <MetricComparisonRow label="Ad Spend" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.spend} valueKey="spend" />
-                {!multipleCampaigns && <MetricComparisonRow label="Reach" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.reach} valueKey="reach" />}
+                {!multipleCampaigns && <MetricComparisonRow label={account.metricsA.reach.estimated || account.metricsB.reach.estimated ? "Reach (est.)" : "Reach"} metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.reach} valueKey="reach" />}
                 {comparableResults && <MetricComparisonRow label="Results" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.results} valueKey="results" />}
                 {comparableCost && <MetricComparisonRow label="Cost per result" metricsA={account.metricsA} metricsB={account.metricsB} change={account.changes.cpr} valueKey="cpr" />}
                 {!comparableResults && <p className="text-sm text-ink-muted">Results and cost per result are shown per campaign because objectives differ or campaign reach can overlap.</p>}
