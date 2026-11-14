@@ -167,6 +167,7 @@ export function WizardGenerateStep() {
     return (
       <div className="space-y-6">
         <WizardGenerateSuccessPanel
+          onShareTokenChange={w.handleShareTokenChange}
           clientCurrency={w.clientCurrency} clientTimezone={w.clientTimezone}
           clientName={clientName}
           clientId={clientId}
@@ -380,6 +381,12 @@ export function WizardGenerateStep() {
           )}
 
 
+
+            {generateStepPreviewReady && generateStatus === "idle" && <section aria-label="Report outline" className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <h3 className="text-sm font-semibold text-dash-ink">Your report · {slideCount} slides</h3>
+              <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign comparisons with current spend · summary including earlier-period campaigns · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>
+              <p className="mt-2 text-xs text-dash-ink-secondary">Source: {w.dataSourceMode === "api" ? "Meta API" : "uploaded CSV"} · Calendar: {w.clientTimezone}{w.dateBounds?.maxIso ? ` · Data through ${w.formatIso(w.dateBounds.maxIso)}` : ""}. The dates above identify the data included. Reach from daily data can be estimated; audiences can overlap across campaigns.</p>
+            </section>}
             {reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
               <WizardPeriodSummary
                 rows={[

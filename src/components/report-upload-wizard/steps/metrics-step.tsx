@@ -60,7 +60,7 @@ export function WizardMetricsStep() {
     return (
       <CampaignMetricPanel
         key={name} name={name} objective={objective?.resultLabel}
-        metricCount={selectedForCampaign.length} slideCount={pages.length}
+        metricCount={selectedForCampaign.length} slideCount={w.reportType === "WEEKLY" && w.detailCampaigns && !w.detailCampaigns.includes(name) ? 0 : pages.length}
         collapsible={activeCampaigns.length > 1} initiallyExpanded={index === 0} needsAttention={needsAttention}
       >
         <MetricChipPicker selected={selectedForCampaign} groups={pages.map((page, index) => ({ label: pages.length > 1 ? index === 0 ? "Main slide" : `Additional metrics · page ${index}` : "", keys: page.map(metric => metric.key) }))} available={availableForCampaign} onAdd={metric => { const candidate = availableForCampaign.find(item => item.key === metric.key); if (candidate) addCampaignMetric(normalized, candidate); }} onRemove={key => removeCampaignMetric(normalized, key)} limit={MAX_TOTAL_METRICS} source={metricSource} />
@@ -81,7 +81,7 @@ export function WizardMetricsStep() {
     const toggleMetric = (key: string) => daily && baseMetrics.some(metric => metric.key === key) ? w.toggleDailyBaseMetric(key) : toggle(key);
     const extras = optional.filter(metric => keys.includes(metric.key));
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
-      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from {w.dataSourceMode === "api" ? "Meta API" : "your CSV"}. Add or remove optional metrics below.</p>
+      <p className="text-sm leading-relaxed text-dash-ink-secondary">Metrics are selected from {w.dataSourceMode === "api" ? "Meta API" : "your CSV"}. Add or remove optional metrics below.</p>
       <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "var(--nre-wizard-section-border, 3px solid #38bdf8)" }}>
         <h3 className="text-[15px] font-bold text-dash-ink">{daily ? "Daily tables · selected campaigns" : "Comparison · selected campaigns"}</h3>
         <p className="mt-1 text-sm text-dash-ink-secondary">{daily ? "The same metrics are shown for each day, combined across selected campaigns." : "Each campaign uses its confirmed objective for both periods. Extras appear on additional comparison slides."}</p>
@@ -101,7 +101,7 @@ export function WizardMetricsStep() {
         </div>
       )}
 
-      <p className="text-[13px] leading-relaxed text-dash-ink-secondary">Metrics are selected from {w.dataSourceMode === "api" ? "Meta API" : "your CSV"}. Review or expand to customize.</p>
+      <p className="text-sm leading-relaxed text-dash-ink-secondary">Metrics are selected from {w.dataSourceMode === "api" ? "Meta API" : "your CSV"}. Review or expand to customize.</p>
       {activeCampaigns.length > 1 ? (
         <p className="text-[14px] text-dash-ink-secondary">
           {activeCampaigns.length} campaigns

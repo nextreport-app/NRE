@@ -16,6 +16,7 @@ import { WizardLeaveDialog } from "./ui/wizard-leave-dialog";
 import { WizardImportStep } from "./steps/import-step";
 import { WizardCampaignsStep } from "./steps/campaigns-step";
 import { WizardMetricsStep } from "./steps/metrics-step";
+import { SiteThemeControls } from "@/components/site-theme-controls";
 import { WizardGenerateStep } from "./steps/generate-step";
 
 export function ReportUploadWizard(props: ReportUploadWizardProps) {
@@ -191,6 +192,7 @@ function ReportUploadWizardBody() {
       <WizardMetricsStep />
       <WizardGenerateStep />
 
+      <details className="mt-6 text-xs text-dash-ink-secondary"><summary className="cursor-pointer">Display &amp; language</summary><div className="mt-3"><SiteThemeControls /></div></details>
       <WizardLeaveDialog
         open={!!w.pendingLeaveHref}
         onStay={w.cancelWizardLeave}

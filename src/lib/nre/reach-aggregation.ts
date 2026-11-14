@@ -155,3 +155,8 @@ export function normalizeCampaignPeriodReachRecord(byCampaign: Record<string, nu
   }
   return out;
 }
+
+/** Provenance uses the same period lookup as the value itself. */
+export function isEstimatedReach(rows: MetricRow[], opts?: ReachAggregationOptions): boolean {
+  return tryMetaCampaignPeriodReach(rows, opts) == null && needsPeriodReachEstimate(rows);
+}

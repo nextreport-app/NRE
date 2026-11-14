@@ -835,9 +835,7 @@ export function ShareReportView({
                   : visibleData.cover.dateRange}
               </p>
               <div className="my-3 h-px w-16 bg-navy-border sm:my-4 sm:w-24" />
-              <p className="max-w-full break-words px-1 text-[13px] font-medium leading-snug text-ink sm:text-[16px]">
-                {visibleData.cover.healthBadge}
-              </p>
+              <p className="mt-2 max-w-xl text-xs leading-relaxed text-ink-muted">Reach can be estimated from daily data; campaign audiences may overlap. Reach-based costs and frequency use the same audience basis.</p>
               {coverPreparedByLine ? (
                 <p className="mt-3 max-w-full break-words px-1 text-[12px] text-ink-muted sm:mt-4 sm:text-[14px]">
                   {coverPreparedByLine}

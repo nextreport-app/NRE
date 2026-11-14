@@ -59,7 +59,7 @@ describe("csv-zero-metric-guidance", () => {
     expect(warnings.length).toBe(1);
     expect(warnings[0]?.kind).toBe("missing_metric_values");
     expect(warnings[0]?.title).toBe("2 metrics will show as 0");
-    expect(warnings[0]?.message).toMatch(/Reach and Frequency/);
+    expect(warnings[0]?.message).toMatch(/Frequency and Reach/);
   });
 
   it("dedupes Reach and REACH into one label", () => {

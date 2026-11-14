@@ -27,7 +27,7 @@ describe("enrichAdSetInsightsFromCampaignLevel", () => {
     expect(out.cost_per_result?.length).toBe(1);
   });
 
-  it("merges campaign website results when ad set only has costed LPV", () => {
+  it("retains conflicting directly costed ad-set LPV instead of overwriting its attribution", () => {
     const adset: MetaInsightRow = {
       campaign_name: "DC Leads Campaign Main",
       adset_name: "Homebuyers - Broad Targeting",
@@ -48,8 +48,8 @@ describe("enrichAdSetInsightsFromCampaignLevel", () => {
       ],
     };
     const [out] = enrichAdSetInsightsFromCampaignLevel([adset], [campaign]);
-    expect(out.results?.[0]?.indicator).toContain("fb_pixel_lead");
-    expect(out.results?.[0]?.values?.[0]?.value).toBe("3");
+    expect(out.results?.[0]?.indicator).toBe("actions:landing_page_view");
+    expect(out.results?.[0]?.values?.[0]?.value).toBe("10");
   });
 
   it("replaces ad-set uncosted results[] noise when campaign has costed lead", () => {
@@ -73,7 +73,7 @@ describe("enrichAdSetInsightsFromCampaignLevel", () => {
     expect(out.cost_per_result?.[0]?.values?.[0]?.value).toBe("7.64");
   });
 
-  it("does not merge campaign costed LPV onto website-lead ad set rows", () => {
+  it("prefers directly costed campaign evidence to uncosted ad-set noise for one ad set", () => {
     const adset: MetaInsightRow = {
       campaign_name: "DC Leads Campaign Main",
       adset_name: "Homebuyers - Broad Targeting",
@@ -89,8 +89,8 @@ describe("enrichAdSetInsightsFromCampaignLevel", () => {
       cost_per_result: [{ indicator: "actions:landing_page_view", values: [{ value: "4.71" }] }],
     };
     const [out] = enrichAdSetInsightsFromCampaignLevel([adset], [campaign]);
-    expect(out.results?.[0]?.indicator).toBe("actions:lead");
-    expect(out.cost_per_result).toBeUndefined();
+    expect(out.results?.[0]?.indicator).toBe("actions:landing_page_view");
+    expect(out.cost_per_result?.[0]?.values?.[0]?.value).toBe("4.71");
   });
 
   it("does not copy when two ad sets share campaign+day", () => {

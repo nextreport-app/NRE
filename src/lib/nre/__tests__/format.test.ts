@@ -28,7 +28,7 @@ describe("parseCellNum", () => {
 
 describe("fmtCurrency", () => {
   it("rounds to whole units and comma-groups", () => {
-    expect(fmtCurrency(1234.5, "$")).toBe("$1,235");
+    expect(fmtCurrency(1234.5, "$")).toBe("$1,234.50");
     expect(fmtCurrency(999, "₹")).toBe("₹999");
     expect(fmtCurrency(1000000, "$")).toBe("$1,000,000");
   });

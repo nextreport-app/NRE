@@ -221,7 +221,7 @@ describe("buildComparisonSummarySlideXml", () => {
     const longName = "A Very Long Campaign Name That Exceeds The Column Width";
     const data = comparisonData({ campaigns: [campaign({ campaignName: longName })] });
     const xml = buildComparisonSummarySlideXml(data, BACKGROUND);
-    expect(xml).toContain(longName.slice(0, 48) + "…");
+    expect(xml).toContain(longName.slice(0, 23) + "…" + longName.slice(-15));
     expect(xml).not.toContain(longName);
   });
 

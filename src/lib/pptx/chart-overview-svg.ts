@@ -107,6 +107,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   parts.push(
     `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.summaryY + 20}" text-anchor="middle" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="15">${escapeXml(model.summaryLine)}</text>`,
+    `<text x="${MTD_SLIDE_W / 2}" y="${MTD_VISUAL.summaryY + 34}" text-anchor="middle" fill="${MUTED}" font-family="Arial, sans-serif" font-size="10">Reach may be estimated from daily data; campaign audiences can overlap.</text>`,
     "</svg>",
   );
   return parts.join("");

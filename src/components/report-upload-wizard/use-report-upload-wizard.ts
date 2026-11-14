@@ -301,6 +301,7 @@ export function useReportUploadWizard({
   const [metricHeaderProfile, setMetricHeaderProfile] = useState<CsvMetricHeaderProfile | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [campaigns, setCampaigns] = useState<string[]>([]);
+  const [detailCampaigns, setDetailCampaigns] = useState<string[] | null>(null);
   const [campaignSpend, setCampaignSpend] = useState<Record<string, number>>({});
   const [campaignSpendLabel, setCampaignSpendLabel] = useState("Reporting-period spend");
   const [campaignSpendResolvedKey, setCampaignSpendResolvedKey] = useState("");
@@ -420,7 +421,7 @@ export function useReportUploadWizard({
   const clientPrefsHydratedRef = useRef(false);
 
   // Comparison dates are chosen before upload and preserved across analysis.
-  const [dailyExcludedMetricKeys, setDailyExcludedMetricKeys] = useState<string[]>([]);
+  const [dailyExcludedMetricKeys, setDailyExcludedMetricKeys] = useState<string[]>(["cpc_all", "objective_cost"]);
   const [dailyMetricKeys, setDailyMetricKeys] = useState<string[]>([]);
   const [comparisonMetricKeys, setComparisonMetricKeys] = useState<string[]>([]);
   const [comparisonPreset, setComparisonPreset] = useState<ComparisonPreset>("thisWeek");
@@ -704,7 +705,7 @@ export function useReportUploadWizard({
   function resetMetricsState() {
     setComparisonMetricKeys([]);
     setDailyMetricKeys([]);
-    setDailyExcludedMetricKeys([]);
+    setDailyExcludedMetricKeys(["cpc_all", "objective_cost"]);
     metricsFetchedKeyRef.current = null;
     metricsFetchInFlightRef.current = null;
     setMetricsFetchedForSelection(null);
@@ -940,6 +941,7 @@ export function useReportUploadWizard({
     setMetricHeaderProfile(json.metricHeaderProfile ?? null);
     setCampaigns(campaignList);
     setCampaignSpend(json.campaignSpend || {});
+    setDetailCampaigns(Array.isArray(json.detailCampaigns) ? json.detailCampaigns : null);
     setCurrencySymbol(json.currencySymbol ?? initialCurrencySymbol);
     if (json.currencySymbol && json.currencySymbol !== initialCurrencySymbol) setClientMonthlyBudget(null);
     setCampaignSpendLabel(json.campaignSpendLabel ?? "Reporting-period spend");
@@ -1394,6 +1396,7 @@ export function useReportUploadWizard({
       if (!response.ok || !context.campaignSpend || !Array.isArray(context.selectedCampaigns) || !Array.isArray(context.campaigns)) throw new Error("Campaign spend unavailable");
       setCampaigns(context.campaigns);
       setCampaignSpend(context.campaignSpend);
+      setDetailCampaigns(Array.isArray(context.detailCampaigns) ? context.detailCampaigns : null);
       setZeroSpendCampaigns(context.zeroSpendCampaigns ?? Object.keys(context.campaignSpend).filter(name => context.campaignSpend[name] === 0));
       setCampaignSpendLabel(context.campaignSpendLabel ?? "Reporting-period spend");
       const defaults = new Set<string>(context.selectedCampaigns);
@@ -2769,7 +2772,7 @@ export function useReportUploadWizard({
   /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
   function estimatedSlideCount(): number {
     if (previewKind === "comparison") {
-      return 1 + summaryCampaignNames().length + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + 1 + (comparisonData?.campaigns.reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
+      return 1 + (comparisonData?.campaigns.filter(c => c.metricsA.spend.value > 0).length ?? summaryCampaignNames().length) + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + 1 + (comparisonData?.campaigns.filter(c => c.metricsA.spend.value > 0).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
     }
     if (previewKind === "historical" && historicalData) {
       if (historicalData.isPaused) return 3;
@@ -2874,6 +2877,7 @@ export function useReportUploadWizard({
     handleCancelPreviousMonthSummary,
     campaigns,
     campaignSpend,
+    detailCampaigns,
     zeroSpendCampaigns,
     campaignSpendLabel,
     campaignSpendLoading,
@@ -3011,6 +3015,10 @@ export function useReportUploadWizard({
     downloadUrl,
     publishedAt,
     shareToken,
+    handleShareTokenChange: (token: string | null) => {
+      setShareToken(token);
+      if (reportId && downloadUrl) persistGenerateSnapshot({reportId,downloadUrl,shareToken:token});
+    },
     rememberedFolder,
     driveView,
     setDriveView,

@@ -29,6 +29,7 @@ import type { AggRow } from "./aggregate";
 import { splitMtdDaily, aggregateRows } from "./aggregate";
 import {
   aggregateReach,
+  isEstimatedReach,
   aggregateReachAcrossCampaigns,
   type ReachAggregationOptions,
 } from "./reach-aggregation";
@@ -141,6 +142,7 @@ export interface SlideMetrics {
 }
 
 export interface AiContext {
+  reachEstimated?: boolean;
   ctx: string;
   /** The weekly reporting window as a plain human-readable range (e.g. "July 13 - July 19") — the AI prompt's {date_range} field. Unlike the slide's own dateRangeLine, never has the "\nAd Frequency: ..." suffix appended. */
   dateRange: string;
@@ -1933,6 +1935,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         freq: avgFreq,
         resultsNum: parseCellNum(resultValue),
         hasResults: parseCellNum(resultValue) > 0,
+        reachEstimated: isEstimatedReach(campaignRaw.length ? campaignRaw : campRows, weeklyReachOpts),
         spendNum: totalSpend,
         isInactive: statusIndicator !== null,
       },
@@ -2073,6 +2076,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         freq: rowFreq,
         resultsNum: parseCellNum(resultValue),
         hasResults: parseCellNum(resultValue) > 0,
+        reachEstimated: isEstimatedReach(blendSource, weeklyReachOpts),
         spendNum: adSetSpend,
         isInactive: statusIndicator !== null,
       },
@@ -2490,7 +2494,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
         spend: computeChange(spendA, spendB),
         reach: computeChange(reachA, reachB),
         results: computeChange(resultsA, resultsB),
-        cpr: computeChange(cprA, cprB),
+        cpr: cprA > 0 && cprB > 0 ? computeChange(cprA, cprB) : { percent: null, direction: "flat" },
       },
     };
   });
@@ -2527,7 +2531,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
         spend: computeChange(totalSpendA, totalSpendB),
         reach: computeChange(totalReachA, totalReachB),
         results: computeChange(totalResultsA, totalResultsB),
-        cpr: computeChange(totalCprA, totalCprB),
+        cpr: totalCprA > 0 && totalCprB > 0 ? computeChange(totalCprA, totalCprB) : { percent: null, direction: "flat" },
       },
     },
   };

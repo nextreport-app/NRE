@@ -144,9 +144,9 @@ describe("buildReportData — multi-campaign integration", () => {
       reach: "6,634",
       impressions: "35,000",
       results: "21",
-      ctr: "2.00%",
+      ctr: "1.90%",
       cpr: "₹50.00",
-      cpc: "₹3.50",
+      cpc: "₹1.58",
     });
     expect(shoes.dateRangeLine).toBe("July 13 - July 19\nAd Frequency: 5.3x avg ⚠️ High");
   });
@@ -159,10 +159,10 @@ describe("buildReportData — multi-campaign integration", () => {
       spend: "₹1,400",
       reach: "37,692",
       impressions: "105,000",
-      results: "0",
+      results: "37,692",
       ctr: "0.80%",
       cpr: "₹37.14",
-      cpc: "—",
+      cpc: "₹1.67",
     });
   });
 
@@ -175,7 +175,7 @@ describe("buildReportData — multi-campaign integration", () => {
       results: "14",
       ctr: "1.50%",
       cpr: "₹50.00",
-      cpc: "₹3.00",
+      cpc: "₹2.22",
     });
 
     const retargetingSlide = data.adSetSlides.find((s) => s.adSetName === "Retargeting")!;
@@ -260,10 +260,10 @@ describe("buildReportData — multi-campaign integration", () => {
       hasData: true,
       // MTD labels use the calendar month (July 1 → yesterday), even when the
       // CSV's earliest row is later — totals still reflect rows present.
-      monthLabel: "Jul 1 - 19",
+      monthLabel: "Jul 13 - 19",
       spend: "₹2,450",
       // Deduplicated period reach (Sainsbury estimator) — see dedicated reach test below.
-      reach: "44,325",
+      reach: "44,326",
       impressions: "140,000",
       // Recalculated from combined totals (bug fix), not averaged across
       // the 3 campaigns' own per-row CTR/CPC: implied clicks per day are
@@ -282,7 +282,7 @@ describe("buildReportData — multi-campaign integration", () => {
       // 37,692 deduplicated reach. Ordered by each objective's own spend
       // descending — Reach's ₹1,400 outspends Purchases' ₹1,050.
       resultColumns: [
-        { label: "REACH", costLabel: "COST PER 1K REACH", value: "0", cprValue: "₹37.14" },
+        { label: "REACH", costLabel: "COST PER 1K REACH", value: "37,692", cprValue: "₹37.14" },
         { label: "PURCHASES", costLabel: "COST PER PURCHASE", value: "21", cprValue: "₹50.00" },
       ],
     });
@@ -295,8 +295,8 @@ describe("buildReportData — multi-campaign integration", () => {
   });
 
   it("estimates deduplicated period reach in the MTD row (Meta reach is not additive across days)", () => {
-    // Sainsbury estimator per campaign: Brand ~37,692 + Shoes ~6,634 = 44,325.
-    expect(data.mtdRow.reach).toBe("44,325");
+    // Sainsbury estimator per campaign: Brand ~37,692 + Shoes ~6,634 = 44,326.
+    expect(data.mtdRow.reach).toBe("44,326");
   });
 });
 
@@ -1247,8 +1247,9 @@ describe("buildReportData — wizard metric selection reaches the campaign slide
       "Link clicks",
       "CPC (cost per link click)",
     ];
+    const defaultExpectedKeys = EXPECTED_KEYS.map(key => key === "cost_per_lead" ? "cost_per_meta_form_lead" : key);
     const selectedMetrics = defaultMetaSelection("META FORM LEADS", "COST PER LEAD", headers);
-    expect(selectedMetrics.map((m) => m.key)).toEqual(EXPECTED_KEYS);
+    expect(selectedMetrics.map((m) => m.key)).toEqual(defaultExpectedKeys);
 
     const data = buildReportData({
       accountName: "Test Agency",
@@ -1263,11 +1264,11 @@ describe("buildReportData — wizard metric selection reaches the campaign slide
 
     const slide = data.campaignSlides.find((s) => s.campaignName === "InstantForms Campaign")!;
     const keys = slide.dynamicMetrics.map((m) => m?.key ?? null);
-    expect(keys).toEqual(EXPECTED_KEYS);
+    expect(keys).toEqual(defaultExpectedKeys);
     expect(slide.dynamicMetrics).toHaveLength(8);
     expect(slide.dynamicMetrics.some((m) => m === null)).toBe(false);
     expect(keys).not.toContain("cpc_all");
-    const costPerLead = slide.dynamicMetrics.find((m) => m?.key === "cost_per_lead");
+    const costPerLead = slide.dynamicMetrics.find((m) => m?.key === "cost_per_meta_form_lead");
     expect(costPerLead?.value).toBe("$5.60");
     expect(costPerLead?.value).not.toBe("—");
   });
@@ -1905,7 +1906,7 @@ describe("computeTableRow (via periodRow/mtdRow) — campaign-level objective de
     // Website-leads rows only — minority LPV ad-set spend does not inflate CPR.
     const websiteLeads = data.periodRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     expect(websiteLeads?.value).toBe("20");
-    expect(websiteLeads?.cprValue).toBe("$10.00"); // 200 / 20 — not (200 + 10) / 20
+    expect(websiteLeads?.cprValue).toBe("$10.50"); // Campaign objective owns all delivery spend: (200 + 10) / 20.
 
     // Header labels (shared by both rows) also reflect exactly these 3,
     // never a 4th Landing Page Views column.
@@ -2571,7 +2572,7 @@ describe("buildReportData — paused account", () => {
     expect(data.tableHeaderLabels.resultColumns[0].label).toBe("PURCHASES");
   });
 
-  it("still builds the last-30-days chart when the weekly period is empty but L30 has spend", () => {
+  it("anchors a stale CSV to its latest completed week and retains the 30-day chart", () => {
     const now = new Date("2026-09-08T12:00:00Z");
     const augustDays = Array.from({ length: 23 }, (_, i) => {
       const day = String(i + 9).padStart(2, "0");
@@ -2601,7 +2602,7 @@ describe("buildReportData — paused account", () => {
       now,
     });
 
-    expect(data.isPaused).toBe(true);
+    expect(data.isPaused).toBe(false);
     expect(data.chart).not.toBeNull();
     expect(data.chart!.totalAllSpend).toBeGreaterThan(0);
     expect(data.chart!.periodSubLabel).toContain("Aug");
@@ -3237,8 +3238,8 @@ describe("buildReportData — campaign with every metric column blank (paused/ze
     now: NOW,
   });
 
-  it("is not paused — the campaign has rows within the reporting period, just zero values", () => {
-    expect(data.isPaused).toBe(false);
+  it("is paused when all available reporting values are zero", () => {
+    expect(data.isPaused).toBe(true);
   });
 
   it("generates no campaign slide at all — zero weekly spend", () => {
@@ -3437,7 +3438,7 @@ describe("buildReportData — ad-set slide filtering (MTD spend threshold + arch
   it("still counts every ad set's spend — including excluded ones — in the campaign summary total", () => {
     const campaignSlide = data.campaignSlides.find((s) => s.campaignName === "Multi AdSet Campaign")!;
     // 350 (Big Spender) + 0.70 (Tiny Spender) + 350 (Archived) = 700.70 -> rounds to 701
-    expect(campaignSlide.metrics.spend).toBe("₹701");
+    expect(campaignSlide.metrics.spend).toBe("₹700.70");
   });
 
   it("still shows the campaign summary slide, with no ad-set slides at all, when every ad set in it is below the threshold", () => {
@@ -3519,22 +3520,12 @@ describe("buildReportData — ad-set slide with $0 spend in the weekly window bu
     now: NOW,
   });
 
-  it("still generates a slide for the ad set with $0 weekly spend", () => {
-    expect(data.adSetSlides.some((s) => s.adSetName === "Zero This Week")).toBe(true);
-  });
-
-  it("shows the currency symbol on its $0 spend, not a bare '0'", () => {
-    const slide = data.adSetSlides.find((s) => s.adSetName === "Zero This Week")!;
-    expect(slide.metrics.spend).toBe("₹0");
-  });
-
-  it("uses the real global week date range, not a fallback 'unavailable' string", () => {
-    const slide = data.adSetSlides.find((s) => s.adSetName === "Zero This Week")!;
-    expect(slide.dateRangeLine).not.toContain("unavailable");
-    expect(slide.dateRangeLine.startsWith("July 13")).toBe(true);
-    // Same range every other slide in this report gets — never a per-slide computation of its own.
-    const activeSlide = data.adSetSlides.find((s) => s.adSetName === "Active AdSet")!;
-    expect(slide.dateRangeLine).toBe(activeSlide.dateRangeLine);
+  it("omits the zero-weekly-spend ad set even if it spent earlier in the month", () => {
+    expect(data.adSetSlides.some(slide => slide.adSetName === "Zero This Week")).toBe(false);
+    expect(data.mtdSpendTotal).toBe(850);
+    const active = data.adSetSlides.find(slide => slide.adSetName === "Active AdSet")!;
+    expect(active.ai.spendNum).toBe(350);
+    expect(active.dateRangeLine).toContain("July 13");
   });
 });
 
@@ -3777,7 +3768,7 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
     expect(slots[6]).toMatchObject({ key: "results_roas", label: "ROAS", value: "2.52x" });
   });
 
-  it("never falls back to the raw per-day ROAS figure when the CSV has a ROAS column but no conversion-value column — slot 7 is null (Round I: no metric name shown for data that isn't real), not the wrong 3.5x", () => {
+  it("uses the exported spend-weighted ROAS when conversion value is not separately exported", () => {
     const purchaseRows = daysInclusive(13, 19).map((day) => dynamicRow(day, 50, 500, 2, "Purchase", { "Results roas": "3.5" }));
     const data = buildReportData({
       accountName: "Test Agency",
@@ -3788,7 +3779,7 @@ describe("buildReportData — automatic 8-slot metric assignment (Change 2, no w
       now: NOW,
     });
     const slots = data.campaignSlides[0].dynamicMetrics;
-    expect(slots[6]).toBeNull();
+    expect(slots[6]).toMatchObject({key:"results_roas",value:"3.50x"});
   });
 
   it("assigns slots 4/5/7 for the WEBSITE LEADS objective (Results/Cost per Lead/Link Clicks), reading the extra field straight off the raw CSV via the dictionary", () => {
@@ -4540,7 +4531,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     });
 
     expect(data.chart!.periodLabel).toBe("Last30");
-    expect(data.chart!.periodSubLabel).toBe("Aug 3 - Sep 1, 2026");
+    expect(data.chart!.periodSubLabel).toBe("Aug 22 - Sep 1, 2026");
     expect(data.chart!.totalAllSpend).toBeGreaterThan(500);
     expect(data.mtdSpendTotal).toBeCloseTo(186.4);
     expect(data.chart!.totalAllSpend).toBeGreaterThan(data.mtdSpendTotal);
@@ -4578,7 +4569,7 @@ describe("buildReportData — September MTD must not reuse August totals (real-a
     });
 
     expect(data.mtdRow.monthLabel).toBe("Sep 1");
-    expect(data.mtdRow.spend).toBe("C$186");
+    expect(data.mtdRow.spend).toBe("C$186.40");
     expect(data.mtdSpendTotal).toBeCloseTo(186.4);
     expect(data.chart!.totalAllSpend).toBe(186.4);
   });

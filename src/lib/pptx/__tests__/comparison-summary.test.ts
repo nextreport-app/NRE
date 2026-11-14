@@ -40,7 +40,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("readable summary in %s", te
     expect(xml).toContain("$9.09");
     expect(xml).not.toContain("$55.00");
     expect(xml).toContain('sz="1700"');
-    expect(xml).toContain('sz="1500"');
+    expect(xml).toContain('sz="1400"');
     const change = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map(match => match[0]).filter(shape => shape.includes(">+100%<"));
     expect(change.some(shape => shape.includes(`srgbClr val="${template.includes("light") ? "b91c1c" : "fc8181"}"`))).toBe(true);
   });

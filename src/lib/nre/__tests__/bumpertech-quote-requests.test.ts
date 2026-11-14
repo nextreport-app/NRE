@@ -42,7 +42,7 @@ describe("BumperTech August Previous Month — Quote Request Submitted", () => {
     });
 
     const col = data.periodRow.resultColumns.find((c) => c.label === "QUOTE REQUESTS");
-    expect(data.periodRow.spend).toBe("A$1,635");
+    expect(data.periodRow.spend).toBe("A$1,634.60");
     expect(col?.value).toBe(String(totalQuotes));
     // CPR uses quote-attributed spend only (excludes zero-quote days in lead campaigns).
     expect(col?.cprValue).toBe("A$8.52");

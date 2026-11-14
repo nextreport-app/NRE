@@ -255,6 +255,7 @@ export function buildMtdOverviewOoxmlShapes(
     }),
   );
 
+  shapes.push(textBox({x:40,y:MTD_VISUAL.summaryY+25,w:880,h:14,text:"Reach may be estimated from daily data; campaign audiences can overlap.",sizePt:10,colorHex:c.inkMuted}));
   return shapes;
 }
 

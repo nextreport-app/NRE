@@ -95,7 +95,8 @@ describe("Meta golden parity — DC Credit Firm (website leads)", () => {
       timezone: TZ,
       monthlyBudget: null,
       mtdDailyRows: manualRows,
-      monthCount: 2,
+      monthCount: 1,
+      dateSelection: {mode:"custom" as const,customStart:"2026-09-01",customEnd:"2026-09-23"},
       selectedCampaigns: [CAMPAIGN],
       now: NOW,
     };

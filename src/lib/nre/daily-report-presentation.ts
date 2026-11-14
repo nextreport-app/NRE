@@ -147,8 +147,10 @@ export function buildDailyPresentation(input: {
         !dailyMetricIsExcluded(costKey, excluded))
     )
       uniqueUnavailable = true;
-    add(resultKey, column.label, reach ? "N/A" : column.value);
-    add(costKey, column.costLabel, reach ? "N/A" : column.cprValue);
+    if (!reach) {
+      add(resultKey, column.label, column.value);
+      add(costKey, column.costLabel, column.cprValue);
+    }
   }
   const rows = [...input.byDay.values()].flat();
   const eligible = new Set(

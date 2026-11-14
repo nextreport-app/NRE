@@ -41,6 +41,7 @@ export function campaignSelectionSpend(rows: NreRow[], selection: MetaApiReportS
   const base = resolveCampaignSelection(names, memory?.policy === CAMPAIGN_SELECTION_POLICY ? memory : null);
   return {
     campaignSpend,
+    detailCampaigns: names.filter(name => (periodSpend[0]?.[name] ?? 0) > 0),
     selectedCampaigns: base.selectedCampaigns.filter(name => spending.has(name)),
     zeroSpendCampaigns: names.filter(name => periodSpend.every(spend => (spend[name] ?? 0) === 0)),
     campaignStepMode: base.stepMode,

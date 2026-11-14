@@ -180,7 +180,7 @@ const HEADER_ABBREVIATIONS: Record<string, string> = {
 };
 
 function abbreviateHeaderRow(headerRow: string[]): string[] {
-  return headerRow.map((cell) => HEADER_ABBREVIATIONS[cell] ?? cell);
+  return headerRow.map((cell, index) => index === 2 && /^reach$/i.test(cell) ? "CAMPAIGN REACH*" : cell === "Impressions" || cell === "IMPRESSIONS" ? "Impr." : HEADER_ABBREVIATIONS[cell] ?? cell);
 }
 
 /** Removes the given 0-indexed columns from one row's cells. */
@@ -387,7 +387,8 @@ export function fillCombinedTotalTable(
     const fontSizeForCol = isHeaderRow
       ? () => headerFontSizeHundredths
       : (c: number) => (c === 0 ? ROW_LABEL_FONT_SIZE : DATA_VALUE_FONT_SIZE);
-    const filled = fillRow(row.xml, rowValues, r, fontSizeForCol);
+    let filled = fillRow(row.xml, rowValues, r, fontSizeForCol);
+    if (isHeaderRow) filled = filled.replace(/(<a:tcPr[^>]*>[\s\S]*?<a:solidFill><a:srgbClr val=")[^"]+("\/?>)/g, "$1" + "1e3a5f" + "$2");
     newTbl = newTbl.slice(0, row.start) + filled + newTbl.slice(row.end);
   }
 

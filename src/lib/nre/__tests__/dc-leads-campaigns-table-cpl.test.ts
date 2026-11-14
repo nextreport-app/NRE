@@ -59,7 +59,7 @@ describe("DC Leads Campaigns-table CSV — CPL uses total spend ÷ Results (not 
     const col = report.mtdRow.resultColumns.find((c) => c.label === "WEBSITE LEADS");
     expect(col?.value).toBe("14");
     expect(parseCellNum(col?.cprValue?.replace(/[^0-9.]/g, "") ?? 0)).toBeCloseTo(expected, 2);
-    expect(report.mtdRow.spend).toBe("$294");
+    expect(report.mtdRow.spend).toBe("$294.16");
   });
 
   it("Last 30 days chart: campaign bar CPL matches total spend ÷ leads for chart window", () => {

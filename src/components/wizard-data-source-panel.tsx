@@ -280,7 +280,7 @@ export function WizardDataSourcePanel({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[14px] font-semibold text-dash-ink">Meta Ads API sync</p>
-              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only ads reporting</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">Read-only connection · report data is fetched when you sync</p>
             </div>
             <StatusPill ok={metaConnected} label={metaConnected ? "Connected" : "Not connected"} />
           </div>
@@ -330,6 +330,7 @@ export function WizardDataSourcePanel({
                     saveClientWizardPreferences(clientId, { metaAdAccountId: id });
                   }} />
               )}
+              {accountTimezone && <p className="mt-2 text-xs text-dash-ink-secondary">Account calendar: {accountTimezone}. Data ends on the last completed day.</p>}
               {accountSelectionNotice && !accountsLoading && !accountsError && <p className="text-[13px] text-dash-ink-secondary" role="status">{accountSelectionNotice}</p>}
               <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection

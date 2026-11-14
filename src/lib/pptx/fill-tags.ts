@@ -282,7 +282,12 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
   const accountNameSizePt = fitFontSizePt(cover.accountName, ACCOUNT_NAME_MAX_WIDTH_PT, ACCOUNT_NAME_CANDIDATE_SIZES_PT);
   const agencyName = options.agencyName?.trim();
 
-  let xml = template.xml;
+  let xml = template.xml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, block => {
+    const text=[...block.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m=>m[1]).join(" ");
+    if (!/Meta\s+ADS/.test(text)) return block;
+    let first=true;
+    return block.replace(/<a:t>[^<]*<\/a:t>/g,()=>{const replacement=first?"<a:t>{{CLIENT_HEADLINE}}</a:t>":"<a:t></a:t>";first=false;return replacement;});
+  });
   if (agencyName) {
     const preparedByShape = cloneShapeAsTag(xml, "{{REPORT_DATE}}", "{{PREPARED_BY}}", PREPARED_BY_Y);
     xml = setShapeOffsetY(xml, "PRESENTED TO", PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU);
@@ -292,19 +297,21 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
 
   const reportTitle = resolveCoverReportTitle(options.reportTitle, options.reportType);
 
-  const filled = fillTags(
+  let filled = fillTags(
     xml,
     {
-      ACCOUNT_NAME: cover.accountName,
+      CLIENT_HEADLINE: cover.accountName,
+      ACCOUNT_NAME: "Reporting period",
       REPORT_TITLE: reportTitle,
-      REPORT_DATE: cover.reportDate,
+      REPORT_DATE: cover.dateRange ? `${cover.dateRange}${!/20\d{2}/.test(cover.dateRange) && cover.reportDate.match(/20\d{2}/)?.[0] ? " · " + cover.reportDate.match(/20\d{2}/)![0] : ""}` : cover.reportDate,
       DATE_RANGE: cover.dateRange,
-      ACCOUNT_HEALTH_BADGE: cover.healthBadge,
+      ACCOUNT_HEALTH_BADGE: "",
       BUDGET_SUMMARY: cover.budgetSummary,
       ...(agencyName ? { PREPARED_BY: `Prepared by ${agencyName}` } : {}),
     },
     {
-      ACCOUNT_NAME: { sizePt: accountNameSizePt },
+      CLIENT_HEADLINE: { sizePt: Math.min(accountNameSizePt, 34), bold: true, fontFamily: "Arial", color: options.isLightTemplate ? "0d1b2e" : "FFFFFF" },
+      ACCOUNT_NAME: { sizePt: 18 },
       // Fix 3 (readability pass) — the template's own defaults for these
       // three lines (12pt/11pt/12pt) read too small once Google Drive
       // converts the .pptx to Slides; bumped to the specified sizes, with
@@ -326,6 +333,17 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     },
   );
 
+  filled = filled.replace(/<a:t>Meta ADS<\/a:t>/g, `<a:t>${cover.accountName.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</a:t>`);
+  filled = filled.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, block => {
+    const text = [...block.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(match => match[1]).join(" ");
+    if (!/PRESENTED\s+TO/.test(text)) return block;
+    let first = true;
+    return block.replace(/<a:t>[^<]*<\/a:t>/g, () => {
+      const replacement = first ? "<a:t>META ADS REPORT</a:t>" : "<a:t></a:t>";
+      first = false;
+      return replacement;
+    });
+  });
   if (options.reportType === "DAY_BREAKDOWN") return setShapeWrap(setShapeExtCx(filled, cover.reportDate, 880 * 12700), cover.reportDate, "none");
   return cover.budgetSummary?.trim()
     ? ensureCoverBudgetSingleLine(filled, cover.budgetSummary)
@@ -702,6 +720,13 @@ export function buildCampaignOrAdSetSlideXml(
     sizePt: REPORT_HEADER_SIZE_PT,
     color: reportHeaderColor(isLightTemplate),
   });
+  if (slide.ai.reachEstimated) {
+    xml = replaceLiteralText(xml, "REACH", "REACH (EST.)");
+    const ids=[...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map(m=>Number(m[1]));
+    resetShapeIdCounter(Math.max(...ids,1));
+    xml=insertShapeBeforeSpTreeClose(xml,textBox({x:40,y:507,w:860,h:16,text:"Reach estimated from daily data; frequency and reach-based costs use that estimate.",sizePt:10.5,colorHex:reportHeaderColor(isLightTemplate),align:"l"}));
+  }
+  if (slide.kind === "adset") xml=replaceLiteralText(xml,"CAMPAIGN SUMMARY","AD SET SUMMARY");
   return xml;
 }
 
@@ -928,5 +953,7 @@ export function buildTableSlideXml(
       }),
     );
   }
+  resetShapeIdCounter(3000);
+  if (out.includes("</p:spTree>")) out=insertShapeBeforeSpTreeClose(out,textBox({x:40,y:495,w:880,h:30,text:"* Reach can be estimated from daily data. Campaign audiences overlap; this is not a deduplicated account audience. Objective costs use spend for that objective only.",sizePt:11,colorHex:headerColor,align:"l"}));
   return out;
 }

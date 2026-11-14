@@ -179,7 +179,7 @@ export async function assemblePptx(template: LoadedTemplate, slides: SlideToInse
     const slidePath = `ppt/slides/slide${n}.xml`;
     const relsPath = `ppt/slides/_rels/slide${n}.xml.rels`;
     const relId = `rIdGenSlide${n}`;
-    zip.file(slidePath, slide.xml);
+    zip.file(slidePath, slide.xml.replace(/<a:latin typeface="[^"]*"/g, '<a:latin typeface="Arial"'));
     zip.file(relsPath, slide.rels);
     slideRelIds.push(relId);
   });

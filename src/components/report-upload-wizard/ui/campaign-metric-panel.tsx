@@ -24,7 +24,7 @@ export function CampaignMetricPanel({ name, objective, metricCount, slideCount, 
   const heading = <>
     <span className="min-w-0 flex-1">
       <span id={`${contentId}-name`} className="block break-words text-[15px] font-semibold text-dash-ink">{name}</span>
-      <span id={`${contentId}-summary`} className="mt-1 block text-xs font-normal text-dash-ink-secondary">{metricCount} {metricCount === 1 ? "metric" : "metrics"} · {slideCount} {slideCount === 1 ? "slide" : "slides"}</span>
+      <span id={`${contentId}-summary`} className="mt-1 block text-xs font-normal text-dash-ink-secondary">{metricCount} {metricCount === 1 ? "metric" : "metrics"} · {slideCount === 0 ? "Summary only" : `${slideCount} ${slideCount === 1 ? "slide" : "slides"}`}</span>
     </span>
     <span className="flex shrink-0 flex-wrap items-center gap-2">
       {objective && <span id={`${contentId}-objective`} className="rounded-md bg-dash-bg px-2 py-1 text-[11px] font-medium text-dash-ink-secondary">{objective}</span>}

@@ -21,7 +21,7 @@ describe("verification presentation separates numeric mismatches from source cov
     const html = render(verification);
     expect(html).toContain("Source date coverage to review");
     expect(html).toContain("2026-10-21");
-    expect(html).toContain("The checked metrics match your imported data for each reporting period.");
+    expect(html).toContain("The listed checks match your source for each period.");
     expect(html).not.toContain("Deck preview differs");
     expect(html).not.toContain("nre-wizard-callout-success");
     const items = buildGenerateStepReadinessItems({ campaignsSelected: 2, previewStatus: "idle", generateStepPreviewReady: true, csvVerification: verification, previewRefreshing: false, reportTypeLabel: "Weekly" });

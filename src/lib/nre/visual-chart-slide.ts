@@ -86,7 +86,8 @@ export interface VisualChartSlideModel {
 function shortCostAbbrev(cprLabel: string): string {
   const u = cprLabel.toUpperCase();
   if (u.includes("CONVERSATION")) return "cost per result";
-  if (u.includes("1K") || u.includes("1000")) return "CPM";
+  if (/1K|1,?000/.test(u) && u.includes("REACH")) return "per 1K reached";
+  if (u.includes("CPM") || u.includes("IMPRESSION")) return "CPM";
   if (u.includes("LEAD")) return "CPL";
   if (u.includes("PURCHASE")) return "CPP";
   if (u.includes("CLICK")) return "CPC";
@@ -431,7 +432,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
       miniDonuts: [], groupedDonut, groupedDonutCenterLabel: preciseChartMoney(chart.totalAllSpend, currencySymbol),
       resultBars,
       summaryLine: mixedCampaignObjectives
-        ? `Total Spend: ${preciseChartMoney(chart.totalAllSpend, currencySymbol)} · Results use each campaign's own goal`
+        ? `Total Spend: ${preciseChartMoney(chart.totalAllSpend, currencySymbol)} · Results use each campaign's own goal; reach may be estimated`
         : buildSummarySingle(chart, currencySymbol, primaryResLabel, primaryResults,
           objectiveRate(chart.totalAllSpend, primaryResults, primaryResLabel) ?? 0, ordered[0]!.cprLabel),
     };

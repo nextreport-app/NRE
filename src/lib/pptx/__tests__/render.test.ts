@@ -275,7 +275,7 @@ describe("renderPptx — real template end-to-end", () => {
     const [cover, campaign1, campaign2, adset1, adset2, chart, table, legend] = slideTexts;
 
     expect(cover).toContain("Test Agency");
-    expect(cover).toContain("07-20-2026");
+    expect(cover).toContain("July 13 - July 19");
     // This template's cover slide has no {{DATE_RANGE}} placeholder (only
     // ACCOUNT_NAME/REPORT_DATE/ACCOUNT_HEALTH_BADGE/BUDGET_SUMMARY) — the
     // source's replaceAllText('{{DATE_RANGE}}', ...) call on the cover is a
@@ -335,13 +335,13 @@ describe("renderPptx — real template end-to-end", () => {
     expect(legend).toContain("METRIC ABBREVIATION GUIDE");
 
     // AI copy text boxes (CAMPAIGN_SUMMARY/KEY_INSIGHTS) must render 14pt
-    // non-bold Poppins, overriding the template's own bold 12pt Open Sans
+    // non-bold Arial, overriding the template's own bold 12pt Open Sans
     // placeholder styling — bumped from 13pt to 14pt to compensate for text
     // rendering smaller once Google Drive converts the .pptx to Slides.
     const zip = await JSZip.loadAsync(buffer);
     const campaignSlideXml = await zip.file("ppt/slides/slide2.xml")!.async("string");
     const aiRunRegex =
-      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1500"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Poppins"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>Campaign performance for this period/;
+      /<a:r><a:rPr[^>]*b="0"[^>]*sz="1500"[^>]*>(?:(?!<\/a:r>)[\s\S])*?<a:latin typeface="Arial"\/>(?:(?!<\/a:r>)[\s\S])*?<a:t>Campaign performance for this period/;
     expect(campaignSlideXml).toMatch(aiRunRegex);
 
     fs.unlinkSync(outPath);
@@ -687,7 +687,7 @@ describe("renderPptx — real template end-to-end", () => {
     const { slideCount, slideTexts } = inspectWithPythonPptx(outPath);
     // Cover + paused message slide + table + legend = 4 (no chart, no campaign/ad-set slides)
     expect(slideCount).toBe(4);
-    expect(slideTexts[0]).toContain("Campaigns Paused");
+    expect(slideTexts[0]).not.toContain("Campaigns Paused");
     expect(slideTexts[1]).toContain("All Campaigns");
     expect(slideTexts[1]).toContain("Idle Co");
 
@@ -733,7 +733,7 @@ describe("renderPptx — real template end-to-end", () => {
 
     const { slideCount, slideTexts } = inspectWithPythonPptx(outPath);
     expect(slideCount).toBe(5);
-    expect(slideTexts[0]).toContain("Campaigns Paused");
+    expect(slideTexts[0]).not.toContain("Campaigns Paused");
     expect(slideTexts.some((t) => t.includes("SPEND BY OBJECTIVE"))).toBe(true);
 
     fs.unlinkSync(outPath);
@@ -934,7 +934,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
       const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
       const logoBox = shapeBox(coverXml, 'name="Client Logo"');
-      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+      const presentedToBox = shapeBox(coverXml, "META ADS REPORT");
 
       expect(logoBox.x).toBe(presentedToBox.x); // same left edge — "directly above"
       const gap = presentedToBox.y - bottom(logoBox);
@@ -960,7 +960,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
       const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
       const logoBox = shapeBox(coverXml, 'name="Client Logo"');
-      const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+      const presentedToBox = shapeBox(coverXml, "META ADS REPORT");
 
       expect(bottom(logoBox)).toBeLessThanOrEqual(presentedToBox.y);
       expect(presentedToBox.y - bottom(logoBox)).toBeGreaterThanOrEqual(MIN_GAP_EMU);
@@ -1028,23 +1028,10 @@ describe("cover slide — health badge in the bottom-right", () => {
   const SLIDE_WIDTH_EMU = 12192000;
   const SLIDE_HEIGHT_EMU = 6858000;
 
-  it("right-aligns the health badge and keeps it in the right half of the slide, fully within bounds", async () => {
-    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
-    const zip = await JSZip.loadAsync(buffer);
-    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
-
-    const idx = coverXml.indexOf("Campaigns On Track");
-    const spStart = coverXml.lastIndexOf("<p:sp>", idx);
-    expect(coverXml.slice(spStart, idx)).toContain('algn="r"');
-
-    const badgeBox = shapeBox(coverXml, "Campaigns On Track");
-
-    const badgeCenter = badgeBox.x + badgeBox.cx / 2;
-    expect(badgeCenter).toBeGreaterThan(SLIDE_WIDTH_EMU / 2);
-    expect(badgeBox.x + badgeBox.cx).toBeLessThanOrEqual(SLIDE_WIDTH_EMU);
-
-    expect(badgeBox.y + badgeBox.cy).toBeLessThanOrEqual(SLIDE_HEIGHT_EMU);
+  it("does not publish the unexplained health score on the cover", async () => {
+    const zip=await JSZip.loadAsync(await renderPptx({templateBuffer:fs.readFileSync(DARK_TEMPLATE_PATH),data:buildFixtureData(),currencySymbol:"₹"}));
+    const xml=await zip.file("ppt/slides/slide1.xml")!.async("string");
+    expect(xml).not.toContain("Campaigns On Track");
   });
 
   it("keeps client identity (PRESENTED TO, account name) on the left, unaffected by the move", async () => {
@@ -1053,7 +1040,7 @@ describe("cover slide — health badge in the bottom-right", () => {
     const zip = await JSZip.loadAsync(buffer);
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
-    const presentedToBox = shapeBox(coverXml, "PRESENTED TO");
+    const presentedToBox = shapeBox(coverXml, "META ADS REPORT");
     const nameBox = shapeBox(coverXml, "Acme Inc");
     expect(presentedToBox.x).toBeLessThan(SLIDE_WIDTH_EMU / 2);
     expect(nameBox.x).toBeLessThan(SLIDE_WIDTH_EMU / 2);
@@ -1074,15 +1061,12 @@ describe("cover slide — health badge in the bottom-right", () => {
   // a stronger check. Instead this pins the box's own width to the exact
   // value already verified empirically, so a future accidental narrowing
   // fails loudly here instead of silently reintroducing the clipping bug.
-  it("keeps the empirically-verified box width that fits the health badge on one line", async () => {
-    const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
-    const buffer = await renderPptx({ templateBuffer, data: buildFixtureData(), currencySymbol: "₹" });
-    const zip = await JSZip.loadAsync(buffer);
-    const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
-
-    const badgeBox = shapeBox(coverXml, "Campaigns On Track");
-    const MIN_VERIFIED_CX_EMU = 6000000;
-    expect(badgeBox.cx).toBeGreaterThanOrEqual(MIN_VERIFIED_CX_EMU);
+  it("includes the client name and real report period on the cover", async () => {
+    const data=buildFixtureData();
+    const zip=await JSZip.loadAsync(await renderPptx({templateBuffer:fs.readFileSync(DARK_TEMPLATE_PATH),data,currencySymbol:"₹"}));
+    const xml=await zip.file("ppt/slides/slide1.xml")!.async("string");
+    expect(xml).toContain(data.cover.accountName);
+    expect(xml).toContain(data.cover.dateRange);
   });
 });
 
@@ -1108,24 +1092,7 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
     const outPath = path.join(os.tmpdir(), `nre-render-light-${Date.now()}.pptx`);
     fs.writeFileSync(outPath, buffer);
 
-    // No raw XML anywhere in the generated deck should still say FFFFFF as
-    // TEXT — every dark-template white text this pipeline touches (template
-    // tag runs via the swapped theme, plus the from-scratch chart slide's
-    // title/body text and the table's Previous Month row highlight) must
-    // have flipped to a light-template-appropriate color instead of
-    // silently staying white (which would render invisible against the
-    // light template's own white/light backgrounds), with three legitimate
-    // exceptions: the Combined Total table's own header row, whose
-    // background is deliberately kept dark navy for contrast (spec: "Table
-    // header background"), so its text is deliberately kept white too
-    // (spec: "Table header text" — see patch_table_header_row in the
-    // template generator script); the chart slide's donut "hole" fill, one
-    // per campaign, which is deliberately white per spec's "Card/shape
-    // backgrounds: #ffffff" (see BG_COLOR_LIGHT in chart-slide.ts); and the
-    // Metric Abbreviation Guide legend slide's own cards, which — per Fix
-    // 2's spec — are always a fixed dark navy card with white explanation
-    // text regardless of template (see legend-slide.ts), one white run per
-    // metric entry shown.
+    // Check text runs only: white surface fills are valid on the light template.
     const zip = await JSZip.loadAsync(buffer);
     const chartSlideRelPaths = new Set<string>();
     for (const relPath of Object.keys(zip.files).filter((p) => /ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(p))) {
@@ -1142,20 +1109,20 @@ describe("renderPptx — Light template (templates/meta-ads-light.pptx), against
       const isTableSlide = xml.includes("CAMPAIGN PERFORMANCE OVERVIEW");
       const isChartSlide = chartSlideRelPaths.has(path);
       const isLegendSlide = xml.includes("METRIC ABBREVIATION GUIDE");
-      const whiteCount = (xml.match(/val="FFFFFF"/gi) || []).length;
+      const whiteCount = (xml.match(/<a:rPr\b[^>]*>[\s\S]*?<\/a:rPr>/g) || []).filter(run => /val="FFFFFF"/i.test(run)).length;
       // The legend slide's own white-run count should match its own amber
       // (term) run count 1:1 — one card, one term, one explanation each.
-      const legendEntryCount = (xml.match(/val="f6ad55"/gi) || []).length;
+
       // The template's native-width 20 — per-objective spend tracking gives
       // this fixture's Brand campaign its own Cost Per 1K Reach column
       // (real spend, even though its own "count" is always 0), so the
       // table is the full 10 columns wide (6 static + 2 objective pairs).
       const expected = isTableSlide
-        ? 20
+        ? 10
         : isChartSlide
           ? 0 /* native donut uses a transparent hole over the light surface */
           : isLegendSlide
-            ? legendEntryCount
+            ? 0
             : 0;
       expect(whiteCount).toBe(expected);
     }

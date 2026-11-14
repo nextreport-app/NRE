@@ -13,6 +13,7 @@ import {
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
 
 function changeBadgeLabel(change: ComparisonChange): string {
+  if (change.percent === null && change.direction !== "new") return "N/A";
   if (change.direction === "new") return "NEW";
   const arrow = change.direction === "up" ? "↑" : change.direction === "down" ? "↓" : "→";
   return `${comparisonPercent(change.percent)} ${arrow}`;
@@ -181,7 +182,7 @@ export function ShareComparisonReportView({
           </section>
         ) : (
           <>
-            {data.campaigns.map((campaign) => (
+            {data.campaigns.filter(campaign => campaign.metricsA.spend.value > 0).map((campaign) => (
               <CampaignComparisonSection
                 key={campaign.campaignName}
                 campaign={campaign}
