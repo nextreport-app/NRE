@@ -322,3 +322,18 @@ describe("strict wizard insight source contract", () => {
     expect(new URL(fetch.mock.calls[0][0]).searchParams.get("fields")!.split(",")).toContain("results");
   });
 });
+
+describe("form evidence request isolation", () => {
+  it.each(["destination", "conversion_destination", "attribution"] as const)("builds a minimal %s query scoped to the failed ad set", async kind => {
+    const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] })));
+    vi.stubGlobal("fetch", provider);
+    await fetchMetaAdAccountInsights({ accessToken: "fixture-secret", adAccountId: "123", sinceIso: "2026-10-24", untilIso: "2026-10-24", level: "adset", formEvidence: { kind, adSetId: "20" } });
+    const url = new URL(provider.mock.calls[0][0]);
+    expect(JSON.parse(url.searchParams.get("filtering")!)).toEqual([{ field: "adset.id", operator: "IN", value: ["20"] }]);
+    expect(JSON.parse(url.searchParams.get("action_breakdowns")!)).toEqual(kind === "attribution" ? ["action_type"] : ["action_type", kind === "destination" ? "action_destination" : "conversion_destination"]);
+    expect(url.searchParams.get("fields")).toBe("campaign_id,adset_id,date_start,date_stop,spend,actions,cost_per_action_type");
+    if (kind === "attribution") expect(JSON.parse(url.searchParams.get("action_attribution_windows")!)).toEqual(["7d_click", "1d_view"]);
+    expect(url.searchParams.has("access_token")).toBe(false);
+    expect(url.searchParams.get("use_unified_attribution_setting")).toBe(kind === "attribution" ? "false" : "true");
+  });
+});

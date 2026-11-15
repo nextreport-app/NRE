@@ -11,6 +11,7 @@ import { fetchMetaReportCsv } from "../meta-api-sync/fetch-meta-report-csv";
 import { parseCsvText } from "../parse-csv";
 import { metaCsvExportResultValue } from "../meta-csv-export-counting";
 import { dedupeInsightsByAdSetDay } from "../meta-api-sync/insight-engine";
+import { FormResultEvidenceError } from "../meta-api-sync/form-result-evidence-error";
 import { aggregateRows } from "../aggregate";
 const type = "onsite_conversion.lead_grouped";
 const primary = (value: string) => [{ indicator: `actions:${type}`, values: [{ value }] }];
@@ -51,6 +52,19 @@ describe("primary form Results stay separate from secondary Meta leads", () => {
     expect(dedupeInsightsByAdSetDay([row, { ...row }])).toHaveLength(1);
     expect(() => dedupeInsightsByAdSetDay([row, { ...row, spend: "45" }])).toThrow(/conflicting duplicate/);
     expect(() => dedupeInsightsByAdSetDay([row, { ...row, results: primary("6") }])).toThrow(/conflicting duplicate/);
+  });
+  it("captures failed-day probes without accepting their counts or importing a partial report", async () => {
+    vi.mocked(fetchMetaAdAccountInsights).mockImplementation(async request => [{ ...row, campaign_id: "10", adset_id: "20", results: undefined, actions: [{ action_type: type, value: "6", ...(request.formEvidence ? { action_destination: "on_ad" } : {}) }] }]);
+    let caught: unknown;
+    try {
+      await fetchMetaReportCsv({ accessToken: "fixture", adAccountId: "123", timezone: "UTC", currency: "USD", sinceIso: "2026-10-01", untilIso: "2026-10-31", requireDirectResultEvidence: true });
+    } catch (error) { caught = error; }
+    expect(caught).toBeInstanceOf(FormResultEvidenceError);
+    const error = caught as FormResultEvidenceError;
+    expect(error.diagnostic.results).toBeNull();
+    expect(error.diagnostic.probes).toHaveLength(3);
+    expect(fetchMetaAdAccountInsights).toHaveBeenCalledTimes(5);
+    expect(error.status).toBe(422);
   });
   it("rejects mismatched or duplicate daily coverage", async () => {
     vi.mocked(fetchMetaAdAccountInsights).mockResolvedValueOnce([row]).mockResolvedValueOnce([]);

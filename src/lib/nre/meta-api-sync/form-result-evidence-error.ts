@@ -1,4 +1,4 @@
-import type { MetaInsightRow, MetaInsightResultMetric } from "@/lib/meta-api";
+import type { MetaInsightRow, MetaInsightResultMetric, MetaInsightAction } from "@/lib/meta-api";
 import { ServiceError } from "@/lib/service-error";
 
 export type FormResultFailureReason = "missing_results" | "unexpected_indicator" | "invalid_value_shape" | "invalid_count" | "empty_results_with_form_actions" | "conflicting_results";
@@ -13,6 +13,19 @@ function metrics(items: MetaInsightResultMetric[] | undefined) {
     values: Array.isArray(item?.values) ? item.values.slice(0, 10).map(value => ({ value: text(value?.value) })) : null,
   }));
 }
+export function leadActionEvidence(items: MetaInsightAction[] | undefined) {
+  return (Array.isArray(items) ? items : []).filter(item => item && typeof item.action_type === "string" && /lead/i.test(item.action_type)).slice(0, 40).map(item => ({
+    action_type: text(item.action_type), value: text(item.value),
+    ...Object.fromEntries(["action_destination", "conversion_destination", "7d_click", "1d_view", "7d_click_first_conversion", "1d_view_first_conversion", "7d_click_all_conversions", "1d_view_all_conversions"].filter(key => item[key as keyof MetaInsightAction] !== undefined).map(key => [key, text(item[key as keyof MetaInsightAction])])),
+  }));
+}
+export interface FormEvidenceProbe {
+  kind: "destination" | "conversion_destination" | "attribution";
+  status: "returned" | "unavailable";
+  metaCode?: number;
+  attributionMode?: "adset_unified" | "explicit_windows";
+  rows?: Array<{ date: string | null; actions: ReturnType<typeof leadActionEvidence>; costs: ReturnType<typeof leadActionEvidence> }>;
+}
 export class FormResultEvidenceError extends ServiceError {
   readonly diagnostic;
   constructor(row: MetaInsightRow, reason: FormResultFailureReason) {
@@ -26,7 +39,9 @@ export class FormResultEvidenceError extends ServiceError {
       attributionMode: "adset_unified", actionReportTime: "impression",
       results: metrics(row.results), objectiveResults: metrics(row.objective_results),
       costPerResult: metrics(row.cost_per_result),
-      leadActions: (row.actions ?? []).filter(item => /lead/i.test(item.action_type)).slice(0, 30).map(item => ({ action_type: text(item.action_type), value: text(item.value) })),
+      leadActions: leadActionEvidence(row.actions),
+      leadCosts: leadActionEvidence(row.cost_per_action_type),
+      probes: [] as FormEvidenceProbe[],
     };
   }
 }
