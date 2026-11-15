@@ -17,7 +17,7 @@ export function metaFormLeadsFromMetaExportRow(
   row: Pick<MetricRow, "results" | "leads" | "meta_leads" | "result_type">,
 ): number {
   const results = parseCellNum(row.results);
-  if (results > 0) return results;
+  if (String(row.results ?? "").trim() !== "") return results;
   const rt = (row.result_type || "").trim();
   if (!rt) return 0;
   if (getMetaResultLabels(rt).resultLabel !== "META FORM LEADS") return 0;
@@ -48,7 +48,7 @@ export function websiteLeadsFromMetaExportRow(
   row: Pick<MetricRow, "results" | "website_leads" | "result_type" | "_raw">,
 ): number {
   const results = parseCellNum(row.results);
-  if (results > 0) return results;
+  if (String(row.results ?? "").trim() !== "") return results;
   const wl = websiteSubmissionColumnValue(row);
   if (wl <= 0) return 0;
   const rt = (row.result_type || "").trim();
