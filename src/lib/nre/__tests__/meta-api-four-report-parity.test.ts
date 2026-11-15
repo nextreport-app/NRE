@@ -19,7 +19,7 @@ import type {Client} from "@/generated/prisma/client";
 const now=new Date("2026-11-05T12:00:00Z");
 const all:MetaInsightRow[]=Array.from({length:65},(_,i)=>{
  const day=new Date(Date.UTC(2026,8,1+i)).toISOString().slice(0,10);const leads=day==="2026-11-04"?0:2;
- return {campaign_id:"1",campaign_name:"Example Instant Form",adset_id:"10",adset_name:"Main",date_start:day,date_stop:day,spend:"10",impressions:"2000",reach:"1000",clicks:"10",ctr:"0.5",cpc:"1",inline_link_clicks:"5",optimization_goal:"LEAD_GENERATION",results:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:String(leads)}]}]:[],cost_per_result:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:"5"}]}]:[],actions:leads?[{action_type:"onsite_conversion.lead_grouped",value:String(leads)},{action_type:"lead",value:"99"}]:[]};
+ return {campaign_id:"1",campaign_name:"Example Instant Form",adset_id:"10",adset_name:"Main",date_start:day,date_stop:day,spend:"10",impressions:"2000",reach:"1000",clicks:"10",ctr:"0.5",cpc:"1",inline_link_clicks:"5",optimization_goal:"LEAD_GENERATION",results:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:String(leads)}]}]:[],cost_per_result:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:"5"}]}]:[],actions:leads?[{action_type:"onsite_conversion.lead_grouped",value:String(leads+(day==="2026-10-24"?1:0))},{action_type:"lead",value:"99"}]:[]};
 });
 const client={id:"sample",userId:"owner",accountName:"API Review Sample",currency:"AUD",timezone:"UTC",monthlyBudget:null,campaignObjectiveCache:null,showBudgetPacingOnCover:false} as Client;
 const templateBuffer=readFileSync("templates/dark.pptx");

@@ -1,3 +1,4 @@
+import { ServiceError } from "@/lib/service-error";
 import { resolveObjectiveFromResultType } from "../result-type-map";
 import type { MetaInsightRow } from "@/lib/meta-api";
 import { formatCtrForManualCsv, normalizeDateFormat } from "./api-csv-normalize";
@@ -64,13 +65,23 @@ function costPerActionType(row: MetaInsightRow, actionType: string): string {
   return "";
 }
 
+function evidenceFingerprint(value: unknown): string {
+  if (Array.isArray(value)) return JSON.stringify(value.map(evidenceFingerprint).sort());
+  if (value && typeof value === "object") return JSON.stringify(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, evidenceFingerprint(item)]));
+  return JSON.stringify(value) ?? "undefined";
+}
+
 export function dedupeInsightsByAdSetDay(rows: MetaInsightRow[]): MetaInsightRow[] {
   const byKey = new Map<string, MetaInsightRow>();
   for (const row of rows) {
     if (!row.campaign_name?.trim() || !row.date_start?.trim()) continue;
     const adset = (row.adset_name ?? "").trim();
     const key = `${row.campaign_id ?? row.campaign_name.trim()}\0${row.adset_id ?? adset}\0${row.date_start.trim()}`;
-    if (!byKey.has(key)) byKey.set(key, row);
+    const previous = byKey.get(key);
+    if (previous && evidenceFingerprint(previous) !== evidenceFingerprint(row)) {
+      throw new ServiceError("Meta returned conflicting duplicate daily rows. Retry sync; no conflicting spend or result counts have been discarded.", 422);
+    }
+    if (!previous) byKey.set(key, row);
   }
   return [...byKey.values()];
 }
@@ -94,7 +105,9 @@ export function insightToManualCsvRowWithResult(row: MetaInsightRow, primary: Re
       primary.csvResultType.toLowerCase().includes("leads (form)") ||
       primary.action_type.includes("lead_grouped")
     ) {
-      metaLeads = v;
+      // Grouped Meta leads are a secondary metric, not the primary Results.
+      // Preserve their own count when the provider supplied it.
+      metaLeads = actionMap.get("onsite_conversion.lead_grouped") ?? actionMap.get("onsite_conversion.lead") ?? actionMap.get("leadgen_grouped") ?? v;
     }
   }
 
@@ -118,7 +131,9 @@ export function insightToManualCsvRowWithResult(row: MetaInsightRow, primary: Re
     costPerActionType(row, "landing_page_view"),
     formatCount(metaLeads),
     formatCount(websiteLeads),
-    cpr,
+    primary && resolveObjectiveFromResultType(primary.csvResultType)?.key === "meta_form_leads"
+      ? (metaLeads > 0 ? String(Number(row.spend ?? 0) / metaLeads) : "")
+      : cpr,
     "",
     "",
     row.clicks ?? "",

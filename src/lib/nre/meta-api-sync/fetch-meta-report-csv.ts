@@ -1,3 +1,4 @@
+import { ServiceError } from "@/lib/service-error";
 import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
 import { validateMetaClickRates } from "./validate-click-rates";
@@ -89,6 +90,29 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     });
   }
 
+  // Only instant-form rows use the primary Results projection. Refresh their
+  // entire observation together so counts and spend never mix API snapshots.
+  const formRows = deduped.filter(row => !row.configured_result_action && row.optimization_goal?.toUpperCase() === "LEAD_GENERATION");
+  if (input.requireDirectResultEvidence && formRows.length) {
+    const formIds = new Set(formRows.map(row => row.adset_id));
+    const key = (row: MetaInsightRow) => JSON.stringify([row.campaign_id, row.adset_id, row.date_start, row.date_stop]);
+    const refreshed = (await fetchMetaAdAccountInsights({
+      accessToken: input.accessToken, adAccountId: input.adAccountId,
+      sinceIso, untilIso, level: "adset", includeResultChannels: true,
+    })).map(normalizeMetaInsightRow).filter(row => formIds.has(row.adset_id));
+    const byKey = new Map(refreshed.map(row => [key(row), row]));
+    if (formRows.some(row => !row.adset_id || !row.campaign_id) || refreshed.length !== formRows.length || byKey.size !== refreshed.length || formRows.some(row => !byKey.has(key(row)))) {
+      throw new ServiceError("Meta returned inconsistent daily coverage while loading instant-form Results. Retry sync; no partial report has been imported.", 422);
+    }
+    const keys = new Set(formRows.map(key));
+    deduped = deduped.map(row => {
+      if (!keys.has(key(row))) return row;
+      const refreshedRow = { ...byKey.get(key(row))!, optimization_goal: row.optimization_goal };
+      validateMetaClickRates(refreshedRow);
+      return refreshedRow;
+    });
+  }
+
   if (input.requireDirectResultEvidence && deduped.some(row => row.configured_result_action?.startsWith("offsite_conversion.custom."))) {
     // Same catalog naming used by CSV analyze/metrics. Keep the raw indicator
     // below so later detection can still resolve a refreshed custom catalog.
@@ -135,12 +159,13 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     sinceIso, untilIso,
     configuredResultCountSource(deduped[index]),
     "adset_unified", "impression",
+    JSON.stringify({ actions: deduped[index].actions ?? [], results: deduped[index].results ?? null, objective_results: deduped[index].objective_results ?? null }),
     configuredResultCountSource(deduped[index]) === "conversions.schedule_website.value"
       ? "conversions:schedule_website"
       : row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : "",
   ));
   const headers = META_CSV_HEADERS.map(header => header === "Amount spent (USD)" ? `Amount spent (${input.currency})` : header);
-  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time", "Result indicator");
+  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time", "NRE API result evidence", "Result indicator");
   if (deduped.some(row => row.configured_result_action === "offsite_conversion.fb_pixel_schedule" || row.actions?.some(action => action.action_type === "offsite_conversion.fb_pixel_schedule"))) {
     headers.push("Website appointments scheduled");
     dataRows.forEach((row, index) => row.push(

@@ -1715,7 +1715,7 @@ describe("resultValueForObjective — WEBSITE LEADS", () => {
 
   it("falls back to website_leads when Result type is Website lead but Results cell is blank", () => {
     expect(
-      resultValueForObjective(row({ result_type: "Website lead", results: 0, website_leads: 1 }), "WEBSITE LEADS"),
+      resultValueForObjective({ ...row({ result_type: "Website lead", website_leads: 1 }), results: "" }, "WEBSITE LEADS"),
     ).toBe(1);
   });
 

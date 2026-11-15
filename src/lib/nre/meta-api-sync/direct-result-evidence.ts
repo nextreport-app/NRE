@@ -20,6 +20,29 @@ function scalarCount(raw: string | undefined): number {
   return count;
 }
 
+const FORM_ACTIONS = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"];
+
+/** Form Results and grouped Meta leads are distinct provider observations. */
+function primaryFormResult(row: MetaInsightRow): { type: string; count: number } {
+  const fail = () => new ServiceError("Meta did not return an unambiguous primary Results count for an instant-form ad set. Retry sync or upload an Ads Manager CSV with Results and Result type; grouped Meta leads have not been substituted.", 422);
+  if (!Array.isArray(row.results)) throw fail();
+  const observations = row.results.map(metric => {
+    const type = action(metric.indicator ?? "");
+    if (!FORM_ACTIONS.includes(type) || metric.values?.length !== 1) throw fail();
+    const raw = metric.values[0].value;
+    const count = Number(raw);
+    if (raw == null || String(raw).trim() === "" || !Number.isFinite(count) || count < 0) throw fail();
+    return { type, count };
+  });
+  if (!observations.length) {
+    if (FORM_ACTIONS.some(type => actionCount(row, type) > 0)) throw fail();
+    return { type: FORM_ACTIONS[0], count: 0 };
+  }
+  const first = observations[0];
+  if (observations.some(item => item.type !== first.type || item.count !== first.count)) throw fail();
+  return first;
+}
+
 /** Configured events and optimization goals define the count; campaign names cannot override them. */
 export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const pack = (type: string, count: number, delivery = false): ManualExportPrimaryResult => ({
@@ -46,8 +69,8 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
     case "REACH": return pack("reach", scalarCount(row.reach), true);
     case "IMPRESSIONS": return pack("impressions", scalarCount(row.impressions), true);
     case "LEAD_GENERATION": {
-      const type = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"].find(type => row.actions?.some(item => item.action_type === type)) ?? "onsite_conversion.lead_grouped";
-      return pack(type, actionCount(row, type));
+      const { type, count } = primaryFormResult(row);
+      return pack(type, count);
     }
   }
   const legacy = manualExportPrimaryResult(row);
@@ -76,5 +99,6 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
 /** Source metadata follows the same explicit schedule-channel policy as counting. */
 export function configuredResultCountSource(row: MetaInsightRow): string {
   if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) return "conversions.schedule_website.value";
+  if (!row.configured_result_action && row.optimization_goal?.toUpperCase() === "LEAD_GENERATION") return "results.values.value";
   return row.configured_result_action ? "actions.value" : "delivery_or_actions";
 }
