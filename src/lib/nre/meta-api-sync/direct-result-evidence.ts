@@ -23,9 +23,36 @@ function scalarCount(raw: string | undefined): number {
 
 const FORM_ACTIONS = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"];
 
+/** Match directly reported action destinations to verified creative form IDs. */
+function destinationFormResult(row: MetaInsightRow): { type: string; count: number } | null {
+  if (row.form_destination_status !== "verified" || !row.configured_form_ids?.length || !row.form_destination_actions) return null;
+  const type = "onsite_conversion.lead_grouped";
+  const fail = () => new FormResultEvidenceError(row, "unverified_form_destination");
+  const forms = new Set(row.configured_form_ids);
+  if ([...forms].some(id => !/^\d+$/.test(id))) throw fail();
+  const seen = new Set<string>();
+  let grouped = 0, primary = 0;
+  for (const metric of row.form_destination_actions.filter(item => item.action_type === type)) {
+    const destination = metric.action_destination;
+    const count = Number(metric.value);
+    if (!destination || seen.has(destination) || String(metric.value).trim() === "" || !Number.isFinite(count) || count < 0) throw fail();
+    seen.add(destination);
+    // An unrecognized numeric object might be another form. Do not discard it.
+    if (/^\d+$/.test(destination) && !forms.has(destination)) throw fail();
+    grouped += count;
+    if (forms.has(destination)) primary += count;
+  }
+  if (Math.abs(grouped - actionCount(row, type)) > 1e-8) throw fail();
+  return { type, count: primary };
+}
+
 /** Form Results and grouped Meta leads are distinct provider observations. */
 function primaryFormResult(row: MetaInsightRow): { type: string; count: number } {
   const fail = (reason: FormResultFailureReason) => new FormResultEvidenceError(row, reason);
+  if (!Array.isArray(row.results) || row.results.length === 0) {
+    const destination = destinationFormResult(row);
+    if (destination) return destination;
+  }
   if (!Array.isArray(row.results)) throw fail("missing_results");
   const observations = row.results.map(metric => {
     if (!metric || typeof metric !== "object") throw fail("invalid_value_shape");
@@ -102,6 +129,6 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
 /** Source metadata follows the same explicit schedule-channel policy as counting. */
 export function configuredResultCountSource(row: MetaInsightRow): string {
   if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) return "conversions.schedule_website.value";
-  if (!row.configured_result_action && row.optimization_goal?.toUpperCase() === "LEAD_GENERATION") return "results.values.value";
+  if (!row.configured_result_action && row.optimization_goal?.toUpperCase() === "LEAD_GENERATION") return row.form_destination_status === "verified" && (!row.results?.length) ? "actions.value:configured_form_destination" : "results.values.value";
   return row.configured_result_action ? "actions.value" : "delivery_or_actions";
 }
