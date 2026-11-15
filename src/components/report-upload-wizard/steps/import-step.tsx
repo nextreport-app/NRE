@@ -159,7 +159,6 @@ export function WizardImportStep() {
       {selectedPlatformCard && (
         <div className="space-y-3">
           {reportSetup}
-          <a href="/sample-report.pptx" className="inline-block text-sm text-dash-accent hover:underline">See a sample report ↓</a>
           {isWizardApiSyncVisible() && <WizardDataSourceToggle
             value={dataSourceMode}
             onChange={handleDataSourceModeChange}

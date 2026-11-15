@@ -106,7 +106,6 @@ export function WizardCampaignsStep() {
     campaignObjectives,
     campaignRequiresConfirmation,
     campaignSearch,
-    reportType,
     campaigns,
     csvDateGuidance,
     csvWarningDismissed,
@@ -211,7 +210,6 @@ export function WizardCampaignsStep() {
         )}
       </div>
 
-      {reportType === "WEEKLY" && <p className="text-[13px] text-dash-ink-secondary">Selection applies to all report sections. Excluding a campaign also removes its spend from summaries. Campaigns without weekly spend appear in summaries only.</p>}
       {campaignSpendLoading && <p role="status" className="text-[13px] text-dash-ink-secondary">Updating campaign availability…</p>}
       {!campaignSpendLoading && campaignSpendLabel?.startsWith("Spend unavailable") && <p role="alert" className="text-[13px] text-dash-ink-secondary">Campaign availability could not be checked. Return to Import and analyze again.</p>}
 

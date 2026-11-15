@@ -1,5 +1,6 @@
 /** No private routes, report tokens, sensitive query strings, emails, or form contents in analytics. */
 export const ANALYTICS_CONSENT_KEY = "nre.analytics-consent.v1";
+export const ANALYTICS_PREFERENCES_EVENT = "nre:open-analytics-preferences";
 export const ANALYTICS_PUBLIC_PATHS = new Set([
   "/",
   "/pricing",

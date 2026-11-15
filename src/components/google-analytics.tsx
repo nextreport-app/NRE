@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   ANALYTICS_CONSENT_KEY,
+  ANALYTICS_PREFERENCES_EVENT,
   ANALYTICS_PUBLIC_PATHS,
   analyticsPageLocation,
   GTM_CONTAINER_ID,
@@ -48,6 +49,11 @@ export function GoogleAnalytics() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const publicPage = ANALYTICS_PUBLIC_PATHS.has(pathname);
   useEffect(() => {
+    const openPreferences = () => setSettingsOpen(true);
+    window.addEventListener(ANALYTICS_PREFERENCES_EVENT, openPreferences);
+    return () => window.removeEventListener(ANALYTICS_PREFERENCES_EVENT, openPreferences);
+  }, []);
+  useEffect(() => {
     const win = window as unknown as {
       dataLayer: Record<string, unknown>[];
       gtag: (...args: unknown[]) => void;
@@ -76,54 +82,45 @@ export function GoogleAnalytics() {
   function choose(next: "granted" | "denied") {
     try {
       localStorage.setItem(ANALYTICS_CONSENT_KEY, next);
+      setSessionConsent(null);
       window.dispatchEvent(new Event("nre:analytics-consent"));
     } catch { setSessionConsent(next); }
     setSettingsOpen(false);
   }
   return (
     <>
-      {loaded && publicPage ? (
-        consent === null || settingsOpen ? (
-          <section
-            aria-label="Analytics preferences"
-            className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-xl rounded-xl border border-navy-border bg-navy-panel p-4 text-sm text-ink shadow-xl"
-          >
-            <p>
-              Allow optional analytics cookies to help us improve NextReport?
-              You can change this choice anytime.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => choose("granted")}
-                className="min-h-11 rounded-md border border-navy-border px-4 font-medium"
-              >
-                Allow analytics
-              </button>
-              <button
-                type="button"
-                onClick={() => choose("denied")}
-                className="min-h-11 rounded-md border border-navy-border px-4 font-medium"
-              >
-                Decline
-              </button>
-              <a
-                href="/privacy"
-                className="inline-flex min-h-11 items-center underline underline-offset-4"
-              >
-                Privacy policy
-              </a>
-            </div>
-          </section>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="fixed bottom-3 left-3 z-40 rounded-full border border-navy-border bg-navy-panel px-3 py-2 text-xs text-ink"
-          >
-            Analytics preferences
-          </button>
-        )
+      {loaded && publicPage && (consent === null || settingsOpen) ? (
+        <section
+          aria-label="Analytics preferences"
+          className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-xl rounded-xl border border-navy-border bg-navy-panel p-4 text-sm text-ink shadow-xl"
+        >
+          <p>
+            Allow optional analytics cookies to help us improve NextReport?
+            You can change this choice anytime.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => choose("granted")}
+              className="min-h-11 rounded-md border border-navy-border px-4 font-medium"
+            >
+              Allow analytics
+            </button>
+            <button
+              type="button"
+              onClick={() => choose("denied")}
+              className="min-h-11 rounded-md border border-navy-border px-4 font-medium"
+            >
+              Decline
+            </button>
+            <a
+              href="/privacy"
+              className="inline-flex min-h-11 items-center underline underline-offset-4"
+            >
+              Privacy policy
+            </a>
+          </div>
+        </section>
       ) : null}
     </>
   );

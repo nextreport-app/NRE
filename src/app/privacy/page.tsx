@@ -1,3 +1,4 @@
+import { AnalyticsPreferencesButton } from "@/components/analytics-preferences-button";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
@@ -245,7 +246,7 @@ export default async function PrivacyPage() {
         <section>
           <h2 className="mb-2 text-lg font-medium text-white">7. Cookies</h2>
           <p>
-            We use authentication cookies to keep you signed in and local storage to remember preferences. When optional analytics is configured, Google Analytics cookies are used only after you allow analytics. You can decline or change your choice through Analytics preferences. We do not enable advertising personalization or send form contents to analytics.
+            We use authentication cookies to keep you signed in and local storage to remember preferences. When optional analytics is configured, Google Analytics cookies are used only after you allow analytics. You can decline or change your choice through <AnalyticsPreferencesButton />. We do not enable advertising personalization or send form contents to analytics.
           </p>
         </section>
 
