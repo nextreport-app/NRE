@@ -23,12 +23,13 @@ function scalarCount(raw: string | undefined): number {
 
 const FORM_ACTIONS = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"];
 
-/** Match directly reported action destinations to verified creative form IDs. */
+/** Meta can report the form itself or its owning Page as action_destination.
+ * Both identities must come from the same ad set's form-bearing creatives. */
 function destinationFormResult(row: MetaInsightRow): { type: string; count: number } | null {
   if (row.form_destination_status !== "verified" || !row.configured_form_ids?.length || !row.form_destination_actions) return null;
   const type = "onsite_conversion.lead_grouped";
   const fail = () => new FormResultEvidenceError(row, "unverified_form_destination");
-  const forms = new Set(row.configured_form_ids);
+  const forms = new Set([...row.configured_form_ids, ...(row.configured_form_page_ids ?? [])]);
   if ([...forms].some(id => !/^\d+$/.test(id))) throw fail();
   const seen = new Set<string>();
   let grouped = 0, primary = 0;

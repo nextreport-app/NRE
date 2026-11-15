@@ -7,6 +7,7 @@ import {
   exchangeMetaAuthCode,
   fetchMetaAdAccountInsights,
   fetchMetaAdSetInstantFormIds,
+  fetchMetaAdSetInstantFormDestinations,
   fetchMetaAdAccounts,
   fetchMetaUserProfile,
   formatMetaInsightsErrorMessage,
@@ -352,4 +353,14 @@ describe("read-only ad-creative instant form verification", () => {
     await expect(fetchMetaAdSetInstantFormIds("fixture", "20")).rejects.toThrow(/pagination/);
     expect(provider).toHaveBeenCalledTimes(1);
   });
+});
+
+it("associates Page IDs only with form-bearing creatives and ignores Instagram/unrelated Page IDs", async () => {
+ const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
+  { creative: { object_story_spec: { page_id: "300", instagram_actor_id: "888", link_data: { call_to_action: { value: { lead_gen_form_id: "200" } } } } } },
+  { creative: { object_story_spec: { page_id: "999", link_data: { link: "https://example.invalid" } } } },
+  { creative: { object_story_spec: { page_id: "300" }, asset_feed_spec: { call_to_actions: [{ value: { lead_gen_form_id: "201" } }] } } },
+ ] })));
+ vi.stubGlobal("fetch", provider);
+ expect(await fetchMetaAdSetInstantFormDestinations("fixture", "20")).toEqual({ formIds: ["200", "201"], pageIds: ["300"] });
 });

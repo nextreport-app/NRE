@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/meta-api", async original => ({
   ...await original<typeof import("@/lib/meta-api")>(),
   fetchMetaAdAccountInsights: vi.fn(),
-  fetchMetaAdSetInstantFormIds: vi.fn().mockResolvedValue([]),
+  fetchMetaAdSetInstantFormDestinations: vi.fn().mockResolvedValue({ formIds: [], pageIds: [] }),
   fetchMetaAdSetReportingConfigs: vi.fn().mockResolvedValue([{ id: "set", optimization_goal: "LEAD_GENERATION" }]),
   fetchMetaAdAccountCampaignPeriodInsights: vi.fn().mockResolvedValue([]),
 }));
