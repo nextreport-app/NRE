@@ -1,3 +1,4 @@
+import { FormResultEvidenceError } from "@/lib/nre/meta-api-sync/form-result-evidence-error";
 import { metaClientAccountStatus, normalizeMetaAccountId } from "@/lib/meta-client-account";
 import { metaApiCsvTransport } from "@/lib/meta-api-csv-transport";
 import { metaApiImportRange } from "@/lib/nre/meta-api-import-range";
@@ -323,6 +324,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ...previousMonth,
     });
   } catch (err) {
+    if (err instanceof FormResultEvidenceError) return NextResponse.json({ error: err.message, diagnostic: err.diagnostic }, { status: 422, headers: { "Cache-Control": "no-store" } });
     if (err instanceof MetaInsightsFetchError) return NextResponse.json({ error: formatMetaInsightsErrorMessage(err.meta) }, { status: 502 });
     return apiErrorResponse(err, "reports:sync-api");
   }

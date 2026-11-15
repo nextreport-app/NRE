@@ -30,6 +30,14 @@ Daily CSV reach cannot prove a deduplicated period audience. The engine uses mat
 
 The final full Vitest run passed 3,244 tests with zero failures. Its 22 optional skips comprise 21 database tests (subsequently run separately against a disposable local PostgreSQL database: all 21 passed) and one optional private workbook fixture that was not supplied. All 13 Node runner tests passed. TypeScript, targeted ESLint, the production webpack build and whitespace checks passed. These checks use fixtures/mocks for external providers; they do not constitute an authenticated live Meta or Google acceptance run.
 
+## Post-deployment result: API acceptance remains blocked
+
+The user's first production October sync after PR #719 stopped with the primary-form Results guard. The original error did not retain which day, indicator or value shape failed; it does not establish that Meta omitted Results rather than returning an unsupported indicator/shape or conflicting values. Do not bypass the guard or treat this as successful API parity.
+
+The diagnostic follow-up adds an authenticated, no-store 422 payload and a **Download sync diagnostic** button on this error screen. The bounded JSON includes a specific failure reason, affected date/ad-set/campaign IDs, primary/objective result metrics and lead actions. It explicitly selects reporting fields and excludes request/token objects. No partial CSV or report is returned. A local browser check verified the JSON download and clearing after successful retry; the API suite passed 133 tests and the focused diagnostic/mapping/route/UI checks passed 49 tests, alongside TypeScript, targeted ESLint and the production build.
+
+After deploying the follow-up, repeat the October sync once. If the error recurs, download `meta-sync-diagnostic.json` from the error box and provide that file. No PPT generation or additional CSV uploads are needed to diagnose this failure. Inspect that provider evidence before changing supported result indicators or zero/missing-count policies.
+
 ## Live acceptance still required after deployment
 
 1. Select the Express Text client and Monthly report, choose October 1–31, 2026, and sync the matching Meta account.

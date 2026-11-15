@@ -1,3 +1,4 @@
+import { FormResultEvidenceError, type FormResultFailureReason } from "./form-result-evidence-error";
 import type { MetaInsightRow } from "@/lib/meta-api";
 import { syntheticResultTypeFromMetaResultIndicator } from "../meta-result-indicator";
 import { ServiceError } from "@/lib/service-error";
@@ -24,22 +25,24 @@ const FORM_ACTIONS = ["onsite_conversion.lead_grouped", "onsite_conversion.lead"
 
 /** Form Results and grouped Meta leads are distinct provider observations. */
 function primaryFormResult(row: MetaInsightRow): { type: string; count: number } {
-  const fail = () => new ServiceError("Meta did not return an unambiguous primary Results count for an instant-form ad set. Retry sync or upload an Ads Manager CSV with Results and Result type; grouped Meta leads have not been substituted.", 422);
-  if (!Array.isArray(row.results)) throw fail();
+  const fail = (reason: FormResultFailureReason) => new FormResultEvidenceError(row, reason);
+  if (!Array.isArray(row.results)) throw fail("missing_results");
   const observations = row.results.map(metric => {
+    if (!metric || typeof metric !== "object") throw fail("invalid_value_shape");
     const type = action(metric.indicator ?? "");
-    if (!FORM_ACTIONS.includes(type) || metric.values?.length !== 1) throw fail();
-    const raw = metric.values[0].value;
+    if (!FORM_ACTIONS.includes(type)) throw fail("unexpected_indicator");
+    if (metric.values?.length !== 1) throw fail("invalid_value_shape");
+    const raw = metric.values[0]?.value;
     const count = Number(raw);
-    if (raw == null || String(raw).trim() === "" || !Number.isFinite(count) || count < 0) throw fail();
+    if (raw == null || String(raw).trim() === "" || !Number.isFinite(count) || count < 0) throw fail("invalid_count");
     return { type, count };
   });
   if (!observations.length) {
-    if (FORM_ACTIONS.some(type => actionCount(row, type) > 0)) throw fail();
+    if (FORM_ACTIONS.some(type => actionCount(row, type) > 0)) throw fail("empty_results_with_form_actions");
     return { type: FORM_ACTIONS[0], count: 0 };
   }
   const first = observations[0];
-  if (observations.some(item => item.type !== first.type || item.count !== first.count)) throw fail();
+  if (observations.some(item => item.type !== first.type || item.count !== first.count)) throw fail("conflicting_results");
   return first;
 }
 
