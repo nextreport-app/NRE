@@ -2,7 +2,7 @@ import {describe,expect,it,vi,beforeEach} from "vitest";
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import JSZip from "jszip";
 vi.mock("@/lib/prisma",()=>({prisma:{user:{findUnique:vi.fn().mockResolvedValue(null)}}}));
-vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/lib/meta-api")>(),fetchMetaAdSetReportingConfigs:vi.fn().mockResolvedValue([{id:"10",optimization_goal:"LEAD_GENERATION",promoted_object:{}}]),fetchMetaAdAccountInsights:vi.fn(),fetchMetaAdSetInstantFormDestinations:vi.fn().mockResolvedValue({formIds:["200"],pageIds:["300"],storyIds:["300_500","500"],adIds:["700"]}),fetchMetaAdAccountCampaignPeriodInsights:vi.fn()}));
+vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/lib/meta-api")>(),fetchMetaAdSetReportingConfigs:vi.fn().mockResolvedValue([{id:"10",optimization_goal:"LEAD_GENERATION",promoted_object:{}}]),fetchMetaAdAccountInsights:vi.fn(),fetchMetaAdAccountCampaignPeriodInsights:vi.fn()}));
 import {fetchMetaAdAccountInsights,fetchMetaAdAccountCampaignPeriodInsights,type MetaInsightRow} from "@/lib/meta-api";
 import {fetchMetaReportCsv} from "../meta-api-sync";
 import {metaApiImportRange,type MetaApiReportSelection} from "../meta-api-import-range";
@@ -19,17 +19,12 @@ import type {Client} from "@/generated/prisma/client";
 const now=new Date("2026-11-05T12:00:00Z");
 const all:MetaInsightRow[]=Array.from({length:65},(_,i)=>{
  const day=new Date(Date.UTC(2026,8,1+i)).toISOString().slice(0,10);const leads=day==="2026-11-04"?0:2;
- return {campaign_id:"1",campaign_name:"Example Instant Form",adset_id:"10",adset_name:"Main",date_start:day,date_stop:day,spend:"10",impressions:"2000",reach:"1000",clicks:"10",ctr:"0.5",cpc:"1",inline_link_clicks:"5",optimization_goal:"LEAD_GENERATION",results:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:String(leads)}]}]:[],cost_per_result:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:"5"}]}]:[],actions:leads?[{action_type:"onsite_conversion.lead_grouped",value:String(leads+(day==="2026-10-24"?1:0))},{action_type:"lead",value:"99"}]:[]};
+ return {campaign_id:"1",campaign_name:"Example Instant Form",adset_id:"10",adset_name:"Main",date_start:day,date_stop:day,spend:"10",impressions:"2000",reach:"1000",clicks:"10",ctr:"0.5",cpc:"1",inline_link_clicks:"5",optimization_goal:"LEAD_GENERATION",results:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:String(leads)}]}]:[],cost_per_result:leads?[{indicator:"actions:onsite_conversion.lead_grouped",values:[{value:"5"}]}]:[],actions:leads?[{action_type:"onsite_conversion.lead_grouped",value:String(leads)},{action_type:"lead",value:"99"}]:[]};
 });
 const client={id:"sample",userId:"owner",accountName:"API Review Sample",currency:"AUD",timezone:"UTC",monthlyBudget:null,campaignObjectiveCache:null,showBudgetPacingOnCover:false} as Client;
 const templateBuffer=readFileSync("templates/dark.pptx");
-let destinationMode=false;
 beforeEach(()=>{
- destinationMode=false;
- vi.mocked(fetchMetaAdAccountInsights).mockImplementation(async request=>all.filter(row=>row.date_start!>=request.sinceIso&&row.date_start!<=request.untilIso).map(row=>{
-  if(request.formEvidence?.kind==="destination") return {...row,actions: row.date_start==="2026-11-04"?[]:[{action_type:"onsite_conversion.lead_grouped",value:"2",action_destination:"500"},...(row.date_start==="2026-10-24"?[{action_type:"onsite_conversion.lead_grouped",value:"1",action_destination:"Example Page"}]:[])]};
-  return destinationMode?{...row,results:undefined}:row;
- }));
+ vi.mocked(fetchMetaAdAccountInsights).mockImplementation(async request=>all.filter(row=>row.date_start!>=request.sinceIso&&row.date_start!<=request.untilIso));
  vi.mocked(fetchMetaAdAccountCampaignPeriodInsights).mockResolvedValue([{campaign_id:"1",campaign_name:"Example Instant Form",reach:"1200"}]);
 });
 const cases:{name:string;selection:MetaApiReportSelection;spend:number;results:number}[]=[
@@ -40,8 +35,7 @@ const cases:{name:string;selection:MetaApiReportSelection;spend:number;results:n
  {name:"daily",selection:{reportType:"DAY_BREAKDOWN",dateSelection:{mode:"custom",customStart:"2026-10-01",customEnd:"2026-10-10"}},spend:100,results:20},
 ];
 describe("API data and independent CSV produce the same four report outcomes",()=>{
- it.each(cases.flatMap(example=>["primary", "destination"].map(source=>({...example,source}))))("$name ($source) uses actual conversion counts, account currency and shared PPT renderer",async({name,selection,spend,results,source})=>{
-  destinationMode=source==="destination";
+ it.each(cases)("$name uses actual conversion counts, account currency and shared PPT renderer",async({name,selection,spend,results})=>{
   const range=metaApiImportRange(selection,now,"UTC");
   const api=await fetchMetaReportCsv({accessToken:"fake",adAccountId:"act_123",timezone:"UTC",currency:"AUD",...range,requireDirectResultEvidence:true});
   expect(api.csvText).toContain("Amount spent (AUD)");expect(api.csvText).not.toContain("Amount spent (USD)");

@@ -1,5 +1,6 @@
 "use client";
 
+import { MetaApiLeadScopeNotice } from "./ui/meta-api-lead-scope-notice";
 import { ApiSourceDownload } from "./ui/api-source-download";
 import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { useEffect, useRef } from "react";
@@ -177,6 +178,7 @@ function ReportUploadWizardBody() {
         <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
       ) : null}
 
+      <MetaApiLeadScopeNotice show={w.platform === "META" && w.dataSourceMode === "api" && w.step >= 2 && [...(w.campaignObjectives?.values() ?? [])].some(objective => objective.resultLabel === "META FORM LEADS")} />
       {w.step === 2 && <CsvReportingDateNote automaticPreset={w.reportType === "COMPARISON" ? w.comparisonPreset !== "custom" : ["WEEKLY", "DAY_BREAKDOWN"].includes(w.reportType) && w.dateMode !== "custom"} source={w.dataSourceMode} reportType={w.reportType} dateMode={w.dateMode} currency={w.clientCurrency} bounds={w.dateBounds} timezone={w.clientTimezone} />}
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner
