@@ -1,3 +1,5 @@
+import { FormResultEvidenceError } from "./form-result-evidence-error";
+import { collectFormResultEvidence } from "./collect-form-result-evidence";
 import { ServiceError } from "@/lib/service-error";
 import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
@@ -153,7 +155,13 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   const identities = labelMetaInsightIdentities(deduped);
   deduped = identities.rows;
   if (process.env.META_SYNC_DEBUG === "true") logIngestionNormalizationSample(deduped);
-  const dataRows = deduped.map(row => input.requireDirectResultEvidence ? insightToManualCsvRowWithResult(row, directlyEvidencedResult(row)) : insightToManualCsvRow(row));
+  let dataRows: string[][];
+  try {
+    dataRows = deduped.map(row => input.requireDirectResultEvidence ? insightToManualCsvRowWithResult(row, directlyEvidencedResult(row)) : insightToManualCsvRow(row));
+  } catch (error) {
+    if (input.requireDirectResultEvidence && error instanceof FormResultEvidenceError) await collectFormResultEvidence(error, { accessToken: input.accessToken, adAccountId: input.adAccountId, sinceIso, untilIso });
+    throw error;
+  }
 
   if (input.requireDirectResultEvidence) dataRows.forEach((row, index) => row.push(
     sinceIso, untilIso,

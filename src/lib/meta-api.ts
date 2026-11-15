@@ -223,6 +223,14 @@ export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: s
 export interface MetaInsightAction {
   action_type: string;
   value: string;
+  action_destination?: string;
+  conversion_destination?: string;
+  "1d_view"?: string;
+  "7d_click"?: string;
+  "1d_view_first_conversion"?: string;
+  "7d_click_first_conversion"?: string;
+  "1d_view_all_conversions"?: string;
+  "7d_click_all_conversions"?: string;
 }
 
 /** Meta result channels can include broader totals than the configured website conversion event. */
@@ -360,6 +368,11 @@ async function fetchMetaInsightsPageWithRetry(url: string, accessToken: string, 
 
 export type MetaInsightsLevel = "campaign" | "adset";
 
+export interface MetaFormEvidenceQuery {
+  kind: "destination" | "conversion_destination" | "attribution";
+  adSetId: string;
+}
+
 async function fetchMetaAdAccountInsightsForRange(params: {
   accessToken: string;
   adAccountId: string;
@@ -368,6 +381,8 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   level?: MetaInsightsLevel;
   /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
   includeResultChannels?: boolean;
+  /** Diagnostic-only; these observations never enter report calculations. */
+  formEvidence?: MetaFormEvidenceQuery;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
     ? params.adAccountId
@@ -386,13 +401,19 @@ async function fetchMetaAdAccountInsightsForRange(params: {
     const fields = params.includeResultChannels === false
       ? [...META_INSIGHT_FIELDS.split(",").filter(field => !["results", "cost_per_result", "objective_results", "cost_per_objective_result"].includes(field)), "conversions"].join(",")
       : META_INSIGHT_FIELDS;
-    url.searchParams.set("fields", fields);
+    url.searchParams.set("fields", params.formEvidence ? "campaign_id,adset_id,date_start,date_stop,spend,actions,cost_per_action_type" : fields);
+    if (params.formEvidence) {
+      if (!/^\d+$/.test(params.formEvidence.adSetId)) throw new ServiceError("Invalid diagnostic ad set ID.", 422);
+      url.searchParams.set("filtering", JSON.stringify([{ field: "adset.id", operator: "IN", value: [params.formEvidence.adSetId] }]));
+      url.searchParams.set("action_breakdowns", JSON.stringify(params.formEvidence.kind === "attribution" ? ["action_type"] : ["action_type", params.formEvidence.kind === "destination" ? "action_destination" : "conversion_destination"]));
+      if (params.formEvidence.kind === "attribution") url.searchParams.set("action_attribution_windows", JSON.stringify(["7d_click", "1d_view"]));
+    }
     url.searchParams.set(
       "time_range",
       JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
     );
     url.searchParams.set("limit", "250");
-    url.searchParams.set("use_unified_attribution_setting", "true");
+    url.searchParams.set("use_unified_attribution_setting", params.formEvidence?.kind === "attribution" ? "false" : "true");
     url.searchParams.set("action_report_time", "impression");
     url.searchParams.set("access_token", params.accessToken);
     return url.toString();
@@ -425,6 +446,8 @@ async function fetchMetaAdAccountInsightsForRangeResilient(params: {
   untilIso: string;
   level: MetaInsightsLevel;
   includeResultChannels?: boolean;
+  /** Diagnostic-only; these observations never enter report calculations. */
+  formEvidence?: MetaFormEvidenceQuery;
 }): Promise<MetaInsightRow[]> {
   try {
     return await fetchMetaAdAccountInsightsForRange(params);
@@ -458,6 +481,8 @@ export async function fetchMetaAdAccountInsights(params: {
   level?: MetaInsightsLevel;
   /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
   includeResultChannels?: boolean;
+  /** Diagnostic-only; these observations never enter report calculations. */
+  formEvidence?: MetaFormEvidenceQuery;
 }): Promise<MetaInsightRow[]> {
   const level = params.level ?? "campaign";
   const chunkDays = proactiveInsightsChunkDays(level);
