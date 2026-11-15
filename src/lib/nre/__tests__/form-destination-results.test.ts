@@ -15,13 +15,20 @@ describe("configured instant-form destination Results", () => {
     expect(directlyEvidencedResult(resolved)).toMatchObject({ value: "5", cpr: "8.9" });
     expect(resolved.spend).toBe("44.5"); expect(resolved.actions).toEqual(row.actions);
     expect(configuredResultCountSource(resolved)).toBe("actions.value:configured_form_destination");
-    expect(fetchMetaAdSetInstantFormDestinations).toHaveBeenCalledWith("fixture", "20");
+    expect(fetchMetaAdSetInstantFormDestinations).toHaveBeenCalledWith("fixture", "20", { adAccountId: "123", sinceIso: "2026-10-01", untilIso: "2026-10-31" });
   });
   it("counts a verified owning Page ID that differs from the form ID (the production mismatch)", async () => {
     vi.mocked(fetchMetaAdSetInstantFormDestinations).mockResolvedValue({ formIds: ["200"], pageIds: ["300"] });
     vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([{ ...breakdown, actions: [{ action_type: type, value: "5", action_destination: "300" }, { action_type: type, value: "1", action_destination: "Example Profile" }] }]);
     const [resolved] = await resolveFormDestinations([row], input);
     expect(resolved.configured_form_ids).toEqual(["200"]); expect(resolved.configured_form_page_ids).toEqual(["300"]);
+    expect(directlyEvidencedResult(resolved)).toMatchObject({ value: "5", cpr: "8.9" });
+  });
+  it("counts an explicitly published form-bearing story whose ID differs from both form and Page", async () => {
+    vi.mocked(fetchMetaAdSetInstantFormDestinations).mockResolvedValue({ formIds: ["200"], pageIds: ["300"], storyIds: ["300_500", "500"], adIds: ["700"] });
+    vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([{ ...breakdown, actions: [{ action_type: type, value: "5", action_destination: "500" }, { action_type: type, value: "1", action_destination: "Example Profile" }] }]);
+    const [resolved] = await resolveFormDestinations([row], input);
+    expect(resolved.configured_delivery_ad_ids).toEqual(["700"]);
     expect(directlyEvidencedResult(resolved)).toMatchObject({ value: "5", cpr: "8.9" });
   });
   it("uses all verified form IDs, including a secondary form in the same ad set", async () => {
@@ -57,10 +64,16 @@ describe("configured instant-form destination Results", () => {
     expect(resolved.form_destination_status).toBe("coverage_mismatch");
     expect(() => directlyEvidencedResult(resolved)).toThrow(/could not be verified/);
   });
-  it("returns zero form Results when only another destination has a lead", async () => {
+  it("does not manufacture zero form Results from unmatched positive destinations", async () => {
     const nonFormOnly = { ...row, actions: [{ action_type: type, value: "1" }] };
     vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([{ ...breakdown, actions: [{ action_type: type, value: "1", action_destination: "Example Page" }] }]);
-    expect(directlyEvidencedResult((await resolveFormDestinations([nonFormOnly], input))[0])).toMatchObject({ value: "0", cpr: "" });
+    const [resolved] = await resolveFormDestinations([nonFormOnly], input);
+    expect(() => directlyEvidencedResult(resolved)).toThrow(/could not be verified/);
+  });
+  it("retains a directly reported zero for a verified destination", async () => {
+    const zero = { ...row, actions: [{ action_type: type, value: "1" }] };
+    vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([{ ...breakdown, actions: [{ action_type: type, value: "0", action_destination: "200" }, { action_type: type, value: "1", action_destination: "Example Profile" }] }]);
+    expect(directlyEvidencedResult((await resolveFormDestinations([zero], input))[0])).toMatchObject({ value: "0", cpr: "" });
   });
   it("keeps explicit primary Results, including zero, without requesting a breakdown", async () => {
     const explicit = { ...row, results: [{ indicator: `actions:${type}`, values: [{ value: "0" }] }] };

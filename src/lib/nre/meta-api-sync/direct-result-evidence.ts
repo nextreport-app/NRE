@@ -23,27 +23,27 @@ function scalarCount(raw: string | undefined): number {
 
 const FORM_ACTIONS = ["onsite_conversion.lead_grouped", "onsite_conversion.lead", "leadgen_grouped"];
 
-/** Meta can report the form itself or its owning Page as action_destination.
- * Both identities must come from the same ad set's form-bearing creatives. */
+/** Resolve reporting destinations through explicit form, Page and published
+ * story identities on the reporting period's form-bearing ad creatives. */
 function destinationFormResult(row: MetaInsightRow): { type: string; count: number } | null {
   if (row.form_destination_status !== "verified" || !row.configured_form_ids?.length || !row.form_destination_actions) return null;
   const type = "onsite_conversion.lead_grouped";
   const fail = () => new FormResultEvidenceError(row, "unverified_form_destination");
-  const forms = new Set([...row.configured_form_ids, ...(row.configured_form_page_ids ?? [])]);
-  if ([...forms].some(id => !/^\d+$/.test(id))) throw fail();
+  const forms = new Set([...row.configured_form_ids, ...(row.configured_form_page_ids ?? []), ...(row.configured_form_story_ids ?? [])]);
+  if ([...forms].some(id => !/^\d+(?:_\d+)?$/.test(id))) throw fail();
   const seen = new Set<string>();
-  let grouped = 0, primary = 0;
+  let grouped = 0, primary = 0, observedPrimaryDestination = false;
   for (const metric of row.form_destination_actions.filter(item => item.action_type === type)) {
     const destination = metric.action_destination;
     const count = Number(metric.value);
     if (!destination || seen.has(destination) || String(metric.value).trim() === "" || !Number.isFinite(count) || count < 0) throw fail();
     seen.add(destination);
     // An unrecognized numeric object might be another form. Do not discard it.
-    if (/^\d+$/.test(destination) && !forms.has(destination)) throw fail();
+    if (/^\d+(?:_\d+)?$/.test(destination) && !forms.has(destination)) throw fail();
     grouped += count;
-    if (forms.has(destination)) primary += count;
+    if (forms.has(destination)) { primary += count; observedPrimaryDestination = true; }
   }
-  if (Math.abs(grouped - actionCount(row, type)) > 1e-8) throw fail();
+  if (Math.abs(grouped - actionCount(row, type)) > 1e-8 || (grouped > 0 && !observedPrimaryDestination)) throw fail();
   return { type, count: primary };
 }
 
