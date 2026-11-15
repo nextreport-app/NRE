@@ -1,3 +1,4 @@
+import { FormResultEvidenceError } from "@/lib/nre/meta-api-sync/form-result-evidence-error";
 import {beforeEach,afterEach,describe,expect,it,vi} from "vitest";
 vi.mock("@/lib/auth",()=>({auth:vi.fn()}));
 vi.mock("@/lib/prisma",()=>({prisma:{client:{findUnique:vi.fn(),findUniqueOrThrow:vi.fn(),update:vi.fn(),updateMany:vi.fn()},user:{findUnique:vi.fn(),update:vi.fn()}}}));
@@ -147,4 +148,24 @@ it("does not bind an empty API import", async () => {
  vi.mocked(fetchMetaReportCsv).mockResolvedValue({csvText:"",rowCount:0,sinceIso:"2026-10-01",untilIso:"2026-10-31"} as never);
  expect((await POST(request({...body,confirmedMetaAdAccountId:"123"}),params)).status).toBe(200);
  expect(prisma.client.updateMany).not.toHaveBeenCalled();
+});
+
+it("returns a bounded form diagnostic on failed sync without report data or secrets", async () => {
+ const error = new FormResultEvidenceError({ date_start: "2026-10-24", adset_id: "set", results: [{ indicator: "actions:unrecognized_form_metric", values: [{ value: "5" }] }], actions: [{ action_type: "onsite_conversion.lead_grouped", value: "6" }] }, "unexpected_indicator");
+ vi.mocked(fetchMetaReportCsv).mockRejectedValue(error);
+ const response = await POST(request(), params);
+ expect(response.status).toBe(422);
+ expect(response.headers.get("Cache-Control")).toBe("no-store");
+ const payload = await response.json();
+ expect(payload.diagnostic).toMatchObject({ schema: "nre-meta-form-results-v1", reason: "unexpected_indicator", dateStart: "2026-10-24", results: [{ indicator: "actions:unrecognized_form_metric", values: [{ value: "5" }] }] });
+ expect(payload.csvText).toBeUndefined(); expect(payload.ok).toBeUndefined();
+ expect(JSON.stringify(payload)).not.toMatch(/fake-token|protected|accessToken/);
+ expect(prisma.client.updateMany).not.toHaveBeenCalled();
+});
+it("does not disclose diagnostics to an unauthenticated request", async () => {
+ vi.mocked(auth).mockResolvedValue(null as never);
+ const response = await POST(request(), params);
+ expect(response.status).toBe(401);
+ expect((await response.json()).diagnostic).toBeUndefined();
+ expect(fetchMetaReportCsv).not.toHaveBeenCalled();
 });

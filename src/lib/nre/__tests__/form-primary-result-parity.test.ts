@@ -28,7 +28,7 @@ describe("primary form Results stay separate from secondary Meta leads", () => {
     expect(directlyEvidencedResult({ ...row, results: primary("0") })).toMatchObject({ value: "0", cpr: "" });
   });
   it.each([undefined, [], primary(""), primary("-1"), primary("NaN"), [...primary("5"), ...primary("6")]])("rejects missing, invalid or conflicting primary evidence: %j", results => {
-    expect(() => directlyEvidencedResult({ ...row, results })).toThrow(/primary Results/);
+    expect(() => directlyEvidencedResult({ ...row, results })).toThrow(/Results could not be verified/);
   });
   it("allows an empty primary projection only with no form actions", () => {
     expect(directlyEvidencedResult({ ...row, results: [], actions: [] })).toMatchObject({ value: "0" });

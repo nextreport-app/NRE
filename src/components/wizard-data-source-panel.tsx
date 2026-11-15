@@ -124,12 +124,23 @@ export function WizardDataSourcePanel({
   const connected = showMeta ? metaConnected : showGoogle ? googleAdsConnected : tiktokConnected;
   const configured = showMeta ? metaConfigured : showGoogle ? googleAdsConfigured : tiktokConfigured;
 
+  const [syncDiagnostic, setSyncDiagnostic] = useState<{ context: string; json: string } | null>(null);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccountOption[]>([]);
   const [googleCustomers, setGoogleCustomers] = useState<GoogleCustomerOption[]>([]);
   const [tiktokAdvertisers, setTiktokAdvertisers] = useState<TikTokAdvertiserOption[]>([]);
   const [selectedMetaAccount, setSelectedMetaAccount] = useState("");
   const [selectedGoogleCustomer, setSelectedGoogleCustomer] = useState("");
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
+  const diagnosticContext = JSON.stringify([clientId, platform, selectedMetaAccount, reportSelection]);
+  const diagnosticJson = syncDiagnostic?.context === diagnosticContext ? syncDiagnostic.json : null;
+  function downloadSyncDiagnostic() {
+    if (!diagnosticJson) return;
+    const url = URL.createObjectURL(new Blob([diagnosticJson], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = "meta-sync-diagnostic.json";
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   const selectedAccount = metaAccounts.find(account => account.id === selectedMetaAccount);
   const [confirmedAccountKey, setConfirmedAccountKey] = useState<string | null>(null);
   const accountStatus = metaClientAccountStatus(linkedMetaAdAccountId, selectedMetaAccount);
@@ -196,6 +207,7 @@ export function WizardDataSourcePanel({
   }, [loadAccounts]);
 
   async function handleSync() {
+    setSyncDiagnostic(null);
     if (accountNeedsConfirmation && !accountConfirmed) {
       onSyncError("Review and confirm the client and ad account before syncing.");
       return;
@@ -237,6 +249,9 @@ export function WizardDataSourcePanel({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data?.diagnostic?.schema === "nre-meta-form-results-v1") {
+          setSyncDiagnostic({ context: diagnosticContext, json: JSON.stringify(data.diagnostic, null, 2) });
+        }
         const message =
           typeof data?.error === "string"
             ? data.error
@@ -507,6 +522,7 @@ export function WizardDataSourcePanel({
         <p>{syncError}</p>
         <div className="flex flex-wrap items-center gap-4">
           {connected && configured && <button type="button" onClick={() => void handleSync()} disabled={!canSync} className="font-medium text-dash-accent underline disabled:opacity-40">Retry</button>}
+          {diagnosticJson && <button type="button" onClick={downloadSyncDiagnostic} className="font-medium text-dash-accent underline">Download sync diagnostic</button>}
           {csvFallback}
         </div>
       </div>}
