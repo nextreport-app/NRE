@@ -1,7 +1,7 @@
 import type { MetaInsightRow, MetaInsightResultMetric, MetaInsightAction } from "@/lib/meta-api";
 import { ServiceError } from "@/lib/service-error";
 
-export type FormResultFailureReason = "missing_results" | "unexpected_indicator" | "invalid_value_shape" | "invalid_count" | "empty_results_with_form_actions" | "conflicting_results";
+export type FormResultFailureReason = "missing_results" | "unexpected_indicator" | "invalid_value_shape" | "invalid_count" | "empty_results_with_form_actions" | "conflicting_results" | "unverified_form_destination";
 
 // Explicit field selection: never serialize the request, token, full row, or
 // arbitrary provider properties into a browser-visible diagnostic.
@@ -41,6 +41,9 @@ export class FormResultEvidenceError extends ServiceError {
       costPerResult: metrics(row.cost_per_result),
       leadActions: leadActionEvidence(row.actions),
       leadCosts: leadActionEvidence(row.cost_per_action_type),
+      configuredFormIds: row.configured_form_ids?.slice(0, 40) ?? [],
+      formDestinationStatus: row.form_destination_status ?? null,
+      formDestinationActions: leadActionEvidence(row.form_destination_actions),
       probes: [] as FormEvidenceProbe[],
     };
   }

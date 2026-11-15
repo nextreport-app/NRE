@@ -1,3 +1,4 @@
+import { resolveFormDestinations } from "./resolve-form-destinations";
 import { FormResultEvidenceError } from "./form-result-evidence-error";
 import { collectFormResultEvidence } from "./collect-form-result-evidence";
 import { ServiceError } from "@/lib/service-error";
@@ -115,6 +116,8 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     });
   }
 
+  if (input.requireDirectResultEvidence) deduped = await resolveFormDestinations(deduped, { accessToken: input.accessToken, adAccountId: input.adAccountId, sinceIso, untilIso });
+
   if (input.requireDirectResultEvidence && deduped.some(row => row.configured_result_action?.startsWith("offsite_conversion.custom."))) {
     // Same catalog naming used by CSV analyze/metrics. Keep the raw indicator
     // below so later detection can still resolve a refreshed custom catalog.
@@ -167,7 +170,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     sinceIso, untilIso,
     configuredResultCountSource(deduped[index]),
     "adset_unified", "impression",
-    JSON.stringify({ actions: deduped[index].actions ?? [], results: deduped[index].results ?? null, objective_results: deduped[index].objective_results ?? null }),
+    JSON.stringify({ actions: deduped[index].actions ?? [], results: deduped[index].results ?? null, objective_results: deduped[index].objective_results ?? null, configured_form_ids: deduped[index].configured_form_ids ?? [], form_destination_status: deduped[index].form_destination_status ?? null, form_destination_actions: deduped[index].form_destination_actions ?? [] }),
     configuredResultCountSource(deduped[index]) === "conversions.schedule_website.value"
       ? "conversions:schedule_website"
       : row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : "",

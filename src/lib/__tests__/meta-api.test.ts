@@ -6,6 +6,7 @@ import {
   exchangeForLongLivedToken,
   exchangeMetaAuthCode,
   fetchMetaAdAccountInsights,
+  fetchMetaAdSetInstantFormIds,
   fetchMetaAdAccounts,
   fetchMetaUserProfile,
   formatMetaInsightsErrorMessage,
@@ -335,5 +336,20 @@ describe("form evidence request isolation", () => {
     if (kind === "attribution") expect(JSON.parse(url.searchParams.get("action_attribution_windows")!)).toEqual(["7d_click", "1d_view"]);
     expect(url.searchParams.has("access_token")).toBe(false);
     expect(url.searchParams.get("use_unified_attribution_setting")).toBe(kind === "attribution" ? "false" : "true");
+  });
+});
+
+describe("read-only ad-creative instant form verification", () => {
+  it("collects only explicit lead_gen_form_id values across creative formats and pagination", async () => {
+    const provider = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ creative: { object_story_spec: { link_data: { call_to_action: { value: { lead_gen_form_id: "200", page_id: "999" } } } } } }], paging: { next: "https://graph.facebook.com/v26.0/20/ads?after=next" } }))).mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ creative: { object_story_spec: { video_data: { call_to_action: { value: { lead_gen_form_id: "201" } } } } } }, { creative: { asset_feed_spec: { call_to_actions: [{ value: { lead_gen_form_id: "200" } }] } } }] })));
+    vi.stubGlobal("fetch", provider);
+    expect(await fetchMetaAdSetInstantFormIds("fixture", "20")).toEqual(["200", "201"]);
+    expect(new URL(provider.mock.calls[0][0]).searchParams.get("fields")).toBe("id,creative{object_story_spec,asset_feed_spec}");
+  });
+  it("does not follow form-configuration pagination to another origin", async () => {
+    const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], paging: { next: "https://example.invalid/steal" } })));
+    vi.stubGlobal("fetch", provider);
+    await expect(fetchMetaAdSetInstantFormIds("fixture", "20")).rejects.toThrow(/pagination/);
+    expect(provider).toHaveBeenCalledTimes(1);
   });
 });

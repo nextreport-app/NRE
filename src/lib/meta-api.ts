@@ -220,6 +220,40 @@ export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: s
   return configs;
 }
 
+/** Form IDs are read from this ad set's ad creatives; numeric destination IDs
+ * alone are never treated as proof of an instant form. Requires ads_read only. */
+export async function fetchMetaAdSetInstantFormIds(accessToken: string, adSetId: string): Promise<string[]> {
+  if (!/^\d+$/.test(adSetId)) throw new ServiceError("Invalid ad set identity for form verification.", 422);
+  const first = new URL(`${metaGraphBase()}/${adSetId}/ads`);
+  first.searchParams.set("fields", "id,creative{object_story_spec,asset_feed_spec}");
+  first.searchParams.set("limit", "100");
+  let next: string | null = first.toString();
+  const seen = new Set<string>();
+  const ids = new Set<string>();
+  function visit(value: unknown, depth = 0) {
+    if (!value || typeof value !== "object" || depth > 12) return;
+    for (const [key, item] of Object.entries(value)) {
+      if (key === "lead_gen_form_id" && typeof item === "string" && /^\d+$/.test(item)) ids.add(item);
+      else visit(item, depth + 1);
+    }
+  }
+  while (next) {
+    const url = new URL(next);
+    if (url.origin !== first.origin || seen.has(next) || seen.size >= 100) throw new ServiceError("Meta form configuration pagination could not be verified.", 422);
+    seen.add(next);
+    const response = await fetchMetaGraph(url, accessToken);
+    const data = await response.json() as { data?: Array<{ creative?: { object_story_spec?: unknown; asset_feed_spec?: unknown } }>; error?: MetaGraphErrorDetails; paging?: { next?: string } };
+    if (!response.ok || data.error) throw adSetSettingsError(data.error, response.status);
+    if (!Array.isArray(data.data)) throw new ServiceError("Meta returned incomplete instant-form configuration.", 422);
+    for (const ad of data.data) {
+      visit(ad.creative?.object_story_spec);
+      visit(ad.creative?.asset_feed_spec);
+    }
+    next = data.paging?.next ?? null;
+  }
+  return [...ids].sort();
+}
+
 export interface MetaInsightAction {
   action_type: string;
   value: string;
@@ -252,6 +286,10 @@ export interface MetaInsightRow {
   /** Resolved from ad-set promoted_object, never guessed from campaign naming. */
   configured_result_action?: string;
   configured_result_type?: string;
+  /** Only populated after verifying form IDs from this ad set's creatives. */
+  configured_form_ids?: string[];
+  form_destination_actions?: MetaInsightAction[];
+  form_destination_status?: "verified" | "configuration_unavailable" | "destination_unavailable" | "coverage_mismatch";
   clicks?: string;
   campaign_id?: string;
   adset_id?: string;
@@ -381,7 +419,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   level?: MetaInsightsLevel;
   /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
   includeResultChannels?: boolean;
-  /** Diagnostic-only; these observations never enter report calculations. */
+  /** Scoped action breakdowns; only verified form destinations may supply primary Results. */
   formEvidence?: MetaFormEvidenceQuery;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
@@ -446,7 +484,7 @@ async function fetchMetaAdAccountInsightsForRangeResilient(params: {
   untilIso: string;
   level: MetaInsightsLevel;
   includeResultChannels?: boolean;
-  /** Diagnostic-only; these observations never enter report calculations. */
+  /** Scoped action breakdowns; only verified form destinations may supply primary Results. */
   formEvidence?: MetaFormEvidenceQuery;
 }): Promise<MetaInsightRow[]> {
   try {
@@ -481,7 +519,7 @@ export async function fetchMetaAdAccountInsights(params: {
   level?: MetaInsightsLevel;
   /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
   includeResultChannels?: boolean;
-  /** Diagnostic-only; these observations never enter report calculations. */
+  /** Scoped action breakdowns; only verified form destinations may supply primary Results. */
   formEvidence?: MetaFormEvidenceQuery;
 }): Promise<MetaInsightRow[]> {
   const level = params.level ?? "campaign";
