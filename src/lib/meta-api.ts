@@ -1,3 +1,4 @@
+import { formCreativeIdentities, type FormCreative, type FormDestinationConfig } from "./nre/meta-api-sync/form-creative-identities";
 /**
  * Meta Marketing API client — read-only OAuth + Graph API helpers.
  *
@@ -220,46 +221,65 @@ export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: s
   return configs;
 }
 
-/** Form IDs are read from this ad set's ad creatives; numeric destination IDs
- * alone are never treated as proof of an instant form. Requires ads_read only. */
-export async function fetchMetaAdSetInstantFormDestinations(accessToken: string, adSetId: string): Promise<{ formIds: string[]; pageIds: string[] }> {
-  if (!/^\d+$/.test(adSetId)) throw new ServiceError("Invalid ad set identity for form verification.", 422);
-  const first = new URL(`${metaGraphBase()}/${adSetId}/ads`);
-  first.searchParams.set("fields", "id,creative{object_story_spec,asset_feed_spec}");
-  first.searchParams.set("limit", "100");
-  let next: string | null = first.toString();
-  const seen = new Set<string>();
-  const ids = new Set<string>();
-  const pages = new Set<string>();
-  function visit(value: unknown, found: Set<string>, depth = 0) {
-    if (!value || typeof value !== "object" || depth > 12) return;
-    for (const [key, item] of Object.entries(value)) {
-      if (key === "lead_gen_form_id" && typeof item === "string" && /^\d+$/.test(item)) found.add(item);
-      else visit(item, found, depth + 1);
-    }
+export class MetaFormIdentityError extends ServiceError {
+  constructor(public readonly evidence: { stage: string; adIds: string[]; metaCode?: number }) {
+    super("Meta could not establish the reporting-period creative identities.", 422);
   }
+}
+
+/** Read form-bearing creative identities, using ads that actually delivered
+ * in the requested period rather than today's ad-set listing. */
+export async function fetchMetaAdSetInstantFormDestinations(accessToken: string, adSetId: string, period?: { adAccountId: string; sinceIso: string; untilIso: string }): Promise<FormDestinationConfig> {
+  if (!/^\d+$/.test(adSetId)) throw new ServiceError("Invalid ad set identity for form verification.", 422);
+  const creativeFields = "id,creative{id,object_story_spec,asset_feed_spec,object_story_id,effective_object_story_id}";
+  if (period) {
+    let delivery: MetaInsightRow[];
+    try { delivery = await fetchMetaAdAccountInsights({ accessToken, ...period, level: "ad", includeResultChannels: false, formIdentityAdSetId: adSetId }); }
+    catch (error) { throw new MetaFormIdentityError({ stage: "period_insights", adIds: [], ...(error instanceof MetaInsightsFetchError && typeof error.meta.code === "number" ? { metaCode: error.meta.code } : {}) }); }
+    const relevant = delivery.filter(row => row.adset_id === adSetId && row.date_start && row.date_start >= period.sinceIso && row.date_start <= period.untilIso && (Number(row.spend) > 0 || Number(row.impressions) > 0));
+    if (relevant.some(row => !row.ad_id || !/^\d+$/.test(row.ad_id))) throw new MetaFormIdentityError({ stage: "incomplete_delivery_identifiers", adIds: [] });
+    const adIds = [...new Set(relevant.map(row => row.ad_id!))].sort();
+    if (!adIds.length) throw new MetaFormIdentityError({ stage: "no_reporting_period_ads", adIds: [] });
+    const creatives: FormCreative[] = [];
+    const creativeIdentities: NonNullable<FormDestinationConfig["creativeIdentities"]> = [];
+    for (let offset = 0; offset < adIds.length; offset += 4) {
+      const batch = await Promise.all(adIds.slice(offset, offset + 4).map(async id => {
+        const url = new URL(`${metaGraphBase()}/${id}`);
+        url.searchParams.set("fields", `adset_id,${creativeFields}`);
+        const response = await fetchMetaGraph(url, accessToken);
+        const data = await response.json() as { id?: string; adset_id?: string; creative?: FormCreative; error?: MetaGraphErrorDetails };
+        if (!response.ok || data.error) throw new MetaFormIdentityError({ stage: "creative_metadata", adIds: [id], ...(typeof data.error?.code === "number" ? { metaCode: data.error.code } : {}) });
+        if (data.id !== id || data.adset_id !== adSetId || !data.creative) throw new MetaFormIdentityError({ stage: "creative_scope_mismatch", adIds: [id] });
+        return { adId: id, creative: data.creative };
+      }));
+      for (const record of batch) {
+        creatives.push(record.creative);
+        if (creativeIdentities.length < 40) {
+          const own = formCreativeIdentities([record.creative]);
+          creativeIdentities.push({ adId: record.adId, creativeId: record.creative.id ?? null, formIds: own.formIds, pageIds: own.pageIds, storyIds: own.storyIds ?? [] });
+        }
+      }
+    }
+    return { ...formCreativeIdentities(creatives), adIds, creativeIdentities };
+  }
+  // Compatibility for non-period callers; production report resolution always
+  // supplies period and never substitutes this current-ad listing for history.
+  const first = new URL(`${metaGraphBase()}/${adSetId}/ads`);
+  first.searchParams.set("fields", creativeFields); first.searchParams.set("limit", "100");
+  let next: string | null = first.toString();
+  const seen = new Set<string>(), creatives: FormCreative[] = [];
   while (next) {
     const url = new URL(next);
     if (url.origin !== first.origin || seen.has(next) || seen.size >= 100) throw new ServiceError("Meta form configuration pagination could not be verified.", 422);
     seen.add(next);
     const response = await fetchMetaGraph(url, accessToken);
-    const data = await response.json() as { data?: Array<{ creative?: { object_story_spec?: unknown; asset_feed_spec?: unknown } }>; error?: MetaGraphErrorDetails; paging?: { next?: string } };
+    const data = await response.json() as { data?: Array<{ creative?: FormCreative }>; error?: MetaGraphErrorDetails; paging?: { next?: string } };
     if (!response.ok || data.error) throw adSetSettingsError(data.error, response.status);
     if (!Array.isArray(data.data)) throw new ServiceError("Meta returned incomplete instant-form configuration.", 422);
-    for (const ad of data.data) {
-      const forms = new Set<string>();
-      const story = ad.creative?.object_story_spec;
-      visit(story, forms);
-      visit(ad.creative?.asset_feed_spec, forms);
-      for (const id of forms) ids.add(id);
-      // Only a Page on the SAME form-bearing creative verifies ownership.
-      // An unrelated Page or Instagram actor ID must not widen result scope.
-      const page = story && typeof story === "object" && "page_id" in story ? story.page_id : undefined;
-      if (forms.size && typeof page === "string" && /^\d+$/.test(page)) pages.add(page);
-    }
+    for (const ad of data.data) if (ad.creative) creatives.push(ad.creative);
     next = data.paging?.next ?? null;
   }
-  return { formIds: [...ids].sort(), pageIds: [...pages].sort() };
+  return formCreativeIdentities(creatives);
 }
 
 /** Compatibility for callers that only need form IDs. */
@@ -302,11 +322,16 @@ export interface MetaInsightRow {
   /** Only populated after verifying form IDs from this ad set's creatives. */
   configured_form_ids?: string[];
   configured_form_page_ids?: string[];
+  configured_form_story_ids?: string[];
+  configured_delivery_ad_ids?: string[];
+  configured_creative_identities?: FormDestinationConfig["creativeIdentities"];
+  form_identity_failure?: { stage: string; adIds: string[]; metaCode?: number };
   form_destination_actions?: MetaInsightAction[];
   form_destination_status?: "verified" | "configuration_unavailable" | "destination_unavailable" | "coverage_mismatch";
   clicks?: string;
   campaign_id?: string;
   adset_id?: string;
+  ad_id?: string;
   frequency?: string;
   date_start?: string;
   date_stop?: string;
@@ -418,7 +443,7 @@ async function fetchMetaInsightsPageWithRetry(url: string, accessToken: string, 
   throw new MetaInsightsFetchError(lastError ?? { message: "Failed to fetch Meta insights" });
 }
 
-export type MetaInsightsLevel = "campaign" | "adset";
+export type MetaInsightsLevel = "campaign" | "adset" | "ad";
 
 export interface MetaFormEvidenceQuery {
   kind: "destination" | "conversion_destination" | "attribution";
@@ -435,6 +460,8 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   includeResultChannels?: boolean;
   /** Scoped action breakdowns; only verified form destinations may supply primary Results. */
   formEvidence?: MetaFormEvidenceQuery;
+  /** Read-only identity lookup; counts from this query never enter totals. */
+  formIdentityAdSetId?: string;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
     ? params.adAccountId
@@ -453,7 +480,11 @@ async function fetchMetaAdAccountInsightsForRange(params: {
     const fields = params.includeResultChannels === false
       ? [...META_INSIGHT_FIELDS.split(",").filter(field => !["results", "cost_per_result", "objective_results", "cost_per_objective_result"].includes(field)), "conversions"].join(",")
       : META_INSIGHT_FIELDS;
-    url.searchParams.set("fields", params.formEvidence ? "campaign_id,adset_id,date_start,date_stop,spend,actions,cost_per_action_type" : fields);
+    url.searchParams.set("fields", params.formIdentityAdSetId ? "campaign_id,adset_id,ad_id,date_start,date_stop,spend,impressions" : params.formEvidence ? "campaign_id,adset_id,date_start,date_stop,spend,actions,cost_per_action_type" : fields);
+    if (params.formIdentityAdSetId) {
+      if (!/^\d+$/.test(params.formIdentityAdSetId)) throw new ServiceError("Invalid delivering-ad lookup identity.", 422);
+      url.searchParams.set("filtering", JSON.stringify([{ field: "adset.id", operator: "IN", value: [params.formIdentityAdSetId] }]));
+    }
     if (params.formEvidence) {
       if (!/^\d+$/.test(params.formEvidence.adSetId)) throw new ServiceError("Invalid diagnostic ad set ID.", 422);
       url.searchParams.set("filtering", JSON.stringify([{ field: "adset.id", operator: "IN", value: [params.formEvidence.adSetId] }]));
@@ -487,7 +518,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
 
 function proactiveInsightsChunkDays(level: MetaInsightsLevel): number {
   // Ad-set rows are heavier (more rows × rich action/result fields) — smaller windows avoid Vercel timeouts.
-  return level === "adset" ? 5 : 7;
+  return level === "campaign" ? 7 : 5;
 }
 
 /** One date window: paginated fetch with Meta code-1 retry, then weekly sub-chunks if still failing. */
@@ -500,6 +531,8 @@ async function fetchMetaAdAccountInsightsForRangeResilient(params: {
   includeResultChannels?: boolean;
   /** Scoped action breakdowns; only verified form destinations may supply primary Results. */
   formEvidence?: MetaFormEvidenceQuery;
+  /** Read-only identity lookup; counts from this query never enter totals. */
+  formIdentityAdSetId?: string;
 }): Promise<MetaInsightRow[]> {
   try {
     return await fetchMetaAdAccountInsightsForRange(params);
@@ -535,6 +568,8 @@ export async function fetchMetaAdAccountInsights(params: {
   includeResultChannels?: boolean;
   /** Scoped action breakdowns; only verified form destinations may supply primary Results. */
   formEvidence?: MetaFormEvidenceQuery;
+  /** Read-only identity lookup; counts from this query never enter totals. */
+  formIdentityAdSetId?: string;
 }): Promise<MetaInsightRow[]> {
   const level = params.level ?? "campaign";
   const chunkDays = proactiveInsightsChunkDays(level);

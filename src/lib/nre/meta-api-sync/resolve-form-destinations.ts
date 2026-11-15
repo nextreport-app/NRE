@@ -1,4 +1,4 @@
-import { fetchMetaAdAccountInsights, fetchMetaAdSetInstantFormDestinations, type MetaInsightRow } from "@/lib/meta-api";
+import { MetaFormIdentityError, fetchMetaAdAccountInsights, fetchMetaAdSetInstantFormDestinations, type MetaInsightRow } from "@/lib/meta-api";
 
 /** Retain canonical totals for secondary metrics; attach verified form-scoped
  * observations separately. No subtraction or numeric-ID heuristic is used. */
@@ -10,23 +10,24 @@ export async function resolveFormDestinations(rows: MetaInsightRow[], input: { a
     await Promise.all(ids.slice(offset, offset + 4).map(async adSetId => {
       const ownRows = rows.filter(row => row.adset_id === adSetId && needsDestination(row));
       let formIds: string[] = [];
-      let pageIds: string[] = [];
+      let pageIds: string[] = [], storyIds: string[] = [], adIds: string[] = [];
+      let creativeIdentities: MetaInsightRow["configured_creative_identities"] = [];
       let destinations: MetaInsightRow[];
       try {
-        ({ formIds, pageIds } = await fetchMetaAdSetInstantFormDestinations(input.accessToken, adSetId));
+        ({ formIds, pageIds, storyIds = [], adIds = [], creativeIdentities = [] } = await fetchMetaAdSetInstantFormDestinations(input.accessToken, adSetId, { adAccountId: input.adAccountId, sinceIso: input.sinceIso, untilIso: input.untilIso }));
         if (!formIds.length) throw new Error("No verified form IDs");
         destinations = await fetchMetaAdAccountInsights({ ...input, level: "adset", includeResultChannels: false, formEvidence: { kind: "destination", adSetId } });
-      } catch {
-        for (const row of ownRows) resolved.set(row, { ...row, configured_form_ids: formIds, configured_form_page_ids: pageIds, form_destination_status: formIds.length ? "destination_unavailable" : "configuration_unavailable" });
+      } catch (error) {
+        for (const row of ownRows) resolved.set(row, { ...row, configured_form_ids: formIds, configured_form_page_ids: pageIds, configured_form_story_ids: storyIds, configured_delivery_ad_ids: adIds, configured_creative_identities: creativeIdentities, ...(error instanceof MetaFormIdentityError ? { form_identity_failure: error.evidence } : {}), form_destination_status: formIds.length ? "destination_unavailable" : "configuration_unavailable" });
         return;
       }
       for (const row of ownRows) {
         const matches = destinations.filter(item => item.adset_id === adSetId && item.campaign_id === row.campaign_id && item.date_start === row.date_start && item.date_stop === row.date_stop);
         const match = matches[0];
         if (matches.length !== 1 || !match || String(row.spend ?? "").trim() === "" || String(match.spend ?? "").trim() === "" || !Number.isFinite(Number(row.spend)) || Number(row.spend) < 0 || !Number.isFinite(Number(match.spend)) || Math.abs(Number(match.spend) - Number(row.spend)) > 1e-8) {
-          resolved.set(row, { ...row, configured_form_ids: formIds, configured_form_page_ids: pageIds, form_destination_status: "coverage_mismatch" });
+          resolved.set(row, { ...row, configured_form_ids: formIds, configured_form_page_ids: pageIds, configured_form_story_ids: storyIds, configured_delivery_ad_ids: adIds, configured_creative_identities: creativeIdentities, form_destination_status: "coverage_mismatch" });
         } else {
-          resolved.set(row, { ...row, configured_form_ids: formIds, configured_form_page_ids: pageIds, form_destination_status: "verified", form_destination_actions: match.actions ?? [] });
+          resolved.set(row, { ...row, configured_form_ids: formIds, configured_form_page_ids: pageIds, configured_form_story_ids: storyIds, configured_delivery_ad_ids: adIds, configured_creative_identities: creativeIdentities, form_destination_status: "verified", form_destination_actions: match.actions ?? [] });
         }
       }
     }));

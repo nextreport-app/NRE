@@ -43,7 +43,12 @@ export class FormResultEvidenceError extends ServiceError {
       leadCosts: leadActionEvidence(row.cost_per_action_type),
       configuredFormIds: row.configured_form_ids?.slice(0, 40) ?? [],
       configuredFormPageIds: row.configured_form_page_ids?.slice(0, 40) ?? [],
-      formDestinationStatus: row.form_destination_status ?? null,
+      configuredFormStoryIds: row.configured_form_story_ids?.slice(0, 40) ?? [],
+      deliveringAdIds: row.configured_delivery_ad_ids?.slice(0, 40) ?? [],
+      creativeIdentities: row.configured_creative_identities?.slice(0, 40).map(item => ({ adId: text(item.adId), creativeId: text(item.creativeId), formIds: item.formIds.slice(0, 40).map(text), pageIds: item.pageIds.slice(0, 40).map(text), storyIds: item.storyIds.slice(0, 80).map(text) })) ?? [],
+      identityLookupFailure: row.form_identity_failure ? { stage: text(row.form_identity_failure.stage), adIds: row.form_identity_failure.adIds.slice(0, 40).map(text), ...(typeof row.form_identity_failure.metaCode === "number" ? { metaCode: row.form_identity_failure.metaCode } : {}) } : null,
+      formDestinationCoverageStatus: row.form_destination_status ?? null,
+      formDestinationIdentityVerified: false,
       formDestinationActions: leadActionEvidence(row.form_destination_actions),
       probes: [] as FormEvidenceProbe[],
     };

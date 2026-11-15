@@ -2,7 +2,7 @@ import {describe,expect,it,vi,beforeEach} from "vitest";
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import JSZip from "jszip";
 vi.mock("@/lib/prisma",()=>({prisma:{user:{findUnique:vi.fn().mockResolvedValue(null)}}}));
-vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/lib/meta-api")>(),fetchMetaAdSetReportingConfigs:vi.fn().mockResolvedValue([{id:"10",optimization_goal:"LEAD_GENERATION",promoted_object:{}}]),fetchMetaAdAccountInsights:vi.fn(),fetchMetaAdSetInstantFormDestinations:vi.fn().mockResolvedValue({formIds:["200"],pageIds:["300"]}),fetchMetaAdAccountCampaignPeriodInsights:vi.fn()}));
+vi.mock("@/lib/meta-api",async original=>({...await original<typeof import("@/lib/meta-api")>(),fetchMetaAdSetReportingConfigs:vi.fn().mockResolvedValue([{id:"10",optimization_goal:"LEAD_GENERATION",promoted_object:{}}]),fetchMetaAdAccountInsights:vi.fn(),fetchMetaAdSetInstantFormDestinations:vi.fn().mockResolvedValue({formIds:["200"],pageIds:["300"],storyIds:["300_500","500"],adIds:["700"]}),fetchMetaAdAccountCampaignPeriodInsights:vi.fn()}));
 import {fetchMetaAdAccountInsights,fetchMetaAdAccountCampaignPeriodInsights,type MetaInsightRow} from "@/lib/meta-api";
 import {fetchMetaReportCsv} from "../meta-api-sync";
 import {metaApiImportRange,type MetaApiReportSelection} from "../meta-api-import-range";
@@ -27,7 +27,7 @@ let destinationMode=false;
 beforeEach(()=>{
  destinationMode=false;
  vi.mocked(fetchMetaAdAccountInsights).mockImplementation(async request=>all.filter(row=>row.date_start!>=request.sinceIso&&row.date_start!<=request.untilIso).map(row=>{
-  if(request.formEvidence?.kind==="destination") return {...row,actions: row.date_start==="2026-11-04"?[]:[{action_type:"onsite_conversion.lead_grouped",value:"2",action_destination:"300"},...(row.date_start==="2026-10-24"?[{action_type:"onsite_conversion.lead_grouped",value:"1",action_destination:"Example Page"}]:[])]};
+  if(request.formEvidence?.kind==="destination") return {...row,actions: row.date_start==="2026-11-04"?[]:[{action_type:"onsite_conversion.lead_grouped",value:"2",action_destination:"500"},...(row.date_start==="2026-10-24"?[{action_type:"onsite_conversion.lead_grouped",value:"1",action_destination:"Example Page"}]:[])]};
   return destinationMode?{...row,results:undefined}:row;
  }));
  vi.mocked(fetchMetaAdAccountCampaignPeriodInsights).mockResolvedValue([{campaign_id:"1",campaign_name:"Example Instant Form",reach:"1200"}]);
