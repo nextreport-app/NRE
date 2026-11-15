@@ -12,7 +12,7 @@ Independent arithmetic safeguards are retained: explicit zero Results cannot be 
 
 Restored API availability is not a claim of exact Ads Manager primary-form parity. The observed October 24 API grouped count is 6; the manual CSV has 5 primary Results and 6 Meta leads. The previous October baseline is 187 API grouped leads versus 186 manual primary Results. No count is hard-coded, inferred by subtraction, or replaced with the manual count.
 
-The wizard displays a non-blocking scope notice for Meta API form campaigns: API form reports use grouped Meta lead counts, which may differ from primary instant-form Results. Use Manual CSV for those exact primary Results. API form reporting must not be called launch-cleared for primary-form parity on the basis of this rollback. No further diagnostic uploads are requested as part of the restoration.
+The requested wizard cleanup removes the user-facing API lead-scope notice and Source data download control; the underlying grouped-count limitation is unchanged. Use Manual CSV for exact primary instant-form Results. API form reporting must not be called launch-cleared for primary-form parity on the basis of this rollback. No further diagnostic uploads are requested as part of the restoration.
 
 ## Output scope and live acceptance
 
