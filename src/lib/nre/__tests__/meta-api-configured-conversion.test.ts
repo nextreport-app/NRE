@@ -43,7 +43,7 @@ describe("configured website event, independent of generic lead totals", () => {
  it("keeps traffic and form goals tied to their own counts when result channels are not requested", () => {
   const actions = [{ action_type: "link_click", value: "100" }, { action_type: pixel, value: "1" }, { action_type: "onsite_conversion.lead_grouped", value: "5" }, { action_type: "lead", value: "99" }];
   expect(directlyEvidencedResult({ campaign_name: "Old Leads Name", optimization_goal: "LINK_CLICKS", spend: "100", inline_link_clicks: "100", actions })).toMatchObject({ action_type: "link_click", value: "100", cpr: "1" });
-  expect(directlyEvidencedResult({ campaign_name: "Old Traffic Name", optimization_goal: "LEAD_GENERATION", spend: "100", actions, results: [{ indicator: "actions:onsite_conversion.lead_grouped", values: [{ value: "5" }] }] })).toMatchObject({ action_type: "onsite_conversion.lead_grouped", value: "5", cpr: "20" });
+  expect(directlyEvidencedResult({ campaign_name: "Old Traffic Name", optimization_goal: "LEAD_GENERATION", spend: "100", actions })).toMatchObject({ action_type: "onsite_conversion.lead_grouped", value: "5", cpr: "20" });
   expect(directlyEvidencedResult({ optimization_goal: "REACH", reach: "1000", actions })).toMatchObject({ action_type: "reach", value: "1000" });
  });
  it("maps 21 website events, not 23 combined leads; preserves cents and distinct CTR definitions in PPT", async () => {

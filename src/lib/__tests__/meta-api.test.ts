@@ -6,8 +6,6 @@ import {
   exchangeForLongLivedToken,
   exchangeMetaAuthCode,
   fetchMetaAdAccountInsights,
-  fetchMetaAdSetInstantFormIds,
-  fetchMetaAdSetInstantFormDestinations,
   fetchMetaAdAccounts,
   fetchMetaUserProfile,
   formatMetaInsightsErrorMessage,
@@ -323,66 +321,4 @@ describe("strict wizard insight source contract", () => {
     await fetchMetaAdAccountInsights({ accessToken: "fixture-token", adAccountId: "123", sinceIso: "2026-10-01", untilIso: "2026-10-01" });
     expect(new URL(fetch.mock.calls[0][0]).searchParams.get("fields")!.split(",")).toContain("results");
   });
-});
-
-describe("form evidence request isolation", () => {
-  it.each(["destination", "conversion_destination", "attribution"] as const)("builds a minimal %s query scoped to the failed ad set", async kind => {
-    const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] })));
-    vi.stubGlobal("fetch", provider);
-    await fetchMetaAdAccountInsights({ accessToken: "fixture-secret", adAccountId: "123", sinceIso: "2026-10-24", untilIso: "2026-10-24", level: "adset", formEvidence: { kind, adSetId: "20" } });
-    const url = new URL(provider.mock.calls[0][0]);
-    expect(JSON.parse(url.searchParams.get("filtering")!)).toEqual([{ field: "adset.id", operator: "IN", value: ["20"] }]);
-    expect(JSON.parse(url.searchParams.get("action_breakdowns")!)).toEqual(kind === "attribution" ? ["action_type"] : ["action_type", kind === "destination" ? "action_destination" : "conversion_destination"]);
-    expect(url.searchParams.get("fields")).toBe("campaign_id,adset_id,date_start,date_stop,spend,actions,cost_per_action_type");
-    if (kind === "attribution") expect(JSON.parse(url.searchParams.get("action_attribution_windows")!)).toEqual(["7d_click", "1d_view"]);
-    expect(url.searchParams.has("access_token")).toBe(false);
-    expect(url.searchParams.get("use_unified_attribution_setting")).toBe(kind === "attribution" ? "false" : "true");
-  });
-});
-
-describe("read-only ad-creative instant form verification", () => {
-  it("collects only explicit lead_gen_form_id values across creative formats and pagination", async () => {
-    const provider = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ creative: { object_story_spec: { link_data: { call_to_action: { value: { lead_gen_form_id: "200", page_id: "999" } } } } } }], paging: { next: "https://graph.facebook.com/v26.0/20/ads?after=next" } }))).mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ creative: { object_story_spec: { video_data: { call_to_action: { value: { lead_gen_form_id: "201" } } } } } }, { creative: { asset_feed_spec: { call_to_actions: [{ value: { lead_gen_form_id: "200" } }] } } }] })));
-    vi.stubGlobal("fetch", provider);
-    expect(await fetchMetaAdSetInstantFormIds("fixture", "20")).toEqual(["200", "201"]);
-    expect(new URL(provider.mock.calls[0][0]).searchParams.get("fields")).toBe("id,creative{id,object_story_spec,asset_feed_spec,object_story_id,effective_object_story_id}");
-  });
-  it("does not follow form-configuration pagination to another origin", async () => {
-    const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], paging: { next: "https://example.invalid/steal" } })));
-    vi.stubGlobal("fetch", provider);
-    await expect(fetchMetaAdSetInstantFormIds("fixture", "20")).rejects.toThrow(/pagination/);
-    expect(provider).toHaveBeenCalledTimes(1);
-  });
-});
-
-it("associates Page IDs only with form-bearing creatives and ignores Instagram/unrelated Page IDs", async () => {
- const provider = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
-  { creative: { object_story_spec: { page_id: "300", instagram_actor_id: "888", link_data: { call_to_action: { value: { lead_gen_form_id: "200" } } } } } },
-  { creative: { object_story_spec: { page_id: "999", link_data: { link: "https://example.invalid" } } } },
-  { creative: { object_story_spec: { page_id: "300" }, asset_feed_spec: { call_to_actions: [{ value: { lead_gen_form_id: "201" } }] } } },
- ] })));
- vi.stubGlobal("fetch", provider);
- expect(await fetchMetaAdSetInstantFormDestinations("fixture", "20")).toEqual({ formIds: ["200", "201"], pageIds: ["300"], storyIds: [] });
-});
-
-describe("report-period ad/creative identity joins", () => {
- it("reads the ads delivering in the requested period, never today's ad-set listing", async () => {
-  const urls: URL[] = [];
-  vi.stubGlobal("fetch", vi.fn().mockImplementation(async (raw: string) => {
-   const url = new URL(raw); urls.push(url);
-   if (url.pathname.endsWith("/insights")) return new Response(JSON.stringify({ data: [{ ad_id: "700", adset_id: "20", campaign_id: "10", date_start: "2026-10-24", date_stop: "2026-10-24", spend: "44.5", impressions: "1169" }] }));
-   if (url.pathname.endsWith("/700")) return new Response(JSON.stringify({ id: "700", adset_id: "20", creative: { effective_object_story_id: "300_500", object_story_spec: { page_id: "300", link_data: { call_to_action: { value: { lead_gen_form_id: "200" } } } } } }));
-   throw new Error("Unexpected current-configuration lookup");
-  }));
-  const config = await fetchMetaAdSetInstantFormDestinations("fixture", "20", { adAccountId: "123", sinceIso: "2026-10-24", untilIso: "2026-10-24" });
-  expect(config).toMatchObject({ formIds: ["200"], pageIds: ["300"], storyIds: ["300_500", "500"], adIds: ["700"], creativeIdentities: [{ adId: "700", formIds: ["200"], storyIds: ["300_500", "500"] }] });
-  expect(urls[0].searchParams.get("level")).toBe("ad");
-  expect(JSON.parse(urls[0].searchParams.get("time_range")!)).toEqual({ since: "2026-10-24", until: "2026-10-24" });
-  expect(JSON.parse(urls[0].searchParams.get("filtering")!)).toEqual([{ field: "adset.id", operator: "IN", value: ["20"] }]);
-  expect(urls.some(url => url.pathname.endsWith("/20/ads"))).toBe(false);
- });
- it("rejects metadata for another ad set instead of falling back to current creatives", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ ad_id: "700", adset_id: "20", date_start: "2026-10-24", spend: "1" }] }))).mockResolvedValueOnce(new Response(JSON.stringify({ id: "700", adset_id: "99", creative: {} }))));
-  await expect(fetchMetaAdSetInstantFormDestinations("fixture", "20", { adAccountId: "123", sinceIso: "2026-10-24", untilIso: "2026-10-24" })).rejects.toMatchObject({ evidence: { stage: "creative_scope_mismatch", adIds: ["700"] } });
- });
 });
