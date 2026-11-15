@@ -222,7 +222,7 @@ export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: s
 
 /** Form IDs are read from this ad set's ad creatives; numeric destination IDs
  * alone are never treated as proof of an instant form. Requires ads_read only. */
-export async function fetchMetaAdSetInstantFormIds(accessToken: string, adSetId: string): Promise<string[]> {
+export async function fetchMetaAdSetInstantFormDestinations(accessToken: string, adSetId: string): Promise<{ formIds: string[]; pageIds: string[] }> {
   if (!/^\d+$/.test(adSetId)) throw new ServiceError("Invalid ad set identity for form verification.", 422);
   const first = new URL(`${metaGraphBase()}/${adSetId}/ads`);
   first.searchParams.set("fields", "id,creative{object_story_spec,asset_feed_spec}");
@@ -230,11 +230,12 @@ export async function fetchMetaAdSetInstantFormIds(accessToken: string, adSetId:
   let next: string | null = first.toString();
   const seen = new Set<string>();
   const ids = new Set<string>();
-  function visit(value: unknown, depth = 0) {
+  const pages = new Set<string>();
+  function visit(value: unknown, found: Set<string>, depth = 0) {
     if (!value || typeof value !== "object" || depth > 12) return;
     for (const [key, item] of Object.entries(value)) {
-      if (key === "lead_gen_form_id" && typeof item === "string" && /^\d+$/.test(item)) ids.add(item);
-      else visit(item, depth + 1);
+      if (key === "lead_gen_form_id" && typeof item === "string" && /^\d+$/.test(item)) found.add(item);
+      else visit(item, found, depth + 1);
     }
   }
   while (next) {
@@ -246,12 +247,24 @@ export async function fetchMetaAdSetInstantFormIds(accessToken: string, adSetId:
     if (!response.ok || data.error) throw adSetSettingsError(data.error, response.status);
     if (!Array.isArray(data.data)) throw new ServiceError("Meta returned incomplete instant-form configuration.", 422);
     for (const ad of data.data) {
-      visit(ad.creative?.object_story_spec);
-      visit(ad.creative?.asset_feed_spec);
+      const forms = new Set<string>();
+      const story = ad.creative?.object_story_spec;
+      visit(story, forms);
+      visit(ad.creative?.asset_feed_spec, forms);
+      for (const id of forms) ids.add(id);
+      // Only a Page on the SAME form-bearing creative verifies ownership.
+      // An unrelated Page or Instagram actor ID must not widen result scope.
+      const page = story && typeof story === "object" && "page_id" in story ? story.page_id : undefined;
+      if (forms.size && typeof page === "string" && /^\d+$/.test(page)) pages.add(page);
     }
     next = data.paging?.next ?? null;
   }
-  return [...ids].sort();
+  return { formIds: [...ids].sort(), pageIds: [...pages].sort() };
+}
+
+/** Compatibility for callers that only need form IDs. */
+export async function fetchMetaAdSetInstantFormIds(accessToken: string, adSetId: string): Promise<string[]> {
+  return (await fetchMetaAdSetInstantFormDestinations(accessToken, adSetId)).formIds;
 }
 
 export interface MetaInsightAction {
@@ -288,6 +301,7 @@ export interface MetaInsightRow {
   configured_result_type?: string;
   /** Only populated after verifying form IDs from this ad set's creatives. */
   configured_form_ids?: string[];
+  configured_form_page_ids?: string[];
   form_destination_actions?: MetaInsightAction[];
   form_destination_status?: "verified" | "configuration_unavailable" | "destination_unavailable" | "coverage_mismatch";
   clicks?: string;

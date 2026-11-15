@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("@/lib/meta-api", async original => ({ ...await original<typeof import("@/lib/meta-api")>(), fetchMetaAdAccountInsights: vi.fn(), fetchMetaAdSetInstantFormIds: vi.fn() }));
-import { fetchMetaAdAccountInsights, fetchMetaAdSetInstantFormIds, type MetaInsightRow } from "@/lib/meta-api";
+vi.mock("@/lib/meta-api", async original => ({ ...await original<typeof import("@/lib/meta-api")>(), fetchMetaAdAccountInsights: vi.fn(), fetchMetaAdSetInstantFormDestinations: vi.fn() }));
+import { fetchMetaAdAccountInsights, fetchMetaAdSetInstantFormDestinations, type MetaInsightRow } from "@/lib/meta-api";
 import { directlyEvidencedResult, configuredResultCountSource } from "../meta-api-sync/direct-result-evidence";
 import { resolveFormDestinations } from "../meta-api-sync/resolve-form-destinations";
 const type = "onsite_conversion.lead_grouped";
@@ -8,17 +8,24 @@ const type = "onsite_conversion.lead_grouped";
 const row: MetaInsightRow = { campaign_id: "10", adset_id: "20", campaign_name: "Forms", date_start: "2026-10-24", date_stop: "2026-10-24", spend: "44.5", optimization_goal: "LEAD_GENERATION", actions: [{ action_type: type, value: "6" }, { action_type: "onsite_conversion.lead", value: "1" }] };
 const breakdown: MetaInsightRow = { ...row, actions: [{ action_type: type, value: "5", action_destination: "200" }, { action_type: type, value: "1", action_destination: "Example Page" }] };
 const input = { accessToken: "fixture", adAccountId: "123", sinceIso: "2026-10-01", untilIso: "2026-10-31" };
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(fetchMetaAdSetInstantFormIds).mockResolvedValue(["200"]); vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([breakdown]); });
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(fetchMetaAdSetInstantFormDestinations).mockResolvedValue({ formIds: ["200"], pageIds: [] }); vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([breakdown]); });
 describe("configured instant-form destination Results", () => {
   it("uses the directly reported five for the verified form, retaining six grouped leads and $44.50 spend", async () => {
     const [resolved] = await resolveFormDestinations([row], input);
     expect(directlyEvidencedResult(resolved)).toMatchObject({ value: "5", cpr: "8.9" });
     expect(resolved.spend).toBe("44.5"); expect(resolved.actions).toEqual(row.actions);
     expect(configuredResultCountSource(resolved)).toBe("actions.value:configured_form_destination");
-    expect(fetchMetaAdSetInstantFormIds).toHaveBeenCalledWith("fixture", "20");
+    expect(fetchMetaAdSetInstantFormDestinations).toHaveBeenCalledWith("fixture", "20");
+  });
+  it("counts a verified owning Page ID that differs from the form ID (the production mismatch)", async () => {
+    vi.mocked(fetchMetaAdSetInstantFormDestinations).mockResolvedValue({ formIds: ["200"], pageIds: ["300"] });
+    vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([{ ...breakdown, actions: [{ action_type: type, value: "5", action_destination: "300" }, { action_type: type, value: "1", action_destination: "Example Profile" }] }]);
+    const [resolved] = await resolveFormDestinations([row], input);
+    expect(resolved.configured_form_ids).toEqual(["200"]); expect(resolved.configured_form_page_ids).toEqual(["300"]);
+    expect(directlyEvidencedResult(resolved)).toMatchObject({ value: "5", cpr: "8.9" });
   });
   it("uses all verified form IDs, including a secondary form in the same ad set", async () => {
-    vi.mocked(fetchMetaAdSetInstantFormIds).mockResolvedValue(["200", "201"]);
+    vi.mocked(fetchMetaAdSetInstantFormDestinations).mockResolvedValue({ formIds: ["200", "201"], pageIds: [] });
     vi.mocked(fetchMetaAdAccountInsights).mockResolvedValue([{ ...breakdown, actions: [{ action_type: type, value: "3", action_destination: "200" }, { action_type: type, value: "2", action_destination: "201" }, { action_type: type, value: "1", action_destination: "Example Page" }] }]);
     expect(directlyEvidencedResult((await resolveFormDestinations([row], input))[0])?.value).toBe("5");
   });
@@ -32,7 +39,7 @@ describe("configured instant-form destination Results", () => {
     expect(() => directlyEvidencedResult({ ...row, form_destination_status: "verified", configured_form_ids: ["200"], form_destination_actions: actions })).toThrow(/could not be verified/);
   });
   it("never classifies a numeric destination as a form without configured creative evidence", async () => {
-    vi.mocked(fetchMetaAdSetInstantFormIds).mockResolvedValue([]);
+    vi.mocked(fetchMetaAdSetInstantFormDestinations).mockResolvedValue({ formIds: [], pageIds: [] });
     const [resolved] = await resolveFormDestinations([row], input);
     expect(resolved.form_destination_status).toBe("configuration_unavailable");
     expect(fetchMetaAdAccountInsights).not.toHaveBeenCalled();
@@ -58,7 +65,7 @@ describe("configured instant-form destination Results", () => {
   it("keeps explicit primary Results, including zero, without requesting a breakdown", async () => {
     const explicit = { ...row, results: [{ indicator: `actions:${type}`, values: [{ value: "0" }] }] };
     expect(await resolveFormDestinations([explicit], input)).toEqual([explicit]);
-    expect(fetchMetaAdSetInstantFormIds).not.toHaveBeenCalled();
+    expect(fetchMetaAdSetInstantFormDestinations).not.toHaveBeenCalled();
     expect(directlyEvidencedResult(explicit)?.value).toBe("0");
   });
 });

@@ -170,7 +170,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     sinceIso, untilIso,
     configuredResultCountSource(deduped[index]),
     "adset_unified", "impression",
-    JSON.stringify({ actions: deduped[index].actions ?? [], results: deduped[index].results ?? null, objective_results: deduped[index].objective_results ?? null, configured_form_ids: deduped[index].configured_form_ids ?? [], form_destination_status: deduped[index].form_destination_status ?? null, form_destination_actions: deduped[index].form_destination_actions ?? [] }),
+    JSON.stringify({ actions: deduped[index].actions ?? [], results: deduped[index].results ?? null, objective_results: deduped[index].objective_results ?? null, configured_form_ids: deduped[index].configured_form_ids ?? [], configured_form_page_ids: deduped[index].configured_form_page_ids ?? [], form_destination_status: deduped[index].form_destination_status ?? null, form_destination_actions: deduped[index].form_destination_actions ?? [] }),
     configuredResultCountSource(deduped[index]) === "conversions.schedule_website.value"
       ? "conversions:schedule_website"
       : row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : "",

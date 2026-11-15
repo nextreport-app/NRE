@@ -42,6 +42,7 @@ export class FormResultEvidenceError extends ServiceError {
       leadActions: leadActionEvidence(row.actions),
       leadCosts: leadActionEvidence(row.cost_per_action_type),
       configuredFormIds: row.configured_form_ids?.slice(0, 40) ?? [],
+      configuredFormPageIds: row.configured_form_page_ids?.slice(0, 40) ?? [],
       formDestinationStatus: row.form_destination_status ?? null,
       formDestinationActions: leadActionEvidence(row.form_destination_actions),
       probes: [] as FormEvidenceProbe[],
