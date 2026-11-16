@@ -247,7 +247,6 @@ export function WizardCampaignsStep() {
                   >
                     {name}
                   </label>
-                  {w.reportType === "WEEKLY" && w.detailCampaigns && !w.detailCampaigns.includes(name) && <span className="text-xs text-dash-ink-secondary" title="Included in monthly and 30-day summaries; no spend in the weekly period.">Summary only</span>}
                   {isSingleAdSet && (
                     <button
                       type="button"

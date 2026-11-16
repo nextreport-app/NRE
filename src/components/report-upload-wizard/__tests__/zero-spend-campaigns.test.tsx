@@ -4,7 +4,7 @@ import { WizardCampaignsStep } from "../steps/campaigns-step";
 
 const state = vi.hoisted(() => ({ search: "", selected: new Set<string>(), missingSpend: false }));
 vi.mock("../wizard-context", () => ({ useWizardContext: () => ({
-  step: 2, reportType: "WEEKLY", platform: "META", selectedCampaignsKey: () => "selection", metricsFetchedForSelection: null,
+  step: 2, reportType: "WEEKLY", detailCampaigns: [], platform: "META", selectedCampaignsKey: () => "selection", metricsFetchedForSelection: null,
   ensureObjectivesForSelection: vi.fn(), selectedCampaigns: state.selected, campaignSearch: state.search,
   campaigns: ["Traffic", "Reach", "Small spend", "Credit adjustment", ...Array.from({ length: 1020 }, (_, i) => `Inactive ${i}`)],
   campaignSpend: { Traffic: state.missingSpend ? undefined : 100, Reach: 200, "Small spend": 2, "Credit adjustment": -1, ...Object.fromEntries(Array.from({ length: 1020 }, (_, i) => [`Inactive ${i}`, 0])) },
@@ -26,7 +26,7 @@ describe("zero-spend campaign disclosure", () => {
     expect(html).toContain("0 of 1024 included");
     expect(html).toContain("Select all campaigns");
     expect(html).not.toContain("$100"); expect(html).not.toContain("$200"); expect(html).not.toContain("$2 spend");
-    expect(html).not.toContain("Last 30 days spend detected"); expect(html).not.toContain("text-amber-400");
+    expect(html).not.toContain("Summary only"); expect(html).not.toContain("Last 30 days spend detected"); expect(html).not.toContain("text-amber-400");
     expect(html).not.toContain("Campaigns with no spend in this reporting period");
     expect(html).not.toContain("Reporting-period spend");
     expect(html).not.toContain("Optional ad-set slides");

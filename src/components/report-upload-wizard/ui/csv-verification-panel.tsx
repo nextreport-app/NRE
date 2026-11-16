@@ -24,12 +24,12 @@ function groupByScope(checks: CsvVerificationResult["checks"]) {
 function DateCoverageNotice({ warnings, currency }: { warnings: CsvCoverageWarning[]; currency?: string }) {
   if (!warnings.length) return null;
   return (
-    <div className="nre-wizard-callout-warn rounded-lg px-4 py-3 text-[13px] leading-relaxed" role="status">
-      <p className="nre-wizard-callout-warn__title font-medium">Source date coverage to review</p>
+    <div className="text-[13px] leading-relaxed text-dash-ink-secondary">
+      <p className="font-medium text-dash-ink">Date coverage details</p>
       {warnings.map(warning => (
-        <div key={warning.scope} className="nre-wizard-callout-warn__body mt-2">
+        <div key={warning.scope} className="mt-2">
           <p className="font-medium">{warning.scope}</p>
-          <p>No source rows on: {warning.missingDays.map(day => currency ? formatClientCalendarDate(day, currency) : day).join(", ")}.</p>
+          <p>Dates without source rows: {warning.missingDays.map(day => currency ? formatClientCalendarDate(day, currency) : day).join(", ")}.</p>
           <p>{formatStoredDateText(warning.message, currency)}</p>
         </div>
       ))}
@@ -78,15 +78,17 @@ export function CsvVerificationPanel({ verification, refreshing, currency }: Pro
     const textTone = coverageWarnings.length ? "nre-wizard-callout-neutral__body" : "nre-wizard-callout-success__detail";
     return (
       <div className="space-y-3">
-        <DateCoverageNotice currency={currency} warnings={coverageWarnings} />
         <div className={`${tone} rounded-lg px-4 py-3 text-[13px] leading-relaxed`} role="status">
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center gap-3 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className={`${tone}__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] ${coverageWarnings.length ? "bg-slate-700/30 text-dash-ink" : "bg-emerald-900/50 text-emerald-200"}`} aria-hidden="true">✓</span>
-              <span className={`${tone}__title min-w-0 flex-1 text-[14px] font-medium`}>{copy.csvVerifiedTitle}</span>
+              <span className={`${tone}__title min-w-0 flex-1 text-[14px] font-medium`}>{coverageWarnings.length ? "Available source totals match" : copy.csvVerifiedTitle}</span>
               <span className={`${textTone} shrink-0 transition-transform group-open:rotate-180`} aria-hidden="true">▾</span>
             </summary>
-            <p className={`${textTone} mt-3 border-t border-dash-border/30 pt-3`}>{copy.csvVerifiedDetail()}</p>
+            <div className={`${textTone} mt-3 space-y-3 border-t border-dash-border/30 pt-3`}>
+              <p>{copy.csvVerifiedDetail()}</p>
+              <DateCoverageNotice currency={currency} warnings={coverageWarnings} />
+            </div>
           </details>
         </div>
       </div>
