@@ -30,10 +30,14 @@ export function WeeklyPeriodControls() {
     w.editDateMode("custom");
   }
 
-  return <details className="space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
-    <summary className="cursor-pointer text-sm font-semibold text-dash-ink">
-      Weekly report period
+  return <details className="group space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
+    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md text-sm font-semibold text-dash-ink [&::-webkit-details-marker]:hidden">
+      <span className="min-w-0">Weekly report period
       <span aria-live="polite" className="mt-1 block font-normal text-dash-ink-secondary">Report dates: {range.startIso ? w.clientCurrency ? formatClientCalendarDate(range.startIso, w.clientCurrency) : range.startIso : 'Choose start'} – {range.endIso ? w.clientCurrency ? formatClientCalendarDate(range.endIso, w.clientCurrency) : range.endIso : 'Choose end'}</span>
+      </span>
+      <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dash-border text-dash-ink-secondary transition-colors group-hover:bg-dash-bg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"><path d="m7 10 5 5 5-5" /></svg>
+      </span>
     </summary>
     <div className="flex flex-wrap gap-2">
       {([['last7', 'Last 7 days'], ['custom', 'Custom date range']] as const).map(([mode, label]) => {
