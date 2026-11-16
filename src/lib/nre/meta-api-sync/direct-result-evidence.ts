@@ -20,6 +20,26 @@ function scalarCount(raw: string | undefined): number {
   return count;
 }
 
+function namedCustomEventEvidence(row: MetaInsightRow): { count: number; source: string } {
+  const name = row.configured_custom_event_name!;
+  const aliases = [row.configured_result_action!, name];
+  for (const channel of ["actions", "conversions"] as const) {
+    const observed = aliases.filter(type => row[channel]?.some(item => item.action_type === type));
+    if (observed.length) {
+      const counts = observed.map(type => actionCount(row, type, channel));
+      if (counts.some(count => Math.abs(count - counts[0]) > 1e-8)) throw new ServiceError("Meta returned conflicting counts for the configured custom event. Retry sync; no result total has been estimated.", 422);
+      return { count: counts[0], source: `${channel}.${observed[0]}.value` };
+    }
+  }
+  // fb_pixel_custom combines custom events. It cannot identify this one event.
+  // If there are no named or combined custom-event observations, use the same
+  // missing-action zero policy as other configured pixel events.
+  if ((["actions", "conversions"] as const).some(channel => actionCount(row, "offsite_conversion.fb_pixel_custom", channel) > 0)) {
+    throw new ServiceError(`Meta returned combined custom-event counts without a separate count for ${name}. Use an Ads Manager CSV with this event column.`, 422);
+  }
+  return { count: 0, source: "custom_event_absent" };
+}
+
 /** Configured events and optimization goals define the count; campaign names cannot override them. */
 export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimaryResult | null {
   const pack = (type: string, count: number, delivery = false): ManualExportPrimaryResult => ({
@@ -28,6 +48,7 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
     csvResultType: (row.configured_result_action === type ? row.configured_result_type : undefined) ?? syntheticResultTypeFromMetaResultIndicator(`actions:${type}`) ?? metaApiActionToCsvResultType(type),
   });
   if (row.configured_result_action) {
+    if (row.configured_custom_event_name) return pack(row.configured_result_action, namedCustomEventEvidence(row).count);
     // Each configured event has one explicit scalar source under unified attribution.
     // Schedule uses its location-specific conversion metric when supplied.
     // Other events retain actions.value; Results/Objective projections never backfill it.
@@ -75,6 +96,7 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
 
 /** Source metadata follows the same explicit schedule-channel policy as counting. */
 export function configuredResultCountSource(row: MetaInsightRow): string {
+  if (row.configured_custom_event_name) return namedCustomEventEvidence(row).source;
   if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) return "conversions.schedule_website.value";
   return row.configured_result_action ? "actions.value" : "delivery_or_actions";
 }

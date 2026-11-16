@@ -1,7 +1,7 @@
 import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
 import { validateMetaClickRates } from "./validate-click-rates";
-import { configuredResultAction } from "./configured-result-event";
+import { configuredCustomEventName, configuredResultAction } from "./configured-result-event";
 import { buildMetaCustomConversionResultTypeMap } from "../meta-custom-conversion-labels";
 import { fetchMetaCustomConversions, fetchMetaAdSetReportingConfigs } from "@/lib/meta-api";
 import { configuredResultCountSource, directlyEvidencedResult } from "./direct-result-evidence";
@@ -85,7 +85,10 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
     const byId = new Map(configs.map(config => [config.id, config]));
     deduped = deduped.map(row => {
       const config = row.adset_id ? byId.get(row.adset_id) : undefined;
-      return config ? { ...row, optimization_goal: config.optimization_goal ?? row.optimization_goal, configured_result_action: configuredResultAction(config) } : row;
+      if (!config) return row;
+      const configuredAction = configuredResultAction(config);
+      const customName = configuredAction ? configuredCustomEventName(config) : undefined;
+      return { ...row, optimization_goal: config.optimization_goal ?? row.optimization_goal, configured_result_action: configuredAction, ...(customName ? { configured_custom_event_name: customName, configured_result_type: customName } : {}) };
     });
   }
 
@@ -131,14 +134,20 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
   if (process.env.META_SYNC_DEBUG === "true") logIngestionNormalizationSample(deduped);
   const dataRows = deduped.map(row => input.requireDirectResultEvidence ? insightToManualCsvRowWithResult(row, directlyEvidencedResult(row)) : insightToManualCsvRow(row));
 
-  if (input.requireDirectResultEvidence) dataRows.forEach((row, index) => row.push(
-    sinceIso, untilIso,
-    configuredResultCountSource(deduped[index]),
-    "adset_unified", "impression",
-    configuredResultCountSource(deduped[index]) === "conversions.schedule_website.value"
-      ? "conversions:schedule_website"
-      : row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : "",
-  ));
+  if (input.requireDirectResultEvidence) dataRows.forEach((row, index) => {
+    const resultSource = configuredResultCountSource(deduped[index]);
+    const customIndicator = deduped[index].configured_custom_event_name
+      ? resultSource === "custom_event_absent" ? `configured:${deduped[index].configured_custom_event_name}` : resultSource.replace(/^(actions|conversions)\./, "$1:").replace(/\.value$/, "")
+      : undefined;
+    row.push(
+      sinceIso, untilIso,
+      resultSource,
+      "adset_unified", "impression",
+      customIndicator ?? (resultSource === "conversions.schedule_website.value"
+        ? "conversions:schedule_website"
+        : row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : ""),
+    );
+  });
   const headers = META_CSV_HEADERS.map(header => header === "Amount spent (USD)" ? `Amount spent (${input.currency})` : header);
   if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time", "Result indicator");
   if (deduped.some(row => row.configured_result_action === "offsite_conversion.fb_pixel_schedule" || row.actions?.some(action => action.action_type === "offsite_conversion.fb_pixel_schedule"))) {
