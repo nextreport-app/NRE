@@ -115,11 +115,9 @@ describe("client and Meta account association", () => {
   expect(await response.json()).toMatchObject({linkedMetaAdAccountId:"456"});
   expect(prisma.client.updateMany).not.toHaveBeenCalled();
  });
- it("requires confirmation for unverified names before the first link, then stores only a successful import", async () => {
+ it("stores the first successful import without requiring confirmation", async () => {
   vi.mocked(prisma.client.findUnique).mockResolvedValue({...linkedClient,metaAdAccountId:null,metaAdAccountName:null} as never);
-  expect((await POST(request(),params)).status).toBe(409);
-  expect(prisma.client.updateMany).not.toHaveBeenCalled();
-  const response = await POST(request({...body,confirmedMetaAdAccountId:"act_123"}),params);
+  const response = await POST(request(),params);
   expect(response.status).toBe(200);
   expect(prisma.client.updateMany).toHaveBeenCalledWith({where:{id:"client_1",userId:"owner",metaAdAccountId:null},data:{metaAdAccountId:"123",metaAdAccountName:null}});
  });
@@ -131,14 +129,22 @@ describe("client and Meta account association", () => {
   expect(prisma.client.updateMany).toHaveBeenCalledWith({where:{id:"client_1",userId:"owner",metaAdAccountId:null},data:{metaAdAccountId:"123",metaAdAccountName:"Sherwood Tractor Inc"}});
   expect(await response.json()).toMatchObject({linkedMetaAdAccountId:"123",linkedMetaAdAccountName:"Sherwood Tractor Inc"});
  });
- it("rejects unrelated names without importing or trusting a request-supplied matching name", async () => {
+ it("ignores unrelated labels on a first sync and remembers the provider ID", async () => {
   vi.mocked(prisma.client.findUnique).mockResolvedValue({...linkedClient,accountName:"Sherwood Tractor",metaAdAccountId:null} as never);
   vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",name:"Express Text",currency:"USD",timezone_name:"UTC"});
   const response=await POST(request({...body,metaAdAccountName:"Sherwood Tractor"}),params);
-  expect(response.status).toBe(409);
-  expect(await response.json()).toMatchObject({accountConfirmationRequired:true,selectedMetaAdAccountName:"Express Text"});
-  expect(fetchMetaReportCsv).not.toHaveBeenCalled();
-  expect(prisma.client.updateMany).not.toHaveBeenCalled();
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({linkedMetaAdAccountId:"123",linkedMetaAdAccountName:"Express Text"});
+  expect(fetchMetaReportCsv).toHaveBeenCalled();
+  expect(prisma.client.updateMany).toHaveBeenCalledWith(expect.objectContaining({data:{metaAdAccountId:"123",metaAdAccountName:"Express Text"}}));
+ });
+ it("allows an ID-only Meta label on the first sync for FULL GORILLA APPAREL", async () => {
+  vi.mocked(prisma.client.findUnique).mockResolvedValue({...linkedClient,accountName:"FULL GORILLA APPAREL",metaAdAccountId:null} as never);
+  vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",name:"123",currency:"USD",timezone_name:"UTC"});
+  const response=await POST(request(),params);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({linkedMetaAdAccountId:"123"});
+  expect(prisma.client.updateMany).toHaveBeenCalledWith(expect.objectContaining({data:{metaAdAccountId:"123",metaAdAccountName:"123"}}));
  });
  it("does not let matching names override a different saved ID", async () => {
   vi.mocked(prisma.client.findUnique).mockResolvedValue({...linkedClient,accountName:"Sherwood Tractor",metaAdAccountName:"Sherwood Tractor Inc"} as never);
@@ -146,14 +152,14 @@ describe("client and Meta account association", () => {
   expect(fetchMetaAdAccountMetadata).not.toHaveBeenCalled();
   expect(fetchMetaReportCsv).not.toHaveBeenCalled();
  });
- it("does not link a name-matched account if its import fails", async () => {
+ it("does not link a first-sync account if its import fails", async () => {
   vi.mocked(prisma.client.findUnique).mockResolvedValue({...linkedClient,accountName:"Sherwood Tractor",metaAdAccountId:null} as never);
   vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",name:"Sherwood Tractor Inc",currency:"USD",timezone_name:"UTC"});
   vi.mocked(fetchMetaReportCsv).mockRejectedValue(new Error("Provider unavailable"));
   expect((await POST(request(),params)).status).toBeGreaterThanOrEqual(400);
   expect(prisma.client.updateMany).not.toHaveBeenCalled();
  });
- it("does not link a name-matched account for an empty import", async () => {
+ it("does not link a first-sync account for an empty import", async () => {
   vi.mocked(prisma.client.findUnique).mockResolvedValue({...linkedClient,accountName:"Sherwood Tractor",metaAdAccountId:null} as never);
   vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",name:"Sherwood Tractor Inc",currency:"USD",timezone_name:"UTC"});
   vi.mocked(fetchMetaReportCsv).mockResolvedValue({csvText:"",rowCount:0,sinceIso:"2026-10-01",untilIso:"2026-10-31"} as never);

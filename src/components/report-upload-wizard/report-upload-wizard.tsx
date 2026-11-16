@@ -2,6 +2,7 @@
 
 import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { useEffect, useRef } from "react";
+import { normalizeMetaAccountId } from "@/lib/meta-client-account";
 import Link from "next/link";
 import { WebsiteReportWizard } from "@/components/website-report-wizard";
 import { getAdWizardFlow } from "@/lib/nre/platform-labels";
@@ -28,9 +29,11 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
 
 function WizardClientLine({
   clientName,
+  metaAdAccountId,
   onChangeClientClick,
 }: {
   clientName: string;
+  metaAdAccountId?: string | null;
   onChangeClientClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const copy = useWizardCopy();
@@ -42,6 +45,7 @@ function WizardClientLine({
         </p>
         <p className="nre-wizard-client-bar__name mt-0.5 min-w-0 break-words text-[17px] font-semibold leading-snug sm:mt-0 sm:text-[19px]">
           {clientName}
+          {normalizeMetaAccountId(metaAdAccountId) && <span className="ml-2 inline-block break-all text-[13px] font-normal sm:text-[14px]">(Ad account ID: {normalizeMetaAccountId(metaAdAccountId)})</span>}
         </p>
       </div>
       <Link
@@ -106,7 +110,7 @@ function ReportUploadWizardBody() {
   };
 
   const clientLine = (
-    <WizardClientLine clientName={w.clientName} onChangeClientClick={guardedClientChange} />
+    <WizardClientLine clientName={w.clientName} metaAdAccountId={w.step === 1 && w.wizardKind === "ads" && w.platform === "META" ? w.linkedMetaAdAccountId : null} onChangeClientClick={guardedClientChange} />
   );
 
   if (w.resumeBootstrapping) {
