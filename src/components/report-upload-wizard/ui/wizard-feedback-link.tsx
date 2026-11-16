@@ -11,7 +11,7 @@ export function WizardFeedbackLink() {
         href="/feedback"
         target="_blank"
         rel="noopener noreferrer"
-        className="font-medium text-dash-accent hover:underline"
+        className="nre-wizard-feedback-link font-medium hover:underline"
       >
         Send product feedback
       </Link>
