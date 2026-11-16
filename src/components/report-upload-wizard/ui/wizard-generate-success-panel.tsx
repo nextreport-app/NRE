@@ -271,7 +271,7 @@ export function WizardGenerateSuccessPanel({
           </div>
         </section>
 
-        <p className="text-sm text-dash-ink-secondary">{publishedAt ? "Published edits are live." : "Generated report · review the slides before sharing. Edits go live when you publish them."}</p>
+        {publishedAt && <p className="text-sm text-dash-ink-secondary">Published edits are live.</p>}
         {/* Section C — share with client */}
         {shareToken && reportUrl && shareInput ? (
           <section aria-labelledby="success-share-heading" className="space-y-3 rounded-lg border border-dash-border bg-dash-bg/30 p-4">
