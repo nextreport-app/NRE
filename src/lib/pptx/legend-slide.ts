@@ -42,8 +42,9 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[],
     shapes.push(textBox({x:x+12,y:y+8,w:264,h:26,text:entry.term,sizePt:13,bold:true,colorHex:palette.text,align:"l"}));
     shapes.push(textBox({x:x+12,y:y+35,w:264,h:51,text:entry.explanation,sizePt:11.5,colorHex:palette.label,align:"l"}));
   });
-  const footer = concepts.length > 12 ? `12 of ${concepts.length} selected terms shown. Full definitions: nextreport.in/help/metrics` : "Estimated reach is not an exact unique audience total. Full definitions: nextreport.in/help/metrics";
-  shapes.push(textBox({x:35,y:503,w:890,h:20,text:footer,sizePt:11,colorHex:palette.label}));
+  if (concepts.length > 12) {
+    shapes.push(textBox({x:35,y:503,w:890,h:20,text:`12 of ${concepts.length} selected terms shown. Full definitions: nextreport.in/help/metrics`,sizePt:11,colorHex:palette.label}));
+  }
   // Retain the real slide layout/master and relationships, but replace the
   // entire card tree atomically. No cross-card literal replacements or filler.
   const scaffold=templateXml.match(/<p:spTree>([\s\S]*?<\/p:grpSpPr>)/)?.[1] ?? "";

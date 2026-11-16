@@ -259,6 +259,7 @@ export function resolveCoverReportTitle(
 }
 
 export interface CoverSlideOptions {
+  platform?: Platform;
   /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE (or DEFAULT_MONTHLY_REPORT_TITLE/DEFAULT_COMPARISON_REPORT_TITLE — see `reportType`) when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
   reportTitle?: string | null;
   /** Agency name from account settings — when set, adds a "Prepared by ..." line below the account name; when absent, the cover renders exactly as it does without this feature. */
@@ -344,6 +345,11 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       return replacement;
     });
   });
+  if (options.reportType !== "WEBSITE" && (!options.platform || options.platform === "META")) {
+    const ids = [...filled.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => Number(match[1]));
+    resetShapeIdCounter(Math.max(1, ...ids));
+    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 214, w: 400, h: 42, text: "Meta", sizePt: 30, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "0D1B2E" : "FFFFFF", align: "l" }));
+  }
   if (options.reportType === "DAY_BREAKDOWN") return setShapeWrap(setShapeExtCx(filled, cover.reportDate, 880 * 12700), cover.reportDate, "none");
   return cover.budgetSummary?.trim()
     ? ensureCoverBudgetSingleLine(filled, cover.budgetSummary)
@@ -954,6 +960,6 @@ export function buildTableSlideXml(
     );
   }
   resetShapeIdCounter(3000);
-  if (out.includes("</p:spTree>")) out=insertShapeBeforeSpTreeClose(out,textBox({x:40,y:495,w:880,h:30,text:"* Reach can be estimated from daily data. Campaign audiences overlap; this is not a deduplicated account audience. Objective costs use spend for that objective only.",sizePt:11,colorHex:headerColor,align:"l"}));
+  if (out.includes("</p:spTree>")) out=insertShapeBeforeSpTreeClose(out,textBox({x:40,y:495,w:880,h:30,text:"* Reach can be estimated from daily data.",sizePt:11,colorHex:headerColor,align:"l"}));
   return out;
 }
