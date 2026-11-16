@@ -19,7 +19,7 @@ const EN_UI = {
     "Review the differing metrics, date windows, and objective choices below. Generation is paused until these listed checks agree. Rebuild and recheck the preview; the investigation details are saved automatically when available.",
   csvVerifiedTitle: "Source data checks passed",
   csvVerifiedDetail: () =>
-    "The listed checks match your source for each period. Daily-data reach can be estimated; this is not an independent verification of unique audiences or AI commentary.",
+    "The checked report totals match your imported data.",
   csvSkippedTitle: "Source data cross-check not run",
   csvSkippedLead:
     "This is not a pass — deck totals were not compared to your imported data for this report setup.",
