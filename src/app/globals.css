@@ -81,6 +81,24 @@ html[data-site-theme="light"] body {
   color-scheme: dark;
 }
 
+/* Keep all four light-mode wizard screens readable without changing dashboard
+   or dark-mode palettes. Secondary copy inherits true black here as well. */
+html[data-site-theme="light"] .nre-report-wizard {
+  --nre-dash-ink: #000000;
+  --nre-dash-ink-secondary: #000000;
+  --color-ink: #000000;
+  --color-ink-secondary: #000000;
+  --color-ink-muted: #000000;
+  color: #000000;
+}
+html[data-site-theme="light"] .nre-report-wizard :is(.text-dash-ink-muted, .text-slate-200) {
+  color: #000000;
+}
+html[data-site-theme="light"] .nre-report-wizard :is(input, textarea)::placeholder {
+  color: #000000;
+  opacity: 1;
+}
+
 /* Approved graphite dark theme with lifted workspace and amber actions.
    Existing light-mode surfaces and fixed report mockups retain their palettes. */
 html:not([data-site-theme="light"]) .nre-app-shell .nre-report-wizard {

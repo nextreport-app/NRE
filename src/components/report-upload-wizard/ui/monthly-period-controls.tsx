@@ -9,9 +9,6 @@ import { getCalendarDateInTimezone } from "@/lib/nre/dates";
 import { ReportMonthPicker } from "./report-month-picker";
 
 const monthName = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-const shortMonthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" });
-const dayName = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
-const fullDate = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 const date = (iso: string) => new Date(`${iso}T12:00:00Z`);
 function shiftMonth(month: string, offset: number) {
   const value = date(`${month}-01`);
@@ -22,7 +19,7 @@ function shiftMonth(month: string, offset: number) {
 /** CSV and API share the same month selection; only source-coverage guidance differs. */
 export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" | "generate" }) {
   const w = useWizardContext();
-  const displayRange = (start: string, end: string) => w.clientCurrency ? formatClientCalendarRange(start, end, w.clientCurrency) : dayName.formatRange(date(start), date(end));
+  const displayRange = (start: string, end: string) => formatClientCalendarRange(start, end, w.clientCurrency ?? "USD");
   const [customMonths, setCustomMonths] = useState(false);
   const [datesExpanded, setDatesExpanded] = useState(false);
   const calendar = csvReportingCalendar(w.dataSourceMode === "api" && w.step === 1 ? null : w.dateBounds, new Date(), w.clientTimezone);
@@ -40,7 +37,6 @@ export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" |
   const shortcuts = [
     { label: calendar.adjusted ? "Latest CSV month" : "This month so far", from: currentMonth, to: currentMonth },
     { label: "Previous month", from: shiftMonth(currentMonth, -1), to: shiftMonth(currentMonth, -1) },
-    { label: "Last 3 complete months", from: shiftMonth(currentMonth, -3), to: shiftMonth(currentMonth, -1) },
   ].filter(option => option.to <= latestMonth);
   const matchedShortcut = shortcuts.find(option => startMonth === option.from && endMonth === option.to
     && end === monthPeriod(option.to, now, w.clientTimezone).endIso);
@@ -49,9 +45,6 @@ export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" |
     endMonth === currentMonth ? reportPeriodAnchor(end, w.clientTimezone) : now, w.clientTimezone);
   const [year, month] = endMonth.split("-").map(Number);
   const partial = end < new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-  const completeCount = count - (partial ? 1 : 0);
-  const completeLabel = `${completeCount} complete month${completeCount === 1 ? "" : "s"}`;
-  const summary = partial ? count === 1 ? "Month to date" : `${completeLabel} + ${shortMonthName.format(date(end))} to date` : completeLabel;
   const monthsLabel = startMonth === endMonth ? monthName.format(date(start)) : monthName.formatRange(date(start), date(`${endMonth}-01`));
   const partialNote = end === calendar.yesterday ? "Through yesterday"
     : calendar.adjusted && end === calendar.endIso ? "Through latest CSV day" : "Selected dates";
@@ -70,20 +63,16 @@ export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" |
   }
 
   const selectionSummary = <div className="rounded-lg border border-dash-border bg-dash-card/50 p-3" aria-label="Selected reporting months">
-    <p className="text-sm font-semibold text-dash-ink">{monthsLabel} · {summary}</p>
-    {partial && <p className="mt-1 text-xs text-dash-ink-secondary">{displayRange(`${endMonth}-01`, end)} · {partialNote}</p>}
-    <details className="mt-2 text-xs text-dash-ink-secondary">
-      <summary className="cursor-pointer font-medium hover:text-dash-ink">View monthly breakdown</summary>
-      <ul className="mt-2 grid grid-cols-1 gap-1.5">{periods.map((period, index) => {
-        const through = index === periods.length - 1 ? end : period.endIso;
-        return <li key={period.startIso}>{monthName.format(date(period.startIso))}: {displayRange(period.startIso, through)}{index === periods.length - 1 && partial ? " (MTD)" : " (full month)"}</li>;
-      })}</ul>
-    </details>
+    <p className="text-sm font-semibold text-dash-ink">{monthsLabel}{partial ? count === 1 ? " · Month to date" : " · Includes month to date" : ""}</p>
+    <div className="mt-1 space-y-1 text-xs text-dash-ink-secondary">{periods.map((period, index) => {
+      const through = index === periods.length - 1 ? end : period.endIso;
+      return <p key={period.startIso}>{displayRange(period.startIso, through)}{index === periods.length - 1 && partial ? ` · ${partialNote}` : " (full month)"}</p>;
+    })}</div>
   </div>;
 
   if (stage === "generate") return <section className="rounded-xl border border-dash-border bg-dash-card p-4">
     <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p><p className="mt-1 text-sm font-medium text-dash-ink">{w.clientCurrency ? formatClientCalendarRange(start, end, w.clientCurrency) : fullDate.formatRange(date(start), date(end))}</p></div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-dash-ink-secondary">Report period</p>
       <button type="button" aria-expanded={datesExpanded} onClick={() => setDatesExpanded(value => !value)} className="shrink-0 text-sm font-medium text-dash-accent hover:underline">{datesExpanded ? "Hide date options" : "Change dates"}</button>
     </div>
     {selectionSummary}
@@ -101,7 +90,6 @@ export function MonthlyPeriodControls({ stage = "import" }: { stage?: "import" |
         <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">From month</p><ReportMonthPicker label="From month" showPartialLabel={false} value={startMonth} currentMonth={currentMonth} maxMonth={latestMonth} onChange={value => chooseMonths(value, value > endMonth ? value : endMonth > shiftMonth(value, 11) ? shiftMonth(value, 11) : endMonth)} /></div>
         <div className="space-y-1"><p className="text-[13px] font-medium text-dash-ink-secondary">To month</p><ReportMonthPicker label="To month" value={endMonth} currentMonth={currentMonth} maxMonth={latestMonth} partialLabel={partialNote} onChange={value => chooseMonths(value < startMonth ? value : startMonth < shiftMonth(value, -11) ? shiftMonth(value, -11) : startMonth, value)} /></div>
       </div>
-      <p className="text-xs text-dash-ink-secondary">Select up to 12 consecutive months.</p>
     </div>}
     {selectionSummary}
     {w.dataSourceMode !== "api" && <p className="text-xs leading-relaxed text-dash-ink-secondary">Your CSV must have Day-wise breakdown covering the selected months.</p>}
