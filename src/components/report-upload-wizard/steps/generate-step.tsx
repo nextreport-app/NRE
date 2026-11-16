@@ -167,7 +167,6 @@ export function WizardGenerateStep() {
     return (
       <div className="space-y-6">
         <WizardGenerateSuccessPanel
-          onShareTokenChange={w.handleShareTokenChange}
           clientCurrency={w.clientCurrency} clientTimezone={w.clientTimezone}
           clientName={clientName}
           clientId={clientId}

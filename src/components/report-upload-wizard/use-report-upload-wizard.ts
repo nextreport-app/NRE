@@ -3025,10 +3025,6 @@ export function useReportUploadWizard({
     downloadUrl,
     publishedAt,
     shareToken,
-    handleShareTokenChange: (token: string | null) => {
-      setShareToken(token);
-      if (reportId && downloadUrl) persistGenerateSnapshot({reportId,downloadUrl,shareToken:token});
-    },
     rememberedFolder,
     driveView,
     setDriveView,
