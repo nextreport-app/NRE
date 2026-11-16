@@ -12,10 +12,38 @@ describe("client account warnings", () => {
  it("does not warn for the same ID even when account names differ", () => {
   expect(renderToStaticMarkup(<MetaClientAccountNotice {...base} linkedId="222"/>)).toBe("");
  });
- it("asks for a first association without claiming the names mismatch", () => {
+ it("warns for different names before the first association", () => {
   const html=renderToStaticMarkup(<MetaClientAccountNotice {...base} linkedId={null}/>);
-  expect(html).toContain("No Meta ad account is linked yet");
-  expect(html).not.toContain("differs from");
+  expect(html).toContain("names do not clearly match");
+  expect(html).toContain('role="alert"');
+  expect(html).toContain("This ad account belongs to Southaven RV &amp; Marine.");
+ });
+ it.each([
+  ["Sherwood Tractor", "Sherwood Tractor Inc"],
+  ["Sherwood Tractor", " SHERWOOD TRACTOR, INC. "],
+  ["Express Text", "Express Text Ad Account"],
+  ["Southaven RV & Marine", "Southaven RV and Marine LLC"],
+  ["Acme", "Acme Pvt. Ltd. Ad Account"],
+  ["Café Studio", "CAFÉ STUDIO LTD"],
+ ])("does not warn on a first sync for %s / %s", (clientName, selectedName) => {
+  expect(renderToStaticMarkup(<MetaClientAccountNotice {...base} linkedId={null} clientName={clientName} selectedName={selectedName}/>)).toBe("");
+  expect(metaClientAccountStatus(null,"222",{clientName,selectedName})).toBe("matched");
+ });
+ it("still warns for different IDs even when the names match", () => {
+  expect(renderToStaticMarkup(<MetaClientAccountNotice {...base} clientName="Sherwood Tractor" selectedName="Sherwood Tractor Inc"/>)).toContain('role="alert"');
+ });
+ it.each([
+  ["Sherwood Tractor", "Sherwood Tractor East"],
+  ["Sherwood Tractor East", "Sherwood Tractor West"],
+  ["Sherwood Tractor", "Sherwood Tractor 2"],
+  ["Express Text", "Southaven RV & Marine"],
+  ["", ""],
+  ["Acme", ""],
+ ])("does not treat different or empty names as a match: %s / %s", (clientName, selectedName) => {
+  expect(metaClientAccountStatus(null,"222",{clientName,selectedName})).toBe("unlinked");
+ });
+ it("does not warn without a selected account", () => {
+  expect(renderToStaticMarkup(<MetaClientAccountNotice {...base} selectedId=""/>)).toBe("");
  });
  it("canonicalizes provider prefixes and restores the real picker ID", () => {
   expect(normalizeMetaAccountId(" act_222 ")).toBe("222");

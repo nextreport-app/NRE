@@ -132,8 +132,8 @@ export function WizardDataSourcePanel({
   const [selectedTikTokAdvertiser, setSelectedTikTokAdvertiser] = useState("");
   const selectedAccount = metaAccounts.find(account => account.id === selectedMetaAccount);
   const [confirmedAccountKey, setConfirmedAccountKey] = useState<string | null>(null);
-  const accountStatus = metaClientAccountStatus(linkedMetaAdAccountId, selectedMetaAccount);
-  const confirmationKey = JSON.stringify([clientId, normalizeMetaAccountId(linkedMetaAdAccountId), normalizeMetaAccountId(selectedMetaAccount)]);
+  const accountStatus = metaClientAccountStatus(linkedMetaAdAccountId, selectedMetaAccount, { clientName, selectedName: selectedAccount?.name });
+  const confirmationKey = JSON.stringify([clientId, normalizeMetaAccountId(linkedMetaAdAccountId), normalizeMetaAccountId(selectedMetaAccount), clientName, selectedAccount?.name]);
   const accountConfirmed = confirmedAccountKey === confirmationKey;
   const accountNeedsConfirmation = showMeta && (accountStatus === "unlinked" || accountStatus === "mismatch");
   const linkedAccount = metaAccounts.find(account => normalizeMetaAccountId(account.id) === normalizeMetaAccountId(linkedMetaAdAccountId));
@@ -237,6 +237,14 @@ export function WizardDataSourcePanel({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.accountConfirmationRequired) {
+          setConfirmedAccountKey(null);
+          // Meta may have renamed the account since the picker was loaded.
+          // Show the server-verified label so the warning can be acknowledged.
+          if (typeof data.selectedMetaAdAccountName === "string") {
+            setMetaAccounts(accounts => accounts.map(account => account.id === selectedMetaAccount ? { ...account, name: data.selectedMetaAdAccountName } : account));
+          }
+        }
         const message =
           typeof data?.error === "string"
             ? data.error
