@@ -30,13 +30,16 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
 function WizardClientLine({
   clientName,
   metaAdAccountId,
+  selectedAccount = false,
   onChangeClientClick,
 }: {
   clientName: string;
   metaAdAccountId?: string | null;
+  selectedAccount?: boolean;
   onChangeClientClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const copy = useWizardCopy();
+  const accountId = normalizeMetaAccountId(metaAdAccountId);
   return (
     <div className="nre-wizard-client-bar mb-4 flex items-center justify-between gap-4 rounded-lg border bg-dash-card/60 px-4 py-3 sm:px-5">
       <div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-3">
@@ -45,7 +48,7 @@ function WizardClientLine({
         </p>
         <p className="nre-wizard-client-bar__name mt-0.5 min-w-0 break-words text-[17px] font-semibold leading-snug sm:mt-0 sm:text-[19px]">
           {clientName}
-          {normalizeMetaAccountId(metaAdAccountId) && <span className="ml-2 inline-block break-all text-[13px] font-normal sm:text-[14px]">(Ad account ID: {normalizeMetaAccountId(metaAdAccountId)})</span>}
+          {accountId && <span className="ml-2 inline-block break-all text-[13px] font-normal sm:text-[14px]">({selectedAccount ? "Selected ad account ID" : "Ad account ID"}: {accountId})</span>}
         </p>
       </div>
       <Link
@@ -109,8 +112,10 @@ function ReportUploadWizardBody() {
     w.requestWizardLeave("/clients");
   };
 
+  const savedAccountId = normalizeMetaAccountId(w.linkedMetaAdAccountId);
+  const selectedAccountId = w.dataSourceMode === "api" ? normalizeMetaAccountId(w.selectedApiAdAccountId) : null;
   const clientLine = (
-    <WizardClientLine clientName={w.clientName} metaAdAccountId={w.step === 1 && w.wizardKind === "ads" && w.platform === "META" ? w.linkedMetaAdAccountId : null} onChangeClientClick={guardedClientChange} />
+    <WizardClientLine clientName={w.clientName} metaAdAccountId={w.step === 1 && w.wizardKind === "ads" && w.platform === "META" ? savedAccountId ?? selectedAccountId : null} selectedAccount={!savedAccountId && !!selectedAccountId} onChangeClientClick={guardedClientChange} />
   );
 
   if (w.resumeBootstrapping) {

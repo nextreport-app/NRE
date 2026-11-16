@@ -142,6 +142,7 @@ export function useReportUploadWizard({
 }: ReportUploadWizardProps) {
   const [linkedMetaAdAccountId, setLinkedMetaAdAccountId] = useState(initialLinkedMetaAdAccountId);
   const [linkedMetaAdAccountName, setLinkedMetaAdAccountName] = useState(initialLinkedMetaAdAccountName);
+  const [selectedApiAdAccountId, setSelectedApiAdAccountId] = useState<string | null>(null);
   const [clientTimezone, setClientTimezone] = useState(initialClientTimezone);
   const { locale } = useSiteTheme();
   const [currencySymbol, setCurrencySymbol] = useState(initialCurrencySymbol);
@@ -2819,6 +2820,8 @@ export function useReportUploadWizard({
     clientName,
     linkedMetaAdAccountId,
     linkedMetaAdAccountName,
+    selectedApiAdAccountId,
+    setSelectedApiAdAccountId,
     clientTimezone,
     clientCurrency,
     updateApiTimezone,

@@ -39,6 +39,8 @@ interface WizardDataSourcePanelProps {
   onSyncError: (message: string) => void;
   onUseCsv?: () => void;
   onMetaAccountChanged?: (accountId: string) => void;
+  /** Display-only selection; never changes this client's saved account binding. */
+  onMetaAccountSelectionChange?: (accountId: string | null) => void;
   /** When true, sync+analyze finished — hide the primary accent CTA so only Continue shows. */
   importComplete?: boolean;
   /** Optional Ads Manager CSV — server merges Result type / Results / Website leads over API delivery. */
@@ -115,6 +117,7 @@ export function WizardDataSourcePanel({
   onSyncError,
   onUseCsv,
   onMetaAccountChanged,
+  onMetaAccountSelectionChange,
   importComplete = false,
   referenceManualCsvText = null,
 }: WizardDataSourcePanelProps) {
@@ -147,6 +150,9 @@ export function WizardDataSourcePanel({
   const [accountSelectionNotice, setAccountSelectionNotice] = useState<string | null>(null);
   const [accountsLoading, setAccountsLoading] = useState(connected);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  useEffect(() => {
+    onMetaAccountSelectionChange?.(showMeta && connected && !accountsLoading && !accountsError && selectedAccount ? normalizeMetaAccountId(selectedAccount.id) : null);
+  }, [showMeta, connected, accountsLoading, accountsError, selectedAccount, onMetaAccountSelectionChange]);
   const loadAccounts = useCallback(async (signal?: AbortSignal) => {
     if (!connected) return;
     setAccountsLoading(true);
