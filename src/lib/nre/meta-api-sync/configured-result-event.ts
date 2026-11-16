@@ -9,6 +9,14 @@ const PIXEL_EVENTS: Record<string, string> = {
   START_TRIAL: "start_trial", SUBSCRIBE: "subscribe", DONATE: "donate",
 };
 
+/** Meta represents named custom pixel events as OTHER + custom_event_str. */
+export function configuredCustomEventName(config: MetaAdSetReportingConfig): string | undefined {
+  const promoted = config.promoted_object;
+  if (!promoted?.pixel_id || promoted.custom_conversion_id || promoted.custom_event_type !== "OTHER") return undefined;
+  const name = promoted.custom_event_str;
+  return name && /^[a-zA-Z][a-zA-Z0-9_]{0,99}$/.test(name) && !["custom", ...Object.values(PIXEL_EVENTS)].includes(name.toLowerCase()) ? name : undefined;
+}
+
 /** A specific configured event takes precedence over all-location lead/purchase totals. */
 export function configuredResultAction(config: MetaAdSetReportingConfig): string | undefined {
   if (["LINK_CLICKS", "LANDING_PAGE_VIEWS", "REACH", "IMPRESSIONS", "ENGAGED_USERS", "THRUPLAY", "VIDEO_VIEWS", "POST_ENGAGEMENT"].includes(config.optimization_goal ?? "")) return undefined;
@@ -18,6 +26,8 @@ export function configuredResultAction(config: MetaAdSetReportingConfig): string
     return `offsite_conversion.custom.${promoted.custom_conversion_id}`;
   }
   if (!promoted?.pixel_id) return undefined;
+  const customName = configuredCustomEventName(config);
+  if (customName) return `offsite_conversion.fb_pixel_${customName}`;
   const event = promoted.custom_event_type;
   if (!event || !PIXEL_EVENTS[event]) throw new ServiceError("This ad set's website conversion event could not be mapped safely. Use CSV reporting while its event configuration is reviewed.", 422);
   return `offsite_conversion.fb_pixel_${PIXEL_EVENTS[event]}`;

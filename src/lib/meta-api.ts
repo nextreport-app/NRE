@@ -167,7 +167,7 @@ export async function fetchMetaAdAccountMetadata(accessToken: string, accountId:
 export interface MetaAdSetReportingConfig {
   id: string;
   optimization_goal?: string;
-  promoted_object?: { pixel_id?: string; custom_conversion_id?: string; custom_event_type?: string };
+  promoted_object?: { pixel_id?: string; custom_conversion_id?: string; custom_event_type?: string; custom_event_str?: string };
 }
 
 function adSetSettingsError(error: MetaGraphErrorDetails | undefined, status: number): ServiceError {
@@ -244,6 +244,7 @@ export interface MetaInsightRow {
   /** Resolved from ad-set promoted_object, never guessed from campaign naming. */
   configured_result_action?: string;
   configured_result_type?: string;
+  configured_custom_event_name?: string;
   clicks?: string;
   campaign_id?: string;
   adset_id?: string;
