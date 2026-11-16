@@ -1,5 +1,5 @@
 "use client";
-import { formatClientCalendarDate, formatStoredDateText } from "@/lib/client-date-format";
+import { formatClientCalendarDate } from "@/lib/client-date-format";
 
 import { useState } from "react";
 import type { CsvCoverageWarning, CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
@@ -25,14 +25,14 @@ function DateCoverageNotice({ warnings, currency }: { warnings: CsvCoverageWarni
   if (!warnings.length) return null;
   return (
     <div className="text-[13px] leading-relaxed text-dash-ink-secondary">
-      <p className="font-medium text-dash-ink">Date coverage details</p>
+      <p className="font-medium text-dash-ink">Dates without records</p>
       {warnings.map(warning => (
         <div key={warning.scope} className="mt-2">
           <p className="font-medium">{warning.scope}</p>
-          <p>Dates without source rows: {warning.missingDays.map(day => currency ? formatClientCalendarDate(day, currency) : day).join(", ")}.</p>
-          <p>{formatStoredDateText(warning.message, currency)}</p>
+          <p>{warning.missingDays.map(day => currency ? formatClientCalendarDate(day, currency) : day).join(", ")}.</p>
         </div>
       ))}
+      <p className="mt-2">No records were found for the selected campaigns on these dates. If you expected activity, check the export’s date range.</p>
     </div>
   );
 }
