@@ -168,19 +168,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       const account = await fetchMetaAdAccountMetadata(fresh.accessToken, metaAdAccountId);
-      // For a first association, compare against Meta's authoritative account
-      // name, never a label supplied in the sync request. Known ID mismatches
-      // have already been checked before any provider request above.
-      const accountStatus = metaClientAccountStatus(client.metaAdAccountId, metaAdAccountId, { clientName: client.accountName, selectedName: account.name });
-      if (accountStatus === "unlinked" && normalizeMetaAccountId(parsed.data.confirmedMetaAdAccountId) !== normalizeMetaAccountId(metaAdAccountId)) {
-        return NextResponse.json({
-          error: "The client and ad account names do not clearly match. Review and confirm the selection on Import before syncing.",
-          accountConfirmationRequired: true,
-          selectedMetaAdAccountName: account.name ?? "",
-          linkedMetaAdAccountId: client.metaAdAccountId ?? null,
-          linkedMetaAdAccountName: client.metaAdAccountName ?? null,
-        }, { status: 409 });
-      }
       let range;
       try { range = metaApiImportRange(parsed.data, new Date(), account.timezone_name); }
       catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Choose valid report dates." }, { status: 400 }); }
@@ -195,7 +182,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (client.timezone !== account.timezone_name) {
         await prisma.client.update({ where: { id: client.id }, data: { timezone: account.timezone_name } });
       }
-      // Bind only the first name-matched or confirmed, successful nonempty import.
+      // Remember the first successful nonempty import as this client's baseline.
       // Acknowledging a mismatch permits one report, never silent relinking.
       let linkedMetaAdAccountId = client.metaAdAccountId ?? null;
       let linkedMetaAdAccountName = client.metaAdAccountName ?? null;

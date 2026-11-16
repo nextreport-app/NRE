@@ -7,22 +7,20 @@ export function MetaClientAccountNotice({ clientName, linkedId, linkedName, sele
   selectedId: string; selectedName: string; confirmed: boolean;
   onConfirm: (value: boolean) => void; onUseLinked?: () => void;
 }) {
-  const status = metaClientAccountStatus(linkedId, selectedId, { clientName, selectedName });
-  if (status === "matched" || status === "unselected") return null;
-  const mismatch = status === "mismatch";
+  if (metaClientAccountStatus(linkedId, selectedId) !== "mismatch") return null;
   return <section role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm nre-wizard-confidence--warn">
-    <h3 className="font-semibold">{mismatch ? "This ad account differs from the client’s linked account" : "Check that this ad account belongs to this client"}</h3>
+    <h3 className="font-semibold">This ad account differs from the client’s linked account</h3>
     <p className="mt-2">Reporting for <strong>{clientName}</strong></p>
-    {mismatch && <p className="mt-1">Linked account: {linkedName || "Meta ad account"} · ID {normalizeMetaAccountId(linkedId)}</p>}
+    <p className="mt-1">Linked account: {linkedName || "Meta ad account"} · ID {normalizeMetaAccountId(linkedId)}</p>
     <p className="mt-1">Selected account: <strong>{selectedName}</strong> · ID {normalizeMetaAccountId(selectedId)}</p>
-    <p className="mt-2 text-xs">{mismatch ? "Check the client or change the selected ad account before syncing. Continuing will not replace the client’s linked account." : "The names do not clearly match and no Meta ad account is linked yet. Check the selection or confirm it below. A successful sync will remember this account for this client."}</p>
+    <p className="mt-2 text-xs">Check the client or change the selected ad account before syncing. Continuing will not replace the client’s linked account.</p>
     <div className="mt-3 flex flex-wrap gap-4">
       {onUseLinked && <button type="button" className="font-medium underline" onClick={onUseLinked}>Use linked account</button>}
       <Link href="/clients" className="font-medium underline">Change client</Link>
     </div>
     <label className="mt-3 flex cursor-pointer items-start gap-2">
       <input type="checkbox" checked={confirmed} onChange={event => onConfirm(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-amber-400" />
-      <span>{mismatch ? `Use ${selectedName} for this report under ${clientName}.` : `This ad account belongs to ${clientName}.`}</span>
+      <span>{`Use ${selectedName} for this report under ${clientName}.`}</span>
     </label>
   </section>;
 }
