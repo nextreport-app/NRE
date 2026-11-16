@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { clarityUrlAllowed, installClarityRouteBoundary, setClarityAllowed } from "@/lib/clarity";
 import { usePathname } from "next/navigation";
 import {
   ANALYTICS_CONSENT_KEY,
@@ -48,6 +49,10 @@ export function GoogleAnalytics() {
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const publicPage = ANALYTICS_PUBLIC_PATHS.has(pathname);
+  useLayoutEffect(installClarityRouteBoundary, []);
+  useLayoutEffect(() => {
+    setClarityAllowed(consent === "granted" && publicPage && clarityUrlAllowed(new URL(window.location.href)));
+  }, [consent, publicPage, pathname]);
   useEffect(() => {
     const openPreferences = () => setSettingsOpen(true);
     window.addEventListener(ANALYTICS_PREFERENCES_EVENT, openPreferences);
