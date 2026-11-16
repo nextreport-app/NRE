@@ -199,6 +199,7 @@ export function WizardImportStep() {
               onSynced={handleApiSynced}
               onUseCsv={() => handleDataSourceModeChange("csv")}
               onMetaAccountChanged={w.handleApiAccountChange}
+              onMetaAccountSelectionChange={w.setSelectedApiAdAccountId}
               syncStatus={analyzeStatus === "loading" ? "loading" : apiSyncStatus}
               syncError={apiSyncError || apiAnalysisError || (!metaConnected && w.metaConnectError ? "Meta connection could not be completed. Try connecting again." : null)}
               onSyncStart={handleApiSyncStart}
