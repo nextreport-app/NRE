@@ -7,7 +7,9 @@ describe("daily date journey", () => {
     const html = renderToStaticMarkup(<ReportPeriodControls />);
     for (const label of ["Yesterday", "Last 7 days", "Last 14 days", "Last 30 days", "Custom date range", "CSV coverage needed"]) expect(html).toContain(label);
     expect(html).toContain('aria-pressed=');
-    expect(html).toContain("missing days are not treated as zero delivery");
+    expect(html).toContain("Your CSV must have Day-wise breakdown covering this entire range.");
+    expect(html).not.toContain("Each table row combines");
+    expect(html).not.toContain("missing days are not treated as zero delivery");
   });
   it("keeps Generate read only with a route back to dates", () => {
     const html = renderToStaticMarkup(<ReportPeriodControls stage="generate" />);
