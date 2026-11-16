@@ -199,6 +199,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
 
   slides.push({
     xml: buildCoverSlideXml(template.cover, data.cover, {
+      platform: data.platform,
       reportTitle,
       agencyName,
       reportType: data.reportType,
@@ -460,6 +461,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
         reportTitle,
         agencyName,
         reportType: "HISTORICAL",
+        platform: data.platform,
         isLightTemplate,
       }),
       rels: template.cover.rels,
@@ -568,6 +570,7 @@ export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput)
         reportTitle,
         agencyName,
         reportType: "DAY_BREAKDOWN",
+        platform: data.platform,
         isLightTemplate,
       }),
       rels: template.cover.rels,
