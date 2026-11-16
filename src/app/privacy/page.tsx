@@ -246,7 +246,7 @@ export default async function PrivacyPage() {
         <section>
           <h2 className="mb-2 text-lg font-medium text-white">7. Cookies</h2>
           <p>
-            We use authentication cookies to keep you signed in and local storage to remember preferences. When optional analytics is configured, Google Analytics cookies are used only after you allow analytics. You can decline or change your choice through <AnalyticsPreferencesButton />. We do not enable advertising personalization or send form contents to analytics.
+            We use authentication cookies to keep you signed in and local storage to remember preferences. When optional analytics is configured, Google Analytics and Microsoft Clarity are enabled on approved public pages only after you allow analytics. Clarity provides heatmaps and session recordings to help us understand how those pages are used. Recording is stopped when you enter private account, client, wizard or report pages. You can decline or change your choice through <AnalyticsPreferencesButton />. We do not enable advertising personalization or send form contents to analytics.
           </p>
         </section>
 

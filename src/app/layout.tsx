@@ -1,3 +1,4 @@
+import { CLARITY_BOOT_SCRIPT } from "@/lib/clarity";
 import { GTM_CONSENT_BOOT_SCRIPT } from "@/lib/analytics";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${geistMono.variable} ${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
+        <script id="nre-clarity-bootstrap" dangerouslySetInnerHTML={{ __html: CLARITY_BOOT_SCRIPT }} />
         <script id="nre-gtm-consent" dangerouslySetInnerHTML={{ __html: GTM_CONSENT_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: SITE_THEME_BOOT_SCRIPT }} />
       </head>
