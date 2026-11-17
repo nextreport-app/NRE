@@ -547,8 +547,8 @@ export function WizardDataSourceToggle({ value, onChange, apiUnavailable = false
     <p id={labelId} className="text-sm font-semibold text-dash-ink">Import data</p>
     <div role="group" aria-labelledby={labelId} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {([
-        ['api', 'Meta API', 'Sync directly from Meta'],
         ['csv', 'Upload CSV', 'Upload an Ads Manager export'],
+        ['api', 'Meta API', 'Sync directly from Meta'],
       ] as const).map(([method, label, description]) => {
         const selected = value === method;
         return <button
@@ -557,10 +557,20 @@ export function WizardDataSourceToggle({ value, onChange, apiUnavailable = false
           onClick={() => onChange(method)}
           className={`flex min-h-20 min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:cursor-not-allowed disabled:opacity-40 sm:p-4 ${selected ? 'border-dash-accent bg-dash-accent/5' : 'border-dash-border bg-dash-bg/40 hover:border-dash-ink-secondary/50 hover:bg-dash-bg'}`}
         >
-          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dash-border text-dash-ink-secondary">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              {method === "api" ? <><path d="M8 3v5m8-5v5M6 8h12v4a6 6 0 0 1-12 0V8ZM12 18v3" /></> : <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6ZM14 3v6h6M12 17v-5m-3 3 3-3 3 3" /></>}
-            </svg>
+          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dash-border">
+            {method === "csv" ? (
+              <svg viewBox="0 0 24 24" className="nre-import-csv-icon h-6 w-6" fill="none">
+                <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" />
+                <path d="M14 2v6h6" fill="#fff" fillOpacity=".25" />
+                <path d="m7.5 6 4 5m0-5-4 5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+                <rect x="7" y="14" width="10" height="5" rx=".5" stroke="#fff" strokeWidth="1.2" />
+                <path d="M7 16.5h10M12 14v5" stroke="#fff" strokeWidth="1" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="nre-import-api-icon h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3v5m8-5v5M6 8h12v4a6 6 0 0 1-12 0V8ZM12 18v3" />
+              </svg>
+            )}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-dash-ink">{label}</span>

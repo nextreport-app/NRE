@@ -7,6 +7,7 @@ describe("live Meta import choice", () => {
   it("shows both methods for a new user without a launch gate", () => {
     const html = renderToStaticMarkup(<WizardDataSourceToggle value="csv" onChange={() => {}} />);
     expect(html).toContain("Upload CSV"); expect(html).toContain("Meta API");
+    expect(html.indexOf('aria-label="Upload CSV"')).toBeLessThan(html.indexOf('aria-label="Meta API"'));
     expect(html).toContain('role="group"');
     expect(html).toContain("Sync directly from Meta");
     expect(html).toContain("Upload an Ads Manager export");

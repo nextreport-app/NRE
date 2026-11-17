@@ -72,6 +72,11 @@ html[data-site-theme="light"] {
   --nre-wizard-section-border: initial;
 }
 
+.nre-import-csv-icon { color: #21a366; }
+.nre-import-api-icon { color: #60a5fa; }
+html[data-site-theme="light"] .nre-import-csv-icon { color: #15803d; }
+html[data-site-theme="light"] .nre-import-api-icon { color: #2563eb; }
+
 .nre-wizard-feedback-link {
   color: #7dd3fc;
 }
