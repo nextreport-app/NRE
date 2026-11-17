@@ -348,7 +348,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
   if (options.reportType !== "WEBSITE" && (!options.platform || options.platform === "META")) {
     const ids = [...filled.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => Number(match[1]));
     resetShapeIdCounter(Math.max(1, ...ids));
-    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 214, w: 400, h: 42, text: "Meta", sizePt: 30, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "0D1B2E" : "FFFFFF", align: "l" }));
+    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 214, w: 400, h: 42, text: "Meta Ads", sizePt: 30, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "0D1B2E" : "FFFFFF", align: "l" }));
   }
   if (options.reportType === "DAY_BREAKDOWN") return setShapeWrap(setShapeExtCx(filled, cover.reportDate, 880 * 12700), cover.reportDate, "none");
   return cover.budgetSummary?.trim()
