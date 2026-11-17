@@ -19,6 +19,7 @@ import {
 } from "@/lib/report-branding";
 import { ShareReportBrandingHeader } from "@/components/share-report-branding-header";
 import { formatGroupedDonutLegendValue, visualResultBarRightLabel } from "@/lib/nre/visual-chart-slide";
+import { metricDefinition } from "@/lib/pptx/legend-slide";
 import { resultBarLayout } from "@/lib/pptx/chart-slide-layout";
 import type { DeliveryStatusIndicator } from "@/lib/nre/delivery-status";
 import type { DynamicMetricValue } from "@/lib/nre/dynamic-metrics";
@@ -209,7 +210,7 @@ function AiCopyBlock({ heading, text }: { heading: string; text: string }) {
 
 function SlideCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-navy-border bg-navy p-4 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:p-6 md:p-8">
+    <div className="overflow-hidden rounded-xl border border-navy-border bg-navy p-4 shadow-[0_8px_28px_rgba(0,0,0,0.18)] sm:p-6 md:p-8" style={{ backgroundImage: "radial-gradient(ellipse at top left, rgba(96,165,250,0.055), transparent 60%)", borderTopColor: "rgba(148,163,184,0.3)" }}>
       {children}
     </div>
   );
@@ -326,14 +327,11 @@ function VisualSpendDonut({
           <div><span className="block">{centerLabel}</span><span className="mt-1 block text-[9px] font-medium tracking-wide text-[#94a3b8]">TOTAL SPEND</span></div>
         </div>
       </div>
-      <ul className="mt-5 w-full space-y-3 text-center text-[14px] text-[#adb3c0]">
+      <ul className="mt-5 w-full space-y-3 text-left text-[13px] text-[#adb3c0]">
         {segments.map((seg, i) => (
-          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-            <span className="inline-flex items-center gap-2 whitespace-nowrap text-[16px] font-semibold text-[#eff0f5]">
-              <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: `#${seg.color}` }} aria-hidden="true" />
-              {seg.name}
-            </span>
-            <span className="whitespace-nowrap tabular-nums">{formatGroupedDonutLegendValue(seg)}</span>
+          <li key={`${i}-${seg.name}-${seg.spendLabel}`} className="flex items-start gap-2 leading-relaxed">
+            <span className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: `#${seg.color}` }} aria-hidden="true" />
+            <span className="min-w-0"><strong className="font-semibold text-[#eff0f5]">{seg.name} - </strong><span className="tabular-nums">{formatGroupedDonutLegendValue(seg)}</span></span>
           </li>
         ))}
       </ul>
@@ -351,6 +349,7 @@ function VisualResultBar({
   barPct,
   resultsSharePct,
   compact = false,
+  barHeight,
 }: {
   rank: number;
   name: string;
@@ -361,6 +360,7 @@ function VisualResultBar({
   barPct: number;
   resultsSharePct: number;
   compact?: boolean;
+  barHeight: number;
 }) {
   const widthPct = Math.max(0, Math.min(100, barPct));
   const rightLabel = visualResultBarRightLabel({ barPct, resultsSharePct, valueLabel });
@@ -381,7 +381,8 @@ function VisualResultBar({
         ) : null}
       </div>
       <div
-        className={`relative mt-2 w-full overflow-hidden rounded-full bg-[#383e4c] ${compact ? "h-[6px]" : "h-[7px]"}`}
+        className="relative mt-2 w-full overflow-hidden rounded-full bg-[#383e4c]"
+        style={{ height: barHeight }}
       >
         <div
           className="absolute inset-y-0 left-0 rounded-full"
@@ -402,6 +403,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   const barLayout = resultBarLayout(barCount);
   const compactBars = barCount >= 4;
   const barGapClass = barCount >= 5 ? "space-y-2.5" : barCount >= 4 ? "space-y-3.5" : "space-y-5";
+  const panelSubheading = model.panelSubheading?.replace(/Bars show spend \(different goals\)/g, "").replace(/ · $/, "").trim();
   const splitPanel = model.useSplitPanel && model.groupedDonut != null && model.groupedDonut.length > 0;
 
   return (
@@ -416,7 +418,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           style={{ backgroundColor: "#191c24" }}
         >
           {splitPanel ? (
-            <div className="grid min-h-[320px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.2fr)] lg:items-stretch">
+            <div className="grid min-h-[320px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1.2fr)] lg:items-stretch">
               <div className="flex min-w-0 flex-col">
                 <p className="text-[16px] font-bold uppercase tracking-wide text-[#adb3c0]">{model.leftHeading}</p>
                 <div className="mt-5 flex justify-center">
@@ -426,7 +428,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
               <div className="hidden w-px self-stretch bg-[#383e4c] lg:block" aria-hidden="true" />
               <div className="flex min-w-0 flex-col">
                 <p className="text-[16px] font-bold uppercase tracking-wide text-[#adb3c0]">{model.rightHeading}</p>
-                {model.panelSubheading ? <p className="mt-1 text-[12px] leading-snug text-[#94a3b8]">{model.panelSubheading}</p> : null}
+                {panelSubheading ? <p className="mt-1 text-[12px] leading-snug text-[#94a3b8]">{panelSubheading}</p> : null}
                 <div className={`mt-5 flex flex-1 flex-col justify-center ${barGapClass}`}>
                   {model.resultBars.map((bar) => (
                     <VisualResultBar
@@ -439,6 +441,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                       fullName={bar.fullName}
                       barPct={bar.barPct}
                       resultsSharePct={bar.resultsSharePct}
+                      barHeight={barLayout.barH}
                       compact={compactBars || barLayout.rowH < 72}
                     />
                   ))}
@@ -448,8 +451,8 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
           ) : (
             <>
               <p className="text-[16px] font-bold uppercase tracking-wide text-[#94a3b8]">{model.panelHeading}</p>
-              {model.panelSubheading ? (
-                <p className="mt-1 text-[13px] leading-snug text-[#64748b] sm:text-[14px]">{model.panelSubheading}</p>
+              {panelSubheading ? (
+                <p className="mt-1 text-[13px] leading-snug text-[#64748b] sm:text-[14px]">{panelSubheading}</p>
               ) : null}
               <div className={`mt-3 ${barGapClass}`}>
                 {model.resultBars.map((bar) => (
@@ -463,7 +466,8 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
                     fullName={bar.fullName}
                     barPct={bar.barPct}
                     resultsSharePct={bar.resultsSharePct}
-                    compact={compactBars || barLayout.rowH < 72}
+                    barHeight={barLayout.barH}
+                      compact={compactBars || barLayout.rowH < 72}
                   />
                 ))}
               </div>
@@ -702,7 +706,7 @@ function MetricGuideSection({
               {entry.term}
             </p>
             <p className="mt-1 line-clamp-4 break-words text-[15px] leading-[1.5] text-ink-muted">
-              {getExplanation(entry.term, platform)}
+              {platform === "META" ? metricDefinition(entry.term, entry.explanation || getExplanation(entry.term, platform)) : getExplanation(entry.term, platform)}
             </p>
           </div>
         ))}
@@ -783,13 +787,15 @@ export function ShareReportView({
         />
       ) : null}
 
-      <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[960px] px-3 py-4 sm:px-6 sm:py-6"}>
+      <main className={isPrint ? "mx-auto max-w-[960px] px-6 py-4" : "mx-auto max-w-[1120px] px-3 py-4 sm:px-6 sm:py-6"}>
         {/* Cover slide replica */}
         {showCover ? (
         <section className={coverSlideClass}>
           <div
-            className={`mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-navy-border bg-navy-panel px-4 py-6 shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:px-8 sm:py-9 md:px-10 md:py-10 ${isPrint ? "" : "sm:aspect-video"}`}
+            className={`relative isolate mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-navy-border bg-navy-panel px-4 py-8 shadow-[0_8px_32px_rgba(0,0,0,0.2)] sm:px-8 sm:py-9 md:px-10 md:py-10 ${isPrint ? "" : "sm:aspect-video"}`}
+            style={{ backgroundImage: "radial-gradient(ellipse at top left, rgba(24,119,242,0.15), transparent 65%), radial-gradient(ellipse at bottom right, rgba(251,176,64,0.08), transparent 60%)" }}
           >
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]" style={{ backgroundImage: "linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
             <div className="flex min-h-0 flex-col items-center justify-center px-1 text-center sm:h-full">
               <div
                 className="inline-flex max-w-full items-center gap-2 rounded-full"
@@ -835,7 +841,6 @@ export function ShareReportView({
                   : visibleData.cover.dateRange}
               </p>
               <div className="my-3 h-px w-16 bg-navy-border sm:my-4 sm:w-24" />
-              <p className="mt-2 max-w-xl text-xs leading-relaxed text-ink-muted">Reach can be estimated from daily data; campaign audiences may overlap. Reach-based costs and frequency use the same audience basis.</p>
               {coverPreparedByLine ? (
                 <p className="mt-3 max-w-full break-words px-1 text-[12px] text-ink-muted sm:mt-4 sm:text-[14px]">
                   {coverPreparedByLine}
