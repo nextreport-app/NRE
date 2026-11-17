@@ -37,10 +37,10 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[],
   resetShapeIdCounter(2000);
   const shapes = [textBox({x:35,y:25,w:890,h:42,text:"METRIC ABBREVIATION GUIDE",sizePt:28,bold:true,colorHex:palette.text})];
   shown.forEach((entry,index) => {
-    const x=35+(index%3)*300, y=87+Math.floor(index/3)*100;
-    shapes.push(rectangle({x,y,w:288,h:91,fillHex:palette.cardFill}));
-    shapes.push(textBox({x:x+12,y:y+8,w:264,h:26,text:entry.term,sizePt:13,bold:true,colorHex:palette.text,align:"l"}));
-    shapes.push(textBox({x:x+12,y:y+35,w:264,h:51,text:entry.explanation,sizePt:11.5,colorHex:palette.label,align:"l"}));
+    const x=35+(index%3)*300, y=80+Math.floor(index/3)*104;
+    shapes.push(rectangle({x,y,w:288,h:99,fillHex:palette.cardFill}));
+    shapes.push(textBox({x:x+12,y:y+8,w:264,h:28,text:entry.term,sizePt:14,bold:true,colorHex:palette.text,align:"l"}));
+    shapes.push(textBox({x:x+12,y:y+36,w:264,h:60,text:entry.explanation,sizePt:14,colorHex:palette.label,align:"l"}));
   });
   if (concepts.length > 12) {
     shapes.push(textBox({x:35,y:503,w:890,h:20,text:`12 of ${concepts.length} selected terms shown. Full definitions: nextreport.in/help/metrics`,sizePt:11,colorHex:palette.label}));

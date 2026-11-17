@@ -415,7 +415,7 @@ export function buildVisualChartSlideModel(chart: ChartSlideData, currencySymbol
     const primaryResLabel = ordered[0]!.resLabel;
     const resultLabel = toTitleCaseChartLabel(primaryResLabel);
     const rightHeading = mixedCampaignObjectives ? "Campaign performance" : `${resultLabel} by Campaign`;
-    const panelSubheading = `${ordered.length > MAX_ROWS ? `Top ${MAX_ROWS} of ${ordered.length} · ` : ""}${mixedCampaignObjectives ? "Bars show spend (different goals)" : ""}`.replace(/ · $/, "");
+    const panelSubheading = ordered.length > MAX_ROWS ? `Top ${MAX_ROWS} of ${ordered.length}` : "";
     const nameLayout = splitPanelCampaignNameLayout(shown.length, true);
     const resultBars = buildResultBars(ordered.map(c => ({
       name: c.name, color: colors.get(c.name)!, spend: c.spend, results: c.results,

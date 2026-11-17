@@ -54,7 +54,8 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
   const c = palette(isLight);
   const splitPanel = model.useSplitPanel && model.groupedDonut != null && model.groupedDonut.length > 0;
   const cols = resultBarColumns(splitPanel);
-  const hasSubheading = Boolean(model.panelSubheading?.trim());
+  const panelSubheading = model.panelSubheading?.replace(/Bars show spend \(different goals\)/g, "").replace(/ · $/, "").trim();
+  const hasSubheading = Boolean(panelSubheading);
   const layout = resultBarLayout(model.resultBars.length, hasSubheading);
   const heading = splitPanel ? model.rightHeading : model.panelHeading || model.rightHeading;
   const panelX = splitPanel ? MTD_VISUAL.rightX : MTD_VISUAL.fullPanelX;
@@ -113,7 +114,7 @@ function appendResultBarsOoxml(shapes: string[], model: VisualChartSlideModel, i
         y: MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap,
         w: panelW,
         h: MTD_VISUAL.panelSubheadingH,
-        text: model.panelSubheading,
+        text: panelSubheading,
         sizePt: 12,
         colorHex: c.inkMuted,
         align: "l",

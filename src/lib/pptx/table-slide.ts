@@ -114,7 +114,11 @@ function setCellText(
   }
   const lines = String(value).split("\n");
   const runs = lines.map((line) => `<a:r>${rPrBlock}<a:t>${escapeXmlText(line)}</a:t></a:r>`).join("<a:br/>");
-  return cellXml.slice(0, match.index) + runs + cellXml.slice(match.index + match[0].length);
+  const filled = cellXml.slice(0, match.index) + runs + cellXml.slice(match.index + match[0].length);
+  if (colIndex === 0 && value.startsWith("Previous month\n")) {
+    return filled.replace(/<a:pPr\b[^>]*>/g, tag => /\balgn=/.test(tag) ? tag.replace(/algn="[^"]*"/, 'algn="ctr"') : tag.replace("<a:pPr", '<a:pPr algn="ctr"'));
+  }
+  return filled;
 }
 
 /**
@@ -369,6 +373,31 @@ export function fillCombinedTotalTable(
       grown = grown.slice(0, row.start) + grownRow + grown.slice(row.end);
     }
     newTbl = grown;
+  }
+
+  // Keep “Previous month” on its own line without shrinking its type.
+  // Redistribute column widths while retaining the table's total width.
+  if (targetCols <= NATIVE_COLS && grid.some(row => row[0]?.startsWith("Previous month\n"))) {
+    newTbl = newTbl.replace(/<a:tblGrid>[\s\S]*?<\/a:tblGrid>/, tableGrid => {
+      const widths = [...tableGrid.matchAll(/<a:gridCol\b[^>]*\bw="(\d+)"/g)].map(match => Number(match[1]));
+      const total = widths.reduce((sum, width) => sum + width, 0);
+      // Preserve long headings (notably Impressions and objective names).
+      // Spend and the two short rate headings have room to donate width.
+      const donors = [1, 4, 5].filter(index => index < widths.length);
+      const capacity = donors.reduce((sum, index) => sum + Math.max(0, widths[index] - 76 * 12700), 0);
+      const desired = Math.max(widths[0], Math.min(Math.round(total * 0.15), 118 * 12700));
+      const extra = Math.min(desired - widths[0], capacity);
+      const nextWidths = [...widths];
+      nextWidths[0] += extra;
+      let remaining = extra;
+      donors.forEach((index, position) => {
+        const share = position === donors.length - 1 ? remaining : Math.round(extra * Math.max(0, widths[index] - 76 * 12700) / (capacity || 1));
+        nextWidths[index] -= share;
+        remaining -= share;
+      });
+      let index = 0;
+      return tableGrid.replace(/(<a:gridCol\b[^>]*\bw=")(\d+)(")/g, (_, prefix, _width, suffix) => `${prefix}${nextWidths[index++]}${suffix}`);
+    });
   }
 
   // Fill exactly grid[r].length cells of each row — its full native width
