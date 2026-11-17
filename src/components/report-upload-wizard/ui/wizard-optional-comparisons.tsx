@@ -10,6 +10,11 @@ export function WizardOptionalComparisons({ embedded = false }: { embedded?: boo
   const panel = (
     <PreviousMonthDataWizardPanel
       clientId={w.clientId}
+      uploadSessionId={w.uploadSessionId}
+      onAvailabilityChange={ready => {
+        w.onPreviousMonthSettingsChanged();
+        w.setPreviousMonthHasFile(ready);
+      }}
       clientTimezone={w.clientTimezone}
       currencySymbol={w.currencySymbol}
       initialHasFile={w.previousMonthHasFile}

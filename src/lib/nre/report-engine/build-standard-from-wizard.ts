@@ -15,7 +15,7 @@ import type { ReportData, ReportType } from "../report-data";
 import { CURRENCY_SYMBOLS } from "../format";
 import { adsManagerName } from "../platform-reporting";
 import { resolveDateSelection } from "../resolve-date-selection";
-import { loadPreviousMonthDataRows } from "../previous-month-data";
+import { resolveWeeklyPreviousMonthRows } from "../previous-month-data";
 import { detectAdNameColumn, hasAdLevelData } from "../ad-level";
 import { filterNreRowsByDateRange, computeCsvDateBounds } from "../date-range";
 import { selectedSinglePeriod, reportPeriodAnchor } from "../report-period-selection";
@@ -166,7 +166,9 @@ export async function buildStandardReportForWizard(
   }
 
   const includePreviousMonthComparison = reportType === "WEEKLY" && resolveIncludePreviousMonthComparison(formData);
-  const periodRows = includePreviousMonthComparison ? await loadPreviousMonthDataRows(client) : undefined;
+  const previousSelection = formData ? parseJsonFormField(formData, "previousMonthSelectedCampaigns", selectedCampaignsSchema) : undefined;
+  const periodRows = includePreviousMonthComparison ? await resolveWeeklyPreviousMonthRows(mtdParsed.rows, client, previousSelection, now) : undefined;
+  if (includePreviousMonthComparison && !periodRows) return { error: "Your import does not cover the full previous month. Upload a CSV covering that month to include its totals." };
 
   let metaAccessToken: string | null = null;
   if (platform === "META") {

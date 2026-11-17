@@ -1,4 +1,5 @@
 "use client";
+import { notifyPreviousMonthDataChanged } from "@/lib/previous-month-notifications";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isLowSpendCampaign, LOW_SPEND_CAMPAIGN_THRESHOLD, sortCampaignsBySpend } from "@/lib/nre/campaigns";
@@ -13,6 +14,7 @@ export function PreviousMonthCampaignSelector({
   currencySymbol = "$",
   onSelectionChange,
   compact = false,
+  uploadSessionId,
 }: {
   clientId: string;
   campaigns: string[];
@@ -21,6 +23,7 @@ export function PreviousMonthCampaignSelector({
   currencySymbol?: string;
   onSelectionChange?: (selected: string[]) => void;
   compact?: boolean;
+  uploadSessionId?: string | null;
 }) {
   const [selected, setSelected] = useState<Set<string>>(() => {
     const { selectedCampaigns } = resolvePreviousMonthUiSelection(campaigns, campaignSpend, initialSelected);
@@ -49,6 +52,8 @@ export function PreviousMonthCampaignSelector({
 
   useEffect(() => {
     const { selectedCampaigns } = resolvePreviousMonthUiSelection(campaigns, campaignSpend, initialSelected);
+    // The parent can refresh this inventory after an upload in another tab.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelected(new Set(selectedCampaigns));
   }, [campaigns, campaignSpend, initialSelected]);
 
@@ -67,12 +72,12 @@ export function PreviousMonthCampaignSelector({
       const res = await fetch(`/api/clients/${clientId}/previous-month-data`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedCampaigns: list }),
+        body: JSON.stringify({ selectedCampaigns: list, uploadSessionId: uploadSessionId ?? undefined }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setSelectionError(data.error || "Could not save your selection. Please try again.");
-      }
+      } else { notifyPreviousMonthDataChanged(clientId); }
     } catch {
       setSelectionError("Could not reach the server. Please try again.");
     } finally {
@@ -178,7 +183,7 @@ export function PreviousMonthCampaignSelector({
                 }
               >
                 Prev. month · {currencySymbol}
-                {Math.round(spend).toLocaleString("en-US")}
+                {spend.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </li>
           );

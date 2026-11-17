@@ -1,4 +1,5 @@
 "use client";
+import { previousMonthNotificationKey, notifyPreviousMonthDataChanged } from "@/lib/previous-month-notifications";
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -41,6 +42,8 @@ function StatusBadge({ status }: { status: PreviousMonthComparisonInfo["status"]
 /** Optional weekly-report content, configured on the final wizard step. */
 export function PreviousMonthDataWizardPanel({
   clientId,
+  uploadSessionId,
+  onAvailabilityChange,
   clientTimezone,
   currencySymbol = "$",
   initialHasFile,
@@ -55,6 +58,8 @@ export function PreviousMonthDataWizardPanel({
   onCampaignsChange,
 }: {
   clientId: string;
+  uploadSessionId?: string | null;
+  onAvailabilityChange?: (ready: boolean) => void;
   clientTimezone: string;
   currencySymbol?: string;
   initialHasFile: boolean;
@@ -80,8 +85,59 @@ export function PreviousMonthDataWizardPanel({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [checking, setChecking] = useState(!!uploadSessionId);
+  const [verifiedReady, setVerifiedReady] = useState<boolean | null>(null);
+  const [source, setSource] = useState<"import" | "stored">("stored");
+  const callbacks = useRef({ onUploaded, onAvailabilityChange });
+  useEffect(() => { callbacks.current = { onUploaded, onAvailabilityChange }; }, [onUploaded, onAvailabilityChange]);
+  const snapshot = useRef("");
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    let refreshAgain = false;
+    async function refresh(force = false) {
+      if (inFlight) { refreshAgain ||= force; return; }
+      if (!force && document.visibilityState === "hidden") return;
+      inFlight = true;
+      try {
+        const query = uploadSessionId ? `?uploadSessionId=${encodeURIComponent(uploadSessionId)}` : "";
+        const res = await fetch(`/api/clients/${clientId}/previous-month-data${query}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setVerifiedReady(data.ready === true);
+        setSource(data.source === "import" ? "import" : "stored");
+        const key = JSON.stringify(data);
+        if (snapshot.current === key) return;
+        snapshot.current = key;
+        setHasFile(data.ready === true);
+        setCampaigns(data.campaigns ?? []);
+        setSelectedCampaigns(data.selectedCampaigns ?? []);
+        setCampaignSpend(data.campaignSpend ?? {});
+        callbacks.current.onAvailabilityChange?.(data.ready === true);
+        if (data.ready) callbacks.current.onUploaded?.({ campaigns: data.campaigns, selectedCampaigns: data.selectedCampaigns, campaignSpend: data.campaignSpend });
+      } finally {
+        inFlight = false;
+        if (!cancelled) {
+          setChecking(false);
+          if (refreshAgain) { refreshAgain = false; void refresh(true).catch(() => undefined); }
+        }
+      }
+    }
+    const run = () => { void refresh().catch(() => undefined); };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === previousMonthNotificationKey(clientId)) void refresh(true).catch(() => undefined);
+    };
+    run();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", run);
+    document.addEventListener("visibilitychange", run);
+    return () => { cancelled = true; window.removeEventListener("storage", onStorage); window.removeEventListener("focus", run); document.removeEventListener("visibilitychange", run); };
+  }, [clientId, uploadSessionId]);
 
   useEffect(() => {
+    // Synchronize facts refreshed by the parent after an external upload.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasFile(initialHasFile);
     setUpdatedAt(initialUpdatedAt);
     setCampaigns(initialCampaigns);
@@ -90,6 +146,7 @@ export function PreviousMonthDataWizardPanel({
   }, [initialHasFile, initialUpdatedAt, initialCampaigns, initialSelectedCampaigns, initialCampaignSpend]);
 
   const info = getPreviousMonthComparisonInfo(hasFile, updatedAt, clientTimezone);
+  if (verifiedReady !== null) info.status = verifiedReady ? "current" : "missing";
   const selectedCount =
     selectedCampaigns?.length ??
     resolvePreviousMonthUiSelection(campaigns, campaignSpend, null).selectedCampaigns.length;
@@ -119,6 +176,9 @@ export function PreviousMonthDataWizardPanel({
         data.campaignSpend && typeof data.campaignSpend === "object"
           ? (data.campaignSpend as Record<string, number>)
           : {};
+      notifyPreviousMonthDataChanged(clientId);
+      setVerifiedReady(true);
+      setSource("stored");
       setHasFile(true);
       setUpdatedAt(new Date().toISOString());
       setCampaigns(newCampaigns);
@@ -179,10 +239,12 @@ export function PreviousMonthDataWizardPanel({
         </div>
       </div>
 
-      {includeInReport ? (
+      {includeInReport && checking ? <p className="mt-3 text-[13px] text-dash-ink-secondary">Checking previous-month coverage…</p> : includeInReport ? (
         <div className="mt-3 border-t border-dash-border pt-3">
           <PreviousMonthDataWizardContent
             clientId={clientId}
+            uploadSessionId={uploadSessionId}
+            source={source}
             info={info}
             uploading={uploading}
             error={error}
@@ -202,6 +264,8 @@ export function PreviousMonthDataWizardPanel({
 
 function PreviousMonthDataWizardContent({
   clientId,
+  uploadSessionId,
+  source,
   info,
   uploading,
   error,
@@ -214,6 +278,8 @@ function PreviousMonthDataWizardContent({
   onSelectionChange,
 }: {
   clientId: string;
+  uploadSessionId?: string | null;
+  source: "import" | "stored";
   info: PreviousMonthComparisonInfo;
   uploading: boolean;
   error: string | null;
@@ -235,9 +301,9 @@ function PreviousMonthDataWizardContent({
       <div className="space-y-3">
         <div className="space-y-1">
           <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-            {info.expectedMonthName} data adds a full previous-month row to Monthly Overview.
+            {source === "import" ? `${info.expectedMonthName} data is already included in your import. No additional upload needed.` : `${info.expectedMonthName} data adds a full previous-month row to Monthly Overview.`}
           </p>
-          <Link href={manageHref} className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
+          <Link href={manageHref} target="_blank" rel="noopener noreferrer" className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
             Manage on client page
           </Link>
         </div>
@@ -253,6 +319,7 @@ function PreviousMonthDataWizardContent({
             <div className="mt-2">
               <PreviousMonthCampaignSelector
                 clientId={clientId}
+                uploadSessionId={uploadSessionId}
                 campaigns={campaigns}
                 initialSelected={selectedCampaigns}
                 campaignSpend={campaignSpend}
