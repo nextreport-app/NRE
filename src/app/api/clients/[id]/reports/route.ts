@@ -33,7 +33,7 @@ import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-
 import { resolveDateSelection } from "@/lib/nre/resolve-date-selection";
 import { apiErrorResponse } from "@/lib/api-error";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
-import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { resolveWeeklyPreviousMonthRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { computeCsvDateBounds } from "@/lib/nre/date-range";
 import { mergeObjectiveCache, parseObjectiveCache } from "@/lib/nre/objective-cache";
@@ -139,7 +139,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!client.previousMonthDataUrl) {
       return NextResponse.json({ error: "This client has no Previous Month Data on file." }, { status: 400 });
     }
-    const periodRows = await loadPreviousMonthDataRows(client);
+    const periodRows = await resolveWeeklyPreviousMonthRows([], client, undefined);
     if (!periodRows || periodRows.length === 0) {
       return NextResponse.json({ error: "Previous Month Data has no usable rows." }, { status: 400 });
     }

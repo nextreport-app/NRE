@@ -1,4 +1,5 @@
 "use client";
+import { notifyPreviousMonthDataChanged } from "@/lib/previous-month-notifications";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
 import { useState, useRef } from "react";
@@ -67,6 +68,7 @@ export function PreviousMonthDataUpload({
         setError(data.error || "Could not upload file. Please try again.");
         return;
       }
+      notifyPreviousMonthDataChanged(clientId);
       setFileName(data.fileName ?? file.name);
       setUpdatedAt(new Date().toISOString());
       const newCampaigns: string[] = Array.isArray(data.campaigns) ? data.campaigns : [];
@@ -96,6 +98,7 @@ export function PreviousMonthDataUpload({
         setError(data.error || "Could not remove file. Please try again.");
         return;
       }
+      notifyPreviousMonthDataChanged(clientId);
       setFileName(null);
       setUpdatedAt(null);
       setCampaigns([]);

@@ -115,8 +115,8 @@ export default async function ClientDetailPage({
   let previousMonthCampaignSpend: Record<string, number> = {};
   if (client.previousMonthDataUrl) {
     try {
-      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
-      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl);
+      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl, client.timezone);
+      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl, client.timezone);
     } catch {
       previousMonthCampaigns = [];
       previousMonthCampaignSpend = {};

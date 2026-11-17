@@ -68,17 +68,37 @@ export async function loadPreviousMonthDataRowsForCampaigns(
 }
 
 /** Part 1 — the client page's own server-side re-parse of the stored file, to render the campaign checkbox list's full universe (not just what's currently selected) on every page load, without a second upload. */
-export async function loadPreviousMonthDataCampaigns(previousMonthDataUrl: string): Promise<string[]> {
+export async function loadPreviousMonthDataCampaigns(previousMonthDataUrl: string, timezone?: string): Promise<string[]> {
   const buffer = await readPreviousMonthDataFile(previousMonthDataUrl);
   const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
-  return extractSpendingCampaignNames(rows);
+  const scoped = timezone ? (await import("./previous-month-source")).previousMonthRows(rows, timezone) ?? [] : rows;
+  return extractSpendingCampaignNames(scoped);
 }
 
 /** Per-campaign previous-month spend — powers low-spend badges on the selection UI. */
 export async function loadPreviousMonthDataCampaignSpend(
   previousMonthDataUrl: string,
+  timezone?: string,
 ): Promise<Record<string, number>> {
   const buffer = await readPreviousMonthDataFile(previousMonthDataUrl);
   const rows = parseUploadedFile(buffer, "Previous Month Data").rows;
-  return extractCampaignSpend(rows);
+  const scoped = timezone ? (await import("./previous-month-source")).previousMonthRows(rows, timezone) ?? [] : rows;
+  return extractCampaignSpend(scoped);
+}
+
+/** Prefer the active import; a stored upload is only a fallback, never an extra sum. */
+export async function resolveWeeklyPreviousMonthRows(
+  primaryRows: NreRow[],
+  client: { previousMonthDataUrl: string | null; previousMonthSelectedCampaigns?: string | null; timezone: string },
+  selected: string[] | null | undefined,
+  now = new Date(),
+): Promise<NreRow[] | undefined> {
+  const { previousMonthRows } = await import("./previous-month-source");
+  let rows = previousMonthRows(primaryRows, client.timezone, now);
+  if (!rows && client.previousMonthDataUrl) {
+    const buffer = await readPreviousMonthDataFile(client.previousMonthDataUrl);
+    rows = previousMonthRows(parseUploadedFile(buffer, "Previous Month Data").rows, client.timezone, now);
+  }
+  if (!rows) return undefined;
+  return filterRowsByCampaigns(rows, selected ?? parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns));
 }

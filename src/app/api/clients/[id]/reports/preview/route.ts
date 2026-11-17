@@ -28,7 +28,7 @@ import { validateDayBreakdownReportInput } from "@/lib/nre/day-breakdown-report-
 import { adsManagerName } from "@/lib/nre/platform-reporting";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { apiErrorResponse } from "@/lib/api-error";
-import { loadPreviousMonthDataRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
+import { resolveWeeklyPreviousMonthRows, loadPreviousMonthDataRowsForCampaigns } from "@/lib/nre/previous-month-data";
 import { validateComparisonReportCoverage } from "@/lib/nre/comparison-coverage";
 import { hasAdLevelData } from "@/lib/nre/ad-level";
 import { computeCsvDateBounds } from "@/lib/nre/date-range";
@@ -364,7 +364,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const previewNow = new Date();
   const includePreviousMonthComparison = resolveIncludePreviousMonthComparison(formData);
   const periodRowsForVerify = includePreviousMonthComparison
-    ? await loadPreviousMonthDataRows(client)
+    ? await resolveWeeklyPreviousMonthRows(mtdParsed.rows, client, (formData ? parseJsonFormField(formData, "previousMonthSelectedCampaigns", selectedCampaignsSchema) : undefined), built.data.calculationContext ? new Date(built.data.calculationContext.asOf) : previewNow)
     : undefined;
   const csvAlign = resolveCsvAlignResults(formData);
 

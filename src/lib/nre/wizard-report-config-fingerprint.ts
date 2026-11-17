@@ -68,6 +68,8 @@ export function computeWizardStandardReportFingerprint(input: {
     reportType: formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined,
     dateSelection: formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined,
     includePreviousMonthComparison: resolveIncludePreviousMonthComparison(formData),
+    previousMonthSourcePolicy: resolveIncludePreviousMonthComparison(formData) ? "calendar-scoped-v1" : undefined,
+    previousMonthSelectionOverride: formData ? parseJsonFormField(formData, "previousMonthSelectedCampaigns", selectedCampaignsSchema) : undefined,
     showBudgetPacingOnCover: resolveShowBudgetPacingOnCover(formData, client.showBudgetPacingOnCover),
     csvAlignResults: resolveCsvAlignResults(formData),
   };

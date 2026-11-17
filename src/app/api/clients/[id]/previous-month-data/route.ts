@@ -1,3 +1,7 @@
+import { previousMonthRows, previousMonthSourceInfo } from "@/lib/nre/previous-month-source";
+import { loadWizardUploadSession } from "@/lib/nre/wizard-upload-session";
+import { resolvePreviousMonthUiSelection } from "@/lib/nre/merge-previous-month-selection";
+import { uploadSessionIdSchema } from "@/lib/validators/report-wizard";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
 import { NextResponse } from "next/server";
@@ -22,6 +26,31 @@ async function getOwnedClient(userId: string, id: string) {
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== userId) return null;
   return client;
+}
+
+/** Refresh previous-month facts without navigating away from the active report. */
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const client = await getOwnedClient(session.user.id, id);
+  if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const rawId = new URL(req.url).searchParams.get("uploadSessionId");
+    const uploadId = rawId ? uploadSessionIdSchema.safeParse(rawId) : null;
+    if (rawId && !uploadId?.success) return NextResponse.json({ error: "Invalid upload session." }, { status: 400 });
+    const upload = uploadId?.success ? await loadWizardUploadSession(session.user.id, id, uploadId.data) : null;
+    let rows = upload ? previousMonthRows(upload.rows, client.timezone) : undefined;
+    let source: "import" | "stored" = "import";
+    if (!rows && client.previousMonthDataUrl) {
+      const { readPreviousMonthDataFile } = await import("@/lib/storage");
+      rows = previousMonthRows(parseUploadedFile(await readPreviousMonthDataFile(client.previousMonthDataUrl), "Previous Month Data").rows, client.timezone);
+      source = "stored";
+    }
+    const info = previousMonthSourceInfo(rows, source, client.timezone);
+    const { selectedCampaigns } = resolvePreviousMonthUiSelection(info.campaigns, info.campaignSpend, parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns));
+    return NextResponse.json({ ...info, selectedCampaigns, updatedAt: client.previousMonthDataUpdatedAt?.toISOString() ?? null }, { headers: { "Cache-Control": "no-store" } });
+  } catch (err) { return apiErrorResponse(err, "clients:previous-month-data:read"); }
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -61,7 +90,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Re-extracted from this same parse rather than a second read, so the
   // saved selection always exactly matches what's actually in the file
   // that was just saved.
-  const campaigns = extractSpendingCampaignNames(parsed.rows);
+  const scopedRows = previousMonthRows(parsed.rows, client.timezone);
+  if (!scopedRows) return NextResponse.json({ error: "Upload a CSV covering the full previous calendar month. A broader date range is fine." }, { status: 400 });
+  const campaigns = extractSpendingCampaignNames(scopedRows);
   const previousSelected = parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns);
   let previousAllCampaigns: string[] = [];
   if (client.previousMonthDataUrl) {
@@ -71,7 +102,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       previousAllCampaigns = [];
     }
   }
-  const campaignSpend = extractCampaignSpend(parsed.rows);
+  const campaignSpend = extractCampaignSpend(scopedRows);
   const { selectedCampaigns, lowSpendCampaigns } = mergePreviousMonthSelectionWithLowSpend(
     campaigns,
     campaignSpend,
@@ -129,14 +160,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const client = await getOwnedClient(session.user.id, id);
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!client.previousMonthDataUrl) {
-    return NextResponse.json({ error: "No Previous Month Data file has been uploaded yet." }, { status: 400 });
-  }
-
   const body = await req.json().catch(() => null);
   const selectedCampaigns = Array.isArray(body?.selectedCampaigns)
     ? body.selectedCampaigns.filter((c: unknown): c is string => typeof c === "string")
     : null;
+  const uploadId = body?.uploadSessionId ? uploadSessionIdSchema.safeParse(body.uploadSessionId) : null;
+  const upload = uploadId?.success ? await loadWizardUploadSession(session.user.id, id, uploadId.data) : null;
+  if (!client.previousMonthDataUrl && !(upload && previousMonthRows(upload.rows, client.timezone))) {
+    return NextResponse.json({ error: "No previous-month data is available." }, { status: 400 });
+  }
   if (!selectedCampaigns) {
     return NextResponse.json({ error: "selectedCampaigns must be an array of campaign names." }, { status: 400 });
   }

@@ -63,8 +63,8 @@ export default async function NewReportPage({ params, searchParams }: { params: 
   let previousMonthCampaignSpend: Record<string, number> = {};
   if (client.previousMonthDataUrl) {
     try {
-      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl);
-      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl);
+      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl, client.timezone);
+      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl, client.timezone);
     } catch {
       previousMonthCampaigns = [];
       previousMonthCampaignSpend = {};
