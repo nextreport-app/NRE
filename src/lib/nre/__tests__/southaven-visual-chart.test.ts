@@ -38,7 +38,7 @@ describe("Southaven weekly CSV — visual chart slide", () => {
     expect(model.leftHeading).toBe("Spend by Objective");
     expect(model.resultBars).toHaveLength(3);
     expect(new Set(model.groupedDonut!.map(s => s.name)).size).toBe(3);
-    expect(model.panelSubheading).toContain("Bars show spend");
+    expect(model.panelSubheading).toBe("");
 
     const leadBar = model.resultBars.find((b) => b.fullName?.includes("LeadGen"))!;
     const trafficBar = model.resultBars.find((b) => b.fullName?.includes("Traffic"))!;

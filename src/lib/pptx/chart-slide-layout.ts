@@ -209,7 +209,7 @@ export function groupedDonutLayout(segmentCount: number, panelTopY: number): Gro
   const legendValueSizePt = dense ? 12.5 : 14;
   const legendNameH = dense ? 20 : 22;
   const legendValueH = dense ? 18 : 20;
-  const legendRowH = legendNameH + legendValueH;
+  const legendRowH = dense ? 30 : 32;
   const legendRowGap = dense ? 4 : 6;
   const legendH = segmentCount * (legendRowH + legendRowGap) - legendRowGap;
   const preferredD = segmentCount >= 5 ? 144 : segmentCount >= 4 ? 164 : MTD_VISUAL.groupedDonutD;

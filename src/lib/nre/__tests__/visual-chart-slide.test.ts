@@ -237,7 +237,7 @@ describe("buildVisualChartSlideModel", () => {
     expect(model.groupedDonut).not.toBeNull();
     expect(model.resultBars).toHaveLength(2);
     expect(model.resultBars.map((b) => b.name)).toEqual(["Alpha Campaign", "Beta Campaign"]);
-    expect(model.panelSubheading).toContain("Bars show spend (different goals)");
+    expect(model.panelSubheading).toBe("");
     expect(model.summaryLine).not.toContain("Budget Used");
   });
 

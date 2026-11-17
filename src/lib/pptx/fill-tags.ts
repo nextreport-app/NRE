@@ -730,7 +730,7 @@ export function buildCampaignOrAdSetSlideXml(
     xml = replaceLiteralText(xml, "REACH", "REACH (EST.)");
     const ids=[...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map(m=>Number(m[1]));
     resetShapeIdCounter(Math.max(...ids,1));
-    xml=insertShapeBeforeSpTreeClose(xml,textBox({x:40,y:507,w:860,h:16,text:"Reach estimated from daily data; frequency and reach-based costs use that estimate.",sizePt:10.5,colorHex:reportHeaderColor(isLightTemplate),align:"l"}));
+    xml=insertShapeBeforeSpTreeClose(xml,textBox({x:40,y:507,w:860,h:16,text:"Reach estimated from daily data.",sizePt:10.5,colorHex:reportHeaderColor(isLightTemplate),align:"l"}));
   }
   if (slide.kind === "adset") xml=replaceLiteralText(xml,"CAMPAIGN SUMMARY","AD SET SUMMARY");
   return xml;
@@ -919,7 +919,7 @@ export function buildTableSlideXml(
   const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
   // Explicitly distinguish the optional previous month from current MTD.
   const labelledPeriodRow = reportType === "WEEKLY" && periodRow.hasData
-    ? { ...periodRow, monthLabel: `Previous month · ${periodRow.monthLabel}` }
+    ? { ...periodRow, monthLabel: `Previous month\n${periodRow.monthLabel}` }
     : periodRow;
   const stacked = shouldUseStackedCombinedTotalLayout(headers.resultColumns.length);
   const grid =

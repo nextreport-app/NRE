@@ -37,7 +37,8 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
   const splitPanel = model.useSplitPanel && model.groupedDonut != null && model.groupedDonut.length > 0;
   const heading = splitPanel ? model.rightHeading : model.panelHeading || model.rightHeading;
   const panelX = splitPanel ? MTD_VISUAL.rightX : MTD_VISUAL.fullPanelX;
-  const hasSubheading = Boolean(model.panelSubheading?.trim());
+  const panelSubheading = model.panelSubheading?.replace(/Bars show spend \(different goals\)/g, "").replace(/ · $/, "").trim();
+  const hasSubheading = Boolean(panelSubheading);
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MTD_SLIDE_W} ${MTD_SLIDE_H}" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}">`,
     `<rect x="0" y="0" width="${MTD_SLIDE_W}" height="${MTD_SLIDE_H}" fill="#0d1b2e"/>`,
@@ -66,7 +67,7 @@ export function buildMtdOverviewSvg(chart: ShareChartData): string {
 
   if (hasSubheading) {
     parts.push(
-      `<text x="${panelX}" y="${MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap + 12}" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="12">${escapeXml(model.panelSubheading)}</text>`,
+      `<text x="${panelX}" y="${MTD_VISUAL.panelY + MTD_VISUAL.panelHeadingH + MTD_VISUAL.panelSubheadingGap + 12}" fill="${MUTED}" font-family="Poppins, Arial, sans-serif" font-size="12">${escapeXml(panelSubheading)}</text>`,
     );
   }
 

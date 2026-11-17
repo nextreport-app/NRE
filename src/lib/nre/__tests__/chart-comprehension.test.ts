@@ -66,7 +66,7 @@ describe("client-readable chart identity and metric contracts", () => {
       expect(spend).toContain('sz="1400"');
     }
     expect(svg).toMatch(/font-size="16"[^>]*>5,642 link clicks/);
-    expect(svg).toMatch(/font-size="14"[^>]*>50.2% of spend/);
+    expect(svg).toMatch(/font-size="14"[^>]*><tspan[^>]*>Reach - <\/tspan><tspan>50.2% of spend/);
   });
 
   it("aggregates repeated objectives into one slice while preserving campaign bars", () => {
@@ -108,7 +108,7 @@ describe("client-readable chart identity and metric contracts", () => {
     for (const bar of model.resultBars) {
       expect(bar.color).toBe(model.groupedDonut!.find(segment => segment.name === (bar.fullName === "Purchases" ? "Purchases" : "Link Clicks"))?.color);
     }
-    expect(model.panelSubheading).toContain("spend (different goals)");
+    expect(model.panelSubheading).toBe("");
     expect(model.resultBars[0]).toMatchObject({ name: "Purchases Campaign", valueLabel: "$200", barPct: 100 });
     expect(model.resultBars[1].barPct).toBe(50);
     expect(model.summaryLine).not.toContain("1,002");
