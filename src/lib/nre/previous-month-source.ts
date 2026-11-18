@@ -1,3 +1,4 @@
+import {hasStaleApplicationApiFacts} from "./meta-api-result-version";
 /** A previous-month row is always scoped to one complete calendar month. */
 import { apiQueryCoverage } from "./api-query-coverage";
 import type { NreRow } from "./columns";
@@ -7,6 +8,7 @@ import { prepareMonthlyCsvFacts, monthlyFactSelectionError } from "./monthly-csv
 import { extractCampaignSpend, extractSpendingCampaignNames } from "./campaigns";
 
 export function previousMonthRows(rows: NreRow[], timezone: string, now = new Date()): NreRow[] | undefined {
+  if(hasStaleApplicationApiFacts(rows))return undefined;
   const range = previousCompleteMonth(now, timezone);
   const facts = rows.map(row => ({ ...row }));
   if (prepareMonthlyCsvFacts(facts).errors.length || monthlyFactSelectionError(facts, range)) return undefined;

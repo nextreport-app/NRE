@@ -289,18 +289,12 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     let first=true;
     return block.replace(/<a:t>[^<]*<\/a:t>/g,()=>{const replacement=first?"<a:t>{{CLIENT_HEADLINE}}</a:t>":"<a:t></a:t>";first=false;return replacement;});
   });
-  const isMetaCover = options.reportType !== "WEBSITE" && (!options.platform || options.platform === "META");
-  // Remove unused text boxes entirely so Slides/PowerPoint cannot select empty placeholders.
+  // Keep disabled health/budget placeholders out of editable exports.
   xml = xml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, block => {
     if (block.includes("{{ACCOUNT_HEALTH_BADGE}}")) return "";
     if (!cover.budgetSummary?.trim() && block.includes("{{BUDGET_SUMMARY}}")) return "";
-    if (isMetaCover && /PRESENTED\s+TO/.test(block)) return "";
     return block;
   });
-  if (isMetaCover) {
-    xml = setShapeOffsetY(xml, "{{CLIENT_HEADLINE}}", 104 * 12700);
-    xml = setShapeOffsetY(xml, "{{REPORT_TITLE}}", 190 * 12700);
-  }
   if (agencyName) {
     const preparedByShape = cloneShapeAsTag(xml, "{{REPORT_DATE}}", "{{PREPARED_BY}}", PREPARED_BY_Y);
     xml = setShapeOffsetY(xml, "PRESENTED TO", PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU);
@@ -333,7 +327,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       // replacing the template's own theme accent-4 (blue). Size stays the
       // template's native 20pt — Round L only asked to unify colors here,
       // not sizes, on the non-campaign slide types.
-      REPORT_TITLE: { color: reportHeaderColor(!!options.isLightTemplate), ...(isMetaCover ? { sizePt: 18, fontFamily: "Arial", bold: false } : {}) },
+      REPORT_TITLE: { color: reportHeaderColor(!!options.isLightTemplate) },
     },
   );
 
@@ -348,10 +342,10 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       return replacement;
     });
   });
-  if (isMetaCover) {
+  if (options.reportType !== "WEBSITE" && (!options.platform || options.platform === "META")) {
     const ids = [...filled.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => Number(match[1]));
     resetShapeIdCounter(Math.max(1, ...ids));
-    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 65, w: 400, h: 26, text: "META ADS", sizePt: 14, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "475569" : "A7B9D3", align: "l" }));
+    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 214, w: 400, h: 42, text: "Meta Ads", sizePt: 30, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "0D1B2E" : "FFFFFF", align: "l" }));
   }
   if (options.reportType === "DAY_BREAKDOWN") return setShapeWrap(setShapeExtCx(filled, cover.reportDate, 880 * 12700), cover.reportDate, "none");
   return cover.budgetSummary?.trim()

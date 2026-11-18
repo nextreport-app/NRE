@@ -234,6 +234,13 @@ describe("Meta content API capability boundaries", () => {
       }),
     ).rejects.toThrow(/attribution windows/);
   });
+  it("retains website application conversions in audience and creative sections",async()=>{
+    vi.mocked(fetchMetaAdSetReportingConfigs).mockResolvedValue([{id:"11",optimization_goal:"OFFSITE_CONVERSIONS",promoted_object:{pixel_id:"9",custom_event_type:"SUBMIT_APPLICATION"}}]);
+    const fetcher=vi.fn(async(raw:unknown)=>{const url=new URL(String(raw));expect(url.searchParams.get("fields")).toContain("conversions");return Response.json({data:[{...base,age:"25-34",adset_id:"11",ad_id:"100",ad_name:"Application creative",actions:[],conversions:[{action_type:"submit_application_website",value:"1"}]}]})});vi.stubGlobal("fetch",fetcher);
+    const sources=await fetchMetaContentSources({token:"test",account:"123",currency:"USD",range,options:{...options,creatives:true},primaryRows:primary});
+    expect(sources.map(source=>source.rows[0].results)).toEqual([1,1]);
+    expect(sources.every(source=>source.rows[0].resultLabel==="WEBSITE SUBMIT APPLICATIONS")).toBe(true);
+  });
   it("does not combine purchase value aliases", async () => {
     vi.mocked(fetchMetaAdSetReportingConfigs).mockResolvedValue([
       {

@@ -20,6 +20,21 @@ function scalarCount(raw: string | undefined): number {
   return count;
 }
 
+/** Only explicit website events can supply a website application's count. */
+function configuredConversionSource(row: MetaInsightRow): string | undefined {
+  const configured = row.configured_result_action;
+  // Preserve the existing schedule-channel policy.
+  if (configured === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) return "schedule_website";
+  // A supplied action count, including zero, remains authoritative.
+  if (configured !== "offsite_conversion.fb_pixel_submit_application" || row.actions?.some(item => item.action_type === configured)) return undefined;
+  const observed = ["submit_application_website", configured].filter(type => row.conversions?.some(item => item.action_type === type));
+  const counts = observed.map(type => actionCount(row, type, "conversions"));
+  if (counts.some(value => Math.abs(value - counts[0]) > 1e-8)) {
+    throw new ServiceError("Meta returned conflicting website application counts. Retry sync or use a daily Ads Manager CSV; no result total has been estimated.", 422);
+  }
+  return observed[0];
+}
+
 function namedCustomEventEvidence(row: MetaInsightRow): { count: number; source: string } {
   const name = row.configured_custom_event_name!;
   const aliases = [row.configured_result_action!, name];
@@ -49,13 +64,10 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
   });
   if (row.configured_result_action) {
     if (row.configured_custom_event_name) return pack(row.configured_result_action, namedCustomEventEvidence(row).count);
-    // Each configured event has one explicit scalar source under unified attribution.
-    // Schedule uses its location-specific conversion metric when supplied.
-    // Other events retain actions.value; Results/Objective projections never backfill it.
-    if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) {
-      // Meta's website appointment metric is a location-specific conversion,
-      // not schedule_total (all locations) or an unrelated lead action.
-      return pack("offsite_conversion.fb_pixel_schedule", actionCount(row, "schedule_website", "conversions"));
+    const conversionSource = configuredConversionSource(row);
+    if (conversionSource) return pack(row.configured_result_action, actionCount(row, conversionSource, "conversions"));
+    if(row.configured_result_action==="offsite_conversion.fb_pixel_submit_application"&&!row.actions?.some(item=>item.action_type===row.configured_result_action)&&[...(row.actions??[]),...(row.conversions??[])].some(item=>/submit_application/.test(item.action_type)&&Number(item.value)>0)){
+      throw new ServiceError("Meta returned application conversions without a website-specific count. Use a daily Ads Manager CSV; no zero-result report has been created.",422);
     }
     return pack(row.configured_result_action, actionCount(row, row.configured_result_action));
   }
@@ -94,9 +106,10 @@ export function directlyEvidencedResult(row: MetaInsightRow): ManualExportPrimar
   return legacy;
 }
 
-/** Source metadata follows the same explicit schedule-channel policy as counting. */
+/** Source metadata follows the same explicit website-event policy as counting. */
 export function configuredResultCountSource(row: MetaInsightRow): string {
   if (row.configured_custom_event_name) return namedCustomEventEvidence(row).source;
-  if (row.configured_result_action === "offsite_conversion.fb_pixel_schedule" && row.conversions?.some(item => item.action_type === "schedule_website")) return "conversions.schedule_website.value";
+  const conversionSource = configuredConversionSource(row);
+  if (conversionSource) return `conversions.${conversionSource}.value`;
   return row.configured_result_action ? "actions.value" : "delivery_or_actions";
 }

@@ -329,6 +329,8 @@ export const META_OBJECTIVE_SPECS: readonly MetaObjectiveSpec[] = [
       "application",
       "applications",
       "website applications submitted",
+      "submit_application_website",
+      "conversions:submit_application_website",
       "website submit applications",
       "website submit application",
       "offsite_conversion.fb_pixel_submit_application",

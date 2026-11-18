@@ -1,9 +1,11 @@
+import {hasStaleApplicationApiFacts} from "./meta-api-result-version";
 import type { NreRow } from "./columns";
 import { apiQueryCoverage } from "./api-query-coverage";
 import { metaApiImportRange } from "./meta-api-import-range";
 import { comparisonPeriodSchema, dateSelectionSchema, parseJsonFormField, reportTypeSchema } from "../validators/report-wizard";
 /** A newly selected period needs a new import; never shift an API report to fit older cached data. */
 export function metaApiSelectionCoverageError(form: FormData | null, rows: NreRow[], timezone: string, now = new Date()): string | null {
+  if(hasStaleApplicationApiFacts(rows))return "This API import predates the website application-count fix. Return to Import and sync Meta again before generating. Manual Ads Manager CSV reporting is also available.";
   const coverage = apiQueryCoverage(rows);
   if (!coverage || !form) return null;
   try {

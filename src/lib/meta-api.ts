@@ -368,7 +368,7 @@ async function fetchMetaAdAccountInsightsForRange(params: {
   sinceIso: string;
   untilIso: string;
   level?: MetaInsightsLevel;
-  /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
+  /** Strict wizard imports omit alternative result projections; configured website events also request conversions. */
   includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   const accountId = params.adAccountId.startsWith("act_")
@@ -458,7 +458,7 @@ export async function fetchMetaAdAccountInsights(params: {
   untilIso: string;
   /** Default campaign — matches Ads Manager totals; adset over-counts shared conversions. */
   level?: MetaInsightsLevel;
-  /** Strict wizard imports omit alternative result projections; configured Schedule also requests conversions. */
+  /** Strict wizard imports omit alternative result projections; configured website events also request conversions. */
   includeResultChannels?: boolean;
 }): Promise<MetaInsightRow[]> {
   const level = params.level ?? "campaign";
