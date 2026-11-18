@@ -117,15 +117,15 @@ describe("buildCoverSlideXml — readability font sizes (Fix 3)", () => {
 });
 
 describe("Meta cover hierarchy and optional placeholders", () => {
-  it("groups platform, client and report title and removes unused text shapes", () => {
+  it("restores client-first cover layout while removing unused text shapes", () => {
     const xml = buildCoverSlideXml(template.cover, BASE_COVER, {platform:"META",reportType:"WEEKLY"});
     const shapes = xml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? [];
     const textShapes = shapes.filter(shape => shape.includes("<p:txBody>"));
     expect(textShapes.every(shape => /<a:t>[^<]+<\/a:t>/.test(shape))).toBe(true);
     const y = (text:string) => Number(/<a:off x="\d+" y="(\d+)"/.exec(shapes.find(shape=>shape.includes(`<a:t>${text}</a:t>`))!)![1]);
-    expect(y("META ADS")).toBeLessThan(y(BASE_COVER.accountName));
     expect(y(BASE_COVER.accountName)).toBeLessThan(y(DEFAULT_REPORT_TITLE.toUpperCase()));
-    expect(xml).not.toContain("META ADS REPORT");
+    expect(y(DEFAULT_REPORT_TITLE.toUpperCase())).toBeLessThan(y("Meta Ads"));
+    expect(xml).toContain("META ADS REPORT");
     expect(xml).not.toContain("Healthy");
   });
 });

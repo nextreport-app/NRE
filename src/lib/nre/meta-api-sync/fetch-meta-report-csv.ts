@@ -1,3 +1,4 @@
+import {META_API_RESULT_MAPPING_HEADER,META_API_RESULT_MAPPING_VERSION} from "../meta-api-result-version";
 import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
 import { validateMetaClickRates } from "./validate-click-rates";
@@ -143,13 +144,14 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
       sinceIso, untilIso,
       resultSource,
       "adset_unified", "impression",
-      customIndicator ?? (resultSource === "conversions.schedule_website.value"
-        ? "conversions:schedule_website"
+      customIndicator ?? (resultSource.startsWith("conversions.")
+        ? `conversions:${resultSource.slice("conversions.".length,-".value".length)}`
         : row[META_CSV_HEADERS.indexOf("NRE API result action")] ? `actions:${row[META_CSV_HEADERS.indexOf("NRE API result action")]}` : ""),
+      META_API_RESULT_MAPPING_VERSION,
     );
   });
   const headers = META_CSV_HEADERS.map(header => header === "Amount spent (USD)" ? `Amount spent (${input.currency})` : header);
-  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time", "Result indicator");
+  if (input.requireDirectResultEvidence) headers.push(API_RANGE_START_HEADER, API_RANGE_END_HEADER, "NRE API result source", "NRE API attribution mode", "NRE API action report time", "Result indicator",META_API_RESULT_MAPPING_HEADER);
   if (deduped.some(row => row.configured_result_action === "offsite_conversion.fb_pixel_schedule" || row.actions?.some(action => action.action_type === "offsite_conversion.fb_pixel_schedule"))) {
     headers.push("Website appointments scheduled");
     dataRows.forEach((row, index) => row.push(

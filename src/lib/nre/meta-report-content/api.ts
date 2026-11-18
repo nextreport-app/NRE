@@ -9,7 +9,7 @@ import {
   configuredResultAction,
   configuredCustomEventName,
 } from "../meta-api-sync/configured-result-event";
-import { directlyEvidencedResult } from "../meta-api-sync/direct-result-evidence";
+import { directlyEvidencedResult,configuredResultCountSource } from "../meta-api-sync/direct-result-evidence";
 import {
   META_CSV_HEADERS,
   insightToManualCsvRowWithResult,
@@ -98,6 +98,7 @@ async function insightsChunk(
     "cpc",
     "actions",
     "action_values",
+    "conversions",
   ];
   for (let page = 0; page < 200; page++) {
     const json = await metaContentGraph<{
@@ -314,6 +315,7 @@ export async function fetchMetaContentSources(input: {
           primary.action_type ?? "",
         ) &&
         Number(row.impressions) > 0 &&
+        !configuredResultCountSource(row).startsWith("conversions.") &&
         !(row.actions ?? []).some(
           (action) => action.action_type === primary.action_type,
         )
