@@ -19,6 +19,8 @@ vi.mock("@/lib/nre/regenerate-report", () => ({
   regeneratePptxFromShare: vi.fn().mockResolvedValue(Buffer.from("pptx")),
 }));
 import { auth } from "@/lib/auth";
+import { regeneratePptxFromShare } from "@/lib/nre/regenerate-report";
+import { saveReportFile } from "@/lib/storage";
 import { prisma } from "@/lib/prisma";
 import { buildReportData } from "@/lib/nre/report-data";
 import { buildShareReportData } from "@/lib/nre/share-report";
@@ -113,6 +115,24 @@ describe("report review boundary", () => {
     );
     expect(response.status).toBe(400);
     expect(prisma.report.update).not.toHaveBeenCalled();
+  });
+  it("publishes browser edits without replacing the PPTX or invalidating Google Slides", async () => {
+    const response = await PATCH(new Request("http://localhost/review", {
+      method: "PATCH",
+      body: JSON.stringify({ shareReview: {
+        publish: true, target: "browser", visibility: share.visibility, campaigns: [], adSets: [],
+        cover: { accountName: "Edited browser title", dateRange: "November 11–17", healthBadge: "" },
+      } }),
+    }), params);
+    expect(response.status).toBe(200);
+    expect(regeneratePptxFromShare).not.toHaveBeenCalled();
+    expect(saveReportFile).not.toHaveBeenCalled();
+    const update = vi.mocked(prisma.report.update).mock.calls[0][0];
+    expect(update.data).not.toHaveProperty("filePath");
+    expect(update.data).not.toHaveProperty("slidesUrl");
+    const saved = JSON.parse(update.data.summaryJson as string);
+    expect(saved.accountName).toBe("Edited browser title");
+    expect(saved.publishedAt).toEqual(expect.any(String));
   });
   it("invalidates cached Slides only after a successful publish", async () => {
     const response = await PATCH(

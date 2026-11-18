@@ -40,7 +40,7 @@ export default async function ReportCopyPage({
       <Link href={backHref} className="text-[13px] text-dash-accent hover:underline">
         {backLabel}
       </Link>
-      <h1 className="text-[20px] font-semibold text-dash-ink">Edit report</h1>
+      <h1 className="text-[20px] font-semibold text-dash-ink">Edit browser report</h1>
       <ReportShareReview
         clientId={id}
         reportId={reportId}

@@ -130,6 +130,7 @@ const combinedTotalEditSchema = z.object({
 });
 
 const shareReviewSchema = z.object({
+  target: z.enum(["browser", "all"]).optional(),
   publish: z.boolean().optional(),
   visibility: visibilitySchema,
   cover: coverEditSchema.optional(),
@@ -282,8 +283,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         share.publishedAt = new Date().toISOString();
       }
 
+      const syncPpt = parsed.data.publish && parsed.data.target !== "browser" && !!share._renderArchive;
       let filePath = report.filePath;
-      if (parsed.data.publish && share._renderArchive) {
+      if (syncPpt) {
         const throttle = await enforceRateLimit("report-publish", session.user.id, 3, 60);
         if (throttle) return throttle;
         const templateBuffer = await loadTemplateBufferForPlatform(report.platform, report.client.template);
@@ -296,8 +298,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: { id: reportId },
         data: {
           summaryJson: JSON.stringify(share),
-          ...(filePath ? { filePath } : {}),
-          ...(parsed.data.publish && share._renderArchive ? { slidesUrl: null } : {}),
+          ...(syncPpt && filePath ? { filePath } : {}),
+          ...(syncPpt ? { slidesUrl: null } : {}),
         },
       });
 

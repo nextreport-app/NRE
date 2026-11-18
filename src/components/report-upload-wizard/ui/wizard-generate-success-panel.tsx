@@ -235,7 +235,6 @@ export function WizardGenerateSuccessPanel({
         {publishedAt ? (
           <div className="nre-wizard-generate-success__published rounded-lg border px-4 py-3 text-[13px] sm:text-[14px]">
             Published {formatRelativeReportDate(publishedAt)} — the live link reflects your published copy.
-            {driveSaveUrl ? " Re-save to Google Drive manually if you updated the PPT." : null}
           </div>
         ) : null}
 
@@ -253,22 +252,20 @@ export function WizardGenerateSuccessPanel({
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
             ) : <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
-            {previewHref && shareToken ? (
-              <Link href={previewHref} className={secondaryExportClass} onClick={() => {
-                persistGenerateSnapshot({ reportId: reportId!, downloadUrl, shareToken });
-              }}>
-                {reportType === "COMPARISON" ? "Review browser report" : "Edit browser & PPTX"}
-              </Link>
-            ) : null}
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">{reportType === "COMPARISON" ? "Review both periods in the browser report. " : "Publish content edits to update the browser report and PPTX download. "}For slide layout changes, open the downloaded PPTX in Microsoft PowerPoint. Edit Google Slides directly in Drive.</p>
+          <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">Edit your downloaded PPTX in PowerPoint or your saved Google Slides copy in Slides. Changes stay within each version.</p>
         </section>
 
         {publishedAt && <p className="text-sm text-dash-ink-secondary">Published edits are live.</p>}
         {/* Section C — share with client */}
         {shareToken && reportUrl && shareInput ? (
           <section aria-labelledby="success-share-heading" className="space-y-3 rounded-lg border border-dash-border bg-dash-bg/30 p-4">
-            <h3 id="success-share-heading" className="text-sm font-semibold text-dash-ink">Share report</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 id="success-share-heading" className="text-sm font-semibold text-dash-ink">Share browser report</h3>
+              {previewHref ? <Link href={previewHref} className="text-sm font-medium text-dash-accent hover:underline" onClick={() => {
+                persistGenerateSnapshot({ reportId: reportId!, downloadUrl, shareToken });
+              }}>{reportType === "COMPARISON" ? "Review browser report" : "Edit browser report"}</Link> : null}
+            </div>
             <p className="text-xs leading-relaxed text-dash-ink-secondary">Anyone with this link can view the report.</p>
             <label className="sr-only" htmlFor="wizard-live-report-url">
               Live report URL

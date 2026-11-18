@@ -9,9 +9,12 @@ const props = {
 describe("concise generated-report panel",()=>{
   it("keeps the report identity and actions without repeated introductory copy",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props}/>);
-    for(const text of ["Report ready","Weekly Performance Report","06/11/2026 – 12/11/2026","7 slides","13/11/2026","Edit browser &amp; PPTX","Download PPTX","Share report","Copy link"]) expect(html).toContain(text);
+    for(const text of ["Report ready","Weekly Performance Report","06/11/2026 – 12/11/2026","7 slides","13/11/2026","Edit browser report","Download PPTX","Share browser report","Copy link"]) expect(html).toContain(text);
     for(const text of ["Ready to review","The final touch","Includes last week","Review your slides before sharing with your client."]) expect(html).not.toContain(text);
     expect(html).toContain("Anyone with this link can view the report.");
+    expect(html).not.toContain("Edit browser &amp; PPTX");
+    expect(html.indexOf("Edit browser report")).toBeGreaterThan(html.indexOf("success-share-heading"));
+    expect(html).toContain("Changes stay within each version.");
     expect(html).toContain("Connect Google Drive"); expect(html).toContain("Google Slides");
   });
   it("includes report-aware help and a client-specific restart with one client-switch location",()=>{
