@@ -32,6 +32,7 @@ export interface WizardUploadSessionPayload {
   metaAdAccountId?: string;
   /** Custom conversion id → Result type label from Meta Graph (optional). */
   metaCustomConversionResultTypes?: Record<string, string>;
+  metaReportContent?: import("./meta-report-content/types").MetaReportContent;
 }
 
 export interface WizardParsedMtd {
@@ -39,6 +40,7 @@ export interface WizardParsedMtd {
   rows: NreRow[];
   headers: string[];
   platform: Platform;
+  metaReportContent?: import("./meta-report-content/types").MetaReportContent;
 }
 
 export function hashUploadBuffer(buffer: Buffer): string {
@@ -74,6 +76,7 @@ export async function saveWizardUploadSession(input: {
   metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps;
   metaAdAccountId?: string;
   metaCustomConversionResultTypes?: Record<string, string>;
+  metaReportContent?: import("./meta-report-content/types").MetaReportContent;
 }): Promise<string> {
   const sessionId = randomUUID();
   const now = Date.now();
@@ -88,6 +91,7 @@ export async function saveWizardUploadSession(input: {
     fileHash: input.fileHash,
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + WIZARD_UPLOAD_SESSION_TTL_MS).toISOString(),
+    ...(input.metaReportContent ? {metaReportContent:input.metaReportContent} : {}),
     ...(input.metaCampaignPeriodReach ? { metaCampaignPeriodReach: input.metaCampaignPeriodReach } : {}),
     ...(input.metaAdAccountId ? { metaAdAccountId: input.metaAdAccountId } : {}),
     ...(input.metaCustomConversionResultTypes

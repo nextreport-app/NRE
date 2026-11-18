@@ -340,7 +340,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         : null;
 
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
-      precalcMap ? Promise.resolve(revalidateCachedInsights(reportData, precalcMap)) : generateInsights(reportData, aiKeysFromEnv()),
+      reportData.metaContent?.includeStandard === false ? Promise.resolve(new Map()) : precalcMap ? Promise.resolve(revalidateCachedInsights(reportData, precalcMap)) : generateInsights(reportData, aiKeysFromEnv()),
       prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
       loadLogoAsset(client.logoUrl),
     ]);

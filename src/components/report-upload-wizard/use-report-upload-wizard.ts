@@ -268,6 +268,7 @@ export function useReportUploadWizard({
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   /** Parsed CSV cache from /analyze — metrics, preview, and generate reuse this instead of re-uploading. */
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(null);
+  const [reportContentBusy,setReportContentBusy] = useState(false);
   const [apiSyncStatus, setApiSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [apiSyncError, setApiSyncError] = useState<string | null>(null);
   /** Meta API sync used hybrid merge with Ads Manager CSV — note on generate + share JSON. */
@@ -2661,7 +2662,7 @@ export function useReportUploadWizard({
 
   const generateStepPreviewReady = useMemo(() => {
     if (!usesFullAdWizard(platform)) return true;
-    if (previousMonthUploading || previewStatus === "invalid" || previewStatus === "error") return false;
+    if (reportContentBusy || previousMonthUploading || previewStatus === "invalid" || previewStatus === "error") return false;
     if (previewStatus === "loading" || previewRefreshing) return false;
     return !!(data || comparisonData || historicalData || dayBreakdownData);
   }, [
@@ -2669,6 +2670,7 @@ export function useReportUploadWizard({
     previewStatus,
     previewRefreshing,
     previousMonthUploading,
+    reportContentBusy,
     data,
     comparisonData,
     historicalData,
@@ -2786,18 +2788,22 @@ export function useReportUploadWizard({
       return 1 + (comparisonData?.campaigns.filter(c => c.metricsA.spend.value > 0).length ?? summaryCampaignNames().length) + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + 1 + (comparisonData?.campaigns.filter(c => c.metricsA.spend.value > 0).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
     }
     if (previewKind === "historical" && historicalData) {
-      if (historicalData.isPaused) return 3;
+      const extra=historicalData.metaContent?.pages.length??0;
+      if(historicalData.metaContent?.includeStandard===false)return 2+extra;
+      if (historicalData.isPaused) return 3+extra;
       const monthlySlides = [...historicalData.slides, ...(historicalData.adSetSlides ?? [])];
       const continuation = monthlySlides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
-      return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + 1;
+      return 1 + monthlySlides.length + continuation + (historicalData.monthlyCharts?.length ?? 0) + (historicalData.comparisonRows.length ? 1 : 0) + 1 + extra;
     }
     if (previewKind === "dayBreakdown" && dayBreakdownData) {
       return dayBreakdownData.isPaused ? 3 : 1 + 1 + dailyMainTablePages(dayBreakdownData).length + (dayBreakdownData.presentation?.summaryPages.length ?? 0);
     }
     if (data) {
+      const extra=data.metaContent?.pages.length??0;
+      if(data.metaContent?.includeStandard===false)return 2+extra;
       const slides = [...data.campaignSlides, ...data.adSetSlides];
       const continuation = slides.reduce((sum, slide) => sum + paginateExtraMetrics((slide.additionalMetricsSlide ?? []).filter(Boolean)).length, 0);
-      return 1 + (data.isPaused ? 1 : slides.length + continuation) + (data.chart ? 1 : 0) + 1 + 1;
+      return 1 + (data.isPaused ? 1 : slides.length + continuation) + (data.chart ? 1 : 0) + 1 + 1 + extra;
     }
     return 1 + summaryCampaignNames().length + (supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups, selectedAdSets, selectedCampaigns).length : 0) + 1 + 1 + 1;
   }
@@ -2937,6 +2943,9 @@ export function useReportUploadWizard({
     setCsvDateGuidance,
     setMtdFile,
     setUploadSessionId,
+    setReportContentBusy,
+    reportContentBusy,
+    onReportContentReady: (id: string) => {setUploadSessionId(id);setPreviewRefreshing(true);resetGenerateState();},
     previousMonthHasFile,
     setPreviousMonthHasFile,
     previousMonthUpdatedAt,

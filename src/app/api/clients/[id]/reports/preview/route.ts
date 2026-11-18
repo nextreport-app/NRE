@@ -1,3 +1,5 @@
+import {verifyMetaContentTotals,mergeMetaVerification} from "@/lib/nre/meta-report-content/verification";
+import {buildMetaContentPresentation} from "@/lib/nre/meta-report-content/data";
 import { metaApiSelectionCoverageError } from "@/lib/nre/meta-api-selection-coverage";
 import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "@/lib/nre/csv-currency";
 import { alignCsvReportFormData, csvReportNow } from "@/lib/nre/csv-reporting-calendar";
@@ -88,6 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
   const platform = mtdParsed.platform;
   const parsedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
+  if(mtdParsed.metaReportContent?.sourceOnly && parsedReportType && !["WEEKLY","MONTHLY","HISTORICAL"].includes(parsedReportType)) return NextResponse.json({valid:false,error:"Audience-only imports support Weekly and Monthly reports. For Compare or Daily, start with an unsegmented daily CSV."},{status:400});
   const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform, undefined, parsedReportType);
   const selectedMetrics = formData ? parseJsonFormField(formData, "selectedMetrics", selectedMetricsSchema) : undefined;
 
@@ -219,9 +222,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       dateSelection: historicalSelection,
       platform,
     });
+    try {
+    data.metaContent = buildMetaContentPresentation(mtdParsed.metaReportContent,data.monthRanges,selectedCampaigns??null,data.currencySymbol??CURRENCY_SYMBOLS[client.currency]);
+    } catch(error) { return NextResponse.json({error:error instanceof Error?error.message:"Refresh audience and creative sections."},{status:400}); }
 
     const csvAlign = resolveCsvAlignResults(formData);
-    const csvVerification = reconcileHistoricalReportWithCsv({
+    const standardVerification = reconcileHistoricalReportWithCsv({
       report: data,
       mtdDailyRows: mtdParsed.rows,
       selectedCampaigns: selectedCampaigns ?? null,
@@ -231,6 +237,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       platform,
     });
 
+    const csvVerification = mtdParsed.metaReportContent && data.metaContent ? mergeMetaVerification(standardVerification,verifyMetaContentTotals(mtdParsed.metaReportContent,data.metaContent,data.monthRanges,selectedCampaigns??null),data.metaContent.includeStandard) : standardVerification;
     await captureCsvQualityIncident({ userId: session.user.id, contextKey: recoveryContextKey(`${id}:${fileHash ?? uploadSessionId ?? "preview"}`, formData, client.timezone, client), clientId: id, diagnostics: buildPrivateDiagnostics(mtdParsed.rows, mtdParsed.colMap, csvVerification), recheckIncidentId: typeof formData?.get("recoveryIncidentId") === "string" ? String(formData.get("recoveryIncidentId")) : undefined, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
     return NextResponse.json({
@@ -390,6 +397,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const csvVerification = verifyStandardWizardReportAgainstCsv({
+    metaReportContent:mtdParsed.metaReportContent,
     client,
     mtdRows: mtdParsed.rows,
     report: built.data,
@@ -403,7 +411,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await captureCsvQualityIncident({ userId: session.user.id, contextKey: recoveryContextKey(`${id}:${fileHash ?? uploadSessionId ?? "preview"}`, formData, client.timezone, client), clientId: id, diagnostics: buildPrivateDiagnostics(mtdParsed.rows, mtdParsed.colMap, csvVerification), recheckIncidentId: typeof formData?.get("recoveryIncidentId") === "string" ? String(formData.get("recoveryIncidentId")) : undefined, platform, reportType: parsedReportType ?? "WEEKLY" }, csvVerification);
 
   // Never spend insight-generation calls on a known mismatch or an automatic recovery recheck.
-  if (csvVerification.status === "ok" && !formData?.get("recoveryIncidentId") && uploadSessionId && fileHash) {
+  if (built.data.metaContent?.includeStandard !== false && csvVerification.status === "ok" && !formData?.get("recoveryIncidentId") && uploadSessionId && fileHash) {
     scheduleWizardPreviewAiWarm({userId:session.user.id,clientId:id,sessionId:uploadSessionId,fingerprint:computeWizardStandardReportFingerprint({fileHash,client,platform,formData}),reportData:built.data});
   }
 

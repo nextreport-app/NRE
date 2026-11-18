@@ -1,3 +1,4 @@
+import {appendMetaContentSlides} from "./meta-content-slides";
 import { orderSlidesBySpend } from "../nre/slide-spend-order";
 import { dailyClientCopy } from "../nre/daily-client-copy";
 import { dailyMainTablePages } from "../nre/daily-report-presentation";
@@ -208,9 +209,9 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     rels: template.cover.rels,
   });
 
-  const skipStandardSlides = data.creativeOnly === true;
+  const skipStandardSlides = data.creativeOnly === true || data.metaContent?.includeStandard === false;
 
-  if (data.isPaused) {
+  if (data.isPaused && !skipStandardSlides) {
     slides.push({
       xml: buildPausedSlideXml(
         template.campaign,
@@ -331,6 +332,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     rels: template.table.rels,
   });
   }
+  appendMetaContentSlides(template,slides,data.metaContent,isLightTemplate);
   appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries(data));
 
   return assemblePptx(template, slides);
@@ -468,6 +470,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     },
   ];
 
+  if (data.metaContent?.includeStandard !== false) {
   if (data.isPaused) {
     slides.push({
       xml: buildPausedSlideXml(
@@ -523,6 +526,8 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
     }
   }
 
+  }
+  appendMetaContentSlides(template,slides,data.metaContent,isLightTemplate);
   if (input.shareVisibility?.metricGuide !== false) appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }));
   return assemblePptx(template, slides);
 }

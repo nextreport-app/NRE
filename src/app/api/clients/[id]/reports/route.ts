@@ -1,3 +1,4 @@
+import {buildMetaContentPresentation} from "@/lib/nre/meta-report-content/data";
 import { metaApiSelectionCoverageError } from "@/lib/nre/meta-api-selection-coverage";
 import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "@/lib/nre/csv-currency";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
@@ -208,6 +209,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (apiCoverageError) return NextResponse.json({ valid: false, error: apiCoverageError, errors: [{ field: "dateSelection", message: apiCoverageError }], warnings: [] }, { status: 400 });
   alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
   const platform = mtdParsed.platform;
+  if(mtdParsed.metaReportContent?.sourceOnly && !["WEEKLY","MONTHLY","HISTORICAL"].includes(reportType ?? "WEEKLY")) return NextResponse.json({error:"Audience-only imports support Weekly and Monthly reports. For Compare or Daily, start with an unsegmented daily CSV."},{status:400});
 
   if (reportType === "COMPARISON") {
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
@@ -333,6 +335,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       dateSelection: historicalSelection,
       platform,
     });
+    try {
+    historicalData.metaContent = buildMetaContentPresentation(mtdParsed.metaReportContent,historicalData.monthRanges,selectedCampaigns??null,historicalData.currencySymbol??CURRENCY_SYMBOLS[client.currency]);
+    } catch(error) { return NextResponse.json({error:error instanceof Error?error.message:"Refresh audience and creative sections."},{status:400}); }
 
     const recoveryGuard = await guardReportGeneration({client,userId:session.user.id,parsed:mtdParsed,formData,sourceKey:`${id}:${fileHash ?? uploadSessionId ?? "preview"}`,candidate:{kind:"HISTORICAL",data:historicalData,}});
     if (recoveryGuard) return recoveryGuard;

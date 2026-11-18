@@ -1,3 +1,4 @@
+import {MetaContentReportView} from "@/components/meta-content-report-view";
 import { formatClientTimestamp, formatStoredDateText } from "@/lib/client-date-format";
 import { dailyClientCopy } from "@/lib/nre/daily-client-copy";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
@@ -734,7 +735,8 @@ export function ShareReportView({
   const isPreview = mode === "preview";
   const slideClass = isPrint ? "print-slide mb-0" : "mb-6";
   const coverSlideClass = isPrint ? "print-slide print-cover-slide mb-0" : slideClass;
-  const visibleData = applyShareVisibility(data);
+  const scopedData = data.metaContent?.includeStandard === false ? {...data,campaigns:[],adSets:[],chart:null,historicalCharts:[],historicalComparisonRows:[],visibility:{cover:true,metricGuide:true,campaigns:{},adSets:{},...data.visibility,overview:false,combinedTotal:false}} : data;
+  const visibleData = applyShareVisibility(scopedData);
   const generatedDate = clientCurrency ? formatClientTimestamp(visibleData.generatedAt, clientCurrency, clientTimezone, false) : new Date(visibleData.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -833,7 +835,7 @@ export function ShareReportView({
               </p>
               {isWeeklyShareReportType(visibleData.reportType) ? (
                 <p className="mt-2 max-w-xl px-1 text-[12px] leading-snug text-ink-muted sm:text-[14px]">
-                  {weeklyReportScopeLine(visibleData.fileDateRange, visibleData.generatedAt, clientTimezone)}
+                  {visibleData.metaContent?.includeStandard === false ? "Audience and creative sections for the reporting period below." : weeklyReportScopeLine(visibleData.fileDateRange, visibleData.generatedAt, clientTimezone)}
                 </p>
               ) : null}
               <p className="mt-1 text-[13px] text-ink-muted sm:mt-1.5 sm:text-[16px]">
@@ -901,6 +903,8 @@ export function ShareReportView({
             <CombinedTotalTable data={visibleData} compact={isPrint} />
           </SlideCard></section>
         )}
+
+        <MetaContentReportView content={visibleData.metaContent} slideClass={slideClass} />
 
         {showMetricGuide && (
         <section className={slideClass}>

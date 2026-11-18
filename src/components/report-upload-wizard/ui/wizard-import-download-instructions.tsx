@@ -149,6 +149,7 @@ export function WizardImportDownloadInstructions({
               <div><dt className="font-semibold text-dash-ink">What is needed</dt><dd className="mt-1">{reportType === "WEEKLY" && platform === "META" ? guidance.lines[0] : wizardCsvRequirementForReportType({ reportType, clientTimezone }).shortNote}</dd></div>
               <div><dt className="font-semibold text-dash-ink">What it produces</dt><dd className="mt-1">{reportType === "WEEKLY" && platform === "META" ? guidance.lines[1] : WIZARD_REPORT_TYPE_COPY[reportType].cardOneLiner}</dd></div>
             </dl>
+            {platform === "META" && ["WEEKLY", "MONTHLY", "HISTORICAL"].includes(reportType) && <details className="rounded-lg border border-dash-border p-3"><summary className="cursor-pointer font-medium text-dash-ink">Audience or creative reports</summary><p className="mt-2">Add Age, Location, Platform/Placement or Creative performance in Review &amp; generate. Upload separate daily breakdown exports for each audience view; Platform + Placement may share one file. An audience CSV can also be your first upload for an audience-only report. For creative metrics, export at Ad level with Ad ID and Ad name. Images are optional and can be attached to each Ad ID.</p></details>}
             <p className="pt-1">
               <Link
                 href={platform === "META" ? "/help/download#video-walkthrough" : "/help/download"}

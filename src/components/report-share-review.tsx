@@ -1,5 +1,7 @@
 "use client";
 
+import type {MetaContentPage} from "@/lib/nre/meta-report-content/types";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { buildShareReportAbsoluteUrl } from "@/lib/report-share-url";
@@ -146,7 +148,7 @@ interface SlideListItem {
   id: string;
   label: string;
   sublabel?: string;
-  kind: "cover" | "campaign" | "adset" | "overview" | "combinedTotal" | "metricGuide";
+  kind: "cover" | "campaign" | "adset" | "overview" | "combinedTotal" | "metricGuide" | "metaContent";
   visible: boolean;
 }
 
@@ -202,7 +204,8 @@ function buildSlideList(share: ShareReportData, visibility: ShareVisibility): Sl
       visible: visibility.metricGuide !== false,
     });
   }
-  return items;
+  const base = share.metaContent?.includeStandard === false ? items.filter(item=>item.kind === "cover" || item.kind === "metricGuide") : items;
+  return [...base,...(share.metaContent?.pages??[]).map(page=>({id:`meta:${page.id}`,label:page.title,sublabel:page.dateLabel,kind:"metaContent" as const,visible:page.visible!==false}))];
 }
 
 function applyVisibilityToShare(share: ShareReportData, visibility: ShareVisibility): ShareReportData {
@@ -228,6 +231,7 @@ export function ReportShareReview({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [share, setShare] = useState<ShareReportData | null>(null);
+  const [metaPages,setMetaPages] = useState<MetaContentPage[]>([]);
   const [campaigns, setCampaigns] = useState<CopySlide[]>([]);
   const [adSets, setAdSets] = useState<CopySlide[]>([]);
   const [visibility, setVisibility] = useState<ShareVisibility | null>(null);
@@ -254,6 +258,7 @@ export function ReportShareReview({
       }
       const loaded = json.share as ShareReportData;
       setShare(loaded);
+      setMetaPages(loaded.metaContent?.pages??[]);
       setCampaigns(json.campaigns ?? []);
       setAdSets(json.adSets ?? []);
       setVisibility(json.visibility ?? defaultShareVisibility(loaded));
@@ -279,6 +284,7 @@ export function ReportShareReview({
     if (!share || !visibility) return null;
     const merged: ShareReportData = {
       ...share,
+      ...(share.metaContent ? {metaContent:{...share.metaContent,pages:metaPages}} : {}),
       ...(coverEdit
         ? {
             accountName: coverEdit.accountName,
@@ -318,7 +324,7 @@ export function ReportShareReview({
       }),
     };
     return applyVisibilityToShare(merged, visibility);
-  }, [share, visibility, campaigns, adSets, chartEdit, coverEdit, combinedTotalEdit]);
+  }, [share, visibility, campaigns, adSets, chartEdit, coverEdit, combinedTotalEdit,metaPages]);
 
   const slideList = useMemo(
     () => (draftShare && visibility ? buildSlideList(draftShare, visibility) : []),
@@ -326,6 +332,7 @@ export function ReportShareReview({
   );
 
   function toggleSlide(item: SlideListItem) {
+    if(item.kind === "metaContent"){setMetaPages(pages=>pages.map(page=>page.id===item.id.slice(5)?{...page,visible:!item.visible}:page));return;}
     if (!visibility) return;
     const next = { ...visibility, campaigns: { ...visibility.campaigns }, adSets: { ...visibility.adSets } };
     if (item.kind === "cover") next.cover = !item.visible;
@@ -350,6 +357,7 @@ export function ReportShareReview({
         shareReview: {
           publish: true,
           target: "browser",
+          metaPages: metaPages.map(({id,title,note,visible})=>({id,title,note,visible:visible!==false})),
           visibility,
           campaigns: campaigns.map((c) => ({
             campaignName: c.campaignName,
@@ -430,6 +438,7 @@ export function ReportShareReview({
   const selectedAdSet = selectedSlideId?.startsWith("a:")
     ? adSets.find((a) => `a:${adSetVisibilityKey(a.campaignName, a.adSetName ?? "")}` === selectedSlideId)
     : null;
+  const selectedMetaPage = selectedSlideId?.startsWith("meta:") ? metaPages.find(page=>page.id === selectedSlideId.slice(5)) : null;
   const coverSelected = selectedSlideId === "cover";
   const overviewSelected = selectedSlideId === "overview";
   const combinedTotalSelected = selectedSlideId === "combinedTotal";
@@ -515,6 +524,7 @@ export function ReportShareReview({
         </aside>
 
         <div className="min-w-0 space-y-4">
+          {selectedMetaPage && <div className="rounded-lg border border-dash-border bg-dash-card p-4"><p className="text-sm font-semibold text-dash-ink">Audience / creative section</p><p className="mt-1 text-xs text-dash-ink-secondary">Edit the title and note here. Metrics and creative images come from the source data; update them in the report wizard and regenerate.</p><label className="mt-3 block text-sm text-dash-ink">Section title<input value={selectedMetaPage.title} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id===selectedMetaPage.id?{...page,title:e.target.value}:page))} className="mt-1 w-full rounded border border-dash-border bg-dash-bg p-2"/></label><label className="mt-3 block text-sm text-dash-ink">Section note<textarea aria-label="Section note" value={selectedMetaPage.note} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id===selectedMetaPage.id?{...page,note:e.target.value}:page))} className="mt-1 min-h-24 w-full rounded border border-dash-border bg-dash-bg p-2"/></label></div>}
           {coverSelected && coverEdit ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[14px] font-semibold text-dash-ink">Cover slide</p>
@@ -881,7 +891,7 @@ export function ReportShareReview({
                 {(["section", "full"] as const).map(scope => <button key={scope} type="button" aria-pressed={previewMode === scope} onClick={() => setPreviewMode(scope)} className={`rounded-md px-2.5 py-1.5 text-[12px] ${previewMode === scope ? "bg-dash-border text-dash-ink" : "text-dash-ink-secondary"}`}>{scope === "section" ? "Selected section" : "Full report"}</button>)}
               </div>
             </div>
-            <ShareReportView mode="preview" data={previewMode === "full" ? draftShare : { ...draftShare, visibility: {
+            <ShareReportView mode="preview" data={previewMode === "full" ? draftShare : { ...draftShare, ...(draftShare.metaContent?{metaContent:{...draftShare.metaContent,pages:selectedMetaPage?[selectedMetaPage]:[]}}:{}), visibility: {
               cover: coverSelected, overview: overviewSelected, combinedTotal: combinedTotalSelected,
               metricGuide: selectedSlideId === "metricGuide",
               campaigns: Object.fromEntries(draftShare.campaigns.map(c => [c.campaignName, c.campaignName === selectedCampaign?.campaignName])),

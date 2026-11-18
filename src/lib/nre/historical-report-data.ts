@@ -43,6 +43,7 @@ function historicalSlideShareKey(slide: CampaignSlideData): string {
 }
 
 export interface HistoricalReportData {
+  metaContent?: import("./meta-report-content/types").MetaContentPresentation;
   isPaused: boolean;
   accountName: string;
   reportDate: string;

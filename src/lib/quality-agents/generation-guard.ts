@@ -1,3 +1,4 @@
+import {verifyMetaContentTotals,mergeMetaVerification} from "@/lib/nre/meta-report-content/verification";
 import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import {NextResponse} from 'next/server';
 import type {Client} from '@/generated/prisma/client';
@@ -25,7 +26,8 @@ export async function guardReportGeneration(input:{client:Client;userId:string;p
   check=reconcileComparisonReportWithCsv({...common,report:candidate.data,periodA,periodB,periodBSupplementalRows:candidate.periodRows});
  }else if(candidate.kind==='HISTORICAL')check=reconcileHistoricalReportWithCsv({...common,report:candidate.data});
  else if(candidate.kind==='DAY_BREAKDOWN')check=reconcileDayBreakdownReportWithCsv({...common,report:candidate.data});
- else check=verifyStandardWizardReportAgainstCsv({client,mtdRows:parsed.rows,report:candidate.data,reportType:candidate.data.reportType,formData,platform:parsed.platform,periodRows:candidate.data.reportType==='WEEKLY'&&resolveIncludePreviousMonthComparison(formData)?await resolveWeeklyPreviousMonthRows(parsed.rows,client,(formData ? parseJsonFormField(formData,"previousMonthSelectedCampaigns",selectedCampaignsSchema) : undefined),candidate.data.calculationContext ? new Date(candidate.data.calculationContext.asOf) : undefined):undefined});
+ else check=verifyStandardWizardReportAgainstCsv({client,mtdRows:parsed.rows,report:candidate.data,reportType:candidate.data.reportType,formData,platform:parsed.platform,metaReportContent:parsed.metaReportContent,periodRows:candidate.data.reportType==='WEEKLY'&&resolveIncludePreviousMonthComparison(formData)?await resolveWeeklyPreviousMonthRows(parsed.rows,client,(formData ? parseJsonFormField(formData,"previousMonthSelectedCampaigns",selectedCampaignsSchema) : undefined),candidate.data.calculationContext ? new Date(candidate.data.calculationContext.asOf) : undefined):undefined});
+ if(candidate.kind==='HISTORICAL' && parsed.metaReportContent && candidate.data.metaContent) check=mergeMetaVerification(check,verifyMetaContentTotals(parsed.metaReportContent,candidate.data.metaContent,candidate.data.monthRanges,common.selectedCampaigns??null),candidate.data.metaContent.includeStandard);
  if(check.status!=='mismatch')return null;
  await captureCsvQualityIncident({userId:input.userId,clientId:client.id,contextKey:recoveryContextKey(input.sourceKey,formData,client.timezone,client),platform:parsed.platform,reportType:candidate.kind==='STANDARD'?candidate.data.reportType:candidate.kind,diagnostics:buildPrivateDiagnostics(parsed.rows,parsed.colMap,check)},check);
  return NextResponse.json({ok:false,recoveryRequired:true,error:'The report does not match the listed CSV checks. Rebuild and recheck the preview before generating. No report credit was used.',csvVerification:check},{status:409});

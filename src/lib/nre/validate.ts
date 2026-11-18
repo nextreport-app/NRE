@@ -222,7 +222,7 @@ export function validateMtdDailyCsv(
   ) : [];
   if (audienceHeaders.length) errors.push({
     field: "audience_breakdown",
-    message: `This export contains audience breakdowns (${audienceHeaders.join(", ")}). Audience breakdown reporting is not available yet. For a standard report, export with Day breakdown only, without age, location, platform or placement breakdowns.`,
+    message: `This export contains audience breakdowns (${audienceHeaders.join(", ")}). Upload this file on Import to create an audience-only report, or use Day breakdown without audience dimensions for standard performance slides.`,
   });
   if (platform === "META" && audienceHeaders.length === 0 && csvHasDailyGranularity(rows)) {
     const duplicates = duplicateDailyFacts(rows);

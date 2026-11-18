@@ -166,6 +166,7 @@ export async function fetchMetaAdAccountMetadata(accessToken: string, accountId:
 
 export interface MetaAdSetReportingConfig {
   id: string;
+  attribution_spec?: Array<{ event_type: string; window_days: number }>;
   optimization_goal?: string;
   promoted_object?: { pixel_id?: string; custom_conversion_id?: string; custom_event_type?: string; custom_event_str?: string };
 }
@@ -181,9 +182,9 @@ function adSetSettingsError(error: MetaGraphErrorDetails | undefined, status: nu
   return new ServiceError(`Meta could not read an ad set's conversion settings (${suffix}). Retry sync. Your connection has not been changed.`, 502);
 }
 
-async function fetchMetaAdSetReportingConfig(accessToken: string, id: string): Promise<MetaAdSetReportingConfig> {
+async function fetchMetaAdSetReportingConfig(accessToken: string, id: string, includeAttribution = false): Promise<MetaAdSetReportingConfig> {
   const url = new URL(`${metaGraphBase()}/${id}`);
-  url.searchParams.set("fields", "id,optimization_goal,promoted_object");
+  url.searchParams.set("fields", `id,optimization_goal,promoted_object${includeAttribution ? ",attribution_spec" : ""}`);
   for (let attempt = 0; attempt < 3; attempt++) {
     let response: Response;
     try {
@@ -204,14 +205,14 @@ async function fetchMetaAdSetReportingConfig(accessToken: string, id: string): P
 }
 
 /** Read supported AdSet nodes directly; bound concurrency rather than relying on root multi-ID field expansion. */
-export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: string[]): Promise<MetaAdSetReportingConfig[]> {
+export async function fetchMetaAdSetReportingConfigs(accessToken: string, ids: string[], includeAttribution = false): Promise<MetaAdSetReportingConfig[]> {
   const unique = [...new Set(ids)];
   if (unique.some(id => !/^\d+$/.test(id))) throw new ServiceError("Meta returned an invalid ad set ID.", 422);
   const configs: MetaAdSetReportingConfig[] = [];
   for (let offset = 0; offset < unique.length; offset += 4) {
     const group = unique.slice(offset, offset + 4);
     // Wait for every request in this group before retrying or starting another group.
-    const results = await Promise.allSettled(group.map(id => fetchMetaAdSetReportingConfig(accessToken, id)));
+    const results = await Promise.allSettled(group.map(id => fetchMetaAdSetReportingConfig(accessToken, id, includeAttribution)));
     for (const result of results) {
       if (result.status === "rejected") throw result.reason;
       configs.push(result.value);

@@ -367,6 +367,7 @@ export interface ReportData {
   creative?: CreativeReportSections | null;
   /** When true, render only cover + creative slides + legend (Creative Report tab). */
   creativeOnly?: boolean;
+  metaContent?: import("./meta-report-content/types").MetaContentPresentation;
   pausedMessage: string | null;
   chart: ChartSlideData | null;
   periodRow: TableRowData;

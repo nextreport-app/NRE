@@ -131,6 +131,7 @@ const combinedTotalEditSchema = z.object({
 
 const shareReviewSchema = z.object({
   target: z.enum(["browser", "all"]).optional(),
+  metaPages: z.array(z.object({id:z.string().max(1000),title:z.string().min(1).max(300),note:z.string().max(3000),visible:z.boolean()})).max(500).optional(),
   publish: z.boolean().optional(),
   visibility: visibilitySchema,
   cover: coverEditSchema.optional(),
@@ -277,6 +278,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (parsed.data.combinedTotal) {
         share.periodRow = { ...share.periodRow, ...parsed.data.combinedTotal.periodRow };
         share.mtdRow = { ...share.mtdRow, ...parsed.data.combinedTotal.mtdRow };
+      }
+      if(parsed.data.metaPages && share.metaContent){
+        const edits=new Map(parsed.data.metaPages.map(page=>[page.id,page]));
+        share.metaContent={...share.metaContent,pages:share.metaContent.pages.map(page=>{const edit=edits.get(page.id);return edit?{...page,title:edit.title,note:edit.note,visible:edit.visible}:page})};
       }
       if (parsed.data.publish && countVisibleSlides(share) === 0) return NextResponse.json({ error: "Keep at least one report section visible before publishing." }, { status: 400 });
       if (parsed.data.publish) {

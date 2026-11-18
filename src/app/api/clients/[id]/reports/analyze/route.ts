@@ -1,3 +1,7 @@
+import {audienceOnlyPrimary,hasAudienceColumns} from "@/lib/nre/meta-report-content/primary";
+import {parseMetaContentSource} from "@/lib/nre/meta-report-content/data";
+import {detectCsvCurrency} from "@/lib/nre/csv-currency";
+import type {MetaReportContent} from "@/lib/nre/meta-report-content/types";
 import { campaignSelectionSpend } from "@/lib/nre/campaign-selection-spend";
 import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
@@ -86,7 +90,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const detectedPlatform = detectPlatform(headers);
     const platform = platformOverride ?? detectedPlatform;
 
-    const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
+    let mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
+    let metaReportContent:MetaReportContent|undefined;
+    if(platform === "META" && hasAudienceColumns(mtdParsed.headers)){
+      const type=formData?parseJsonFormField(formData,"reportType",reportTypeSchema):undefined;
+      if(type && !["WEEKLY","MONTHLY","HISTORICAL"].includes(type))return NextResponse.json({valid:false,errors:[{field:"reportType",message:"Audience reports are available with Weekly or Monthly dates. Choose one of those report types."}],warnings:[]});
+      try {
+      const currency=detectCsvCurrency(mtdParsed.headers,mtdParsed.rows);if(currency.error)throw Error(currency.error);
+      const source=parseMetaContentSource(mtdParsed,currency.code??client.currency);
+      const converted=audienceOnlyPrimary(source);mtdParsed=converted.parsed;metaReportContent=converted.content;
+      } catch(error) {return NextResponse.json({valid:false,errors:[{field:"reportContent",message:error instanceof Error?error.message:"Could not read this audience export."}],warnings:[]});}
+    }
     alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
     const metaAdAccountIdEarly = formData
       ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema)
@@ -185,6 +199,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const metaAdAccountId = metaAdAccountIdEarly;
 
     const uploadSessionId = await saveWizardUploadSession({
+      metaReportContent,
       userId: session.user.id,
       clientId: id,
       platform,
@@ -199,6 +214,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({
       valid: true,
+      sourceContentOnly:metaReportContent?.sourceOnly??false,
       errors: [],
       warnings: validation.warnings,
       detectedPlatform,
