@@ -1,3 +1,4 @@
+import { apiQueryCoverage } from "@/lib/nre/api-query-coverage";
 import { previousMonthRows, previousMonthSourceInfo } from "@/lib/nre/previous-month-source";
 import { loadWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import { resolvePreviousMonthUiSelection } from "@/lib/nre/merge-previous-month-selection";
@@ -40,11 +41,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const uploadId = rawId ? uploadSessionIdSchema.safeParse(rawId) : null;
     if (rawId && !uploadId?.success) return NextResponse.json({ error: "Invalid upload session." }, { status: 400 });
     const upload = uploadId?.success ? await loadWizardUploadSession(session.user.id, id, uploadId.data) : null;
-    let rows = upload ? previousMonthRows(upload.rows, client.timezone) : undefined;
+    let rows = upload?.rows;
     let source: "import" | "stored" = "import";
-    if (!rows && client.previousMonthDataUrl) {
+    if (!previousMonthRows(rows ?? [], client.timezone) && !apiQueryCoverage(upload?.rows ?? []) && client.previousMonthDataUrl) {
       const { readPreviousMonthDataFile } = await import("@/lib/storage");
-      rows = previousMonthRows(parseUploadedFile(await readPreviousMonthDataFile(client.previousMonthDataUrl), "Previous Month Data").rows, client.timezone);
+      rows = parseUploadedFile(await readPreviousMonthDataFile(client.previousMonthDataUrl), "Previous Month Data").rows;
       source = "stored";
     }
     const info = previousMonthSourceInfo(rows, source, client.timezone);

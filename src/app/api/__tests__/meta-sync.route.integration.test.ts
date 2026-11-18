@@ -37,7 +37,7 @@ describe("Meta wizard import route",()=>{
   expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({currency:"AUD",timezone:"UTC",sinceIso:"2026-10-01",untilIso:"2026-10-31",requireDirectResultEvidence:true}));
   expect(await response.json()).toMatchObject({accountCurrency:"AUD",accountTimezone:"UTC",rowCount:1});expect(maybeSyncPreviousMonthDataFromMetaApi).not.toHaveBeenCalled();
  });
- it("does not fetch or expose saved previous-month data for weekly API reports", async () => {
+ it("fetches the full previous month in the active API import without exposing a saved upload", async () => {
   vi.mocked(prisma.client.findUnique).mockResolvedValue({ id: "client_1", userId: "owner", metaAdAccountId: "123", timezone: "UTC", currency: "AUD", previousMonthDataUrl: "https://example.invalid/manual-only.csv", previousMonthDataUpdatedAt: new Date("2026-11-01"), previousMonthSelectedCampaigns: '["Example"]' } as never);
   const response = await POST(request({ ...body, reportType: "WEEKLY", dateSelection: { mode: "last7" } }), params);
   expect(response.status).toBe(200);
@@ -73,8 +73,8 @@ describe("Meta wizard import route",()=>{
   expect(payload.error).toContain("Meta code 100"); expect(payload.error).not.toContain("Reconnect"); expect(payload.error).not.toContain("secret");
  });
  it.each([
-  ["Australia/Sydney", "2026-10-07", "2026-11-05"],
-  ["America/Los_Angeles", "2026-10-06", "2026-11-04"],
+  ["Australia/Sydney", "2026-10-01", "2026-11-05"],
+  ["America/Los_Angeles", "2026-10-01", "2026-11-04"],
  ])("automatically uses %s for relative dates and subsequent generation", async (timezone, sinceIso, untilIso) => {
   vi.setSystemTime(new Date("2026-11-05T23:30:00Z"));
   vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"AUD",timezone_name:timezone});

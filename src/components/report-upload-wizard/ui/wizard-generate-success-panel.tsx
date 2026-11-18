@@ -253,7 +253,7 @@ export function WizardGenerateSuccessPanel({
               </button>
             ) : <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">Edit your downloaded PPTX in PowerPoint or your saved Google Slides copy in Slides. Changes stay within each version.</p>
+          <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">Edit your downloaded PPTX in PowerPoint or your saved Google Slides copy in Slides.</p>
         </section>
 
         {publishedAt && <p className="text-sm text-dash-ink-secondary">Published edits are live.</p>}

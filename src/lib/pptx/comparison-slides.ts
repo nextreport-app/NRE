@@ -74,7 +74,7 @@ export function buildComparisonCoverSlideXml(
   if (comparison.comparisonLabel) {
     const ids = [...xml.matchAll(/<p:cNvPr id="(\d+)"/g)].map(match => Number(match[1]));
     resetShapeIdCounter(Math.max(1, ...ids));
-    xml = insertShapeBeforeSpTreeClose(xml, textBox({ x: 40, y: 166, w: 455, h: 28, text: comparison.comparisonLabel, sizePt: 17, bold: true, colorHex: slideSurfacePalette(!!options.isLightTemplate).heading, align: "l" }));
+    xml = insertShapeBeforeSpTreeClose(xml, textBox({ x: 40, y: 246, w: 455, h: 28, text: comparison.comparisonLabel, sizePt: 17, bold: true, colorHex: slideSurfacePalette(!!options.isLightTemplate).heading, align: "l" }));
   }
   return setShapeWrap(setShapeExtCx(xml, dates, 880 * 12700), dates, "none");
 }

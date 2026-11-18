@@ -934,7 +934,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
       const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
       const logoBox = shapeBox(coverXml, 'name="Client Logo"');
-      const presentedToBox = shapeBox(coverXml, "META ADS REPORT");
+      const presentedToBox = shapeBox(coverXml, "Reporting period");
 
       expect(logoBox.x).toBe(presentedToBox.x); // same left edge — "directly above"
       const gap = presentedToBox.y - bottom(logoBox);
@@ -960,7 +960,7 @@ describe("renderPptx — client logo + agency name branding (real production tem
       const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
       const logoBox = shapeBox(coverXml, 'name="Client Logo"');
-      const presentedToBox = shapeBox(coverXml, "META ADS REPORT");
+      const presentedToBox = shapeBox(coverXml, "Reporting period");
 
       expect(bottom(logoBox)).toBeLessThanOrEqual(presentedToBox.y);
       expect(presentedToBox.y - bottom(logoBox)).toBeGreaterThanOrEqual(MIN_GAP_EMU);
@@ -1040,7 +1040,7 @@ describe("cover slide — health badge in the bottom-right", () => {
     const zip = await JSZip.loadAsync(buffer);
     const coverXml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
-    const presentedToBox = shapeBox(coverXml, "META ADS REPORT");
+    const presentedToBox = shapeBox(coverXml, "Reporting period");
     const nameBox = shapeBox(coverXml, "Acme Inc");
     expect(presentedToBox.x).toBeLessThan(SLIDE_WIDTH_EMU / 2);
     expect(nameBox.x).toBeLessThan(SLIDE_WIDTH_EMU / 2);

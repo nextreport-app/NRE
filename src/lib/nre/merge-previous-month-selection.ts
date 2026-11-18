@@ -72,5 +72,10 @@ export function resolvePreviousMonthUiSelection(
   campaignSpend: Record<string, number>,
   savedSelected: string[] | null | undefined,
 ): { selectedCampaigns: string[]; lowSpendCampaigns: string[] } {
+  // An explicit empty list means the user cleared every checkbox, not a missing preference.
+  if (savedSelected?.length === 0) return {
+    selectedCampaigns: [],
+    lowSpendCampaigns: campaigns.filter(name => isLowSpendCampaign(name, campaignSpend)),
+  };
   return mergePreviousMonthSelectionWithLowSpend(campaigns, campaignSpend, savedSelected, campaigns);
 }

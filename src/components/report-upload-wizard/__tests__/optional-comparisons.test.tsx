@@ -40,7 +40,13 @@ describe("optional weekly comparisons", () => {
     expect(html).toContain('aria-label="Include previous-month totals"');
     expect(html).not.toContain("Off by default");
   });
-  it.each(["api", "MONTHLY", "DAILY", "COMPARISON"])("omits the option for %s", mode => {
+  it("shows the same toggle for API reports without a CSV upload", () => {
+    state.dataSourceMode = "api"; state.includePreviousMonthComparison = true;
+    const html = renderToStaticMarkup(<WizardOptionalComparisons embedded />);
+    expect(html).toContain('aria-label="Include previous-month totals"');
+    expect(html).toContain("Sync Meta again"); expect(html).not.toContain('type="file"');
+  });
+  it.each(["MONTHLY", "DAILY", "COMPARISON"])("omits the option for %s", mode => {
     if (mode === "api") state.dataSourceMode = mode; else state.reportType = mode;
     expect(renderToStaticMarkup(<WizardOptionalComparisons />)).toBe("");
   });

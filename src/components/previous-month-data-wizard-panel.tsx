@@ -41,6 +41,8 @@ function StatusBadge({ status }: { status: PreviousMonthComparisonInfo["status"]
 
 /** Optional weekly-report content, configured on the final wizard step. */
 export function PreviousMonthDataWizardPanel({
+  sourceMode = "csv",
+  onResync,
   clientId,
   uploadSessionId,
   onAvailabilityChange,
@@ -57,6 +59,8 @@ export function PreviousMonthDataWizardPanel({
   onUploadingChange,
   onCampaignsChange,
 }: {
+  sourceMode?: "csv" | "api";
+  onResync?: () => void;
   clientId: string;
   uploadSessionId?: string | null;
   onAvailabilityChange?: (ready: boolean) => void;
@@ -209,7 +213,7 @@ export function PreviousMonthDataWizardPanel({
             <p className="mt-0.5 text-[12px] leading-relaxed text-dash-ink-secondary">
               {includeInReport
                 ? info.status === "current"
-                  ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length || "—"} campaigns selected`
+                  ? `${info.expectedMonthName} · ${selectedCount} of ${campaigns.length} campaigns selected`
                   : `Add ${info.expectedMonthName} totals to Monthly Overview.`
                 : "Add a full previous-month row to Monthly Overview."}
             </p>
@@ -241,7 +245,8 @@ export function PreviousMonthDataWizardPanel({
 
       {includeInReport && checking ? <p className="mt-3 text-[13px] text-dash-ink-secondary">Checking previous-month coverage…</p> : includeInReport ? (
         <div className="mt-3 border-t border-dash-border pt-3">
-          <PreviousMonthDataWizardContent
+          {sourceMode === "api" && info.status !== "current" ? <div className="space-y-2 text-[13px] text-dash-ink-secondary"><p>Sync Meta again to include the full previous month. Your current import does not cover it.</p><button type="button" onClick={onResync} className="font-medium text-dash-accent hover:underline">Return to Import</button></div> : <PreviousMonthDataWizardContent
+            sourceMode={sourceMode}
             clientId={clientId}
             uploadSessionId={uploadSessionId}
             source={source}
@@ -255,7 +260,7 @@ export function PreviousMonthDataWizardPanel({
             campaignSpend={campaignSpend}
             currencySymbol={currencySymbol}
             onSelectionChange={handleSelectionChange}
-          />
+          />}
         </div>
       ) : null}
     </div>
@@ -263,6 +268,7 @@ export function PreviousMonthDataWizardPanel({
 }
 
 function PreviousMonthDataWizardContent({
+  sourceMode,
   clientId,
   uploadSessionId,
   source,
@@ -277,6 +283,7 @@ function PreviousMonthDataWizardContent({
   currencySymbol,
   onSelectionChange,
 }: {
+  sourceMode: "csv" | "api";
   clientId: string;
   uploadSessionId?: string | null;
   source: "import" | "stored";
@@ -301,11 +308,11 @@ function PreviousMonthDataWizardContent({
       <div className="space-y-3">
         <div className="space-y-1">
           <p className="text-[13px] leading-relaxed text-dash-ink-secondary">
-            {source === "import" ? `${info.expectedMonthName} data is already included in your import. No additional upload needed.` : `${info.expectedMonthName} data adds a full previous-month row to Monthly Overview.`}
+            {sourceMode === "api" ? `${info.expectedMonthName} totals were fetched from Meta.${campaigns.length ? " Choose the campaigns to include below." : ""}` : source === "import" ? `${info.expectedMonthName} data is already included in your import. No additional upload needed.` : `${info.expectedMonthName} data adds a full previous-month row to Monthly Overview.`}
           </p>
-          <Link href={manageHref} target="_blank" rel="noopener noreferrer" className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
+          {sourceMode === "csv" && <Link href={manageHref} target="_blank" rel="noopener noreferrer" className="inline-block text-[13px] font-medium text-dash-accent hover:underline">
             Manage on client page
-          </Link>
+          </Link>}
         </div>
 
         {campaigns.length > 0 ? (

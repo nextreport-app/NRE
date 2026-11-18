@@ -9,6 +9,7 @@
  * differently.
  */
 
+import { apiQueryCoverage } from "./api-query-coverage";
 import { readPreviousMonthDataFile } from "@/lib/storage";
 import { parseUploadedFile } from "./parse-file";
 import { extractCampaignSpend, extractSpendingCampaignNames, filterRowsByCampaigns } from "./campaigns";
@@ -95,7 +96,7 @@ export async function resolveWeeklyPreviousMonthRows(
 ): Promise<NreRow[] | undefined> {
   const { previousMonthRows } = await import("./previous-month-source");
   let rows = previousMonthRows(primaryRows, client.timezone, now);
-  if (!rows && client.previousMonthDataUrl) {
+  if (!rows && !apiQueryCoverage(primaryRows) && client.previousMonthDataUrl) {
     const buffer = await readPreviousMonthDataFile(client.previousMonthDataUrl);
     rows = previousMonthRows(parseUploadedFile(buffer, "Previous Month Data").rows, client.timezone, now);
   }

@@ -81,3 +81,7 @@ describe("mergePreviousMonthSelectionWithLowSpend", () => {
     expect(result.selectedCampaigns).toEqual(["Big Co"]);
   });
 });
+
+it("keeps an explicit cleared selection empty on refresh", () => {
+  expect(resolvePreviousMonthUiSelection(["Forms"], {Forms:264.82}, []).selectedCampaigns).toEqual([]);
+});
