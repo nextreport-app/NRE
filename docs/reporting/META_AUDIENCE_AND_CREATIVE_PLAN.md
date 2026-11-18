@@ -1,88 +1,56 @@
-# Meta audience and creative reporting: implementation audit and launch plan
+# Meta audience and creative reporting
 
-Status: proposed features, not released. This change updates Compare copy and closes two existing import/output gaps; it does not enable these report families.
+Implemented for Weekly, Monthly and multi-month reports. Compare and Daily keep their existing workflow; audience/creative sections are not offered for those report types yet. The legacy ad-name-based creative prototype remains disabled.
 
-## What exists
+## Workflow
 
-- `src/lib/nre/creative-report-data.ts`: an earlier ad-name-based prototype with overview, top-ad, video and fatigue sections.
-- `src/lib/pptx/creative-slides.ts`: table/text PowerPoint rendering for those sections, without creative media.
-- Creative is a deferred report type in `src/lib/meta-launch-scope.ts`. The prototype can be exercised internally but must not be appended to ordinary reports merely because a CSV includes Ad name.
-- The prototype groups by campaign/ad name, averages daily CTR/frequency and uses simple winner/fatigue heuristics. It does not provide production-ready ad-ID identity, period reach, conversion-rate/ROAS evidence, media rendering, complete pagination, browser parity or trustworthy winner eligibility.
-- Current Meta sync fetches campaign/ad-set Insights. Its level type does not include `ad`, and it has no audience breakdown or creative media request path.
-- GA4 demographic/geo builders are separate website reporting code; they do not implement Meta audience reporting.
-- Standard validation identifies records at campaign/ad-set/ad/day grain. Age, geography and platform/placement add dimensions and cannot be ingested as duplicate standard daily rows. Known audience columns now get an explicit unsupported-report message until the dedicated pipeline exists.
+Keep the four report/date choices. In **Review & generate**, expand **Audience & creative sections** only when needed. Choose Age, Location, Platform, Placement and/or Creative performance, then apply the sections. Standard performance can remain included or be switched off. Unsaved section changes block generation until applied or discarded.
 
-## Recommended workflow
+### CSV
 
-Keep Weekly, Monthly, Compare and Daily as date/report choices. Add optional report content rather than several new competing buttons:
-
-1. Standard performance.
-2. Audience breakdowns: choose Age, Location, Platform and/or Placement.
-3. Creative performance: choose ads and an objective-relevant ranking metric.
-
-Allow sections to be used alone or with a standard report. Start with weekly/monthly audience and creative sections; do not advertise Compare/Daily parity until explicitly implemented and tested. Reuse the chosen dates, account, currency, campaigns, objective mapping and selected metrics.
-
-For CSV, audience sections accept clearly labelled separate uploads for age and region, plus a combined platform/placement file or separate files. Detect dimensions automatically and show date/account coverage before generation. Reuse one combined platform/placement dataset to derive its platform totals. Never add these different views of the same activity into an overall spend/result total.
-
-For API, the user chooses dimensions; the server makes separate compatible requests and manages pagination/retries. No CSV or media upload should be needed in the normal case. Keep unavailable metrics distinct from zero and preserve unknown/suppressed categories.
-
-## Data requirements
-
-### Audience CSV
-
-- Campaign/ad-set IDs and names, selected dates (prefer daily rows), explicit dimension columns and currency.
-- Spend, impressions, Clicks (all), link clicks, and the actual objective's attributed action count.
-- Purchase conversion value and purchase count for purchase ROAS; landing-page views where a website conversion-rate denominator is required.
-- The supplied sample structures are usable: Age; Region; and joint Placement + Platform. They are ad-set/day observations, not three independent spend sources. Region means state/region in those exports, not city or ZIP code.
-- Require one account, compatible attribution and date coverage per source group. Store dimension type and grain separately from standard observations. Do not force every breakdown to contain the same categories or the same result total when Meta suppresses values.
+- Start with a normal daily export, then attach audience/Ads exports in the optional panel. Alternatively, upload an audience export first: Import detects it and starts an audience-only report automatically. Standard performance stays off because a segmented source is not an unsegmented baseline.
+- Export a **Day breakdown** covering the selected reporting dates. Weekly audience/creative sections describe the selected week; existing standard slides still provide MTD and the 30-day chart when included.
+- Use separate Age and Region/Country exports. Platform + Placement may share one file or use separate files. Gender and arbitrary combined dimensions are not supported.
+- Include Campaign name, Amount spent (currency), Impressions, Results and Result type. Add Clicks (all) for CTR/CPC, matching purchase conversion value for ROAS, and Landing page views for website CVR. IDs are checked against the primary import where supplied. Without account metadata/IDs, the user must export from the same account and timezone as the client.
+- Audience files must use campaign level, or contain only one ad set per campaign. We reject multi-ad-set audience totals because attributed conversions can overlap. The supplied Age, Region and Platform/Placement examples are supported single-ad-set exports.
+- Creative files require numeric **Ad ID** and Ad name. A normal primary Ads export with those columns can be reused. Names never identify media. Metrics-only creative reports are supported.
+- Optional PNG/JPEG/WebP images are attached explicitly to displayed Ad IDs, below 2MB each. Reports support up to 24 small previews; all selected ads remain in the tables.
+- Date coverage, duplicate facts, malformed values, currency, campaign scope and conflicting attribution settings are checked before an immutable upload session is saved. Settings reuse existing sources; uploads replace matching source types rather than adding duplicate observations.
 
 ### Meta API
 
-Use the existing read-only connection and the same account calendar. Add a typed allowed-breakdown layer and explicit Insights request identity:
+Uses the existing read-only connection and the **account stored in the primary import session**. The request cannot substitute another ad account. Account currency/timezone must still match.
 
-- `age` (optionally gender later).
-- `region` or `country` for the requested geography.
-- `publisher_platform` for Facebook/Instagram and other returned publishers.
-- `publisher_platform,platform_position` for a compatible joint platform/placement view.
-- Do not request age + geography + placement as one arbitrary combination. Validate supported combinations and action/metric compatibility against the pinned Graph API version, then test a real account before release.
-- Treat privacy limitations, absent conversions and Unknown as source constraints. Do not invent missing values or claim person-level targeting/identity.
+- Age: `age`; Location: `region` or `country`; Platform: `publisher_platform`; Placement: `publisher_platform,platform_position`.
+- Separate compatible audience requests run at **campaign level**. Ad-set optimization events and attribution windows must be compatible within the campaign; conflicting windows across sources are rejected.
+- Creative Insights run at `level=ad`, preserving IDs and using production configured-result/custom-conversion mapping.
+- Insights use daily records, unified attribution, non-overlapping 28-day request chunks, cursor pagination and bounded transient retries. Absolute provider paging URLs are never followed. Oversized or incomplete requests fail clearly instead of silently truncating records.
+- Representative images are requested for up to 12 ads with the highest spend. All selected ads remain in the performance tables. Missing/deleted media does not discard metrics; optional uploads remain available.
+- JPEG snapshots are embedded in reports, not expiring CDN links. Downloads allow only validated HTTPS Meta image CDN hosts, bounded redirects/body/pixels and supported raster formats. Tokens use Authorization headers and are never stored in client media or share data.
+- Videos use **poster images**, without embedded playback or a promised video link. Carousel/dynamic/catalog images represent the ad; they are not asset-level performance attribution.
 
-### Creative API and manual alternative
+## Calculations and presentation
 
-- Fetch `level=ad` Insights with stable ad ID, campaign/ad-set IDs, selected-date metrics and objective evidence. Include inactive/deleted historical ads where accessible.
-- Join each ad ID to its creative object; resolve appropriate preview, image, thumbnail, video poster, carousel cards or `asset_feed_spec` as available. Use supported Meta endpoints and the connected account's actual permissions.
-- Cache permitted media as a report snapshot and embed image bytes in PPTX; store browser-safe assets for the live report. Do not expose access tokens, rely on expiring CDN links forever, or embed API-returned preview HTML without sanitization/isolation.
-- Video slides show a poster with a playable preview link; ordinary static PPTX output does not promise embedded playable video. Label carousel/dynamic/catalog previews accurately.
-- Dynamic/Advantage+ ads may contain multiple assets and personalized combinations. Ad-level performance is not proof that one component image, headline or generated combination won. Asset-level attribution is a separate capability and must be explicitly qualified where unavailable.
-- CSV remains usable for creative performance metrics. It does not contain image binaries. Offer a clearly labelled metrics-only report or optional image/video-poster uploads mapped by Ad ID, with a visible mapping confirmation. Do not match by ad name alone or claim full preview parity with a plain CSV.
-- Handle missing/deleted media with a labelled placeholder while preserving supported metrics, rather than failing the whole report or displaying the wrong asset.
+Preview and generation independently reconcile each selected audience/creative table against its own source sums before credit reservation. Preview-image pages do not count again, and standard-performance checks remain enabled whenever those slides are included. Audience-only routing facts are not presented as an unsegmented baseline.
 
-## Calculation and ranking requirements
+Each audience export is a separate view of the same delivery. **Never add totals across Age, Location, Platform and Placement.** Placement identity includes its platform, so Facebook Feed and Instagram Feed remain separate.
 
-- Reuse the production objective/action mapping. Do not sum alternative projections of the same conversion, and do not mix lead and purchase goals in one winner ranking.
-- Compute CTR, CPC, CPM and cost per result from summed numerators/denominators, not averages of daily percentages/costs. Keep CTR (all) distinct from link CTR.
-- Define every conversion-rate denominator. Website purchases / landing-page views is different from results / link clicks; instant-form conversion rate needs form-open evidence. Do not show one generic CVR across all objectives.
-- ROAS = attributed purchase conversion value / spend, only when the correct value evidence exists. Missing purchase value is unavailable, not zero ROAS. The supplied lead exports cannot support a purchase ROAS claim.
-- Period/segment reach is not additive across days or overlapping audiences. Obtain the appropriate whole-period reach or label/omit the estimate; frequency must use the same audience basis.
-- Rank within objective and comparable scope, require an explicit minimum evidence threshold and show insufficient data when appropriate. High CTR alone does not establish the best lead/sales creative. Do not publish a fatigue diagnosis solely from an average frequency threshold.
-- Include all selected ads/segments through pagination or explicit Top N + Other totals. Never silently truncate after the prototype's first 12 ads.
-- Preserve unknown categories, unavailable metrics and unmatched assets in both source reconciliation and client-facing output.
+Rates use summed numerators/denominators, never averaged daily percentages: CTR (all) = all clicks / impressions; CPC = spend / all clicks; CPM = spend / impressions × 1,000. Cost per result uses production objective units. Daily reach, frequency and recall estimates are omitted from segment aggregation because unique audiences cannot safely be summed.
 
-## Release order and acceptance
+ROAS requires the purchase value matching the primary purchase action; alternative conversion aliases are not added. Website CVR = website results / landing-page views, only with that evidence. Instant forms do not receive a fabricated website conversion rate. Missing values remain unavailable; absent attributed-action fields on delivered API slices are not assumed to establish zero conversions. Unknown categories stay included. Privacy-suppressed metrics cannot be reconstructed.
 
-1. Audience data model and CSV imports, checked against the provided independent exports and an unsegmented baseline.
-2. API audience requests through the same normalized calculation engine.
-3. API creative metrics + media snapshots, with the manual metrics-only/uploaded-media alternative.
-4. Browser/PPTX/Google Slides rendering, stable media, pagination, objective-aware summaries and client editing boundaries.
+Creative rankings stay within the same result objective and compatible attribution setting. Default eligibility is at least five results for cost/ROAS ranking; spend/results thresholds are configurable. CTR ranking also requires 100 impressions. Ineligible ads remain visible without a rank. No generic winner or fatigue claims are generated. Short summaries are deterministic statements grounded in the presented source metrics.
 
-Before enabling either feature: prove baseline totals are not multiplied by multiple breakdown uploads; test partial/missing categories, zero delivery, multi-objective campaigns, duplicate names with distinct IDs, currency/timezone/attribution, privacy-limited fields, video/carousel/dynamic ads, expired assets, deleted ads, large accounts, retries and rate limits. Reconcile source metrics independently and inspect both dark/light PPTX and browser output. Keep AI claims grounded in the supplied slice and available evidence.
+All selected rows are paginated, eight per table page. Available previews get separate pages. Browser and native editable PPTX share metrics/formatters, including dark/light layouts. The existing Google Slides export uses that PPTX. Browser editing supports new section titles, notes and visibility while preserving source metrics and the existing browser-only publishing boundary. Downloaded PowerPoint and saved Google Slides remain editable in their respective apps.
 
-## Capability references
+Limits: 100,000 observations per source, 500 additional pages, bounded embedded media/share payload. Errors retain the previous wizard setup. Sources remain in owned, expiring upload sessions; media included in generated reports follows existing report retention.
 
-- Meta Insights breakdowns: https://developers.facebook.com/docs/marketing-api/insights/breakdowns/
-- Meta Ad Creative reference: https://developers.facebook.com/docs/marketing-api/reference/ad-creative/
-- Official SDK breakdown enums: https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adsinsights.py
-- Official SDK creative fields: https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adcreative.py
-- Official SDK ad creative relationship/preview method: https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/ad.py
+## Validation and release checks
 
-The SDK confirms the available field/enum names; it does not prove every breakdown combination, metric or asset is accessible to every account. Live verification against our pinned API version and approved token permissions remains a release gate.
+Automated coverage includes independent sources, weighted rates, zero/missing values, custom objective units, purchase-value scope, stable ad IDs, pagination, selected ads, unknown categories, date/currency/scope/duplicate guards, mixed attribution, API request identity/chunking/pagination/retries, unsafe image URLs, raster snapshots, upload ownership, immutable sessions, audience-first import, browser editing and dark/light PPTX media.
+
+The three supplied private exports were checked separately against independent Decimal totals: each has **$755.38 / 25 leads** for Oct 19–Nov 17, 2026 and **$180.91 / 6 leads** for Nov 11–17. All four rendered audience views preserve these independent totals, without multiplying baseline spend. These lead exports lack all-click counts/purchase value, so CTR/ROAS remain unavailable. The actual audience-first import/build/PPTX path was exercised locally; customer files are not committed.
+
+PPTX layouts are rendered through LibreOffice and browser flows checked at desktop/mobile sizes. API capability/error behavior is tested with mocks. **A real connected-account check against the pinned Graph API version remains necessary before announcing API/media availability broadly**: confirm permissions and available breakdown/action metrics, region/country, image/video/carousel/dynamic previews, historical/deleted ads and rate limiting. Missing media remains metrics-only; unsupported conversion/window combinations produce an actionable error. SDK field names alone do not establish availability on every account.
+
+References: [Insights breakdowns](https://developers.facebook.com/docs/marketing-api/insights/breakdowns/), [Ad Creative](https://developers.facebook.com/docs/marketing-api/reference/ad-creative/), [official SDK](https://github.com/facebook/facebook-python-business-sdk/tree/main/facebook_business/adobjects).

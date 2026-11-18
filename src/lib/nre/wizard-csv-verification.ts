@@ -1,3 +1,6 @@
+import {verifyMetaContentTotals,mergeMetaVerification} from "./meta-report-content/verification";
+import {metaContentRanges} from "./meta-report-content/range";
+import type {MetaReportContent} from "./meta-report-content/types";
 import { resolveReportCurrencySymbol, sourceHeaders } from "./csv-currency";
 import { alignCsvReportFormData, csvReportNow } from "./csv-reporting-calendar";
 /**
@@ -29,6 +32,7 @@ export function verifyStandardWizardReportAgainstCsv(input: {
   platform: Platform;
   now?: Date;
   periodRows?: NreRow[] | null;
+  metaReportContent?: MetaReportContent;
 }): CsvVerificationResult {
   const { client, mtdRows, report, reportType, formData, platform } = input;
   alignCsvReportFormData(formData, mtdRows, client.timezone, input.now ?? new Date());
@@ -53,7 +57,7 @@ export function verifyStandardWizardReportAgainstCsv(input: {
     now = reportPeriodAnchor(range.endIso, client.timezone);
   }
 
-  return reconcileStandardReportWithCsv({
+  const standard = reconcileStandardReportWithCsv({
     report,
     mtdDailyRows: sourceRows,
     selectedCampaigns: selectedCampaigns ?? null,
@@ -67,4 +71,9 @@ export function verifyStandardWizardReportAgainstCsv(input: {
     campaignObjectives: campaignObjectives ?? null,
     platform,
   });
+  if(input.metaReportContent&&report.metaContent){
+    const ranges=metaContentRanges({reportType,dateSelection,rows:mtdRows,timezone:client.timezone,now});
+    return mergeMetaVerification(standard,verifyMetaContentTotals(input.metaReportContent,report.metaContent,ranges,selectedCampaigns??null),report.metaContent.includeStandard);
+  }
+  return standard;
 }

@@ -6,7 +6,8 @@ import { adSetVisibilityKey, defaultShareVisibility } from "./share-report";
 /** Slide counts the client will see after visibility is applied — pre-share editor summary. */
 export function countVisibleSlides(share: ShareReportData): number {
   const vis = share.visibility ?? defaultShareVisibility(share);
-  let n = vis.cover !== false ? 1 : 0;
+  let n = (vis.cover !== false ? 1 : 0) + (share.metaContent?.pages.filter(page=>page.visible!==false).length??0);
+  if(share.metaContent?.includeStandard===false)return n+(vis.metricGuide!==false&&(share.metricGuide?.length??0)>0?1:0);
   if (share.reportType === "DAY_BREAKDOWN") {
     if (vis.combinedTotal !== false && !share.isPaused) {
       n += share.dailyPresentation?.summaryPages.length ?? 0;

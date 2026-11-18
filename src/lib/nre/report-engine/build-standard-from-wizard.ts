@@ -1,3 +1,5 @@
+import {buildMetaContentPresentation} from "../meta-report-content/data";
+import {metaContentRanges} from "../meta-report-content/range";
 import { metaApiSelectionCoverageError } from "../meta-api-selection-coverage";
 import { decryptMetaToken } from "@/lib/meta-token-storage";
 import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "../csv-currency";
@@ -50,7 +52,7 @@ import { loadWizardPreviewReportCache } from "../wizard-preview-cache";
 export interface BuildStandardReportWizardInput {
   now?: Date;
   client: Client;
-  mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[] };
+  mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[]; metaReportContent?: import("../meta-report-content/types").MetaReportContent };
   formData: FormData | null;
   platform: Platform;
   metaCampaignPeriodReachFromSession?: MetaCampaignPeriodReachMaps;
@@ -232,6 +234,11 @@ export async function buildStandardReportForWizard(
     metaCampaignPeriodReach,
   });
 
+  if (mtdParsed.metaReportContent) {
+    try {
+      data.metaContent = buildMetaContentPresentation(mtdParsed.metaReportContent, metaContentRanges({reportType,dateSelection,rows:mtdParsed.rows,timezone:client.timezone,now:sourceNow}),selectedCampaigns??null,reportCurrency);
+    } catch(error) { return {error:error instanceof Error?error.message:"Refresh audience and creative sections."}; }
+  }
   data.currencySymbol = reportCurrency;
   const generated = getCalendarDateInTimezone(sourceNow, client.timezone);
   data.cover.reportDate = `${String(generated.month).padStart(2, "0")}-${String(generated.day).padStart(2, "0")}-${generated.year}`;

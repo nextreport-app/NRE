@@ -2523,7 +2523,7 @@ describe("buildReportData — paused account", () => {
     expect(data.adSetSlides).toEqual([]);
     expect(data.chart).toBeNull();
     expect(data.pausedMessage).toContain("Idle Co");
-    expect(data.pausedMessage).toContain("weekly reporting period");
+    expect(data.pausedMessage).toContain("No impressions, spend or results were recorded");
     expect(data.pausedMessage).toContain("in the selected reporting period");
     expect(data.pausedMessage).not.toContain("No action has been taken");
     expect(data.cover.healthBadge).toBe("⚙️ Campaigns Paused");

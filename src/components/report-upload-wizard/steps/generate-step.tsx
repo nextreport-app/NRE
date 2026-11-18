@@ -1,4 +1,5 @@
 "use client";
+import {MetaReportContentPanel} from "../ui/meta-report-content-panel";
 import { WizardFinalSettings } from "../ui/wizard-final-settings";
 import { WizardOptionalComparisons } from "../ui/wizard-optional-comparisons";
 import { ReportRecoveryPanel } from "../ui/report-recovery-panel";
@@ -115,6 +116,7 @@ export function WizardGenerateStep() {
   } = w;
 
   const slideCount = estimatedSlideCount();
+  const sectionsOnly = (data?.metaContent ?? historicalData?.metaContent)?.includeStandard === false;
 
   const weeklyPeriodNeedsAttention =
     reportType === "WEEKLY" &&
@@ -142,7 +144,7 @@ export function WizardGenerateStep() {
     reportBrandingBlocksGenerate ||
     previewRefreshing;
   const generateCtaLabel =
-    generateStatus === "loading"
+    w.reportContentBusy ? "Apply or discard section changes" : generateStatus === "loading"
       ? "Generating…"
       : generateStatus === "error"
         ? "Try again"
@@ -160,7 +162,7 @@ export function WizardGenerateStep() {
               ? "Resolve discrepancy first"
               : copy.generateReport;
   const showStandardCoverBudget =
-    reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
+    !sectionsOnly && reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
   const showGenerateSuccess = generateStatus === "done" && !!downloadUrl;
 
   if (showGenerateSuccess) {
@@ -381,11 +383,13 @@ export function WizardGenerateStep() {
 
 
 
+            {platform === "META" && w.uploadSessionId && ["WEEKLY","MONTHLY","HISTORICAL"].includes(reportType) && generateStatus !== "done" && <MetaReportContentPanel clientId={clientId} uploadSessionId={w.uploadSessionId} source={w.dataSourceMode} reportType={reportType} dateSelection={w.dateMode === "custom" ? {mode:"custom",customStart:w.customStart,customEnd:w.customEnd} : {mode:w.dateMode}} historicalMonthCount={w.historicalMonthCount} selectedCampaigns={Array.from(w.selectedCampaigns)} onSessionReady={w.onReportContentReady} onWorking={w.setReportContentBusy} disabled={generateStatus === "loading"} />}
             {generateStepPreviewReady && generateStatus === "idle" && <section aria-label="Report outline" className="rounded-lg border border-dash-border bg-dash-card p-4">
               <h3 className="text-sm font-semibold text-dash-ink">Your report · {slideCount} slides</h3>
-              <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? data.isPaused ? `No campaign delivery in the selected ${data.reportType === "WEEKLY" ? "week" : "period"} · activity summary${data.chart ? data.reportType === "WEEKLY" ? " · 30-day chart" : " · performance chart" : ""} · overview · metric guide` : `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign comparisons with current spend · summary including earlier-period campaigns · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>
+              {(data?.metaContent || historicalData?.metaContent) && <p className="mt-2 text-sm text-dash-ink-secondary">{(data?.metaContent || historicalData?.metaContent)?.pages.length} audience/creative pages · {(data?.metaContent || historicalData?.metaContent)?.includeStandard ? "Standard performance included" : "Audience/creative sections only"}</p>}
+              {(data?.metaContent || historicalData?.metaContent)?.includeStandard !== false && <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? data.isPaused ? `No campaign delivery in the selected ${data.reportType === "WEEKLY" ? "week" : "period"} · activity summary${data.chart ? data.reportType === "WEEKLY" ? " · 30-day chart" : " · performance chart" : ""} · overview · metric guide` : `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign comparisons with current spend · summary including earlier-period campaigns · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>}
             </section>}
-            {reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
+            {!sectionsOnly && reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
               <WizardPeriodSummary
                 rows={[
                   { label: "Weekly period", value: w.formatIsoRange(w.weeklyRangeIso) },
@@ -409,13 +413,13 @@ export function WizardGenerateStep() {
 
               {(generateStatus === "idle" || generateStatus === "error") && (
                 <WizardFinalSettings
-                  hasComparisons={reportType === "WEEKLY"}
+                  hasComparisons={!sectionsOnly && reportType === "WEEKLY"}
                   previousMonthEnabled={includePreviousMonthComparison}
                   previousMonthReady={previousMonthComparisonReady}
                   hasCoverBudget={showStandardCoverBudget}
                   error={reportBrandingError}
                 >
-                  <WizardOptionalComparisons embedded />
+                  {!sectionsOnly && <WizardOptionalComparisons embedded />}
                   {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
                     <WizardCoverBudgetSection
                       clientId={clientId}
@@ -440,7 +444,7 @@ export function WizardGenerateStep() {
                 </WizardFinalSettings>
               )}
 
-            {previewKind === "normal" && data?.isPaused && (
+            {!sectionsOnly && previewKind === "normal" && data?.isPaused && (
               <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 <p>{data.pausedMessage}</p>
                 {(data.chart || data.periodRow.hasData) ? (
@@ -451,7 +455,7 @@ export function WizardGenerateStep() {
               </div>
             )}
 
-            {previewKind === "historical" && historicalData?.isPaused && (
+            {!sectionsOnly && previewKind === "historical" && historicalData?.isPaused && (
               <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 No campaign spend found in the selected months. Check your imported date range and campaign selection.
               </div>

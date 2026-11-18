@@ -134,6 +134,16 @@ describe("report review boundary", () => {
     expect(saved.accountName).toBe("Edited browser title");
     expect(saved.publishedAt).toEqual(expect.any(String));
   });
+  it("edits audience captions and visibility without changing source metrics or PPTX",async()=>{
+    const row={key:"25-34",name:"25-34",spend:12.34,impressions:100,results:2,ctr:5,cpr:6.17,cpc:2.46,cpm:123.4,roas:null,websiteCvr:null,eligible:true};
+    const metaContent={includeStandard:false,currencySymbol:"$",media:{},notices:[],pages:[{id:"age-page",kind:"audience",title:"Age performance",dateLabel:"Nov 10–11",objective:"Leads",costLabel:"Cost per lead",rows:[row],note:"Source note"}]};
+    vi.mocked(prisma.report.findUnique).mockResolvedValue({...report,summaryJson:JSON.stringify({...share,metaContent})} as never);
+    const response=await PATCH(new Request("http://localhost/review",{method:"PATCH",body:JSON.stringify({shareReview:{publish:true,target:"browser",visibility:share.visibility,campaigns:[],adSets:[],metaPages:[{id:"age-page",title:"Audience age",note:"Reviewed",visible:true,rows:[{spend:999}]}]}})}),params);
+    expect(response.status).toBe(200);
+    const saved=JSON.parse(vi.mocked(prisma.report.update).mock.calls[0][0].data.summaryJson as string);
+    expect(saved.metaContent.pages[0]).toMatchObject({title:"Audience age",note:"Reviewed",visible:true,rows:[row]});
+    expect(regeneratePptxFromShare).not.toHaveBeenCalled();
+  });
   it("invalidates cached Slides only after a successful publish", async () => {
     const response = await PATCH(
       new Request("http://localhost/review", {

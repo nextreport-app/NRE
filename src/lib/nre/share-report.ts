@@ -147,6 +147,7 @@ export interface ShareChartData {
 }
 
 export interface ShareReportData {
+  metaContent?: import("./meta-report-content/types").MetaContentPresentation;
   /** Bumped only if this shape ever needs a breaking change — lets the share page detect and reject an old/foreign JSON blob instead of rendering garbage. */
   version: 1;
   accountName: string;
@@ -294,6 +295,7 @@ export function buildShareReportData(
 
   return {
     version: 1,
+    metaContent: data.metaContent,
     accountName: data.cover.accountName,
     platform: data.platform,
     reportType: data.reportType,
@@ -424,6 +426,7 @@ export function buildHistoricalShareReportData(
 
   return {
     version: 1,
+    metaContent: data.metaContent,
     accountName: data.accountName,
     platform: data.platform,
     reportType: "HISTORICAL",

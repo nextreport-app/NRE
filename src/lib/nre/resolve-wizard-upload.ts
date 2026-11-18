@@ -74,6 +74,7 @@ export async function resolveWizardMtdFromFormData(
           rows: session.rows,
           headers: session.headers,
           platform: session.platform,
+          metaReportContent: session.metaReportContent,
         },
         uploadSessionId,
         fromCache: true,
