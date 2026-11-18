@@ -1,3 +1,4 @@
+import { isLaunchReportTypeEnabled } from "../meta-launch-scope";
 import { apiQueryCoverage } from "./api-query-coverage";
 import { previousCompleteMonth } from "./report-period-selection";
 import { orderSlidesBySpend } from "./slide-spend-order";
@@ -2118,7 +2119,8 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
     cover,
     campaignSlides,
     adSetSlides: orderSlidesBySpend(adSetSlides),
-    creative: buildCreativeSections(globalWeekDateRange, primaryRawRows),
+    // The legacy creative prototype is not a launched section of standard reports.
+    creative: isLaunchReportTypeEnabled("CREATIVE") ? buildCreativeSections(globalWeekDateRange, primaryRawRows) : null,
     creativeOnly: false,
     pausedMessage: null,
     chart,

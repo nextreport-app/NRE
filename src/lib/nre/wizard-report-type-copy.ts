@@ -38,9 +38,9 @@ export const WIZARD_REPORT_TYPE_COPY: Record<ReportTypeValue, WizardReportTypeCo
     defaultDeckTitle: "Single-day report",
   },
   COMPARISON: {
-    pickerLabel: "Compare two periods",
-    cardHeading: "Compare two periods",
-    cardOneLiner: "Compare 7, 15 or 30 days, or choose two custom date ranges.",
+    pickerLabel: "Compare",
+    cardHeading: "Compare",
+    cardOneLiner: "Compare your performance in the last 7 days to the previous 7 days or choose two custom date ranges.",
     cardYouGet: "Choose two weekly, monthly or custom date ranges. Campaign metrics appear side by side, followed by a summary table; no last-30-day chart.",
     defaultDeckTitle: "Comparison Performance Report",
   },
