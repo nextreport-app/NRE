@@ -210,7 +210,7 @@ function applyVisibilityToShare(share: ShareReportData, visibility: ShareVisibil
 }
 
 /**
- * Pre-share editor — toggle slides, edit copy, publish to live link + sync PPT.
+ * Browser editor — toggle sections, edit copy and publish to the live link.
  */
 export function ReportShareReview({
   clientId,
@@ -237,7 +237,6 @@ export function ReportShareReview({
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
-  const [canSyncPpt, setCanSyncPpt] = useState(true);
   const [previewMode, setPreviewMode] = useState<"section" | "full">("section");
   const [justPublished, setJustPublished] = useState(false);
 
@@ -266,7 +265,6 @@ export function ReportShareReview({
       });
       setCombinedTotalEdit(cloneCombinedTotalEdit(loaded));
       setPublishedAt(json.publishedAt ?? loaded.publishedAt ?? null);
-      setCanSyncPpt(json.canSyncPpt !== false);
       setSelectedSlideId("cover");
       setError(null);
       setLoading(false);
@@ -351,6 +349,7 @@ export function ReportShareReview({
       body: JSON.stringify({
         shareReview: {
           publish: true,
+          target: "browser",
           visibility,
           campaigns: campaigns.map((c) => ({
             campaignName: c.campaignName,
@@ -413,7 +412,7 @@ export function ReportShareReview({
     setJustPublished(true);
     setShare((prev) => (prev && draftShare ? { ...draftShare, publishedAt: ts } : prev));
     updateGenerateSnapshotAfterPublish(clientId, reportId, ts);
-    showToast("Published — live link and PPTX download are updated.");
+    showToast("Published — your browser report is updated.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -446,8 +445,7 @@ export function ReportShareReview({
             {justPublished ? "✓ Published successfully" : "✓ Last published"}
           </p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            Your live browser link{canSyncPpt ? " and Download PPTX" : ""} now match this review.
-            {canSyncPpt ? " A copy already saved in Google Drive is not updated automatically — re-save from the Generate screen if needed." : ""}
+            Your live browser report now matches this review.
           </p>
           {returnToGenerateHref ? (
             <Link href={returnToGenerateHref} className="mt-2 inline-block text-[14px] font-semibold text-dash-accent hover:underline">
@@ -459,13 +457,12 @@ export function ReportShareReview({
 
       <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-dash-border bg-dash-card/60 p-4">
         <div className="min-w-0 flex-1 basis-72">
-          <p className="text-[14px] font-semibold text-dash-ink">Browser{canSyncPpt ? " & PowerPoint" : ""} editor</p>
+          <p className="text-[14px] font-semibold text-dash-ink">Browser report editor</p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            {visibleCount} sections included. Publish changes to update the live browser report{canSyncPpt ? " and the PPTX download" : ""}.
+            {visibleCount} sections included. Publish changes to update the live browser report.
           </p>
         </div>
         <div className="flex w-full min-w-0 max-w-full flex-wrap gap-2 sm:w-auto">
-          {canSyncPpt ? <a href={`/api/reports/${reportId}/download`} className="rounded-lg border border-dash-border px-3 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border">Download PPTX</a> : null}
           {shareToken ? (
             <Link
               href={buildShareReportAbsoluteUrl(shareToken)}
@@ -487,7 +484,7 @@ export function ReportShareReview({
         </div>
       </div>
 
-      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">Edit report text and values here. For PowerPoint layout or design changes, download the PPTX and open it in Microsoft PowerPoint. Edit a saved Google Slides copy directly in Google Slides.</p>
+      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">Changes here update only the live browser report. Edit your downloaded PPTX in PowerPoint and your Google Slides copy in Slides.</p>
       <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="min-w-0 max-h-[55vh] overflow-y-auto rounded-xl border border-dash-border bg-dash-card p-3 lg:sticky lg:top-4 lg:max-h-[80vh]">
           <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report sections</p>
@@ -522,7 +519,7 @@ export function ReportShareReview({
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[14px] font-semibold text-dash-ink">Cover slide</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
-                Edit cover text, then publish to update the browser report{canSyncPpt ? " and PPTX download" : ""}.
+                Edit cover text, then publish to update the browser report.
               </p>
               <label htmlFor="report-cover-name" className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Client / account name</label>
               <input
@@ -600,7 +597,7 @@ export function ReportShareReview({
                 <>
                   <p className="mt-4 text-[12px] uppercase tracking-wide text-dash-ink-secondary">Metric tiles</p>
                   <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
-                    Publish edits to update the browser report{canSyncPpt ? " and PPTX download" : ""}. Re-save separately to update a Google Drive copy.
+                    Publish edits to update the browser report.
                   </p>
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {(selectedCampaign?.metrics ?? selectedAdSet?.metrics ?? []).map((metric) => (
@@ -649,7 +646,7 @@ export function ReportShareReview({
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[14px] font-semibold text-dash-ink">Monthly Campaign Performance Overview</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
-                Edit table values, then publish to update the browser report{canSyncPpt ? " and PPTX download" : ""}.
+                Edit table values, then publish to update the browser report.
               </p>
               <div className="mt-4 space-y-3">
                 {!hideCombinedPeriodRow ? (
@@ -680,7 +677,7 @@ export function ReportShareReview({
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[14px] font-semibold text-dash-ink">Month to date overview</p>
               <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
-                Edit chart text here, then Publish — updates the live browser link and Download PPTX.
+                Edit chart text here, then publish to update the live browser report.
               </p>
               <label className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Title</label>
               <input

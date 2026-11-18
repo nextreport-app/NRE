@@ -297,7 +297,7 @@ export function ReportHistoryList({
                 )}
                 {r.status === "COMPLETE" && r.shareToken && (
                   <a href={`/clients/${clientId}/reports/${r.id}/copy`} className="text-[13px] font-semibold text-dash-accent hover:underline">
-                    Edit copy
+                    Edit browser report
                   </a>
                 )}
                 {r.status === "COMPLETE" && r.shareToken && (
