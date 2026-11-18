@@ -236,11 +236,12 @@ export function ClientForm({
           required
           id="client-account-name" value={values.accountName}
           onChange={(e) => set("accountName", e.target.value)}
-          placeholder="e.g. Acme Retail — Meta Ads"
+          placeholder="e.g. Express Text"
           className="w-full rounded-md border border-dash-border bg-dash-card px-3 py-2 text-sm text-dash-ink outline-none focus:border-dash-accent"
         />
       </div>
 
+      <p className="text-xs text-dash-ink-secondary">Use the client’s name as it should appear on the report cover.</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="client-currency" className="mb-1 block text-sm text-dash-ink-secondary">Currency</label>
@@ -345,7 +346,7 @@ export function ClientForm({
         )}
         {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
         <p className="mt-1 text-[13px] text-dash-ink-secondary">
-          Upload PNG or SVG with transparent background. Minimum 200px wide recommended. Max 2MB.
+          Recommended: 720 × 360 px (2:1). PNG or SVG with a transparent background, up to 2MB. Other shapes fit without cropping.
         </p>
       </div>
 

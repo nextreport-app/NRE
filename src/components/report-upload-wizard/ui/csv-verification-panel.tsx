@@ -1,5 +1,4 @@
 "use client";
-import { formatClientCalendarDate } from "@/lib/client-date-format";
 
 import { useState } from "react";
 import type { CsvCoverageWarning, CsvVerificationResult } from "@/lib/nre/csv-report-reconciliation";
@@ -21,23 +20,15 @@ function groupByScope(checks: CsvVerificationResult["checks"]) {
   return map;
 }
 
-function DateCoverageNotice({ warnings, currency }: { warnings: CsvCoverageWarning[]; currency?: string }) {
+function DateCoverageNotice({ warnings }: { warnings: CsvCoverageWarning[] }) {
   if (!warnings.length) return null;
-  return (
-    <div className="text-[13px] leading-relaxed text-dash-ink-secondary">
-      <p className="font-medium text-dash-ink">Dates without records</p>
-      {warnings.map(warning => (
-        <div key={warning.scope} className="mt-2">
-          <p className="font-medium">{warning.scope}</p>
-          <p>{warning.missingDays.map(day => currency ? formatClientCalendarDate(day, currency) : day).join(", ")}.</p>
-        </div>
-      ))}
-      <p className="mt-2">No records were found for the selected campaigns on these dates. If you expected activity, check the export’s date range.</p>
-    </div>
-  );
+  return <div className="text-[13px] leading-relaxed text-dash-ink-secondary">
+    <p className="font-medium text-dash-ink">Source coverage</p>
+    <p className="mt-1">Some dates have no records for the selected campaigns. If you expected activity, check the export’s date range.</p>
+  </div>;
 }
 
-export function CsvVerificationPanel({ verification, refreshing, currency }: Props) {
+export function CsvVerificationPanel({ verification, refreshing }: Props) {
   const copy = useWizardCopy();
   const [open, setOpen] = useState(true);
 
@@ -87,7 +78,7 @@ export function CsvVerificationPanel({ verification, refreshing, currency }: Pro
             </summary>
             <div className={`${textTone} mt-3 space-y-3 border-t border-dash-border/30 pt-3`}>
               <p>{copy.csvVerifiedDetail()}</p>
-              <DateCoverageNotice currency={currency} warnings={coverageWarnings} />
+              <DateCoverageNotice warnings={coverageWarnings} />
             </div>
           </details>
         </div>
@@ -123,7 +114,7 @@ export function CsvVerificationPanel({ verification, refreshing, currency }: Pro
       {open ? (
         <div className="mt-3 space-y-4 border-t border-dash-border/30 pt-3">
           <p className="nre-wizard-callout-warn__body text-[13px] leading-relaxed">{copy.csvMismatchBody}</p>
-          <DateCoverageNotice currency={currency} warnings={coverageWarnings} />
+          <DateCoverageNotice warnings={coverageWarnings} />
 
           {[...byScope.entries()].map(([scope, scopeChecks]) => (
             <div key={scope} className="rounded-md border border-dash-border/40 bg-dash-bg/30 px-3 py-2.5">

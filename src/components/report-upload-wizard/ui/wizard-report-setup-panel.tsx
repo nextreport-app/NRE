@@ -1,12 +1,11 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import { useSiteTheme } from "@/components/site-theme-provider";
 import { wizardReportTypeCopyForLocale } from "@/lib/wizard-i18n";
 import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import type { ReportTypeValue } from "../types";
-import { ReportTypeCard } from "./report-type-card";
 import { LAUNCH_PRIMARY_REPORT_TYPES, LAUNCH_SECONDARY_REPORT_TYPES } from "@/lib/meta-launch-scope";
 import { wizardCsvRequirementForReportType } from "@/lib/nre/wizard-report-csv-requirement";
 
@@ -16,7 +15,6 @@ export function WizardReportSetupPanel({
   clientTimezone,
   onReportTypeChange,
   source = "csv",
-  firstVisit = false,
   variant = "full",
   onEditSetup,
 }: {
@@ -32,15 +30,8 @@ export function WizardReportSetupPanel({
 }) {
   const { locale } = useSiteTheme();
   const choicesId = useId();
-  const [setupOpen, setSetupOpen] = useState(firstVisit);
   const selectedCopy = wizardReportTypeCopyForLocale(locale, reportType) ?? WIZARD_REPORT_TYPE_COPY[reportType];
   const requirement = wizardCsvRequirementForReportType({ reportType, clientTimezone });
-
-  function renderChoice(type: (typeof LAUNCH_PRIMARY_REPORT_TYPES)[number]) {
-    const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
-    const icons: Record<string, string> = { WEEKLY: "📊", MONTHLY: "🗓️", DAILY: "☀️", HISTORICAL: "📈", COMPARISON: "🔀", DAY_BREAKDOWN: "📋" };
-    return <ReportTypeCard key={type} icon={icons[type]} heading={copy.cardHeading} description={copy.cardOneLiner} csvRequiredNote={source === "api" ? undefined : wizardCsvRequirementForReportType({ reportType: type, clientTimezone }).shortNote} selected={reportType === type || (type === "MONTHLY" && reportType === "HISTORICAL") || (type === "DAY_BREAKDOWN" && reportType === "DAILY")} recommended={type === "WEEKLY"} layout="compact" onSelect={() => { onReportTypeChange(type); setSetupOpen(false); }} />;
-  }
 
   if (variant === "summary") {
     return <div className="rounded-lg border border-dash-border bg-dash-card px-4 py-3">
@@ -51,25 +42,16 @@ export function WizardReportSetupPanel({
     </div>;
   }
 
-  return <section className="overflow-hidden rounded-lg border border-dash-border bg-dash-bg/30">
-    <div className="space-y-2 px-4 py-3.5 sm:px-5">
-    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-      <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report type</p><h3 className="mt-0.5 text-[16px] font-semibold text-dash-ink">{reportTypeLabel}</h3></div>
-      <button type="button" onClick={() => setSetupOpen(open => !open)} aria-expanded={setupOpen} aria-controls={choicesId} className="text-[13px] font-medium text-dash-accent hover:underline">{setupOpen ? "Close choices" : "Change report type"}</button>
-    </div>
-    <p className="text-sm leading-relaxed text-dash-ink-secondary" title={selectedCopy.cardYouGet}>{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</p>
-    </div>
-    {!["MONTHLY", "HISTORICAL"].includes(reportType) && <p className="border-t border-dash-border px-4 py-2.5 text-[12px] text-dash-ink-secondary sm:px-5"><span className="font-medium">{source === "api" ? "Report data:" : "CSV needed:"}</span> {source === "api" ? requirement.shortNote.replace(/CSV/g, "data") : requirement.shortNote}</p>}
-    {setupOpen && <div id={choicesId} className="space-y-3 border-t border-dash-border p-4 sm:px-5">
-      <p className="text-[14px] font-medium text-dash-ink">What would you like to report?</p>
-      <p className="text-[12px] text-dash-ink-secondary">{source === "api" ? "Choose your report type and dates. Meta will provide daily data for the same reporting workflow." : "Use a Day-wise breakdown CSV for every report type. Choose the date range needed for your report."}</p>
-      <div role="group" aria-label="Choose report type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {LAUNCH_PRIMARY_REPORT_TYPES.map(renderChoice)}
-      </div>
-      {LAUNCH_SECONDARY_REPORT_TYPES.length > 0 && <details className="rounded-lg border border-dash-border p-3" open={LAUNCH_SECONDARY_REPORT_TYPES.some(type => type === reportType) || undefined}>
-        <summary className="cursor-pointer text-[13px] font-medium text-dash-ink">Compare or view detailed data</summary>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{LAUNCH_SECONDARY_REPORT_TYPES.map(renderChoice)}</div>
-      </details>}
-    </div>}
+  const selectedType = reportType === "HISTORICAL" ? "MONTHLY" : reportType === "DAILY" ? "DAY_BREAKDOWN" : reportType;
+  const choices = [...LAUNCH_PRIMARY_REPORT_TYPES, ...LAUNCH_SECONDARY_REPORT_TYPES];
+  return <section className="rounded-xl border border-dash-border bg-dash-bg/30 p-4 sm:p-5">
+    <label htmlFor={choicesId} className="block text-sm font-semibold text-dash-ink">Report type</label>
+    <select id={choicesId} value={selectedType} onChange={event => onReportTypeChange(event.target.value as ReportTypeValue)} className="mt-2 w-full rounded-lg border border-dash-border bg-dash-card px-3 py-2.5 text-sm text-dash-ink sm:max-w-sm">
+      {choices.map(type => <option key={type} value={type}>{(wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type]).cardHeading}</option>)}
+    </select>
+    <dl className="mt-4 space-y-3 text-sm">
+      <div><dt className="font-medium text-dash-ink">What you get</dt><dd className="mt-0.5 text-dash-ink-secondary">{reportType === "WEEKLY" && locale === "en" ? "Weekly performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</dd></div>
+      <div><dt className="font-medium text-dash-ink">{source === "api" ? "Data needed" : "CSV needed"}</dt><dd className="mt-0.5 text-dash-ink-secondary">{source === "api" ? "Fetched automatically for your selected report dates." : requirement.shortNote}</dd></div>
+    </dl>
   </section>;
 }

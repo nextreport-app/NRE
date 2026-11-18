@@ -22,7 +22,7 @@ function withPlatform(reportKind: string, platform: Platform): string {
 function metaWeeklyExportLines(now: Date, timezone: string): string[] {
   return [
     getMetaCsvDownloadTip(now, timezone),
-    "Weekly slides use the last 7-day period; the same file powers MTD, the last-30 chart, and pacing.",
+    "Weekly slides use the last 7-day period, MTD, and the last-30-day chart.",
   ];
 }
 

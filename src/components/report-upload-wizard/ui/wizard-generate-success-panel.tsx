@@ -252,7 +252,7 @@ export function WizardGenerateSuccessPanel({
                 <GoogleDriveIcon />
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
-            ) : null}
+            ) : <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
             {previewHref && shareToken ? (
               <Link href={previewHref} className={secondaryExportClass} onClick={() => {
                 persistGenerateSnapshot({ reportId: reportId!, downloadUrl, shareToken });
@@ -414,12 +414,11 @@ export function WizardGenerateSuccessPanel({
               {children}
             </>
           ) : (
-            <details className="rounded-lg border border-dash-border bg-dash-bg/30 px-4 py-3">
-              <summary id="success-drive-heading" className="cursor-pointer text-sm font-medium text-dash-ink-secondary">Save to Google Drive · optional</summary>
-              <p className="mt-3 text-sm leading-relaxed text-dash-ink-secondary">
-                <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" className="font-medium text-dash-accent hover:underline">Connect Google Drive</Link> in Account settings to save reports directly.
-              </p>
-            </details>
+            <div className="rounded-lg border border-dash-border bg-dash-bg/30 px-4 py-3">
+              <h3 id="success-drive-heading" className="text-sm font-semibold text-dash-ink">Google Slides</h3>
+              <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">Connect Google Drive to save an editable Google Slides copy and choose its destination folder.</p>
+              <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className="mt-3 inline-block text-sm font-medium text-dash-accent hover:underline">Connect Google Drive ↗</Link>
+            </div>
           )}
         </section>
 

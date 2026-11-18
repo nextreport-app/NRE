@@ -1,0 +1,40 @@
+import { expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import JSZip from "jszip";
+vi.mock("@/lib/prisma", () => ({ prisma: { user: { findUnique: vi.fn().mockResolvedValue(null) } } }));
+import type { Client } from "@/generated/prisma/client";
+import { parseCsvText } from "../parse-csv";
+import { buildStandardReportForWizard } from "../report-engine/build-standard-from-wizard";
+import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
+import { buildShareReportData } from "../share-report";
+import { agencyNameForCoverSlide } from "../user-report-branding";
+import { renderPptx } from "../../pptx/render";
+
+it("keeps earlier INR activity in the 30-day context without inventing delivery in the selected week", async () => {
+  const parsed = parseCsvText(`Campaign name,Ad set name,Day,Amount spent (INR),Results,Result type,Reach,Impressions,Link clicks,Clicks (all),${API_RANGE_START_HEADER},${API_RANGE_END_HEADER}\nExample,Example set,2026-10-20,264.82,11,Leads (form),883,1056,26,39,2026-10-19,2026-11-17`);
+  const formData = new FormData();
+  formData.set("reportType", JSON.stringify("WEEKLY"));
+  formData.set("dateSelection", JSON.stringify({ mode: "custom", customStart: "2026-11-11", customEnd: "2026-11-17" }));
+  formData.set("selectedAdSets", "[]");
+  const built = await buildStandardReportForWizard({ client: { id: "client", userId: "user", accountName: "Example", currency: "INR", timezone: "Asia/Kolkata", monthlyBudget: null, previousMonthDataUrl: null, campaignObjectiveCache: null } as Client, platform: "META", mtdParsed: parsed, formData, now: new Date("2026-11-18T12:00:00Z") });
+  if (!("data" in built)) throw Error(built.error);
+  const data = built.data;
+  expect(data.isPaused).toBe(true);
+  expect(data.campaignSlides).toHaveLength(0);
+  expect(data.adSetSlides).toHaveLength(0);
+  expect(data.chart!.totalAllSpend).toBeCloseTo(264.82, 2);
+  expect(data.chart!.campaigns[0].results).toBe(11);
+  expect(data.chart!.campaigns[0].cpr).toBeCloseTo(24.07454545, 6);
+  expect(data.pausedMessage).not.toContain("were paused");
+  const branding = { mode: "hidden" as const, agencyName: null };
+  const share = buildShareReportData(data, new Map(), new Date("2026-11-18T12:00:00Z"), { currencySymbol: "₹", reportBranding: branding });
+  expect(share.chart!.totalSpendLabel).toContain("264.82");
+  const ppt = await renderPptx({ data, templateBuffer: readFileSync("templates/dark.pptx"), currencySymbol: "₹", agencyName: agencyNameForCoverSlide({ reportBrandingMode: "hidden" }) });
+  const zip = await JSZip.loadAsync(ppt);
+  const names = Object.keys(zip.files).filter(name => /^ppt\/slides\/slide\d+\.xml$/.test(name));
+  expect(names).toHaveLength(5); // Cover, no-delivery summary, chart, monthly overview, guide.
+  const xml = (await Promise.all(names.map(name => zip.file(name)!.async("string")))).join("");
+  expect(xml).toContain("₹264.82"); expect(xml).toContain("₹24.07");
+  expect(xml).toContain("11 meta form leads");
+  expect(xml).not.toContain("Prepared by NextReport");
+});

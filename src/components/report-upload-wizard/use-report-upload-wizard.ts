@@ -112,7 +112,7 @@ export function useReportUploadWizard({
   clientTimezone: initialClientTimezone,
   clientCurrency,
   currencySymbol: initialCurrencySymbol,
-  hasGoogleDriveConnected,
+  hasGoogleDriveConnected: initialHasGoogleDriveConnected,
   initialLastDriveFolderId,
   initialLastDriveFolderName,
   hasPreviousMonthData,
@@ -135,11 +135,12 @@ export function useReportUploadWizard({
   clientMonthlyBudget: initialClientMonthlyBudget = null,
   clientShowBudgetPacingOnCover: _clientShowBudgetPacingOnCover = false,
   initialAgencyName = null,
-  initialReportBrandingMode = "nextreport",
-  initialShowAgencyNameOnCover = true,
+  initialReportBrandingMode = "hidden",
+  initialShowAgencyNameOnCover = false,
   accountDisplayName = null,
   userId,
 }: ReportUploadWizardProps) {
+  const [hasGoogleDriveConnected, setHasGoogleDriveConnected] = useState(initialHasGoogleDriveConnected);
   const [linkedMetaAdAccountId, setLinkedMetaAdAccountId] = useState(initialLinkedMetaAdAccountId);
   const [linkedMetaAdAccountName, setLinkedMetaAdAccountName] = useState(initialLinkedMetaAdAccountName);
   const [selectedApiAdAccountId, setSelectedApiAdAccountId] = useState<string | null>(null);
@@ -903,6 +904,7 @@ export function useReportUploadWizard({
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => {
           if (!json) return;
+          setHasGoogleDriveConnected(json.googleDriveEnabled === true);
           const name = typeof json.agencyName === "string" ? json.agencyName.trim() : "";
           const mode = normalizeReportBrandingMode(json.reportBrandingMode);
           const snapshot = `${mode}|${name}`;

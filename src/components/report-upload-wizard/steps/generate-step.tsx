@@ -383,7 +383,7 @@ export function WizardGenerateStep() {
 
             {generateStepPreviewReady && generateStatus === "idle" && <section aria-label="Report outline" className="rounded-lg border border-dash-border bg-dash-card p-4">
               <h3 className="text-sm font-semibold text-dash-ink">Your report · {slideCount} slides</h3>
-              <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign comparisons with current spend · summary including earlier-period campaigns · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>
+              <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? data.isPaused ? `No campaign delivery in the selected ${data.reportType === "WEEKLY" ? "week" : "period"} · activity summary${data.chart ? data.reportType === "WEEKLY" ? " · 30-day chart" : " · performance chart" : ""} · overview · metric guide` : `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign comparisons with current spend · summary including earlier-period campaigns · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>
             </section>}
             {reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
               <WizardPeriodSummary
@@ -441,25 +441,24 @@ export function WizardGenerateStep() {
               )}
 
             {previewKind === "normal" && data?.isPaused && (
-              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
+              <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 <p>{data.pausedMessage}</p>
                 {(data.chart || data.periodRow.hasData) ? (
                   <p className="mt-2">
                     {w.dataSourceMode === "api" ? "Last-30-days data will still be included where available." : "Previous month and last-30-days data will still be included in this report where available."}
                   </p>
                 ) : null}
-                <p className="mt-2 font-medium text-amber-100">Still want to create this report? Click Generate.</p>
               </div>
             )}
 
             {previewKind === "historical" && historicalData?.isPaused && (
-              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
+              <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 No campaign spend found in the selected months. Check your imported date range and campaign selection.
               </div>
             )}
 
             {previewKind === "dayBreakdown" && dayBreakdownData?.isPaused && (
-              <div className="rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-[14px] text-amber-200">
+              <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 No campaign spend found in the selected date range. Check your imported dates and campaign selection.
               </div>
             )}

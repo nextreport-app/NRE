@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
 import type { Platform } from "@/lib/nre/google-columns";
 import { getPlatformLabel } from "@/lib/nre/platform-labels";
+import { wizardCsvRequirementForReportType } from "@/lib/nre/wizard-report-csv-requirement";
+import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
 import { wizardExportGuidanceForReportType } from "@/lib/nre/wizard-report-export-guidance";
 import { WizardMetaCsvImportTooltip } from "./wizard-meta-csv-export-help";
 import { MetaAdsReportingLink } from "@/components/meta-ads-reporting-link";
@@ -143,11 +145,10 @@ export function WizardImportDownloadInstructions({
                 <MetaAdsReportingLink variant="button">Meta Ads Reporting Section →</MetaAdsReportingLink>
               </p>
             ) : null}
-            <ul className="list-inside list-disc space-y-1">
-              {guidance.lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
+            <dl className="space-y-3">
+              <div><dt className="font-semibold text-dash-ink">What is needed</dt><dd className="mt-1">{reportType === "WEEKLY" && platform === "META" ? guidance.lines[0] : wizardCsvRequirementForReportType({ reportType, clientTimezone }).shortNote}</dd></div>
+              <div><dt className="font-semibold text-dash-ink">What it produces</dt><dd className="mt-1">{reportType === "WEEKLY" && platform === "META" ? guidance.lines[1] : WIZARD_REPORT_TYPE_COPY[reportType].cardOneLiner}</dd></div>
+            </dl>
             <p className="pt-1">
               <Link
                 href={platform === "META" ? "/help/download#video-walkthrough" : "/help/download"}

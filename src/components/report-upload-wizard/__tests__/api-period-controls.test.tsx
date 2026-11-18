@@ -43,8 +43,8 @@ describe("shared report controls for API imports", () => {
   expect(html).toContain("Start date"); expect(html).toContain("End date");
   expect(html).toContain("2026-10-22");
  });
- it.each(["csv", "api"] as const)("uses the same collapsed report-type interface for %s", source => {
+ it.each(["csv", "api"] as const)("shows one report selector and only the selected report details for %s", source => {
   const html = renderToStaticMarkup(<WizardReportSetupPanel source={source} reportType="WEEKLY" reportTypeLabel="Weekly overview" platform="META" clientTimezone="UTC" onReportTypeChange={() => {}} />);
-  expect(html).toContain("Change report type"); expect(html).not.toContain("Close choices");
+  expect(html).toContain("<select"); expect(html).toContain("What you get"); expect(html).not.toContain("Close choices"); expect(html).not.toContain("Month + MTD"); expect(html).not.toContain("One day or a date range, with one row per day.");
  });
 });

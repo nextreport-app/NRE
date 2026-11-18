@@ -5,7 +5,7 @@ import { buildReportEmailHtml, buildReportEmailSubject, buildReportEmailText, ty
 // see RESEND_API_KEY in .env.example. Reply-to is the same address rather
 // than the sending user's own email: replies should reach the agency's
 // shared inbox, not get lost if a report is re-sent by a teammate later.
-const FROM_ADDRESS = "hello@nextreport.in";
+const FROM_ADDRESS = "NextReport <hello@nextreport.in>";
 
 let client: Resend | null = null;
 

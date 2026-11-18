@@ -41,7 +41,8 @@ export default async function NewClientPage() {
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-[24px] font-bold text-dash-ink">New client</h1>
-      <p className="mb-5 text-sm leading-relaxed text-dash-ink-secondary">Start with the client name, ad-account currency and timezone. Optional branding and budget settings can be added later.</p>
+      <p className="mb-5 text-sm leading-relaxed text-dash-ink-secondary">Create a workspace for this client. It is not tied to a platform; you’ll choose an available report source next.</p>
+      <p className="mb-5 text-xs text-dash-ink-secondary">Need to connect an account? <Link href="/account" target="_blank" rel="noopener noreferrer" className="font-medium text-dash-accent hover:underline">Manage connections in Account settings ↗</Link></p>
       <ClientForm />
     </div>
   );

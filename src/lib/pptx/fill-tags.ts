@@ -762,7 +762,7 @@ export function buildPausedSlideXml(
   let xml = fillTags(
     templateXml,
     {
-      CAMPAIGN_NAME: "All Campaigns — Paused",
+      CAMPAIGN_NAME: "All Campaigns — No delivery",
       RESULT_LABEL: "RESULTS",
       COST_LABEL: "COST PER RESULT",
       METRIC_SPEND: "0",
