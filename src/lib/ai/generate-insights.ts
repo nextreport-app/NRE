@@ -151,6 +151,22 @@ function promptBuildersFor(platform: Platform): { summary: typeof buildSummaryPr
   return { summary: buildSummaryPrompt, insight: buildInsightPrompt };
 }
 
+/** Recheck pre-warmed copy against current rules before using an older preview cache. */
+export function revalidateCachedInsights(data: ReportData, copy: ReadonlyMap<string, AiCopy>): Map<string, AiCopy> {
+  const checked = new Map(copy);
+  for (const slide of [...data.campaignSlides, ...data.adSetSlides]) {
+    const key = slideAiKey(slide);
+    const saved = checked.get(key);
+    if (!saved) continue;
+    checked.set(key, {
+      ...saved,
+      summary: aiCopyViolatesObjectiveRules(saved.summary, slide.ai, data.platform) ? buildFallbackSummary(slide.ai) : saved.summary,
+      insights: aiCopyViolatesObjectiveRules(saved.insights, slide.ai, data.platform) ? buildFallbackInsights(slide.ai) : saved.insights,
+    });
+  }
+  return checked;
+}
+
 export async function generateInsights(data: ReportData, keys: AiKeys): Promise<Map<string, AiCopy>> {
   assertReportComplexity(data);
   const slides = [...data.campaignSlides, ...data.adSetSlides];

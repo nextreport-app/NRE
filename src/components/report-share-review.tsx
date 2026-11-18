@@ -86,16 +86,16 @@ function CombinedTotalRowEditor({
 
   return (
     <div className="rounded-md border border-dash-border bg-dash-bg p-3">
-      <p className="text-[11px] font-semibold text-dash-ink">{title}</p>
+      <p className="text-[12px] font-semibold text-dash-ink">{title}</p>
       <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {staticFields.map(({ key, label }) => (
           <label key={key} className="block">
-            <span className="text-[11px] font-medium text-dash-ink-secondary">{label}</span>
+            <span className="text-[12px] font-medium text-dash-ink-secondary">{label}</span>
             <input
               type="text"
               value={row[key]}
               onChange={(e) => onChange({ ...row, [key]: e.target.value })}
-              className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+              className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
             />
           </label>
         ))}
@@ -104,21 +104,21 @@ function CombinedTotalRowEditor({
           return (
             <div key={col.label} className="sm:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="block">
-                <span className="text-[11px] font-medium text-dash-ink-secondary">{col.label}</span>
+                <span className="text-[12px] font-medium text-dash-ink-secondary">{col.label}</span>
                 <input
                   type="text"
                   value={dataCol?.value ?? "—"}
                   onChange={(e) => patchResultColumn(col.label, col.costLabel, { value: e.target.value })}
-                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                 />
               </label>
               <label className="block">
-                <span className="text-[11px] font-medium text-dash-ink-secondary">{col.costLabel}</span>
+                <span className="text-[12px] font-medium text-dash-ink-secondary">{col.costLabel}</span>
                 <input
                   type="text"
                   value={dataCol?.cprValue ?? "—"}
                   onChange={(e) => patchResultColumn(col.label, col.costLabel, { cprValue: e.target.value })}
-                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                 />
               </label>
             </div>
@@ -238,6 +238,7 @@ export function ReportShareReview({
   const [error, setError] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [canSyncPpt, setCanSyncPpt] = useState(true);
+  const [previewMode, setPreviewMode] = useState<"section" | "full">("section");
   const [justPublished, setJustPublished] = useState(false);
 
   useEffect(() => {
@@ -417,10 +418,10 @@ export function ReportShareReview({
   }
 
   if (loading) {
-    return <p className="text-[13px] text-dash-ink-secondary">Loading report…</p>;
+    return <p className="text-[14px] text-dash-ink-secondary">Loading report…</p>;
   }
   if (error || !draftShare || !visibility) {
-    return <p className="text-[13px] text-amber-300">{error ?? "Report unavailable."}</p>;
+    return <p className="text-[14px] text-amber-300">{error ?? "Report unavailable."}</p>;
   }
 
   const visibleCount = countVisibleSlides(draftShare);
@@ -438,7 +439,7 @@ export function ReportShareReview({
   const hideCombinedMtdRow = !hideCombinedPeriodRow && draftShare.periodRow.sameMonthAsCurrentMTD;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {(justPublished || publishedAt) && (
         <div className="rounded-lg border border-[#68d391]/40 bg-[#68d391]/10 px-4 py-3">
           <p className="text-[14px] font-semibold text-[#68d391]">
@@ -449,50 +450,51 @@ export function ReportShareReview({
             {canSyncPpt ? " A copy already saved in Google Drive is not updated automatically — re-save from the Generate screen if needed." : ""}
           </p>
           {returnToGenerateHref ? (
-            <Link href={returnToGenerateHref} className="mt-2 inline-block text-[13px] font-semibold text-dash-accent hover:underline">
+            <Link href={returnToGenerateHref} className="mt-2 inline-block text-[14px] font-semibold text-dash-accent hover:underline">
               Return to Generate screen →
             </Link>
           ) : null}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[15px] font-semibold text-dash-ink">Review before sharing</p>
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-dash-border bg-dash-card/60 p-4">
+        <div className="min-w-0 flex-1 basis-72">
+          <p className="text-[14px] font-semibold text-dash-ink">Browser{canSyncPpt ? " & PowerPoint" : ""} editor</p>
           <p className="mt-1 text-[12px] text-dash-ink-secondary">
-            {visibleCount} report sections. <strong>Publish</strong> updates the browser report
-            {canSyncPpt ? " and Download PPTX" : ""} — not a Google Slides file already in Drive.
+            {visibleCount} sections included. Publish changes to update the live browser report{canSyncPpt ? " and the PPTX download" : ""}.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full min-w-0 max-w-full flex-wrap gap-2 sm:w-auto">
+          {canSyncPpt ? <a href={`/api/reports/${reportId}/download`} className="rounded-lg border border-dash-border px-3 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-border">Download PPTX</a> : null}
           {shareToken ? (
             <Link
               href={buildShareReportAbsoluteUrl(shareToken)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md border border-dash-border px-3 py-2 text-[13px] text-dash-ink hover:bg-dash-border"
+              className="rounded-md border border-dash-border px-3 py-2 text-[14px] text-dash-ink hover:bg-dash-border"
             >
-              Preview live link
+              View live report
             </Link>
           ) : null}
           <button
             type="button"
             onClick={() => void publish()}
             disabled={saving || visibleCount === 0}
-            className="rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-dash-accent"
+            className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-dash-accent"
           >
-            {saving ? "Publishing…" : publishedAt ? "Publish again" : "Publish to live link"}
+            {saving ? "Publishing…" : "Publish changes"}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr]">
-        <aside className="max-h-[70vh] overflow-y-auto rounded-lg border border-dash-border bg-dash-card p-3">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Slides</p>
+      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">Edit report text and values here. For PowerPoint layout or design changes, download the PPTX and open it in Microsoft PowerPoint. Edit a saved Google Slides copy directly in Google Slides.</p>
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="min-w-0 max-h-[55vh] overflow-y-auto rounded-xl border border-dash-border bg-dash-card p-3 lg:sticky lg:top-4 lg:max-h-[80vh]">
+          <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-dash-ink-secondary">Report sections</p>
           <ul className="space-y-1">
             {slideList.map((item) => (
               <li key={item.id}>
-                <div className="flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-dash-bg">
+                <div className={`flex items-start gap-2 rounded-lg border px-2.5 py-2.5 ${selectedSlideId === item.id ? "border-dash-accent/30 bg-dash-accent/10" : "border-transparent hover:bg-dash-bg"}`}>
                   <input
                     type="checkbox"
                     checked={item.visible}
@@ -502,6 +504,7 @@ export function ReportShareReview({
                   />
                   <button
                     type="button"
+                    title={item.sublabel ? `${item.label} · ${item.sublabel}` : item.label}
                     onClick={() => setSelectedSlideId(item.id)}
                     className={`min-w-0 flex-1 text-left ${selectedSlideId === item.id ? "text-dash-accent" : "text-dash-ink"}`}
                   >
@@ -514,46 +517,42 @@ export function ReportShareReview({
           </ul>
         </aside>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {coverSelected && coverEdit ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <p className="text-[13px] font-semibold text-dash-ink">Cover slide</p>
-              <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
-                Edit cover text here, then Publish — updates the live browser link and Download PPTX.
+              <p className="text-[14px] font-semibold text-dash-ink">Cover slide</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
+                Edit cover text, then publish to update the browser report{canSyncPpt ? " and PPTX download" : ""}.
               </p>
-              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Client / account name</label>
+              <label htmlFor="report-cover-name" className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Client / account name</label>
               <input
                 type="text"
+                id="report-cover-name"
                 value={coverEdit.accountName}
                 onChange={(e) => setCoverEdit((c) => (c ? { ...c, accountName: e.target.value } : c))}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
-              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Date range</label>
+              <label htmlFor="report-cover-dates" className="mt-2 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Date range</label>
               <input
                 type="text"
+                id="report-cover-dates"
                 value={coverEdit.dateRange}
                 onChange={(e) => setCoverEdit((c) => (c ? { ...c, dateRange: e.target.value } : c))}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
-              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Health badge</label>
-              <input
-                type="text"
-                value={coverEdit.healthBadge}
-                onChange={(e) => setCoverEdit((c) => (c ? { ...c, healthBadge: e.target.value } : c))}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
-              />
+
             </div>
           ) : null}
 
           {(selectedCampaign || selectedAdSet) && (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <p className="text-[13px] font-semibold text-dash-ink">
+              <p className="text-[14px] font-semibold text-dash-ink">
                 {selectedCampaign?.campaignName ?? selectedAdSet?.adSetName}
               </p>
               {selectedAdSet ? (
-                <p className="text-[11px] text-dash-ink-secondary">{selectedAdSet.campaignName}</p>
+                <p className="text-[12px] text-dash-ink-secondary">{selectedAdSet.campaignName}</p>
               ) : null}
-              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Summary</label>
+              <label className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Summary</label>
               <textarea
                 value={selectedCampaign?.aiSummary ?? selectedAdSet?.aiSummary ?? ""}
                 onChange={(e) => {
@@ -573,9 +572,9 @@ export function ReportShareReview({
                   }
                 }}
                 rows={3}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
-              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Key insights</label>
+              <label className="mt-2 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Key insights</label>
               <textarea
                 value={selectedCampaign?.aiInsights ?? selectedAdSet?.aiInsights ?? ""}
                 onChange={(e) => {
@@ -595,18 +594,18 @@ export function ReportShareReview({
                   }
                 }}
                 rows={3}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
               {(selectedCampaign?.metrics.length ?? selectedAdSet?.metrics.length ?? 0) > 0 ? (
                 <>
-                  <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">Metric tiles</p>
-                  <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
-                    Edits here update the live link, Download PPTX, and Google Drive after you publish and re-save.
+                  <p className="mt-4 text-[12px] uppercase tracking-wide text-dash-ink-secondary">Metric tiles</p>
+                  <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
+                    Publish edits to update the browser report{canSyncPpt ? " and PPTX download" : ""}. Re-save separately to update a Google Drive copy.
                   </p>
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {(selectedCampaign?.metrics ?? selectedAdSet?.metrics ?? []).map((metric) => (
                       <label key={metric.key} className="block">
-                        <span className="text-[11px] font-medium text-dash-ink-secondary">{metric.label}</span>
+                        <span className="text-[12px] font-medium text-dash-ink-secondary">{metric.label}</span>
                         <input
                           type="text"
                           value={metric.value}
@@ -636,7 +635,7 @@ export function ReportShareReview({
                               );
                             }
                           }}
-                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                         />
                       </label>
                     ))}
@@ -648,9 +647,9 @@ export function ReportShareReview({
 
           {combinedTotalSelected && combinedTotalEdit && draftShare && !["HISTORICAL", "DAY_BREAKDOWN"].includes(draftShare.reportType) ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <p className="text-[13px] font-semibold text-dash-ink">Monthly Campaign Performance Overview</p>
-              <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
-                Edit table values here, then Publish — updates the live browser link and Download PPTX.
+              <p className="text-[14px] font-semibold text-dash-ink">Monthly Campaign Performance Overview</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
+                Edit table values, then publish to update the browser report{canSyncPpt ? " and PPTX download" : ""}.
               </p>
               <div className="mt-4 space-y-3">
                 {!hideCombinedPeriodRow ? (
@@ -679,11 +678,11 @@ export function ReportShareReview({
 
           {overviewSelected && chartEdit ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <p className="text-[13px] font-semibold text-dash-ink">Month to date overview</p>
-              <p className="mt-0.5 text-[11px] text-dash-ink-secondary">
+              <p className="text-[14px] font-semibold text-dash-ink">Month to date overview</p>
+              <p className="mt-0.5 text-[12px] text-dash-ink-secondary">
                 Edit chart text here, then Publish — updates the live browser link and Download PPTX.
               </p>
-              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Title</label>
+              <label className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Title</label>
               <input
                 type="text"
                 value={chartEdit.title}
@@ -691,18 +690,18 @@ export function ReportShareReview({
                   const title = e.target.value;
                   setChartEdit((c) => (c ? patchChartVisualSlide({ ...c, title }, { title }) : c));
                 }}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
-              <label className="mt-2 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Subtitle</label>
+              <label className="mt-2 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Subtitle</label>
               <input
                 type="text"
                 value={chartEdit.subtitle}
                 onChange={(e) => setChartEdit((c) => (c ? { ...c, subtitle: e.target.value } : c))}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">KPI tiles</p>
+              <p className="mt-4 text-[12px] uppercase tracking-wide text-dash-ink-secondary">KPI tiles</p>
               <label className="mt-2 block">
-                <span className="text-[11px] font-medium text-dash-ink-secondary">Total ad spend this month</span>
+                <span className="text-[12px] font-medium text-dash-ink-secondary">Total ad spend this month</span>
                 <input
                   type="text"
                   value={chartEdit.snapshot.mtdSpendLabel}
@@ -711,15 +710,15 @@ export function ReportShareReview({
                       c ? { ...c, snapshot: { ...c.snapshot, mtdSpendLabel: e.target.value } } : c,
                     )
                   }
-                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                  className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                 />
               </label>
               {(chartEdit.snapshot.objectives?.length ?? 0) > 0 ? (
                 <div className="mt-3 space-y-3">
-                  <p className="text-[11px] uppercase tracking-wide text-dash-ink-secondary">Objective blocks</p>
+                  <p className="text-[12px] uppercase tracking-wide text-dash-ink-secondary">Objective blocks</p>
                   {chartEdit.snapshot.objectives!.map((obj, i) => (
                     <div key={`${obj.label}-${i}`} className="rounded-md border border-dash-border bg-dash-bg p-3">
-                      <p className="text-[11px] font-semibold text-dash-ink">{obj.label}</p>
+                      <p className="text-[12px] font-semibold text-dash-ink">{obj.label}</p>
                       <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                         {(
                           [
@@ -729,7 +728,7 @@ export function ReportShareReview({
                           ] as const
                         ).map(([key, label]) => (
                           <label key={key} className="block">
-                            <span className="text-[11px] font-medium text-dash-ink-secondary">{label}</span>
+                            <span className="text-[12px] font-medium text-dash-ink-secondary">{label}</span>
                             <input
                               type="text"
                               value={obj[key]}
@@ -758,7 +757,7 @@ export function ReportShareReview({
                                   };
                                 })
                               }
-                              className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                              className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                             />
                           </label>
                         ))}
@@ -774,7 +773,7 @@ export function ReportShareReview({
                     { key: "primaryCprValue", label: chartEdit.snapshot.primaryCprLabel },
                   ].map((field) => (
                     <label key={field.key} className="block">
-                      <span className="text-[11px] font-medium text-dash-ink-secondary">{field.label}</span>
+                      <span className="text-[12px] font-medium text-dash-ink-secondary">{field.label}</span>
                       <input
                         type="text"
                         value={(chartEdit.snapshot[field.key as keyof typeof chartEdit.snapshot] as string) ?? ""}
@@ -783,13 +782,13 @@ export function ReportShareReview({
                             c ? { ...c, snapshot: { ...c.snapshot, [field.key]: e.target.value } } : c,
                           )
                         }
-                        className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                        className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-bg px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                       />
                     </label>
                   ))}
                 </div>
               )}
-              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Total spend (donut center)</label>
+              <label className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Total spend (donut center)</label>
               <input
                 type="text"
                 value={chartEdit.totalSpendLabel}
@@ -799,13 +798,13 @@ export function ReportShareReview({
                     c ? patchChartVisualSlide({ ...c, totalSpendLabel }, { groupedDonutCenterLabel: totalSpendLabel }) : c,
                   );
                 }}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] tabular-nums text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] tabular-nums text-dash-ink"
               />
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-dash-ink-secondary">Donut legend</p>
+              <p className="mt-4 text-[12px] uppercase tracking-wide text-dash-ink-secondary">Donut legend</p>
               <div className="mt-2 space-y-3">
                 {chartEdit.donutSegments.map((seg, i) => (
                   <div key={`${seg.name}-${i}`} className="rounded-md border border-dash-border bg-dash-bg p-3">
-                    <label className="block text-[11px] font-medium text-dash-ink-secondary">Campaign name</label>
+                    <label className="block text-[12px] font-medium text-dash-ink-secondary">Campaign name</label>
                     <input
                       type="text"
                       value={seg.name}
@@ -818,11 +817,11 @@ export function ReportShareReview({
                           return { ...c, donutSegments };
                         })
                       }
-                      className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] text-dash-ink"
+                      className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] text-dash-ink"
                     />
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <label className="block">
-                        <span className="text-[11px] font-medium text-dash-ink-secondary">% of spend</span>
+                        <span className="text-[12px] font-medium text-dash-ink-secondary">% of spend</span>
                         <input
                           type="text"
                           value={String(seg.percentage)}
@@ -836,11 +835,11 @@ export function ReportShareReview({
                               return { ...c, donutSegments };
                             })
                           }
-                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                         />
                       </label>
                       <label className="block">
-                        <span className="text-[11px] font-medium text-dash-ink-secondary">Spend amount</span>
+                        <span className="text-[12px] font-medium text-dash-ink-secondary">Spend amount</span>
                         <input
                           type="text"
                           value={seg.spendLabel}
@@ -853,14 +852,14 @@ export function ReportShareReview({
                               return { ...c, donutSegments };
                             })
                           }
-                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[13px] tabular-nums text-dash-ink"
+                          className="mt-0.5 w-full rounded-md border border-dash-border bg-dash-card px-2.5 py-1.5 text-[14px] tabular-nums text-dash-ink"
                         />
                       </label>
                     </div>
                   </div>
                 ))}
               </div>
-              <label className="mt-3 block text-[11px] uppercase tracking-wide text-dash-ink-secondary">Summary line</label>
+              <label className="mt-3 block text-[12px] uppercase tracking-wide text-dash-ink-secondary">Summary line</label>
               <input
                 type="text"
                 value={chartEdit.visualSlide?.summaryLine ?? chartEdit.footerInsight ?? ""}
@@ -873,13 +872,24 @@ export function ReportShareReview({
                       : c,
                   );
                 }}
-                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[13px] text-dash-ink"
+                className="mt-1 w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2 text-[14px] text-dash-ink"
               />
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-lg border border-dash-border">
-            <ShareReportView data={draftShare} />
+          <div className="min-w-0 overflow-hidden rounded-xl border border-dash-border">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dash-border bg-dash-card px-4 py-3">
+              <p className="text-[12px] font-semibold text-dash-ink">{previewMode === "section" ? "Selected section preview" : "Full report preview"}</p>
+              <div className="flex rounded-lg border border-dash-border p-0.5" role="group" aria-label="Preview scope">
+                {(["section", "full"] as const).map(scope => <button key={scope} type="button" aria-pressed={previewMode === scope} onClick={() => setPreviewMode(scope)} className={`rounded-md px-2.5 py-1.5 text-[12px] ${previewMode === scope ? "bg-dash-border text-dash-ink" : "text-dash-ink-secondary"}`}>{scope === "section" ? "Selected section" : "Full report"}</button>)}
+              </div>
+            </div>
+            <ShareReportView mode="preview" data={previewMode === "full" ? draftShare : { ...draftShare, visibility: {
+              cover: coverSelected, overview: overviewSelected, combinedTotal: combinedTotalSelected,
+              metricGuide: selectedSlideId === "metricGuide",
+              campaigns: Object.fromEntries(draftShare.campaigns.map(c => [c.campaignName, c.campaignName === selectedCampaign?.campaignName])),
+              adSets: Object.fromEntries(draftShare.adSets.map(a => [adSetVisibilityKey(a.campaignName, a.adSetName ?? ""), a.campaignName === selectedAdSet?.campaignName && a.adSetName === selectedAdSet?.adSetName])),
+            } }} />
           </div>
         </div>
       </div>

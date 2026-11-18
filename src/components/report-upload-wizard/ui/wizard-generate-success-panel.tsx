@@ -33,7 +33,7 @@ const chipClass =
   "nre-wizard-success-secondary inline-flex items-center justify-center gap-1.5 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
 
 const primaryActionClass =
-  "nre-wizard-success-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dash-accent/45 px-4 py-3 text-[15px] font-semibold text-dash-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
+  "nre-wizard-success-primary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-dash-accent/45 px-3 py-2.5 text-[14px] font-semibold text-dash-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
 
 const secondaryExportClass =
   "nre-wizard-success-secondary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-sidebar/60 px-3 py-2.5 text-[14px] font-medium text-dash-ink transition-colors hover:bg-dash-border/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:pointer-events-none disabled:opacity-50";
@@ -94,6 +94,7 @@ export function WizardGenerateSuccessPanel({
   clientId,
   reportId,
   reportTitle,
+  reportType,
   reportTypeLabel,
   wizardSharePlatformLabel,
   slideCount,
@@ -241,34 +242,26 @@ export function WizardGenerateSuccessPanel({
         {/* Section B — review and export */}
         <section aria-labelledby="success-review-heading">
           <h3 id="success-review-heading" className="sr-only">Review and download</h3>
-          {previewHref && shareToken ? (
-            <Link
-              href={previewHref}
-              className={primaryActionClass}
-              onClick={() => {
-                persistGenerateSnapshot({ reportId: reportId!, downloadUrl, shareToken });
-              }}
-            >
-              Preview &amp; edit report
-            </Link>
-          ) : null}
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <a href={downloadUrl} className={secondaryExportClass}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <a href={downloadUrl} className={primaryActionClass}>
               <PptxDownloadIcon />
               Download PPTX
             </a>
             {hasGoogleDriveConnected ? (
-              <button
-                type="button"
-                onClick={handleSaveButtonClick}
-                disabled={driveSaving}
-                className={secondaryExportClass}
-              >
+              <button type="button" onClick={handleSaveButtonClick} disabled={driveSaving} className={secondaryExportClass}>
                 <GoogleDriveIcon />
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
             ) : null}
+            {previewHref && shareToken ? (
+              <Link href={previewHref} className={secondaryExportClass} onClick={() => {
+                persistGenerateSnapshot({ reportId: reportId!, downloadUrl, shareToken });
+              }}>
+                {reportType === "COMPARISON" ? "Review browser report" : "Edit browser & PPTX"}
+              </Link>
+            ) : null}
           </div>
+          <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">{reportType === "COMPARISON" ? "Review both periods in the browser report. " : "Publish content edits to update the browser report and PPTX download. "}For slide layout changes, open the downloaded PPTX in Microsoft PowerPoint. Edit Google Slides directly in Drive.</p>
         </section>
 
         {publishedAt && <p className="text-sm text-dash-ink-secondary">Published edits are live.</p>}

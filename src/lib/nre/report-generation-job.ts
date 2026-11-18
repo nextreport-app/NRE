@@ -23,7 +23,7 @@ import {
 import { generateShareToken } from "@/lib/share-token";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { aiKeysFromEnv } from "@/lib/ai/client";
-import { generateInsights } from "@/lib/ai/generate-insights";
+import { generateInsights, revalidateCachedInsights } from "@/lib/ai/generate-insights";
 import { renderComparisonPptx, renderDayBreakdownPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
 import { buildHistoricalAiCopyMap } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
@@ -340,7 +340,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         : null;
 
     const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
-      precalcMap ? Promise.resolve(precalcMap) : generateInsights(reportData, aiKeysFromEnv()),
+      precalcMap ? Promise.resolve(revalidateCachedInsights(reportData, precalcMap)) : generateInsights(reportData, aiKeysFromEnv()),
       prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
       loadLogoAsset(client.logoUrl),
     ]);

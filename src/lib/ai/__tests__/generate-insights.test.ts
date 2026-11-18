@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { generateInsights } from "../generate-insights";
+import { generateInsights, revalidateCachedInsights } from "../generate-insights";
 import { callAI } from "../client";
 import { slideAiKey } from "../../pptx/render";
 import type { ReportData } from "../../nre/report-data";
@@ -445,4 +445,45 @@ describe("generateInsights", () => {
       }
     });
   });
+});
+
+
+it("replaces an unsupported September recommendation in a November report with source-based copy", async () => {
+  const data = makeReportData();
+  for (const slide of [...data.campaignSlides, ...data.adSetSlides]) slide.ai.dateRange = "November 10 - November 16";
+  vi.mocked(callAI).mockImplementation(async () => "Delivery produced 5 leads during November. Run a controlled comparison in September using identical creative.");
+  try {
+    const result = await generateInsights(data, { anthropicApiKey: "k" });
+    for (const slide of [...data.campaignSlides, ...data.adSetSlides]) {
+      const copy = result.get(slideAiKey(slide))!;
+      expect(copy.summary).toBe(buildFallbackSummary(slide.ai));
+      expect(copy.insights).toBe(buildFallbackInsights(slide.ai));
+      expect(copy.insights).not.toContain("September");
+    }
+  } finally { vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK); }
+});
+
+
+it("rejects claims of staying within an allocated budget when only actual spend is provided", async () => {
+  const data = makeReportData();
+  vi.mocked(callAI).mockResolvedValue("Delivery produced 5 leads within the allocated budget. Review the next period before changing creative.");
+  try {
+    const result = await generateInsights(data, { anthropicApiKey: "k" });
+    expect(result.get(slideAiKey(data.campaignSlides[0]))!.summary).toBe(buildFallbackSummary(data.campaignSlides[0].ai));
+  } finally { vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK); }
+});
+
+
+it("rechecks cached preview commentary without changing valid copy or mutating the cache", () => {
+  const data = makeReportData();
+  const slide = data.campaignSlides[0];
+  slide.ai.dateRange = "November 10 - November 16";
+  const key = slideAiKey(slide);
+  const saved = { summary: "Delivery stayed within the allocated budget.", insights: "Run a comparison in September." };
+  const cache = new Map([[key, saved]]);
+  const result = revalidateCachedInsights(data, cache);
+  expect(result.get(key)).toEqual({ summary: buildFallbackSummary(slide.ai), insights: buildFallbackInsights(slide.ai) });
+  expect(cache.get(key)).toBe(saved);
+  const valid = { summary: "Delivery produced 5 leads. Compare the next period before changing spend.", insights: "A controlled test may clarify the next step. Review November delivery first." };
+  expect(revalidateCachedInsights(data, new Map([[key, valid]])).get(key)).toEqual(valid);
 });

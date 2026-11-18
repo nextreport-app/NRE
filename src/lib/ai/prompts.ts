@@ -49,7 +49,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
       "Sentence 1: What this campaign is for (reach/awareness) and the one reach result that matters this period.\n" +
       "Sentence 2: One efficiency read (CPM, frequency, or CTR) — interpret, do not dump the scorecard.\n" +
       "Rules:\n" +
-    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
+    "- Only the supplied period metrics are available. Never name a calendar month outside the supplied date range; describe future actions as next period. Never claim budget adherence from spend alone. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
       "- Do NOT mention results, purchases, leads, link clicks, or any conversion count\n" +
       "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
@@ -69,7 +69,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
     "Sentence 1: What this campaign is for, using the result label \"" + resultLabel + "\" exactly as given, and the one result that matters this period.\n" +
     "Sentence 2: One efficiency read (cost per result, CTR, or spend vs results) — interpret or compare, do not dump the full scorecard.\n" +
     "Rules:\n" +
-    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
+    "- Only the supplied period metrics are available. Never name a calendar month outside the supplied date range; describe future actions as next period. Never claim budget adherence from spend alone. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
     "- Use the same result label as the chips: " + resultLabel + "\n" +
     "- If results = 0, say the campaign recorded no " + resultLabel.toLowerCase() + " during this period — do not claim the algorithm is learning unless this is clearly a brand-new campaign (it is not, unless the data says so)\n" +
@@ -96,7 +96,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
       "FORBIDDEN: pixel, landing page, website tracking, checkout, or any off-site conversion setup.\n" +
       "FORBIDDEN: do not list four generic actions as a laundry list. Give one specific next step only.\n" +
       "Rules:\n" +
-    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
+    "- Only the supplied period metrics are available. Never name a calendar month outside the supplied date range; describe future actions as next period. Never claim budget adherence from spend alone. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
       "- Always use actual numbers from the data when you cite them\n" +
       "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
@@ -116,7 +116,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
     "Sentence 2: One next step that follows from that read. Frequency alone does not establish fatigue. For zero results, suggest checking the relevant conversion journey; otherwise suggest a controlled test or a comparison to the next period. Do not invent a frequency goal.\n" +
     "FORBIDDEN: do not list four generic actions (shift budget, pause underperformers, test new creatives, and refine targeting) as a laundry list. Give one specific next step only.\n" +
     "Rules:\n" +
-    "- Only the supplied period metrics are available. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
+    "- Only the supplied period metrics are available. Never name a calendar month outside the supplied date range; describe future actions as next period. Never claim budget adherence from spend alone. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
     "- Always use actual numbers from the data when you cite them\n" +
     "- Use the result label \"" + ctx.resultLabel + "\" exactly as given\n" +
@@ -381,6 +381,11 @@ export function aiCopyViolatesObjectiveRules(
   ctx: AiContext,
   platform: "META" | "GOOGLE" | "TIKTOK" = "META",
 ): boolean {
+  // Recommendations must not invent a different calendar month from the source period.
+  // May is case-sensitive so ordinary phrases such as “may improve” stay valid.
+  const months = [/\bjan(?:uary)?\b/i, /\bfeb(?:ruary)?\b/i, /\bmar(?:ch)?\b/i, /\bapr(?:il)?\b/i, /\bMay\b/, /\bjun(?:e)?\b/i, /\bjul(?:y)?\b/i, /\baug(?:ust)?\b/i, /\bsep(?:t(?:ember)?)?\b/i, /\boct(?:ober)?\b/i, /\bnov(?:ember)?\b/i, /\bdec(?:ember)?\b/i];
+  if (months.some(month => month.test(text) && !new RegExp(month.source, "i").test(ctx.dateRange))) return true;
+  if (/\b(?:within|under|below|on)[ -](?:(?:the|its|an?)\s+)?(?:(?:allocated|planned|approved|agreed)\s+)?budget\b/i.test(text)) return true;
   // No targets, historical periods, margins or audience diagnostics are in AiContext.
   if (/\b(?:benchmarks?|targets?|profitab\w*|historical|week[- ]over[- ]week|fatigue|saturation|efficient(?:ly)?|expected range|solid efficiency|strong efficiency|resonat\w*|conversion leaks)\b/i.test(text)) return true;
   if (/\b(?:steady|consistent) (?:performance|engagement|lead generation)\b/i.test(text)) return true;

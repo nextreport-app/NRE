@@ -9,7 +9,7 @@ const props = {
 describe("concise generated-report panel",()=>{
   it("keeps the report identity and actions without repeated introductory copy",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props}/>);
-    for(const text of ["Report ready","Weekly Performance Report","06/11/2026 – 12/11/2026","7 slides","13/11/2026","Preview &amp; edit report","Download PPTX","Share report","Copy link"]) expect(html).toContain(text);
+    for(const text of ["Report ready","Weekly Performance Report","06/11/2026 – 12/11/2026","7 slides","13/11/2026","Edit browser &amp; PPTX","Download PPTX","Share report","Copy link"]) expect(html).toContain(text);
     for(const text of ["Ready to review","The final touch","Includes last week","Review your slides before sharing with your client."]) expect(html).not.toContain(text);
     expect(html).toContain("Anyone with this link can view the report.");
     expect(html).toContain("Save to Google Drive · optional");

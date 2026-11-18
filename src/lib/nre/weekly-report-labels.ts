@@ -3,7 +3,7 @@ import { storedReportDateToIso } from "@/lib/client-date-format";
 /** Client-facing copy clarifying that “Weekly Performance Report” is a bundle, not 7-day-only data. */
 
 export const WEEKLY_REPORT_SCOPE_LINE =
-  "Includes the last 7 days, MTD, and a last-30-day chart.";
+  "Includes weekly, MTD, and a 30-day chart.";
 
 export function reportingWeekLabel(dateRange: string): string {
   const trimmed = dateRange.trim();
@@ -23,5 +23,5 @@ export function weeklyReportScopeLine(storedRange: string, generatedAt?: string,
   const endsYesterday = generated && Number.isFinite(generated.getTime()) && end === reportCalendarYesterday(generated, timezone);
   return start && end && endsYesterday && Date.parse(end) - Date.parse(start) === 6 * 86400000
     ? WEEKLY_REPORT_SCOPE_LINE
-    : "Includes the reporting period, MTD, and a last-30-day chart.";
+    : "Includes the reporting period, MTD, and a 30-day chart.";
 }
