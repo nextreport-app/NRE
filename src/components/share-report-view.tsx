@@ -408,17 +408,17 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
 
   return (
     <SlideCard>
-      <div className="flex min-h-[520px] flex-col justify-center">
+      <div className="flex flex-col">
         <h2 className="line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]">
           {model.title}
         </h2>
 
         <div
-          className="mt-5 flex min-h-[384px] flex-col justify-center rounded-lg border border-navy-border p-4 sm:p-5"
+          className="mt-5 flex flex-col justify-center rounded-lg border border-navy-border p-4 sm:p-5"
           style={{ backgroundColor: "#191c24" }}
         >
           {splitPanel ? (
-            <div className="grid min-h-[320px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1.2fr)] lg:items-stretch">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1.2fr)] lg:items-stretch">
               <div className="flex min-w-0 flex-col">
                 <p className="text-[16px] font-bold uppercase tracking-wide text-[#adb3c0]">{model.leftHeading}</p>
                 <div className="mt-5 flex justify-center">
@@ -726,11 +726,12 @@ export function ShareReportView({
   clientCurrency?: string;
   clientTimezone?: string;
   shareToken?: string;
-  mode?: "share" | "print";
+  mode?: "share" | "print" | "preview";
   /** Prefix for /metric-icons on the share page (e.g. https://nextreport.in). */
   assetBaseUrl?: string;
 }) {
   const isPrint = mode === "print";
+  const isPreview = mode === "preview";
   const slideClass = isPrint ? "print-slide mb-0" : "mb-6";
   const coverSlideClass = isPrint ? "print-slide print-cover-slide mb-0" : slideClass;
   const visibleData = applyShareVisibility(data);
@@ -756,7 +757,7 @@ export function ShareReportView({
   return (
     <div
       id={isPrint ? "share-report-print" : "share-report-page"}
-      className={isPrint ? "bg-navy" : "nre-client-report min-h-screen"}
+      className={isPrint ? "bg-navy" : isPreview ? "nre-client-report" : "nre-client-report min-h-screen"}
       style={
         isPrint
           ? {
@@ -765,10 +766,10 @@ export function ShareReportView({
               backgroundImage: "radial-gradient(circle, #1e3a5f 1px, transparent 1px)",
               backgroundSize: "32px 32px",
             }
-          : { fontFamily: "var(--font-inter), sans-serif" }
+          : { fontFamily: "var(--font-inter), sans-serif", backgroundImage: "radial-gradient(circle, rgba(148,163,184,0.14) 1px, transparent 1px)", backgroundSize: "22px 22px" }
       }
     >
-      {!isPrint ? (
+      {!isPrint && !isPreview ? (
         <ShareReportBrandingHeader
           brandingDisplay={brandingDisplay}
           branding={branding}
@@ -792,11 +793,11 @@ export function ShareReportView({
         {showCover ? (
         <section className={coverSlideClass}>
           <div
-            className={`relative isolate mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-navy-border bg-navy-panel px-4 py-8 shadow-[0_8px_32px_rgba(0,0,0,0.2)] sm:px-8 sm:py-9 md:px-10 md:py-10 ${isPrint ? "" : "sm:aspect-video"}`}
+            className="relative isolate mx-auto w-full overflow-hidden rounded-xl border border-navy-border bg-navy-panel px-5 py-7 shadow-[0_8px_32px_rgba(0,0,0,0.2)] sm:px-8 sm:py-8"
             style={{ backgroundImage: "radial-gradient(ellipse at top left, rgba(24,119,242,0.15), transparent 65%), radial-gradient(ellipse at bottom right, rgba(251,176,64,0.08), transparent 60%)" }}
           >
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]" style={{ backgroundImage: "linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-            <div className="flex min-h-0 flex-col items-center justify-center px-1 text-center sm:h-full">
+            <div className="flex min-h-0 flex-col items-center justify-center px-1 text-center">
               <div
                 className="inline-flex max-w-full items-center gap-2 rounded-full"
                 style={{ backgroundColor: "#292d37", border: "1px solid #383e4c", padding: "3px 10px" }}
@@ -924,7 +925,7 @@ export function ShareReportView({
         </p>
       ) : null}
 
-      {!isPrint && (brandingDisplay.footerPrimary || brandingDisplay.showGeneratedDate) && (
+      {!isPrint && !isPreview && (brandingDisplay.footerPrimary || brandingDisplay.showGeneratedDate) && (
       <footer style={{ textAlign: "center", padding: "32px 24px", borderTop: "1px solid #1e3a5f", marginTop: "40px" }}>
         {brandingDisplay.footerPrimary ? (
           <div style={{ color: "#94a3b8", fontSize: "13px" }}>{brandingDisplay.footerPrimary}</div>

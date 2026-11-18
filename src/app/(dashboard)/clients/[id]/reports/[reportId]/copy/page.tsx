@@ -36,11 +36,11 @@ export default async function ReportCopyPage({
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-6">
+    <div className="mx-auto w-full min-w-0 max-w-[1440px] space-y-4 px-4 py-5 sm:px-6">
       <Link href={backHref} className="text-[13px] text-dash-accent hover:underline">
         {backLabel}
       </Link>
-      <h1 className="text-[20px] font-semibold text-dash-ink">Review before sharing</h1>
+      <h1 className="text-[20px] font-semibold text-dash-ink">Edit report</h1>
       <ReportShareReview
         clientId={id}
         reportId={reportId}

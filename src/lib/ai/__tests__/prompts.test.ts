@@ -425,3 +425,10 @@ describe("source-bounded client narrative", () => {
   expect(aiCopyViolatesObjectiveRules(copy,context)).toBe(false);
  });
 });
+
+it("grounds calendar-month references without rejecting valid cross-month periods or modal may", () => {
+  expect(aiCopyViolatesObjectiveRules("Review May delivery before changing spend.", ctx({ dateRange: "MAY 1 - MAY 31" }))).toBe(false);
+  expect(aiCopyViolatesObjectiveRules("Compare October and November delivery.", ctx({ dateRange: "Oct 31 - Nov 6" }))).toBe(false);
+  expect(aiCopyViolatesObjectiveRules("A controlled test may help clarify the next step.", ctx({ dateRange: "November 10 - November 16" }))).toBe(false);
+  expect(aiCopyViolatesObjectiveRules("Run a comparison in September.", ctx({ dateRange: "November 10 - November 16" }))).toBe(true);
+});

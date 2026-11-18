@@ -22,12 +22,12 @@ describe("weekly report labels", () => {
     expect(isWeeklyShareReportType("MONTHLY")).toBe(false);
   });
 
-  it("uses last 7 days only for a seven-day saved reporting window", () => {
-    expect(weeklyReportScopeLine("11/06/2026 to 11/12/2026", "2026-11-13T12:00:00Z")).toContain("last 7 days");
-    expect(weeklyReportScopeLine("12/29/2026 to 01/04/2027", "2027-01-05T12:00:00Z")).toContain("last 7 days");
+  it("uses weekly wording for the latest seven days and period wording for other windows", () => {
+    expect(weeklyReportScopeLine("11/06/2026 to 11/12/2026", "2026-11-13T12:00:00Z")).toContain("weekly, MTD, and a 30-day chart");
+    expect(weeklyReportScopeLine("12/29/2026 to 01/04/2027", "2027-01-05T12:00:00Z")).toContain("weekly, MTD, and a 30-day chart");
     for (const range of ["10/30/2026 to 11/12/2026", "10/01/2026 to 10/07/2026", "invalid", ""]) {
       expect(weeklyReportScopeLine(range, "2026-11-13T12:00:00Z")).toContain("reporting period");
-      expect(weeklyReportScopeLine(range, "2026-11-13T12:00:00Z")).not.toContain("last 7 days");
+      expect(weeklyReportScopeLine(range, "2026-11-13T12:00:00Z")).not.toContain("weekly, MTD, and a 30-day chart");
     }
   });
   it("scope line is non-empty", () => {
