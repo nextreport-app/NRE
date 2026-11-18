@@ -45,6 +45,6 @@ describe("shared report controls for API imports", () => {
  });
  it.each(["csv", "api"] as const)("shows one report selector and only the selected report details for %s", source => {
   const html = renderToStaticMarkup(<WizardReportSetupPanel source={source} reportType="WEEKLY" reportTypeLabel="Weekly overview" platform="META" clientTimezone="UTC" onReportTypeChange={() => {}} />);
-  expect(html).toContain("<select"); expect(html).toContain("What you get"); expect(html).not.toContain("Close choices"); expect(html).not.toContain("Month + MTD"); expect(html).not.toContain("One day or a date range, with one row per day.");
+  expect(html).toContain("<fieldset"); expect(html).not.toContain("<select"); expect(html.match(/type="radio"/g)).toHaveLength(4); expect(html).toContain("What you get"); expect(html).not.toContain("Close choices"); expect(html).not.toContain("Month + MTD"); expect(html).not.toContain("One day or a date range, with one row per day.");
  });
 });
