@@ -164,7 +164,7 @@ export default async function ClientDetailPage({
         </Card>
         {isClientPlatformConnectionsSectionVisible() ? (
           <Card id="platform-connections">
-            <CardHeading hint="Connect Meta Ads for read-only API reporting, or continue with manual CSV upload. Other platform reporting is coming soon.">
+            <CardHeading hint="Connect Meta Ads for read-only API reporting, or continue with manual CSV upload.">
               Platform connections
             </CardHeading>
             <ClientPlatformConnections

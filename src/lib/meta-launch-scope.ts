@@ -38,8 +38,8 @@ export function isWizardPlatformSwitchEnabled(): boolean {
 }
 
 export function isClientPlatformConnectionVisible(key: ClientPlatformConnectionKey): boolean {
-  // Connection management is independent of report-wizard rollout.
-  return (["meta", "googleAds", "tiktok", "ga4"] as readonly string[]).includes(key);
+  // Keep client setup aligned with the currently released report sources.
+  return key === "meta";
 }
 
 export function isLaunchReportTypeEnabled(reportType: string): reportType is LaunchEnabledReportType {

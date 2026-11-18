@@ -118,7 +118,6 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <p className="mb-6 rounded-lg border border-dash-border bg-dash-card p-4 text-[13px] leading-relaxed text-dash-ink-secondary">Choose Meta API sync or manual CSV upload in the report wizard. Connect Meta Ads below for read-only access; CSV reporting does not require a connection. Google Drive is optional for saving finished reports. Google Ads, TikTok Ads and GA4 reporting are coming soon.</p>
       <section id="google-drive" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings
@@ -139,41 +138,49 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <section className="mb-10 scroll-mt-6">
-        <SectionHeading>Google Ads API Sync</SectionHeading>
-        <GoogleAdsSettings
-          initialConnectedEmail={user.googleAdsConnectedEmail}
-          initialConnected={user.googleAdsEnabled}
-          justConnected={google_ads_connected === "1"}
-          connectError={google_ads_error ?? null}
-          googleAdsConfigured={googleAdsConfigured}
-        />
-      </section>
+      <details open={!!(google_ads_connected || google_ads_error || ga4_connected || ga4_error || tiktok_ads_connected || tiktok_ads_error)} className="mb-10 rounded-lg border border-dash-border bg-dash-card/30 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-dash-ink">Other platform connections</summary>
+        <p className="mt-2 text-[13px] text-dash-ink-secondary">For testing only. These platforms are not included in the current Meta Ads reporting launch.</p>
+        <div className="mt-6">
+          <section className="mb-10 scroll-mt-6">
+            <SectionHeading>Google Ads API Sync</SectionHeading>
+            <GoogleAdsSettings
+              initialConnectedEmail={user.googleAdsConnectedEmail}
+              initialConnected={user.googleAdsEnabled}
+              justConnected={google_ads_connected === "1"}
+              connectError={google_ads_error ?? null}
+              googleAdsConfigured={googleAdsConfigured}
+            />
+          </section>
 
-      <section className="mb-10 scroll-mt-6">
-        <SectionHeading>Google Analytics (GA4)</SectionHeading>
-        <Ga4Settings
-          initialConnectedEmail={user.ga4ConnectedEmail}
-          initialConnected={user.ga4Enabled}
-          justConnected={ga4_connected === "1"}
-          connectError={ga4_error ?? null}
-          ga4Configured={ga4Configured}
-        />
-      </section>
+          <section className="mb-10 scroll-mt-6">
+            <SectionHeading>Google Analytics (GA4)</SectionHeading>
+            <Ga4Settings
+              initialConnectedEmail={user.ga4ConnectedEmail}
+              initialConnected={user.ga4Enabled}
+              justConnected={ga4_connected === "1"}
+              connectError={ga4_error ?? null}
+              ga4Configured={ga4Configured}
+            />
+          </section>
 
-      <section className="mb-10 scroll-mt-6">
-        <SectionHeading>TikTok Ads</SectionHeading>
-        <TikTokAdsSettings
-          initialConnectedName={user.tiktokConnectedName}
-          initialConnected={user.tiktokAdsEnabled}
-          justConnected={tiktok_ads_connected === "1"}
-          connectError={tiktok_ads_error ?? null}
-          regionRestricted={tiktokRegionRestricted}
-          tiktokConfigured={tiktokConfigured}
-        />
-      </section>
+          <section className="mb-10 scroll-mt-6">
+            <SectionHeading>TikTok Ads</SectionHeading>
+            <TikTokAdsSettings
+              initialConnectedName={user.tiktokConnectedName}
+              initialConnected={user.tiktokAdsEnabled}
+              justConnected={tiktok_ads_connected === "1"}
+              connectError={tiktok_ads_error ?? null}
+              regionRestricted={tiktokRegionRestricted}
+              tiktokConfigured={tiktokConfigured}
+            />
+          </section>
+
+        </div>
+      </details>
 
       <section id="automations" className="mb-10 scroll-mt-6">
+        <SectionHeading>Report notifications &amp; automations</SectionHeading>
         <IntegrationSettings
           initialSlackWebhookUrl={user.slackWebhookUrl}
           initialAutomationWebhookUrl={user.automationWebhookUrl}

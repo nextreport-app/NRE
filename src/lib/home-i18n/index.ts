@@ -24,7 +24,10 @@ export function homeCopy(locale: SiteLocaleId): HomeCopy {
   const copy = mergeHomeCopy(HOME_EN, patch);
   // Launch status must not regress through older translation patches.
   copy.howItWorksSteps = [HOME_EN.howItWorksSteps[0], ...copy.howItWorksSteps.slice(1)];
-  copy.features = [HOME_EN.features[0], ...copy.features.slice(1)];
+  copy.features = HOME_EN.features.map((feature, index) => {
+    const translated = copy.features[index];
+    return index < 2 || !translated || /Google Ads|TikTok|GA4/i.test(`${translated.title} ${translated.description}`) ? feature : translated;
+  });
   copy.featuresSubtitle = HOME_EN.featuresSubtitle;
   copy.pricingComparison.metaReporting = HOME_EN.pricingComparison.metaReporting;
   copy.pricingComparison.otherPlatforms = HOME_EN.pricingComparison.otherPlatforms;

@@ -59,13 +59,12 @@ function StatusBadge({ connected, configured, restricted }: { connected: boolean
 
 /**
  * Manage page — account-level ad platform OAuth status with links to Account settings.
- * GA4 property linking stays in Ga4PropertyPicker below this summary.
  */
 export function ClientPlatformConnections(props: ClientPlatformConnectionsProps) {
   return (
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed text-dash-ink-secondary">
-        Manage agency-wide API connections in Account settings. Link this client’s GA4 property separately below.
+        Manage your Meta Ads connection in Account settings.
       </p>
       <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
         {PLATFORMS.filter(({ key }) => isClientPlatformConnectionVisible(key)).map(({ key, name, hash, Icon }) => {

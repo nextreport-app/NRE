@@ -23,7 +23,6 @@ export const META_V1_PROMISE_HEADLINE = "What’s live today (Meta Ads)";
 
 export const META_V1_PROMISE_BULLETS = [
   "Live now: Meta Ads — weekly, monthly, comparison and daily reports from read-only API sync or a day-wise CSV.",
-  "Coming soon: Google Ads, TikTok Ads and GA4 reporting.",
   "CSV option: Meta Ads Manager → Reports → Export table data → CSV (Day breakdown — not the Campaigns-screen export).",
   "API sync fetches the dates your report needs. CSV exports should cover your selected period with Day breakdown.",
   "Objectives auto-detected from your imported data; confirm in the wizard when needed.",

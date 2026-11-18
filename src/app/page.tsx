@@ -60,7 +60,7 @@ export default async function Home() {
         <HowItWorksSection />
         <section aria-label="Platform connections" className="border-y border-navy-border bg-navy-panel/30 px-6 py-6">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
-            <div><h2 className="text-base font-semibold text-ink">Platform connections</h2><p className="mt-1 text-sm text-ink-secondary">Meta Ads · Google Ads · Google Analytics (GA4) · TikTok Ads</p><p className="mt-1 text-xs text-ink-muted">Meta Ads reporting is live with API sync or CSV upload. Manage connections in Account Settings. Google Ads, TikTok Ads and GA4 reporting are coming soon.</p></div>
+            <div><h2 className="text-base font-semibold text-ink">Meta Ads reporting</h2><p className="mt-1 text-sm text-ink-secondary">Sync your Meta ad account or upload an Ads Manager CSV.</p></div>
             <Link href="/account" className="text-sm font-semibold text-accent hover:underline">Manage connections →</Link>
           </div>
         </section>
