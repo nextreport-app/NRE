@@ -214,7 +214,17 @@ export function validateMtdDailyCsv(
     }
   }
   if ([...idsByName.values()].some(ids => ids.size > 1)) errors.push({ field: "entity_identity", message: "Different campaign/ad-set IDs share a name in this export. They cannot be safely merged by name; give those entities distinct names or export them separately." });
-  if (platform === "META" && csvHasDailyGranularity(rows)) {
+  // Audience views have a different row identity from the standard daily import.
+  // Do not call legitimate segment rows duplicates, or silently discard the dimension.
+  const audienceHeaders = platform === "META" ? headers.filter(header =>
+    /^(age|gender|country|region|placement|platform|publisher[ _]platform|platform[ _]position)$/i.test(header.trim()) &&
+    rows.some(row => !!row._raw?.[header]?.trim())
+  ) : [];
+  if (audienceHeaders.length) errors.push({
+    field: "audience_breakdown",
+    message: `This export contains audience breakdowns (${audienceHeaders.join(", ")}). Audience breakdown reporting is not available yet. For a standard report, export with Day breakdown only, without age, location, platform or placement breakdowns.`,
+  });
+  if (platform === "META" && audienceHeaders.length === 0 && csvHasDailyGranularity(rows)) {
     const duplicates = duplicateDailyFacts(rows);
     if (duplicates.length) errors.push({ field: "duplicate_rows", message: `Duplicate campaign/ad-set/ad/day records: ${duplicates.join("; ")}. Export one daily grain without overlapping totals or additional breakdowns.` });
   }

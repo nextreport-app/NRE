@@ -20,6 +20,11 @@ describe("wizard report type copy", () => {
     }
   });
 
+  it("uses the Compare action and explains the default seven-day comparison", () => {
+    expect(WIZARD_REPORT_TYPE_COPY.COMPARISON.pickerLabel).toBe("Compare");
+    expect(WIZARD_REPORT_TYPE_COPY.COMPARISON.cardOneLiner).toBe("Compare your performance in the last 7 days to the previous 7 days or choose two custom date ranges.");
+  });
+
   it("weekly one-liner mentions MTD and chart bundle", () => {
     expect(WIZARD_REPORT_TYPE_COPY.WEEKLY.cardOneLiner).toContain("MTD");
     expect(WIZARD_REPORT_TYPE_COPY.WEEKLY.cardOneLiner).toContain("30");

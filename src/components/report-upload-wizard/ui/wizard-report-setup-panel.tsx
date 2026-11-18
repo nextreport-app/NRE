@@ -56,7 +56,7 @@ export function WizardReportSetupPanel({
 
   const selectedType = reportType === "HISTORICAL" ? "MONTHLY" : reportType === "DAILY" ? "DAY_BREAKDOWN" : reportType;
   const choices = [...LAUNCH_PRIMARY_REPORT_TYPES, ...LAUNCH_SECONDARY_REPORT_TYPES];
-  const labels: Partial<Record<ReportTypeValue, string>> = { WEEKLY: "Weekly", MONTHLY: "Monthly", COMPARISON: "Comparison", DAY_BREAKDOWN: "Daily" };
+  const labels: Partial<Record<ReportTypeValue, string>> = { WEEKLY: "Weekly", MONTHLY: "Monthly", COMPARISON: "Compare", DAY_BREAKDOWN: "Daily" };
   const iconColors: Partial<Record<ReportTypeValue, string>> = { WEEKLY: "text-sky-400", MONTHLY: "text-violet-400", COMPARISON: "text-teal-400", DAY_BREAKDOWN: "text-rose-400" };
   return <section className="rounded-xl border border-dash-border bg-dash-bg/30 p-4 sm:p-5">
     <fieldset>
