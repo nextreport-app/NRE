@@ -155,7 +155,7 @@ export const REPORT_BRANDING_MODE_LABELS: Record<
   { title: string; description: string }
 > = {
   nextreport: {
-    title: "NextReport (default)",
+    title: "NextReport",
     description: `“Prepared by NextReport” on the cover and NextReport on the ${REPORT_BRANDING_SURFACES}.`,
   },
   agency: {
@@ -163,7 +163,7 @@ export const REPORT_BRANDING_MODE_LABELS: Record<
     description: `Your name on the cover (“Prepared by …”), your logo and name on the ${REPORT_BRANDING_SURFACES}.`,
   },
   hidden: {
-    title: "Hide — don't show any name",
+    title: "No branding (default)",
     description: `No “Prepared by” line and no NextReport or agency name on the ${REPORT_BRANDING_SURFACES}.`,
   },
 };

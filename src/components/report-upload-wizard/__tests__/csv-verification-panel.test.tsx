@@ -19,12 +19,12 @@ describe("verification presentation separates numeric mismatches from source cov
   it("shows a date review with matching numbers without claiming mismatched totals or full green coverage", () => {
     const verification = { ...matching, coverageWarnings };
     const html = render(verification);
-    expect(html).toContain("Dates without records");
+    expect(html).toContain("Source coverage");
     expect(html).toContain("Available source totals match");
-    expect(html.indexOf("Dates without records")).toBeGreaterThan(html.indexOf("</summary>"));
+    expect(html.indexOf("Source coverage")).toBeGreaterThan(html.indexOf("</summary>"));
     expect(html).not.toMatch(/<details[^>]*\sopen(?:=|>)/);
     expect(html).not.toContain("nre-wizard-callout-warn");
-    expect(html).toContain("2026-10-21");
+    expect(html).not.toContain("2026-10-21");
     expect(html).toContain("The checked report totals match your imported data.");
     expect(html).toContain("If you expected activity, check the export’s date range.");
     expect(html).not.toContain("unique audiences or AI commentary");
@@ -37,10 +37,10 @@ describe("verification presentation separates numeric mismatches from source cov
 
   it("explains a fully absent selected week while displaying the chart cross-check", () => {
     const html = render({ ...matching, checks: [{ scope: "Last 30 days", metric: "Amount spent", status: "ok", reportDisplay: "$100", csvDisplay: "$100" }], scopesVerified: ["Last 30 days"], coverageWarnings: [{ scope: "Report week (Oct 28 - Nov 3)", missingDays: ["2026-10-28", "2026-11-03"], message: "There are no CSV rows for the selected campaigns in the confirmed report week. Only available chart totals were cross-checked; missing days were not verified as zero." }] });
-    expect(html).toContain("Dates without records");
+    expect(html).toContain("Source coverage");
     expect(html).toContain("Available source totals match");
-    expect(html).toContain("2026-10-28, 2026-11-03");
-    expect(html).toContain("No records were found for the selected campaigns on these dates.");
+    expect(html).not.toContain("2026-10-28"); expect(html).not.toContain("2026-11-03");
+    expect(html).toContain("Some dates have no records for the selected campaigns.");
     expect(html).not.toContain("missing days were not verified as zero");
     expect(html).not.toContain("Source data cross-check not run");
     expect(html).not.toContain("nre-wizard-callout-success");
@@ -49,7 +49,7 @@ describe("verification presentation separates numeric mismatches from source cov
   it("shows only actual numeric mismatches while retaining the date review", () => {
     const html = render({ ...matching, status: "mismatch", coverageWarnings, checks: [...matching.checks, { scope: "Report week", metric: "WEBSITE LEADS", status: "mismatch", reportDisplay: "1", csvDisplay: "0" }] });
     expect(html).toContain("Deck preview differs from your imported data on 1 total");
-    expect(html).toContain("Dates without records");
+    expect(html).toContain("Source coverage");
     expect(html).toContain("WEBSITE LEADS");
     expect(html).not.toContain("Amount spent");
   });
@@ -59,6 +59,6 @@ describe("verification presentation separates numeric mismatches from source cov
     expect(html).toContain("nre-wizard-callout-success");
     expect(html).toContain("Source data checks passed");
     expect(html).not.toContain("Report week (Oct 19 - Oct 25)");
-    expect(html).not.toContain("Dates without records");
+    expect(html).not.toContain("Source coverage");
   });
 });

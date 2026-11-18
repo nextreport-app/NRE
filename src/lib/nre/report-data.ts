@@ -946,16 +946,6 @@ export function buildHistoricalComparisonTableGrid(rows: TableRowData[], headers
 
 /** Client-facing copy when the selected reporting window has no delivery. */
 export function buildPausedAccountMessage(accountName: string, reportType: ReportType = "WEEKLY"): string {
-  const periodLabel =
-    reportType === "MONTHLY"
-      ? "monthly"
-      : reportType === "QUARTER"
-        ? "quarterly"
-        : reportType === "YTD"
-          ? "year-to-date"
-          : reportType === "DAILY"
-            ? "daily"
-            : "weekly";
   const windowLabel =
     reportType === "MONTHLY"
       ? "in the selected month"
@@ -967,8 +957,7 @@ export function buildPausedAccountMessage(accountName: string, reportType: Repor
             ? "on the selected day"
             : "in the selected reporting period";
   return (
-    `Campaigns for ${accountName} were paused during the selected ${periodLabel} reporting period ` +
-    `and did not generate impressions, spend, or results ${windowLabel}.`
+    `No impressions, spend or results were recorded for ${accountName} ${windowLabel}.`
   );
 }
 

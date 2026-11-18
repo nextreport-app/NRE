@@ -41,14 +41,14 @@ describe("sendReportEmail", () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
-  it("sends from hello@nextreport.in with reply-to the same address", async () => {
+  it("uses NextReport as the sender display name", async () => {
     sendMock.mockResolvedValue({ data: { id: "abc" }, error: null });
     await sendReportEmail(BASE_INPUT);
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     const call = sendMock.mock.calls[0][0];
-    expect(call.from).toBe("hello@nextreport.in");
-    expect(call.replyTo).toBe("hello@nextreport.in");
+    expect(call.from).toBe("NextReport <hello@nextreport.in>");
+    expect(call.replyTo).toBe("NextReport <hello@nextreport.in>");
     expect(call.to).toBe("client@example.com");
   });
 

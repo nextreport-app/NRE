@@ -59,11 +59,11 @@ model User {
   // Both optional; either/both absent means those elements are simply
   // skipped at render time, never shown empty.
   agencyName    String?
-  // When false, PPTX cover omits "Prepared by …" even if agencyName is set (share link still uses agencyName).
-  showAgencyNameOnCover Boolean @default(true)
+  // Legacy cover preference; reportBrandingMode controls current report credits.
+  showAgencyNameOnCover Boolean @default(false)
   agencyLogoUrl String?
-  // Client-facing share/PDF branding: nextreport (default), agency (use agencyName), hidden.
-  reportBrandingMode String @default("nextreport")
+  // Client-facing report branding: hidden for new accounts; nextreport or agency can be selected.
+  reportBrandingMode String @default("hidden")
 
   // Google Drive connection (account settings) — deliberately independent
   // of both the Credentials/Google sign-in above AND the NextAuth Account

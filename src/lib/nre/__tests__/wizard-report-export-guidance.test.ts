@@ -11,7 +11,7 @@ describe("wizardExportGuidanceForReportType", () => {
     });
     expect(g.lines[0]).toMatch(/Last 30 Days with Day breakdown/i);
     expect(g.lines[1]).toMatch(
-      /Weekly slides use the last 7-day period; the same file powers MTD, the last-30 chart, and pacing/i,
+      /Weekly slides use the last 7-day period, MTD, and the last-30-day chart/i,
     );
     expect(g.lines).toHaveLength(2);
   });

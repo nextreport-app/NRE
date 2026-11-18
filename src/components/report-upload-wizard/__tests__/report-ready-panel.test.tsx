@@ -12,7 +12,7 @@ describe("concise generated-report panel",()=>{
     for(const text of ["Report ready","Weekly Performance Report","06/11/2026 – 12/11/2026","7 slides","13/11/2026","Edit browser &amp; PPTX","Download PPTX","Share report","Copy link"]) expect(html).toContain(text);
     for(const text of ["Ready to review","The final touch","Includes last week","Review your slides before sharing with your client."]) expect(html).not.toContain(text);
     expect(html).toContain("Anyone with this link can view the report.");
-    expect(html).toContain("Save to Google Drive · optional");
+    expect(html).toContain("Connect Google Drive"); expect(html).toContain("Google Slides");
   });
   it("includes report-aware help and a client-specific restart with one client-switch location",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props}/>);
@@ -32,7 +32,7 @@ describe("concise generated-report panel",()=>{
   it("keeps active Drive editing content available",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props} hasGoogleDriveConnected driveView="editing"><p>Folder editor</p></WizardGenerateSuccessPanel>);
     expect(html).toContain("Folder editor");expect(html).toContain("Save to Drive");
-    expect(html).not.toContain("Save to Google Drive · optional");
+    expect(html).not.toContain("Connect Google Drive");
   });
   it("offers one download when a live link is not available yet",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props} shareToken={null}/>);
