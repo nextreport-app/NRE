@@ -7,7 +7,7 @@ export function metaApiSelectionCoverageError(form: FormData | null, rows: NreRo
   const coverage = apiQueryCoverage(rows);
   if (!coverage || !form) return null;
   try {
-    const requested = metaApiImportRange({ reportType: parseJsonFormField(form, "reportType", reportTypeSchema), dateSelection: parseJsonFormField(form, "dateSelection", dateSelectionSchema), comparisonPeriodA: parseJsonFormField(form, "comparisonPeriodA", comparisonPeriodSchema), comparisonPeriodB: parseJsonFormField(form, "comparisonPeriodB", comparisonPeriodSchema), historicalMonthCount: Number(form.get("historicalMonthCount")) || undefined }, now, timezone);
+    const requested = metaApiImportRange({ reportType: parseJsonFormField(form, "reportType", reportTypeSchema), dateSelection: parseJsonFormField(form, "dateSelection", dateSelectionSchema), comparisonPeriodA: parseJsonFormField(form, "comparisonPeriodA", comparisonPeriodSchema), comparisonPeriodB: parseJsonFormField(form, "comparisonPeriodB", comparisonPeriodSchema), includePreviousMonthComparison: form.get("includePreviousMonthComparison") === "true", historicalMonthCount: Number(form.get("historicalMonthCount")) || undefined }, now, timezone);
     if (requested.sinceIso < coverage.startIso || requested.untilIso > coverage.endIso) return "Your API import does not cover these reporting dates. Return to Import, select the dates you want, and sync the ad account again.";
   } catch (error) { return error instanceof Error ? error.message : "Choose valid report dates."; }
   return null;

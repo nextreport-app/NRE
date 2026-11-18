@@ -4,6 +4,7 @@ import {safeMetaOAuthReturnTo} from "@/lib/meta-oauth-return";
 const now=new Date("2026-11-05T12:00:00Z");
 describe("API uses the same report-period rules as CSV",()=>{
  it("fetches exactly the last 30 days by default for weekly",()=>expect(metaApiImportRange({reportType:"WEEKLY"},now,"UTC")).toEqual({sinceIso:"2026-10-06",untilIso:"2026-11-04"}));
+ it("prefetches a full previous month for the optional weekly row",()=>expect(metaApiImportRange({reportType:"WEEKLY",includePreviousMonthComparison:true},now,"UTC")).toEqual({sinceIso:"2026-10-01",untilIso:"2026-11-04"}));
  it("extends the import for an earlier custom week without dropping the current chart",()=>expect(metaApiImportRange({reportType:"WEEKLY",dateSelection:{mode:"custom",customStart:"2026-09-01",customEnd:"2026-09-07"}},now,"UTC")).toEqual({sinceIso:"2026-09-01",untilIso:"2026-11-04"}));
  it("uses the selected month, rather than a rolling window",()=>expect(metaApiImportRange({reportType:"MONTHLY",dateSelection:{mode:"custom",customStart:"2026-10-01",customEnd:"2026-10-31"}},now,"UTC")).toEqual({sinceIso:"2026-10-01",untilIso:"2026-10-31"}));
  it("imports all months of a historical selection",()=>expect(metaApiImportRange({reportType:"HISTORICAL",historicalMonthCount:3},now,"UTC")).toEqual({sinceIso:"2026-08-01",untilIso:"2026-10-31"}));

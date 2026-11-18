@@ -409,7 +409,7 @@ export function WizardGenerateStep() {
 
               {(generateStatus === "idle" || generateStatus === "error") && (
                 <WizardFinalSettings
-                  hasComparisons={reportType === "WEEKLY" && w.dataSourceMode === "csv"}
+                  hasComparisons={reportType === "WEEKLY"}
                   previousMonthEnabled={includePreviousMonthComparison}
                   previousMonthReady={previousMonthComparisonReady}
                   hasCoverBudget={showStandardCoverBudget}

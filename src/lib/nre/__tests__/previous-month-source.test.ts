@@ -43,6 +43,39 @@ describe("previous-month source selection", () => {
    const december=parseCsvText(raw.replaceAll('2026-10','2025-12').replaceAll('2026-08-01','2025-11-01').replaceAll('2026-11-16','2026-01-16')).rows;
    expect(previousMonthSourceInfo(december,'import',client.timezone,new Date('2026-01-17T18:00:00Z')).range).toEqual({startIso:'2025-12-01',endIso:'2025-12-31'});
  });
+ it("uses full-month API coverage even when the first/last day had no delivery", async () => {
+   const api = rows().filter(row => row.date_start !== "2026-08-01");
+   for (const row of api) row._raw = { ...row._raw, "NRE API range start": "2026-10-01", "NRE API range end": "2026-11-16" };
+   const account = { ...client, id: "test", userId: "test", accountName: "Test", currency: "USD", monthlyBudget: null, campaignObjectiveCache: null, showBudgetPacingOnCover: false } as Client;
+   const form = new FormData();
+   form.set("reportType", JSON.stringify("WEEKLY"));
+   form.set("dateSelection", JSON.stringify({mode:"custom",customStart:"2026-11-10",customEnd:"2026-11-16"}));
+   form.set("includePreviousMonthComparison", "true");
+   form.set("previousMonthSelectedCampaigns", JSON.stringify(["Forms", "Traffic"]));
+   const built = await buildStandardReportForWizard({client:account,platform:"META",mtdParsed:{...parseCsvText(raw),rows:api},formData:form,now});
+   if (!("data" in built)) throw Error(built.error);
+   expect(built.data.periodRow.spend).toBe("$2,081.26");
+   const scoped = await resolveWeeklyPreviousMonthRows(api,account,["Forms", "Traffic"],now);
+   expect(verifyStandardWizardReportAgainstCsv({client:account,platform:"META",mtdRows:api,report:built.data,reportType:"WEEKLY",formData:form,periodRows:scoped,now}).status).not.toBe("mismatch");
+ });
+ it("never fills missing API month coverage from a saved manual upload", async () => {
+   vi.mocked(readPreviousMonthDataFile).mockClear();
+   const api = parseCsvText("Campaign name,Day,Amount spent (USD),NRE API range start,NRE API range end\nForms,2026-11-16,10,2026-10-18,2026-11-16").rows;
+   expect(await resolveWeeklyPreviousMonthRows(api,client,null,now)).toBeUndefined();
+   expect(readPreviousMonthDataFile).not.toHaveBeenCalled();
+ });
+ it("accepts full API query coverage with no previous-month delivery", () => {
+   const api = parseCsvText("Campaign name,Day,Amount spent (USD),NRE API range start,NRE API range end\nForms,2026-11-16,10,2026-10-01,2026-11-16").rows;
+   expect(previousMonthSourceInfo(api,"import",client.timezone,now)).toMatchObject({ready:true,campaignSpend:{},campaigns:[]});
+ });
+ it("keeps an explicitly requested zero-delivery API month as a labelled zero row", async () => {
+   const parsed = parseCsvText("Campaign name,Day,Amount spent (USD),Results,Result type,NRE API range start,NRE API range end\nForms,2026-11-16,10,1,Leads (form),2026-10-01,2026-11-16");
+   const account = { ...client, id:"test",userId:"test",accountName:"Test",currency:"USD",monthlyBudget:null,campaignObjectiveCache:null,showBudgetPacingOnCover:false } as Client;
+   const form = new FormData();form.set("reportType",JSON.stringify("WEEKLY"));form.set("dateSelection",JSON.stringify({mode:"custom",customStart:"2026-11-10",customEnd:"2026-11-16"}));form.set("includePreviousMonthComparison","true");
+   const built = await buildStandardReportForWizard({client:account,platform:"META",mtdParsed:parsed,formData:form,now});
+   if (!("data" in built)) throw Error(built.error);
+   expect(built.data.periodRow).toMatchObject({hasData:true,monthLabel:"Oct 1 - 31",spend:"$0.00",reach:"0",impressions:"0"});
+ });
  it("uses October-only totals in the weekly engine and its independent verification", async () => {
    const parsed = parseCsvText(raw);
    const form = new FormData();

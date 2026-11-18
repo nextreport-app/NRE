@@ -5,10 +5,12 @@ import { useWizardContext } from "../wizard-context";
 
 export function WizardOptionalComparisons({ embedded = false }: { embedded?: boolean }) {
   const w = useWizardContext();
-  if (w.reportType !== "WEEKLY" || w.dataSourceMode !== "csv") return null;
+  if (w.reportType !== "WEEKLY") return null;
 
   const panel = (
     <PreviousMonthDataWizardPanel
+      sourceMode={w.dataSourceMode}
+      onResync={() => w.setStep(1)}
       clientId={w.clientId}
       uploadSessionId={w.uploadSessionId}
       onAvailabilityChange={ready => {

@@ -289,6 +289,18 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     let first=true;
     return block.replace(/<a:t>[^<]*<\/a:t>/g,()=>{const replacement=first?"<a:t>{{CLIENT_HEADLINE}}</a:t>":"<a:t></a:t>";first=false;return replacement;});
   });
+  const isMetaCover = options.reportType !== "WEBSITE" && (!options.platform || options.platform === "META");
+  // Remove unused text boxes entirely so Slides/PowerPoint cannot select empty placeholders.
+  xml = xml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, block => {
+    if (block.includes("{{ACCOUNT_HEALTH_BADGE}}")) return "";
+    if (!cover.budgetSummary?.trim() && block.includes("{{BUDGET_SUMMARY}}")) return "";
+    if (isMetaCover && /PRESENTED\s+TO/.test(block)) return "";
+    return block;
+  });
+  if (isMetaCover) {
+    xml = setShapeOffsetY(xml, "{{CLIENT_HEADLINE}}", 104 * 12700);
+    xml = setShapeOffsetY(xml, "{{REPORT_TITLE}}", 190 * 12700);
+  }
   if (agencyName) {
     const preparedByShape = cloneShapeAsTag(xml, "{{REPORT_DATE}}", "{{PREPARED_BY}}", PREPARED_BY_Y);
     xml = setShapeOffsetY(xml, "PRESENTED TO", PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU);
@@ -313,16 +325,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     {
       CLIENT_HEADLINE: { sizePt: Math.min(accountNameSizePt, 34), bold: true, fontFamily: "Arial", color: options.isLightTemplate ? "0d1b2e" : "FFFFFF" },
       ACCOUNT_NAME: { sizePt: 18 },
-      // Fix 3 (readability pass) — the template's own defaults for these
-      // three lines (12pt/11pt/12pt) read too small once Google Drive
-      // converts the .pptx to Slides; bumped to the specified sizes, with
-      // ACCOUNT_HEALTH_BADGE (the "Weekly/Monthly Performance Score" line)
-      // also forced bold so it stands out the way a score line should.
-      // Every other cover-slide line (REPORT_TITLE 20pt, PRESENTED_TO/
-      // PREPARED_BY 12pt, ACCOUNT_NAME 16-28pt) is already at or above the
-      // spec's stated 12pt floor and is left untouched.
       REPORT_DATE: { sizePt: 15 },
-      ACCOUNT_HEALTH_BADGE: { sizePt: 15, bold: true },
       BUDGET_SUMMARY: { sizePt: 14 },
       // Round L — recolored to the same muted grey every other slide's own
       // main heading uses (the campaign/ad-set report-type header, the MTD
@@ -330,7 +333,7 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       // replacing the template's own theme accent-4 (blue). Size stays the
       // template's native 20pt — Round L only asked to unify colors here,
       // not sizes, on the non-campaign slide types.
-      REPORT_TITLE: { color: reportHeaderColor(!!options.isLightTemplate) },
+      REPORT_TITLE: { color: reportHeaderColor(!!options.isLightTemplate), ...(isMetaCover ? { sizePt: 18, fontFamily: "Arial", bold: false } : {}) },
     },
   );
 
@@ -345,10 +348,10 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
       return replacement;
     });
   });
-  if (options.reportType !== "WEBSITE" && (!options.platform || options.platform === "META")) {
+  if (isMetaCover) {
     const ids = [...filled.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => Number(match[1]));
     resetShapeIdCounter(Math.max(1, ...ids));
-    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 214, w: 400, h: 42, text: "Meta Ads", sizePt: 30, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "0D1B2E" : "FFFFFF", align: "l" }));
+    filled = insertShapeBeforeSpTreeClose(filled, textBox({ x: 40, y: 65, w: 400, h: 26, text: "META ADS", sizePt: 14, bold: true, fontFamily: "Arial", colorHex: options.isLightTemplate ? "475569" : "A7B9D3", align: "l" }));
   }
   if (options.reportType === "DAY_BREAKDOWN") return setShapeWrap(setShapeExtCx(filled, cover.reportDate, 880 * 12700), cover.reportDate, "none");
   return cover.budgetSummary?.trim()

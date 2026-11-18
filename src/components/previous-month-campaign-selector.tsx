@@ -86,13 +86,11 @@ export function PreviousMonthCampaignSelector({
   }
 
   function toggleCampaign(name: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      void saveSelection(next);
-      return next;
-    });
+    const next = new Set(selected);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    setSelected(next);
+    void saveSelection(next);
   }
 
   function handleSelectAllChange(e: React.ChangeEvent<HTMLInputElement>) {

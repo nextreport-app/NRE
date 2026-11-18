@@ -14,7 +14,7 @@ describe("concise generated-report panel",()=>{
     expect(html).toContain("Anyone with this link can view the report.");
     expect(html).not.toContain("Edit browser &amp; PPTX");
     expect(html.indexOf("Edit browser report")).toBeGreaterThan(html.indexOf("success-share-heading"));
-    expect(html).toContain("Changes stay within each version.");
+    expect(html).not.toContain("Changes stay within each version.");
     expect(html).toContain("Connect Google Drive"); expect(html).toContain("Google Slides");
   });
   it("includes report-aware help and a client-specific restart with one client-switch location",()=>{

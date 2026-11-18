@@ -31,3 +31,9 @@ it('can save an import-backed previous-month selection without a separate file',
 it('does not expose another client or its import',async()=>{
  m.owner='someone-else';const res=await GET(new Request(`http://localhost/?uploadSessionId=${uploadId}`),context);expect(res.status).toBe(404);expect(m.upload).not.toHaveBeenCalled();expect(m.read).not.toHaveBeenCalled();
 });
+
+it('does not substitute stored manual data for an incomplete API import',async()=>{
+ m.url='stored.csv';m.upload.mockResolvedValue({rows:parseCsvText("Campaign name,Day,Amount spent (USD),NRE API range start,NRE API range end\nForms,2026-11-16,10,2026-10-18,2026-11-16").rows});
+ const res=await GET(new Request(`http://localhost/?uploadSessionId=${uploadId}`),context);
+ expect(await res.json()).toMatchObject({ready:false});expect(m.read).not.toHaveBeenCalled();
+});

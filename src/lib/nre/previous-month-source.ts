@@ -1,4 +1,5 @@
 /** A previous-month row is always scoped to one complete calendar month. */
+import { apiQueryCoverage } from "./api-query-coverage";
 import type { NreRow } from "./columns";
 import { computeCsvDateBounds, filterNreRowsByDateRange } from "./date-range";
 import { previousCompleteMonth } from "./report-period-selection";
@@ -12,7 +13,7 @@ export function previousMonthRows(rows: NreRow[], timezone: string, now = new Da
   const bounds = computeCsvDateBounds(facts);
   if (!bounds || bounds.minIso > range.startIso || bounds.maxIso < range.endIso) return undefined;
   const scoped = filterNreRowsByDateRange(facts, range);
-  return scoped.length ? scoped : undefined;
+  return scoped.length || apiQueryCoverage(facts) ? scoped : undefined;
 }
 
 export function previousMonthSourceInfo(rows: NreRow[] | undefined, source: "import" | "stored", timezone: string, now = new Date()) {

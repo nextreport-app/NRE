@@ -1,3 +1,5 @@
+import { apiQueryCoverage } from "./api-query-coverage";
+import { previousCompleteMonth } from "./report-period-selection";
 import { orderSlidesBySpend } from "./slide-spend-order";
 import { comparisonPeriodDescription } from "./comparison-period-description";
 import { buildComparisonExtraMetrics, type ComparisonExtraMetric } from "./comparison-extra-metrics";
@@ -1493,6 +1495,24 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         actualCombinedTotalLabelRange.startIso,
         actualCombinedTotalLabelRange.endIso,
       ),
+    };
+  }
+
+  // An explicit full-month API query with no matching observations confirms zero
+  // delivery. Keep its optional row without inventing daily source observations.
+  const apiCoverage = apiQueryCoverage(mtdDailyRows);
+  const priorMonth = previousCompleteMonth(now, timezone);
+  if (reportType === "WEEKLY" && periodRows !== undefined &&
+      apiCoverage && apiCoverage.startIso <= priorMonth.startIso && apiCoverage.endIso >= priorMonth.endIso) {
+    periodRow = {
+      ...periodRow, hasData: true,
+      monthLabel: compactSameMonthRangeLabel(priorMonth.startIso, priorMonth.endIso, getMonthName(priorMonth.startIso)),
+      fullMonthLabel: getDateRangeAbbrLabel(priorMonth.startIso, priorMonth.endIso),
+      monthName: getMonthName(priorMonth.startIso),
+      ...(filteredPeriodRows.length === 0 ? {
+        spend: fmtCurrency2dp(0, currencySymbol), reach: "0", impressions: "0",
+        resultColumns: mtdRow.resultColumns.map(column => ({ ...column, value: "0", cprValue: "—" })),
+      } : {}),
     };
   }
 

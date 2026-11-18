@@ -387,8 +387,7 @@ export function useReportUploadWizard({
   );
   const [csvDateGuidance, setCsvDateGuidance] = useState<CsvDateGuidance | null>(null);
   const [csvWarningDismissed, setCsvWarningDismissed] = useState(false);
-  const [manualPreviousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
-  const previousMonthHasFile = dataSourceMode === "csv" && manualPreviousMonthHasFile;
+  const [previousMonthHasFile, setPreviousMonthHasFile] = useState(hasPreviousMonthData);
   const [previousMonthUpdatedAt, setPreviousMonthUpdatedAt] = useState(initialPreviousMonthDataUpdatedAt);
   const [previousMonthCampaigns, setPreviousMonthCampaigns] = useState(initialPreviousMonthCampaigns);
   const [previousMonthSelectedCampaigns, setPreviousMonthSelectedCampaigns] = useState<string[] | null>(
@@ -398,8 +397,7 @@ export function useReportUploadWizard({
     initialPreviousMonthCampaignSpend,
   );
   const [previousMonthUploading, setPreviousMonthUploading] = useState(false);
-  const [manualPreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
-  const includePreviousMonthComparison = dataSourceMode === "csv" && manualPreviousMonthComparison;
+  const [includePreviousMonthComparison, setIncludePreviousMonthComparison] = useState(false);
 
   const previousMonthComparisonReady = useMemo(
     () =>

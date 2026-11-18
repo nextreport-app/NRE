@@ -3,10 +3,11 @@ import type { DateSelection } from "../validators/report-wizard";
 import type { DateRangeIso } from "./date-range";
 import { computeWeeklyRangeOptions } from "./date-range";
 import { computeLastNDaysIsoRange } from "./api-date-range";
-import { historicalPeriods, reportCalendarYesterday, selectedSinglePeriod } from "./report-period-selection";
+import { historicalPeriods, previousCompleteMonth, reportCalendarYesterday, selectedSinglePeriod } from "./report-period-selection";
 import { comparisonPresetPeriods } from "./comparison-period-selection";
 export interface MetaApiReportSelection {
   reportType?: string;
+  includePreviousMonthComparison?: boolean;
   dateSelection?: DateSelection;
   comparisonPeriodA?: DateRangeIso;
   comparisonPeriodB?: DateRangeIso;
@@ -23,6 +24,7 @@ export function metaApiImportRange(selection: MetaApiReportSelection, now: Date,
     const weekly = computeWeeklyRangeOptions([], now, timezone);
     const range = custom ?? (selection.dateSelection?.mode === "prev7" ? weekly.prev7 : selection.dateSelection?.mode === "last14" ? weekly.last14 : weekly.last7);
     ranges = [{ startIso: rolling.sinceIso, endIso: rolling.untilIso }, range, computeMtdRangeIso([], now, timezone)];
+    if (selection.includePreviousMonthComparison) ranges.push(previousCompleteMonth(now, timezone));
   } else if (type === "MONTHLY" || type === "DAILY") {
     ranges = [selectedSinglePeriod(type, selection.dateSelection, now, timezone)!];
   } else if (type === "HISTORICAL") {

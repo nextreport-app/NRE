@@ -10,11 +10,12 @@ describe("API query coverage without fabricated daily observations",()=>{
  it("asks for re-sync when new selected dates are outside the imported window",()=>{const form=new FormData();form.set("reportType",JSON.stringify("MONTHLY"));form.set("dateSelection",JSON.stringify({mode:"custom",customStart:"2026-09-01",customEnd:"2026-09-30"}));expect(metaApiSelectionCoverageError(form,rows,"UTC",now)).toContain("sync the ad account again");});
 });
 
-describe("supplemental previous-month uploads are manual-only", () => {
- it("disables a stale previous-month flag before API preview/generation", () => {
+describe("previous-month API coverage", () => {
+ it("retains the toggle and requires a full-month API import", () => {
   const form = new FormData(); form.set("includePreviousMonthComparison", "true");
   alignCsvReportFormData(form, rows, "UTC", now);
-  expect(form.get("includePreviousMonthComparison")).toBe("false");
+  expect(form.get("includePreviousMonthComparison")).toBe("true");
+  expect(metaApiSelectionCoverageError(form, rows, "UTC", now)).toContain("sync the ad account again");
  });
  it("preserves the user's manual CSV comparison setting", () => {
   const form = new FormData(); form.set("includePreviousMonthComparison", "true");

@@ -169,7 +169,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       const account = await fetchMetaAdAccountMetadata(fresh.accessToken, metaAdAccountId);
       let range;
-      try { range = metaApiImportRange(parsed.data, new Date(), account.timezone_name); }
+      try { range = metaApiImportRange({ ...parsed.data, includePreviousMonthComparison: !parsed.data.reportType || parsed.data.reportType === "WEEKLY" }, new Date(), account.timezone_name); }
       catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Choose valid report dates." }, { status: 400 }); }
       if (referenceManualCsvText?.trim()) return NextResponse.json({ error: "Use Manual CSV mode for a reference export. API testing does not replace API results with CSV values." }, { status: 400 });
       const result = await fetchMetaReportCsv({
