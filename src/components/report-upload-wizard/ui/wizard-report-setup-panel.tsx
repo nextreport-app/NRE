@@ -56,20 +56,24 @@ export function WizardReportSetupPanel({
 
   const selectedType = reportType === "HISTORICAL" ? "MONTHLY" : reportType === "DAILY" ? "DAY_BREAKDOWN" : reportType;
   const choices = [...LAUNCH_PRIMARY_REPORT_TYPES, ...LAUNCH_SECONDARY_REPORT_TYPES];
-  const accent = selectedType === "MONTHLY" ? "text-violet-400 bg-violet-400/10 border-violet-400/25"
-    : selectedType === "COMPARISON" ? "text-teal-400 bg-teal-400/10 border-teal-400/25"
-    : selectedType === "DAY_BREAKDOWN" ? "text-rose-400 bg-rose-400/10 border-rose-400/25"
-    : "text-sky-400 bg-sky-400/10 border-sky-400/25";
+  const labels: Partial<Record<ReportTypeValue, string>> = { WEEKLY: "Weekly", MONTHLY: "Monthly", COMPARISON: "Comparison", DAY_BREAKDOWN: "Daily" };
+  const iconColors: Partial<Record<ReportTypeValue, string>> = { WEEKLY: "text-sky-400", MONTHLY: "text-violet-400", COMPARISON: "text-teal-400", DAY_BREAKDOWN: "text-rose-400" };
   return <section className="rounded-xl border border-dash-border bg-dash-bg/30 p-4 sm:p-5">
-    <div className="flex items-center gap-3">
-    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${accent}`}><ReportTypeIcon type={selectedType} /></span>
-    <div className="min-w-0 flex-1">
-    <label htmlFor={choicesId} className="block text-sm font-semibold text-dash-ink">Report type</label>
-    <select id={choicesId} value={selectedType} onChange={event => onReportTypeChange(event.target.value as ReportTypeValue)} className="mt-1.5 w-full rounded-lg border border-dash-border bg-dash-card px-3 py-2.5 text-sm text-dash-ink sm:max-w-sm">
-      {choices.map(type => <option key={type} value={type}>{(wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type]).cardHeading}</option>)}
-    </select>
-    </div>
-    </div>
+    <fieldset>
+      <legend className="text-sm font-semibold text-dash-ink">Report type</legend>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {choices.map(type => {
+          const copy = wizardReportTypeCopyForLocale(locale, type) ?? WIZARD_REPORT_TYPE_COPY[type];
+          return <label key={type} className="min-w-0 cursor-pointer">
+            <input type="radio" name={choicesId} value={type} checked={selectedType === type} onChange={() => onReportTypeChange(type)} className="peer sr-only" />
+            <span className="flex min-h-14 items-center justify-center gap-2 rounded-lg border border-dash-border bg-dash-card px-2 py-3 text-sm font-medium text-dash-ink-secondary transition-colors hover:border-dash-accent/50 peer-checked:border-dash-accent peer-checked:bg-dash-accent/10 peer-checked:text-dash-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-dash-accent">
+              <span className={`shrink-0 ${iconColors[type] ?? "text-sky-400"}`}><ReportTypeIcon type={type} /></span>
+              <span>{locale === "en" ? labels[type] ?? copy.cardHeading : copy.cardHeading}</span>
+            </span>
+          </label>;
+        })}
+      </div>
+    </fieldset>
     <dl className="mt-4 space-y-3 text-sm">
       <div><dt className="font-medium text-dash-ink">What you get</dt><dd className="mt-0.5 text-dash-ink-secondary">{reportType === "WEEKLY" && locale === "en" ? "Last 7 days’ performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</dd></div>
       <div><dt className="font-medium text-dash-ink">{source === "api" ? "Data needed" : "CSV needed"}</dt><dd className="mt-0.5 text-dash-ink-secondary">{source === "api" ? "Fetched automatically for your selected report dates." : requirement.shortNote}</dd></div>
