@@ -6,7 +6,7 @@ Updated November 7, 2026.
 
 The wizard offers four report choices: Weekly overview, Monthly report (one month or several), Compare two periods, and Daily report (one day or a range). Internal DAILY/HISTORICAL modes remain for compatibility. Quarterly, YTD and Creative report creation remain deferred; existing report history and implementations are preserved.
 
-Google Ads, TikTok Ads and GA4 reporting remain **coming soon**, hidden from report-wizard platform selection. Their account connection settings remain available for setup/testing. Connecting them does not enable reporting. TikTok connection availability retains the existing India restriction; unknown location is not treated as India.
+Google Ads, TikTok Ads and GA4 reporting remain **coming soon**, hidden from report-wizard platform selection. Their account connection settings are collapsed under “Other platform connections” for setup/testing and hidden from client setup and public marketing. Connecting them does not enable reporting. TikTok connection availability retains the existing India restriction; unknown location is not treated as India.
 
 ## Import behavior
 

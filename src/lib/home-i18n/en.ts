@@ -46,7 +46,7 @@ export const HOME_EN: HomeCopy = {
     {
       title: "Previous-month totals",
       description:
-        "Upload a prior-month CSV so Combined Total can show last month vs this period — optional panel on Step 1.",
+        "Add previous-month totals on Review & generate. Reuse a CSV covering that month, or fetch the totals with Meta API sync.",
     },
     {
       title: "Auto-detects campaign objectives",
@@ -121,9 +121,9 @@ export const HOME_EN: HomeCopy = {
     reportGeneration: "Report generation",
     unlimitedReports: "Unlimited",
     metaReporting: "Meta Ads (API sync + CSV)",
-    otherPlatforms: "Google Ads, TikTok Ads, GA4",
+    otherPlatforms: "",
     included: "Included",
-    roadmapIncluded: "Launching soon (included in plan)",
+    roadmapIncluded: "",
     whiteLabel: "White-label share links",
     support: "Support",
     emailSupport: "Email support",

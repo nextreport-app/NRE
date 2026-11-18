@@ -10,16 +10,18 @@ describe("Meta API public launch claims", () => {
   it.each(SITE_LOCALES)("keeps live API and deferred platforms accurate for $id", ({id}) => {
     const home = homeCopy(id);
     expect(marketingCopy(id).heroSubtext).toMatch(/API sync/);
+    expect(JSON.stringify(marketingCopy(id))).not.toMatch(/Google Ads|TikTok|GA4/);
     expect(home.howItWorksSteps[0].description).toMatch(/sync/);
     expect(home.features[0].description).toMatch(/API sync/);
     expect(home.pricing.plans.starter.features.join(" ")).toMatch(/API sync.*live/);
     expect(home.pricingComparison.metaReporting).toContain("API sync");
-    expect(home.pricingComparison.otherPlatforms).not.toContain("Meta");
+    expect(JSON.stringify(home)).not.toMatch(/Google Ads|TikTok|GA4/);
   });
   it("advertises only Meta as live and retains read-only permission scope", () => {
     expect(PRICING_FAQS[0].a).toContain("included in every plan");
+    expect(JSON.stringify(PRICING_FAQS)).not.toMatch(/Google Ads|TikTok|GA4/);
     expect(PRICING_FAQS.map(item=>item.a).join(" ")).not.toMatch(/Meta.*launching soon/);
-    expect(META_V1_PROMISE_BULLETS[1]).toContain("Google Ads, TikTok Ads and GA4");
+    expect(META_V1_PROMISE_BULLETS.join(" ")).not.toMatch(/Google Ads|TikTok|GA4/);
     expect(LAUNCHING_SOON_PLATFORMS_LABEL).not.toContain("Meta");
     expect(META_ADS_SCOPES).toEqual(["ads_read"]);
   });

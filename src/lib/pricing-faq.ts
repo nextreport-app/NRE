@@ -2,7 +2,7 @@
 export const PRICING_FAQS = [
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads reporting is live through CSV upload or read-only Meta API sync, included in every plan. Generate weekly, monthly, comparison and daily reports. Google Ads, TikTok Ads and GA4 reporting are coming soon.",
+    a: "Meta Ads reporting is live through CSV upload or read-only Meta API sync, included in every plan. Generate weekly, monthly, comparison and daily reports.",
   },
   {
     q: "Is there really no credit card required for the free trial?",
