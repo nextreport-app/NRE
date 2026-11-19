@@ -47,7 +47,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
       "Write a campaign performance summary for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.\n" +
       "Do NOT re-list every number already on the metric cards unless you are comparing two figures.\n" +
       "Sentence 1: What this campaign is for (reach/awareness) and the one reach result that matters this period.\n" +
-      "Sentence 2: One efficiency read (CPM, frequency, or CTR) — interpret, do not dump the scorecard.\n" +
+      "Sentence 2: State one supplied rate or cost without judging whether it is good or bad. No benchmark or previous period is available.\n" +
       "Rules:\n" +
     "- Only the supplied period metrics are available. Never name a calendar month outside the supplied date range; describe future actions as next period. Never claim budget adherence from spend alone. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
@@ -67,7 +67,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
     "Write a campaign performance summary for a Meta Ads client report for the supplied reporting period. Write exactly 2 sentences.\n" +
     "Do NOT re-list every card metric. The slide already shows the numbers.\n" +
     "Sentence 1: What this campaign is for, using the result label \"" + resultLabel + "\" exactly as given, and the one result that matters this period.\n" +
-    "Sentence 2: One efficiency read (cost per result, CTR, or spend vs results) — interpret or compare, do not dump the full scorecard.\n" +
+    "Sentence 2: State one supplied cost or rate without judging its quality or comparing it to an unspecified benchmark.\n" +
     "Rules:\n" +
     "- Only the supplied period metrics are available. Never name a calendar month outside the supplied date range; describe future actions as next period. Never claim budget adherence from spend alone. Never invent targets, benchmarks, profitability, trends, fatigue, saturation, audience quality, or a desired frequency. Give a cautious test or verification step instead.\n" +
       "- Treat possible causes as hypotheses. Do not claim the data proves a funnel, tracking or creative problem. Never infer Meta learning status from result counts.\n" +
@@ -395,7 +395,14 @@ export function aiCopyViolatesObjectiveRules(
   if (/\b(?:benchmarks?|targets?|profitab\w*|historical|week[- ]over[- ]week|fatigue|saturation|efficient(?:ly)?|expected range|solid efficiency|strong efficiency|resonat\w*|conversion leaks)\b/i.test(text)) return true;
   if (/\b(?:held|holding|remained?|stayed?|remain(?:ing)?|stay(?:ing)?)\s+(?:steady|stable|consistent|unchanged)\b/i.test(text)) return true;
   if (/\b(?:steady|stable|consistent)\s+(?:(?:audience|click|lead|conversion)\s+)?(?:performance|engagement|lead generation|results?|rate|delivery)\b/i.test(text)) return true;
-  if (/\b(?:solid|strong|good|healthy|excellent|poor|weak)\s+(?:(?:audience|user|returning audience)\s+)?engagement\b/i.test(text)) return true;
+  // Modifiers do not make an unsupported judgment valid: "solid creative
+  // engagement", "solid click efficiency" and "reasonable cost" all need
+  // an external benchmark that the single-period context does not contain.
+  const judgment = "(?:solid|strong|good|healthy|excellent|poor|weak|reasonable|competitive|impressive|robust|effective|efficient|acceptable|favo[u]?rable|promising|encouraging|optimal|high|low)";
+  const metric = "(?:engagement|efficiency|performance|costs?|results?|returns?|ctr|cpc|cpl|cpm|roas)";
+  if (new RegExp(`\\b${judgment}\\s+(?:[a-z-]+\\s+){0,3}${metric}\\b`, "i").test(text)) return true;
+  if (new RegExp(`\\b${metric}\\b.{0,80}\\b(?:is|are|remains?|appears?|seems?)\\s+(?:[a-z-]+\\s+){0,2}${judgment}\\b`, "i").test(text)) return true;
+  if (/\baudience\s+(?:is|are|remains?|seems?|appears?)\s+(?:(?:highly|very|still|particularly)\s+)?(?:responsive|engaged|engaging|receptive|interested)\b/i.test(text)) return true;
   if (ctx.entityLabel && ctx.entityLabel !== "campaign" && /\bthis campaign\b/i.test(text)) return true;
   if (/\b(?:qualified|responsive|engaged) audience\b|\baudience (?:remains? |is )?engaged\b|\bpush(?:ing)?\b.{0,65}\bfrequency\b|\bcombat (?:the )?low\b/i.test(text)) return true;
   if (/\b(proves?|definitely caused|confirms? a|conversion funnel problem|in (?:the )?learning phase)\b/i.test(text)) return true;

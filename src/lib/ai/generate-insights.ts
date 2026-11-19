@@ -195,12 +195,13 @@ export async function generateInsights(data: ReportData, keys: AiKeys): Promise<
       // there's no real result to describe, and asking the model to write
       // around a "—"/undefined cost-per-result invites exactly the kind of
       // hallucinated or nonsensical phrasing this fix exists to prevent.
+      const groundingInstruction = "\nOnly current-period aggregates are supplied. Do not rate engagement, audience responsiveness, costs or efficiency as solid, strong, reasonable, good or poor: there is no benchmark for that judgment. State an observed metric, then one explicitly conditional future test. Do not invent a historical comparison.";
       const scopeInstruction = slide.ai.entityLabel && slide.ai.entityLabel !== "campaign"
         ? `\nThese figures describe this ${slide.ai.entityLabel}, not the entire campaign. Use that entity when describing its results.`
         : "";
       const [rawSummary, rawInsight] = await Promise.all([
-        zeroResults ? Promise.resolve(null) : callAI(buildSummaryPromptFor(slide.ai) + scopeInstruction, keys),
-        zeroResults ? Promise.resolve(null) : callAI(buildInsightPromptFor(slide.ai) + scopeInstruction, keys),
+        zeroResults ? Promise.resolve(null) : callAI(buildSummaryPromptFor(slide.ai) + scopeInstruction + groundingInstruction, keys),
+        zeroResults ? Promise.resolve(null) : callAI(buildInsightPromptFor(slide.ai) + scopeInstruction + groundingInstruction, keys),
       ]);
 
       // Debug: the exact response the AI returned, BEFORE any period check

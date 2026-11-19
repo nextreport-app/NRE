@@ -45,7 +45,7 @@ export function buildLegendSlideXml(templateXml: string, entries: LegendEntry[],
     shapes.push(textBox({x:x+12,y:y+36,w:264,h:60,text:entry.explanation,sizePt:14,colorHex:palette.label,align:"l"}));
   });
   if (concepts.length > 12) {
-    shapes.push(textBox({x:35,y:503,w:890,h:20,text:`12 of ${concepts.length} selected terms shown. Full definitions: nextreport.in/help/metrics`,sizePt:11,colorHex:palette.label}));
+    shapes.push(textBox({x:35,y:503,w:890,h:20,text:`12 of ${concepts.length} selected terms shown. Full definitions: nextreport.in/help/metrics#definitions`,sizePt:11,colorHex:palette.label}));
   }
   // Retain the real slide layout/master and relationships, but replace the
   // entire card tree atomically. No cross-card literal replacements or filler.

@@ -71,3 +71,10 @@ it("labels the previous month in the browser without changing stored table data"
   expect(html).toContain('class="block">Oct 1 - 31</span>');
   expect(JSON.stringify(data)).toBe(before);
 });
+
+it("shows an enabled cover budget alongside branding and omits it when disabled",()=>{
+ const data=fixture();data.cover.budgetSummary="Monthly Ad Budget: $1,227.06 of $1,500 used (82%) — 11 days remaining";data.agencyName="NextReport";data.reportBranding={mode:"nextreport",agencyName:"NextReport"};
+ const before=JSON.stringify(data);const html=renderToStaticMarkup(<ShareReportView data={data}/>);
+ expect(html).toContain(data.cover.budgetSummary);expect(html).toContain("Prepared by NextReport");expect(JSON.stringify(data)).toBe(before);
+ expect(renderToStaticMarkup(<ShareReportView data={{...data,cover:{...data.cover,budgetSummary:""}}}/>)).not.toContain("Monthly Ad Budget:");
+});

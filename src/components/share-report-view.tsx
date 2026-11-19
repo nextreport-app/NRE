@@ -851,6 +851,11 @@ export function ShareReportView({
                   : visibleData.cover.dateRange}
               </p>
               <div className="my-3 h-px w-16 bg-navy-border sm:my-4 sm:w-24" />
+              {visibleData.cover.budgetSummary?.trim() ? (
+                <p className="mt-2 max-w-2xl break-words px-1 text-[13px] leading-relaxed text-ink-muted [overflow-wrap:anywhere] sm:text-[14px]">
+                  {visibleData.cover.budgetSummary}
+                </p>
+              ) : null}
               {coverPreparedByLine ? (
                 <p className="mt-3 max-w-full break-words px-1 text-[12px] text-ink-muted sm:mt-4 sm:text-[14px]">
                   {coverPreparedByLine}

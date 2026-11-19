@@ -534,3 +534,29 @@ it.each(["—", "", "N/A"])("keeps unavailable CTR out of fallback percentages: 
   }
   expect(buildFallbackSummary({...ctx,ctr:"0.00%"})).toContain("Click-through rate was 0.00%.");
 });
+
+it.each([
+ "The 2.72% click-through rate suggests solid creative engagement; monitoring lead quality would validate campaign efficiency.",
+ "This retargeting ad set drove 366 link clicks, maintaining solid click efficiency across the period.",
+ "The 1.38% CTR suggests the audience remains responsive; monitor next period before scaling.",
+ "This ad set generated 366 link clicks, indicating the audience is engaging with the messaging at a reasonable cost.",
+ "The campaign delivered strong message engagement. The audience is highly responsive.",
+ "The cost per click represents competitive acquisition cost. Continue the campaign.",
+ "The CPL of $8.60 is reasonable. Continue the campaign.",
+ "The CTR is unusually high at 2.72%. The results are promising.",
+])("rejects benchmark-free judgments despite intervening modifiers: %s",async unsupported=>{
+ const data=makeReportData();const slide=data.campaignSlides[0];slide.ai.dateRange="November 12 - November 18";const key=slideAiKey(slide);
+ vi.mocked(callAI).mockResolvedValue(unsupported);
+ try{
+  const copy=await generateInsights(data,{anthropicApiKey:"test"});
+  expect(copy.get(key)).toEqual({summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)});
+  expect(revalidateCachedInsights(data,new Map([[key,{summary:unsupported,insights:unsupported}]] )).get(key)).toEqual(copy.get(key));
+  expect(vi.mocked(callAI).mock.calls.every(([prompt])=>prompt.includes("there is no benchmark for that judgment"))).toBe(true);
+ }finally{vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
+});
+
+it("allows a measured rate and a conditional next-period test without an unsupported judgment",()=>{
+ const data=makeReportData(),slide=data.campaignSlides[0],key=slideAiKey(slide);
+ const copy={summary:"Delivery produced 5 leads at $20.00 per lead. Click-through rate was 1.00%.",insights:"Test a different message next period and measure its CTR. Compare the results before changing spend."};
+ expect(revalidateCachedInsights(data,new Map([[key,copy]])).get(key)).toEqual(copy);
+});
