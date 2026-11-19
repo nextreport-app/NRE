@@ -560,3 +560,16 @@ it("allows a measured rate and a conditional next-period test without an unsuppo
  const copy={summary:"Delivery produced 5 leads at $20.00 per lead. Click-through rate was 1.00%.",insights:"Test a different message next period and measure its CTR. Compare the results before changing spend."};
  expect(revalidateCachedInsights(data,new Map([[key,copy]])).get(key)).toEqual(copy);
 });
+
+it("replaces quarter-wide commentary in fresh and cached copy for a November weekly report",async()=>{
+ const data=makeReportData(),slide=data.campaignSlides[0];slide.ai.ctx="Retargeting - Q3 - AUG 2026";slide.ai.dateRange="November 12 - November 18";
+ const wrong="This ad set drove 366 link clicks during the period, supporting retargeting traffic objectives across Q3. Cost per click averaged $0.33.";
+ const key=slideAiKey(slide);vi.mocked(callAI).mockResolvedValue(wrong);
+ try{
+  const result=await generateInsights(data,{anthropicApiKey:"test"});
+  expect(result.get(key)?.summary).toBe(buildFallbackSummary(slide.ai));
+  expect(result.get(key)?.insights).toBe(buildFallbackInsights(slide.ai));
+  expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]] )).get(key)).toEqual(result.get(key));
+  expect(vi.mocked(callAI).mock.calls.every(([prompt])=>prompt.includes("only reporting period"))).toBe(true);
+ }finally{vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
+});

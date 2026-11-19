@@ -57,7 +57,7 @@ export function buildSummaryPrompt(ctx: AiContext): string {
       "- Do not start with the campaign name or date range — those are already on the slide\n" +
       "- Keep total under 55 words\n" +
       "- Professional tone like a senior account manager\n\n" +
-      "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
+      "Data: Entity: " + (ctx.entityLabel ?? "campaign") + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
       ", Impressions: " + ctx.impressions + ", CPM: " + ctx.cpm + ", Frequency: " + ctx.freq.toFixed(1) + "x" +
       ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc
     );
@@ -78,14 +78,14 @@ export function buildSummaryPrompt(ctx: AiContext): string {
     "- Do not start with the campaign name or date range — those are already on the slide\n" +
     "- Keep total under 55 words\n" +
     "- Professional tone like a senior account manager\n\n" +
-    "Data: Campaign: " + ctx.ctx + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
+    "Data: Entity: " + (ctx.entityLabel ?? "campaign") + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
     ", Impressions: " + ctx.impressions + ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
     ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc + ", Frequency: " + ctx.freq.toFixed(1) + "x"
   );
 }
 
 export function buildInsightPrompt(ctx: AiContext): string {
-  if (isReachCampaign(ctx)) return "Write exactly two short sentences for an awareness report. Use only supplied figures. CPM means cost per 1,000 impressions; cost per 1,000 reached is a separate rate. Do not interchange them. Reach may be estimated. Give one cautious next step, not a proven causal diagnosis. Do not infer audience quality or delivery learning status. Data: Spend " + ctx.spend + ", Reach " + ctx.reach + ", Impressions " + ctx.impressions + ", CPM " + ctx.cpm + ", Cost per 1,000 reached " + ctx.cpr + ", CTR " + ctx.ctr + ", Frequency " + ctx.freq.toFixed(2) + ".";
+  if (isReachCampaign(ctx)) return "Write exactly two short sentences for an awareness report. Use only supplied figures. CPM means cost per 1,000 impressions; cost per 1,000 reached is a separate rate. Do not interchange them. Reach may be estimated. Give one cautious next step, not a proven causal diagnosis. Do not infer audience quality or delivery learning status. Data: Date: " + ctx.dateRange + ", Spend " + ctx.spend + ", Reach " + ctx.reach + ", Impressions " + ctx.impressions + ", CPM " + ctx.cpm + ", Cost per 1,000 reached " + ctx.cpr + ", CTR " + ctx.ctr + ", Frequency " + ctx.freq.toFixed(2) + ".";
 
   if (isMetaFormLeadsCampaign(ctx)) {
     return (
@@ -105,7 +105,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
       "- Do not start with This week or During this period — vary the opening\n" +
       "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
       "- Sound like a senior account manager giving honest advice\n\n" +
-      "Data: Campaign: " + ctx.ctx + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
+      "Data: Entity: " + (ctx.entityLabel ?? "campaign") + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
       ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
       ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc + ", Frequency: " + ctx.freq.toFixed(1) + "x"
     );
@@ -125,7 +125,7 @@ export function buildInsightPrompt(ctx: AiContext): string {
     "- Do not start with This week or During this period — vary the opening\n" +
     "- Do NOT mention ad sets, combined ad sets, or delivery status\n" +
     "- Sound like a senior account manager giving honest advice\n\n" +
-    "Data: Campaign: " + ctx.ctx + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
+    "Data: Entity: " + (ctx.entityLabel ?? "campaign") + ", Date: " + ctx.dateRange + ", Spend: " + ctx.spend + ", Reach: " + ctx.reach +
     ", " + ctx.resultLabel + ": " + ctx.results + ", " + ctx.costLabel + ": " + ctx.cpr +
     ", CTR: " + ctx.ctr + ", CPC: " + ctx.cpc + ", Frequency: " + ctx.freq.toFixed(1) + "x"
   );
@@ -391,6 +391,10 @@ export function aiCopyViolatesObjectiveRules(
   const months = [/\bjan(?:uary)?\b/i, /\bfeb(?:ruary)?\b/i, /\bmar(?:ch)?\b/i, /\bapr(?:il)?\b/i, /\bMay\b/, /\bjun(?:e)?\b/i, /\bjul(?:y)?\b/i, /\baug(?:ust)?\b/i, /\bsep(?:t(?:ember)?)?\b/i, /\boct(?:ober)?\b/i, /\bnov(?:ember)?\b/i, /\bdec(?:ember)?\b/i];
   if (months.some(month => month.test(text) && !new RegExp(month.source, "i").test(ctx.dateRange))) return true;
   if (/\b(?:within|under|below|on)[ -](?:(?:the|its|an?)\s+)?(?:(?:allocated|planned|approved|agreed)\s+)?budget\b/i.test(text)) return true;
+  // Campaign labels such as Q3 / AUG are not evidence for reporting scope.
+  // Single-period commentary must not expand weekly/monthly figures into
+  // statements about delivery across an entire quarter.
+  if (/\b(?:across|throughout|during|over|in|for)\s+(?:(?:the|all of)\s+)?(?:Q[1-4]|(?:first|second|third|fourth)\s+quarter)\b|\bQ[1-4]\s+(?:performance|results|delivery|reporting)\b/i.test(text)) return true;
   // No targets, historical periods, margins or audience diagnostics are in AiContext.
   if (/\b(?:benchmarks?|targets?|profitab\w*|historical|week[- ]over[- ]week|fatigue|saturation|efficient(?:ly)?|expected range|solid efficiency|strong efficiency|resonat\w*|conversion leaks)\b/i.test(text)) return true;
   if (/\b(?:held|holding|remained?|stayed?|remain(?:ing)?|stay(?:ing)?)\s+(?:steady|stable|consistent|unchanged)\b/i.test(text)) return true;
