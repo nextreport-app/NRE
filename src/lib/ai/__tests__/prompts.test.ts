@@ -53,7 +53,7 @@ describe("buildSummaryPrompt", () => {
   it("substitutes every {token} in the Data line with the slide's real numbers", () => {
     const prompt = buildSummaryPrompt(ctx());
     expect(prompt).toContain(
-      "Data: Campaign: Shoes - Purchases, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50, Frequency: 2.5x",
+      "Data: Entity: campaign, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50, Frequency: 2.5x",
     );
   });
 
@@ -82,12 +82,12 @@ describe("buildInsightPrompt", () => {
     expect(prompt).not.toContain("exactly 3 sentences");
   });
 
-  it("substitutes every {token} in the Data line — no Date or Impressions field here", () => {
+  it("includes the reporting date in insights without an unnecessary impressions field", () => {
     const prompt = buildInsightPrompt(ctx());
     expect(prompt).toContain(
-      "Data: Campaign: Shoes - Purchases, Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50, Frequency: 2.5x",
+      "Data: Entity: campaign, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, PURCHASES: 21, COST PER PURCHASE: ₹50.00, CTR: 2.00%, CPC: ₹3.50, Frequency: 2.5x",
     );
-    expect(prompt).not.toContain("Date:");
+    expect(prompt).toContain("Date: Jul 13 - Jul 19");
     expect(prompt).not.toContain("Impressions:");
   });
 
@@ -285,7 +285,7 @@ describe("Reach/Awareness campaigns — never mention results, purchases, leads,
     it("substitutes reach/impressions/CPM/frequency/CTR/CPC in the Data line — never the result/cost-per-result tokens", () => {
       const prompt = buildSummaryPrompt(reachCtx());
       expect(prompt).toContain(
-        "Data: Campaign: Shoes - Purchases, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, CPM: ₹18.50, Frequency: 1.8x, CTR: 2.00%, CPC: ₹3.50",
+        "Data: Entity: campaign, Date: Jul 13 - Jul 19, Spend: ₹1,050, Reach: 12,600, Impressions: 45,000, CPM: ₹18.50, Frequency: 1.8x, CTR: 2.00%, CPC: ₹3.50",
       );
       expect(prompt).not.toContain("REACH: 0");
       expect(prompt).not.toContain("COST PER 1K REACH: ₹4.20");
@@ -431,4 +431,22 @@ it("grounds calendar-month references without rejecting valid cross-month period
   expect(aiCopyViolatesObjectiveRules("Compare October and November delivery.", ctx({ dateRange: "Oct 31 - Nov 6" }))).toBe(false);
   expect(aiCopyViolatesObjectiveRules("A controlled test may help clarify the next step.", ctx({ dateRange: "November 10 - November 16" }))).toBe(false);
   expect(aiCopyViolatesObjectiveRules("Run a comparison in September.", ctx({ dateRange: "November 10 - November 16" }))).toBe(true);
+});
+
+describe("campaign names are not reporting dates",()=>{
+ it.each(["PURCHASES","META FORM LEADS","REACH"])("keeps label dates out of Meta %s prompts and supplies the real period",resultLabel=>{
+  const context=ctx({ctx:"Retargeting - Q3 - AUG 2025",entityLabel:"ad set",dateRange:"November 12 - November 18",resultLabel});
+  for(const build of [buildSummaryPrompt,buildInsightPrompt]){
+   const prompt=build(context);
+   expect(prompt).not.toContain(context.ctx);expect(prompt).not.toContain("Q3");expect(prompt).not.toContain("2025");
+   expect(prompt).toContain(context.dateRange);
+  }
+ });
+ it("rejects statements that turn current-period figures into quarter-wide delivery",()=>{
+  const context=ctx({dateRange:"November 12 - November 18"});
+  expect(aiCopyViolatesObjectiveRules("This ad set supported retargeting traffic objectives across Q3.",context)).toBe(true);
+  expect(aiCopyViolatesObjectiveRules("Q3 performance produced 366 link clicks.",context)).toBe(true);
+  expect(aiCopyViolatesObjectiveRules("Delivery was sustained throughout the third quarter.",context)).toBe(true);
+  expect(aiCopyViolatesObjectiveRules("This period produced 21 purchases. Compare the next period before increasing spend.",context)).toBe(false);
+ });
 });
