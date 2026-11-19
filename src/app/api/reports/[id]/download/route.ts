@@ -1,11 +1,11 @@
-import { attachmentContentDisposition } from "@/lib/download-filename";
+import { reportDownloadResponse } from "@/lib/report-download-response";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -22,13 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const buffer = await readReportFile(report.filePath);
     const fileName = report.fileName || "report.pptx";
 
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "Content-Disposition": attachmentContentDisposition(fileName),
-        "Content-Length": String(buffer.length),
-      },
-    });
+    return reportDownloadResponse(req, buffer, fileName);
   } catch (err) {
     return apiErrorResponse(err, "reports:download");
   }
