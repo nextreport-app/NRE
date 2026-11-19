@@ -47,6 +47,7 @@ import type { DayBreakdownReportData } from "./day-breakdown-report-data";
 import type { ReportBrandingSettings } from "@/lib/report-branding";
 
 export interface ShareCampaignData {
+  reachEstimated?: boolean;
   campaignName: string;
   resultLabel: string;
   dateRange: string;
@@ -61,6 +62,7 @@ export interface ShareCampaignData {
 }
 
 export interface ShareAdSetData {
+  reachEstimated?: boolean;
   campaignName: string;
   adSetName: string;
   resultLabel: string;
@@ -272,6 +274,7 @@ export function buildShareReportData(
       // uploaded CSV genuinely has no data for); the share page's metric
       // grid only ever renders real, CSV-backed metrics, so nulls are
       // dropped here rather than threaded through as empty cards.
+      reachEstimated: slide.ai.reachEstimated,
       metrics: allSlideMetrics(slide),
       aiSummary: ai.summary,
       aiInsights: ai.insights,
@@ -287,6 +290,7 @@ export function buildShareReportData(
       dateRange: slide.ai.dateRange,
       adFrequency: adFrequencyLabel(slide.rowFreq),
       statusIndicator: slide.statusIndicator,
+      reachEstimated: slide.ai.reachEstimated,
       metrics: allSlideMetrics(slide),
       aiSummary: ai.summary,
       aiInsights: ai.insights,
@@ -417,6 +421,7 @@ export function buildHistoricalShareReportData(
       dateRange: slide.dateRangeLine.split("\n")[0]?.trim() ?? slide.dateRangeLine,
       adFrequency: adFrequencyLabel(slide.avgFreq),
       statusIndicator: slide.statusIndicator,
+      reachEstimated: slide.ai.reachEstimated,
       metrics: allSlideMetrics(slide),
       slideReportTypeLabel: historicalSlideReportTypeLabel(slide.performanceHeader),
       aiSummary: ai.summary,
@@ -444,7 +449,7 @@ export function buildHistoricalShareReportData(
     adSets: (data.adSetSlides ?? []).map(slide => {
       const campaignName = `${slide.ai.dateRange || "Month"} — ${slide.campaignName}`;
       const ai = aiCopyBySlideKey.get(`adset:${campaignName}/${slide.adSetName}`) ?? { summary: "", insights: "" };
-      return { campaignName, adSetName: slide.adSetName, resultLabel: slide.resultLabel, dateRange: slide.dateRangeLine.split("\n")[0], adFrequency: adFrequencyLabel(slide.rowFreq), statusIndicator: slide.statusIndicator, metrics: allSlideMetrics(slide), aiSummary: ai.summary, aiInsights: ai.insights };
+      return { campaignName, adSetName: slide.adSetName, resultLabel: slide.resultLabel, dateRange: slide.dateRangeLine.split("\n")[0], adFrequency: adFrequencyLabel(slide.rowFreq), statusIndicator: slide.statusIndicator, reachEstimated: slide.ai.reachEstimated, metrics: allSlideMetrics(slide), aiSummary: ai.summary, aiInsights: ai.insights };
     }),
     chart: null,
     historicalCharts: (data.monthlyCharts ?? []).map(item => projectChartSlideToShareChart(item.chart, data.currencySymbol ?? "$")),
@@ -452,7 +457,7 @@ export function buildHistoricalShareReportData(
     periodRow: EMPTY_TABLE_ROW,
     mtdRow: EMPTY_TABLE_ROW,
     historicalComparisonRows: data.comparisonRows,
-    metricGuide: collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }),
+    metricGuide: collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [], tableHeaderLabels: data.tableHeaderLabels, metaContent: data.metaContent }),
     agencyName: extras.agencyName ?? null,
     reportBranding: extras.reportBranding,
     generatedAt: now.toISOString(),

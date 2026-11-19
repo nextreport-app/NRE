@@ -528,7 +528,7 @@ export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Pr
 
   }
   appendMetaContentSlides(template,slides,data.metaContent,isLightTemplate);
-  if (input.shareVisibility?.metricGuide !== false) appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [] }));
+  if (input.shareVisibility?.metricGuide !== false) appendMetricGuide(template, slides, isLightTemplate, collectLegendEntries({ platform: data.platform, campaignSlides: data.slides, adSetSlides: data.adSetSlides ?? [], tableHeaderLabels: data.tableHeaderLabels, metaContent: data.metaContent }));
   return assemblePptx(template, slides);
 }
 
