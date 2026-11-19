@@ -1,4 +1,5 @@
 "use client";
+import {ReportDownloadLink} from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
 import { WizardReportHelp } from "./wizard-report-help";
@@ -241,11 +242,11 @@ export function WizardGenerateSuccessPanel({
         {/* Section B — review and export */}
         <section aria-labelledby="success-review-heading">
           <h3 id="success-review-heading" className="sr-only">Review and download</h3>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <a href={downloadUrl} className={primaryActionClass}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
+            <ReportDownloadLink key={downloadUrl} href={downloadUrl} className={primaryActionClass} containerClassName="flex min-w-0 flex-1 flex-col">
               <PptxDownloadIcon />
               Download PPTX
-            </a>
+            </ReportDownloadLink>
             {hasGoogleDriveConnected ? (
               <button type="button" onClick={handleSaveButtonClick} disabled={driveSaving} className={secondaryExportClass}>
                 <GoogleDriveIcon />

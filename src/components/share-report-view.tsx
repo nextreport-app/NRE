@@ -1,3 +1,4 @@
+import {ReportDownloadLink} from "@/components/report-download-link";
 import {MetaContentReportView} from "@/components/meta-content-report-view";
 import { formatClientTimestamp, formatStoredDateText } from "@/lib/client-date-format";
 import { dailyClientCopy } from "@/lib/nre/daily-client-copy";
@@ -785,13 +786,14 @@ export function ShareReportView({
           shareToken={shareToken}
           rightSlot={
             shareToken ? (
-              <a
+              <ReportDownloadLink
+                key={shareToken}
                 href={`/api/r/${shareToken}/download`}
-                aria-label="Download PowerPoint report"
+                ariaLabel="Download PowerPoint report"
                 className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#f5b45a] bg-[#f5b45a] px-3 py-2 text-[12px] font-semibold leading-none text-[#0b1728] transition-colors hover:bg-[#e9a447] sm:px-4 sm:py-2.5 sm:text-[14px]"
               >
                 <span className="hidden min-[400px]:inline">Download</span><span>PPTX</span>
-              </a>
+              </ReportDownloadLink>
             ) : null
           }
         />

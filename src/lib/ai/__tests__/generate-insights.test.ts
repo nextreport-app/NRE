@@ -573,3 +573,15 @@ it("replaces quarter-wide commentary in fresh and cached copy for a November wee
   expect(vi.mocked(callAI).mock.calls.every(([prompt])=>prompt.includes("only reporting period"))).toBe(true);
  }finally{vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
 });
+
+it.each([
+ "This ad set drove 18 LINK CLICKS during the period, supporting awareness and consideration objectives through paid social reach. Cost per click came in at $0.10.",
+ "This ad set generated 18 LINK CLICKS at $0.10 per click. Compare the conversion rate and return on ad spend for these clicks against the next reporting period.",
+])("keeps link-click commentary within the supplied objective: %s",async wrong=>{
+ const data=makeReportData({resultLabel:"LINK CLICKS",campaignResultsNum:18});const slide=data.campaignSlides[0],key=slideAiKey(slide);vi.mocked(callAI).mockResolvedValue(wrong);
+ try{
+  const result=await generateInsights(data,{anthropicApiKey:"test"});
+  expect(result.get(key)).toEqual({summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)});
+  expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]] )).get(key)).toEqual(result.get(key));
+ }finally{vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
+});
