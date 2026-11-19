@@ -774,3 +774,11 @@ describe("buildCampaignOrAdSetSlideXml — Part 4: 'Additional Metrics' continua
     expect(xml).not.toContain("{{METRIC_REACH}}");
   });
 });
+
+it("keeps the enabled cover budget above the slide-number lane",()=>{
+ const budget="Monthly Ad Budget: $1,227.06 of $1,500 used (82%) — 11 days remaining";
+ const xml=buildCoverSlideXml(template.cover,{...BASE_COVER,budgetSummary:budget},{agencyName:"NextReport"});
+ const index=xml.indexOf("Monthly Ad Budget"),shape=xml.slice(xml.lastIndexOf("<p:sp>",index),xml.indexOf("</p:sp>",index));
+ const y=Number(shape.match(/<a:off[^>]* y="(\d+)"/)![1]),height=Number(shape.match(/<a:ext[^>]* cy="(\d+)"/)![1]);
+ expect((y+height)/12700).toBeLessThan(509);expect(shape).toContain('wrap="none"');expect(xml).toContain("Prepared by NextReport");
+});

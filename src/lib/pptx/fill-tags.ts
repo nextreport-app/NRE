@@ -176,6 +176,8 @@ const PREPARED_BY_Y = ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU + ACCOUNT_NAME_H
 const COVER_SLIDE_WIDTH_EMU = 12192000;
 const COVER_BUDGET_SHAPE_X_EMU = 5892000;
 const COVER_BUDGET_RIGHT_MARGIN_EMU = 80000;
+// Leave the bottom-right slide-number lane clear when budget pacing is enabled.
+const COVER_BUDGET_Y_EMU = 485 * 12700;
 const COVER_BUDGET_MAX_CX_EMU = COVER_SLIDE_WIDTH_EMU - COVER_BUDGET_SHAPE_X_EMU - COVER_BUDGET_RIGHT_MARGIN_EMU;
 
 function ensureCoverBudgetSingleLine(xml: string, budgetSummary: string): string {
@@ -185,6 +187,7 @@ function ensureCoverBudgetSingleLine(xml: string, budgetSummary: string): string
   if (!xml.includes(locator)) return xml;
   let out = setShapeWrap(xml, locator, "none");
   out = setShapeExtCx(out, locator, COVER_BUDGET_MAX_CX_EMU);
+  out = setShapeOffsetY(out, locator, COVER_BUDGET_Y_EMU);
   out = setShapeNormAutofit(out, locator);
   return out;
 }
