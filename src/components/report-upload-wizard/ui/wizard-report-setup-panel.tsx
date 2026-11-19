@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { MetaReportContentGuide } from "./meta-report-content-guide";
 import type { Platform } from "@/lib/nre/google-columns";
 import { useSiteTheme } from "@/components/site-theme-provider";
 import { wizardReportTypeCopyForLocale } from "@/lib/wizard-i18n";
@@ -23,6 +24,7 @@ function ReportTypeIcon({ type }: { type: ReportTypeValue }) {
 
 export function WizardReportSetupPanel({
   reportType,
+  platform,
   reportTypeLabel,
   clientTimezone,
   onReportTypeChange,
@@ -78,5 +80,6 @@ export function WizardReportSetupPanel({
       <div><dt className="font-medium text-dash-ink">What you get</dt><dd className="mt-0.5 text-dash-ink-secondary">{reportType === "WEEKLY" && locale === "en" ? "Last 7 days’ performance, month-to-date totals and a 30-day chart." : selectedCopy.cardOneLiner}</dd></div>
       <div><dt className="font-medium text-dash-ink">{source === "api" ? "Data needed" : "CSV needed"}</dt><dd className="mt-0.5 text-dash-ink-secondary">{source === "api" ? "Fetched automatically for your selected report dates." : requirement.shortNote}</dd></div>
     </dl>
+    {platform === "META" && ["WEEKLY", "MONTHLY", "HISTORICAL"].includes(reportType) && <MetaReportContentGuide source={source} />}
   </section>;
 }
