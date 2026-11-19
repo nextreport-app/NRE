@@ -145,6 +145,7 @@ export interface SlideMetrics {
 }
 
 export interface AiContext {
+  entityLabel?: "campaign" | "ad set" | "ad group";
   reachEstimated?: boolean;
   ctx: string;
   /** The weekly reporting window as a plain human-readable range (e.g. "July 13 - July 19") — the AI prompt's {date_range} field. Unlike the slide's own dateRangeLine, never has the "\nAd Frequency: ..." suffix appended. */
@@ -2088,6 +2089,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
         freq: rowFreq,
         resultsNum: parseCellNum(resultValue),
         hasResults: parseCellNum(resultValue) > 0,
+        entityLabel: platform === "GOOGLE" ? "ad group" : "ad set",
         reachEstimated: isEstimatedReach(blendSource, adSetReachOpts),
         spendNum: adSetSpend,
         isInactive: statusIndicator !== null,

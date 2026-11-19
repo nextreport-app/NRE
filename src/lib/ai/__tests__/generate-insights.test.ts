@@ -487,3 +487,50 @@ it("rechecks cached preview commentary without changing valid copy or mutating t
   const valid = { summary: "Delivery produced 5 leads. Compare the next period before changing spend.", insights: "A controlled test may clarify the next step. Review November delivery first." };
   expect(revalidateCachedInsights(data, new Map([[key, valid]])).get(key)).toEqual(valid);
 });
+
+it.each([
+  "Click-through rate held steady at 2.72%, suggesting consistent audience engagement relative to spend efficiency.",
+  "The retargeting campaign delivered 384 link clicks, indicating solid engagement with your returning audience.",
+  "The ad set produced 366 link clicks, indicating solid engagement from the audience segment.",
+  "CTR remained stable at 2.72%. Current results were recorded.",
+])("replaces unsupported launch-review commentary in fresh and cached copy: %s", async (unsupported) => {
+  const data = makeReportData();
+  const slide = data.campaignSlides[0];
+  slide.ai.dateRange = "November 12 - November 18";
+  const key = slideAiKey(slide);
+  vi.mocked(callAI).mockResolvedValue(unsupported);
+  try {
+    const fresh = (await generateInsights(data, {anthropicApiKey:"test"})).get(key)!;
+    const cached = revalidateCachedInsights(data, new Map([[key,{summary:unsupported,insights:unsupported}]]));
+    expect(fresh.summary).toBe(buildFallbackSummary(slide.ai));
+    expect(fresh.insights).toBe(buildFallbackInsights(slide.ai));
+    expect(cached.get(key)).toEqual({summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)});
+  } finally {vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
+});
+
+it("keeps a cautious future test without treating it as an observed trend",()=>{
+  const data=makeReportData(),slide=data.campaignSlides[0],key=slideAiKey(slide);
+  const copy={summary:"Delivery produced 5 leads at $20.00 per lead. CTR was 1.00%.",insights:"Test a different message next period to see whether engagement improves. Compare the results before changing spend."};
+  expect(revalidateCachedInsights(data,new Map([[key,copy]])).get(key)).toEqual(copy);
+});
+
+it("keeps ad-set fallback results scoped to the ad set", async()=>{
+  const data=makeReportData();data.adSetSlides[0].ai.entityLabel="ad set";
+  const wrong="This campaign produced 5 leads. Click-through rate was 1.00%.";
+  vi.mocked(callAI).mockResolvedValue(wrong);
+  try {
+    const copy=await generateInsights(data,{anthropicApiKey:"test"});
+    expect(copy.get(slideAiKey(data.adSetSlides[0]))!.summary).toMatch(/^This ad set is running/);
+    expect(vi.mocked(callAI).mock.calls.some(([prompt])=>prompt.includes("These figures describe this ad set"))).toBe(true);
+  }finally{vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
+});
+
+it.each(["—", "", "N/A"])("keeps unavailable CTR out of fallback percentages: %s",ctr=>{
+  const ctx={...makeReportData().campaignSlides[0].ai,ctr};
+  for(const resultLabel of ["LEADS","REACH"]){
+    const text=buildFallbackSummary({...ctx,resultLabel});
+    expect(text).toContain("Click-through rate is unavailable.");
+    expect(text).not.toContain("—%");expect(text).not.toContain("N/A%");
+  }
+  expect(buildFallbackSummary({...ctx,ctr:"0.00%"})).toContain("Click-through rate was 0.00%.");
+});

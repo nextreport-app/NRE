@@ -154,6 +154,9 @@ function ctrNumberOnly(ctr: string): string {
  * click, reflecting current audience engagement levels."
  */
 function buildReachSummary(ctx: AiContext): string {
+  if (!ctx.ctr.trim() || !Number.isFinite(Number(ctrNumberOnly(ctx.ctr)))) {
+    return "This " + (ctx.entityLabel ?? "campaign") + " reached " + ctx.reach + " people across " + ctx.impressions + " impressions. Click-through rate is unavailable.";
+  }
   return (
     "This campaign reached " + ctx.reach + " people with " + ctx.impressions + " impressions at a " + ctx.cpm +
     " CPM, maintaining a " + ctx.freq.toFixed(1) + "x average frequency. The campaign achieved a " +
@@ -192,7 +195,7 @@ export function buildZeroResultsSummary(ctx: AiContext): string {
     );
   }
   return (
-    "This campaign is running for " + ctx.resultLabel.toLowerCase() + " but recorded none this week, with " +
+    "This " + (ctx.entityLabel ?? "campaign") + " is running for " + ctx.resultLabel.toLowerCase() + " but recorded none this week, with " +
     ctx.spend + " spent. Check the conversion path (form, pixel, or landing page) before increasing spend."
   );
 }
@@ -251,9 +254,11 @@ export function buildPausedZeroResultsInsights(): string {
 export function buildFallbackSummary(ctx: AiContext): string {
   if (isReachCampaign(ctx)) return buildReachSummary(ctx);
   return (
-    "This campaign is running for " + ctx.resultLabel.toLowerCase() + " and produced " + ctx.results + " " +
+    "This " + (ctx.entityLabel ?? "campaign") + " is running for " + ctx.resultLabel.toLowerCase() + " and produced " + ctx.results + " " +
     ctx.resultLabel.toLowerCase() + " at " + ctx.cpr + " " + ctx.costLabel.toLowerCase() + ", on " + ctx.spend +
-    " spend. Click-through rate was " + ctrNumberOnly(ctx.ctr) + "%."
+    " spend. " + (ctx.ctr.trim() && Number.isFinite(Number(ctrNumberOnly(ctx.ctr)))
+      ? "Click-through rate was " + ctrNumberOnly(ctx.ctr) + "%."
+      : "Click-through rate is unavailable.")
   );
 }
 
@@ -388,7 +393,10 @@ export function aiCopyViolatesObjectiveRules(
   if (/\b(?:within|under|below|on)[ -](?:(?:the|its|an?)\s+)?(?:(?:allocated|planned|approved|agreed)\s+)?budget\b/i.test(text)) return true;
   // No targets, historical periods, margins or audience diagnostics are in AiContext.
   if (/\b(?:benchmarks?|targets?|profitab\w*|historical|week[- ]over[- ]week|fatigue|saturation|efficient(?:ly)?|expected range|solid efficiency|strong efficiency|resonat\w*|conversion leaks)\b/i.test(text)) return true;
-  if (/\b(?:steady|consistent) (?:performance|engagement|lead generation)\b/i.test(text)) return true;
+  if (/\b(?:held|holding|remained?|stayed?|remain(?:ing)?|stay(?:ing)?)\s+(?:steady|stable|consistent|unchanged)\b/i.test(text)) return true;
+  if (/\b(?:steady|stable|consistent)\s+(?:(?:audience|click|lead|conversion)\s+)?(?:performance|engagement|lead generation|results?|rate|delivery)\b/i.test(text)) return true;
+  if (/\b(?:solid|strong|good|healthy|excellent|poor|weak)\s+(?:(?:audience|user|returning audience)\s+)?engagement\b/i.test(text)) return true;
+  if (ctx.entityLabel && ctx.entityLabel !== "campaign" && /\bthis campaign\b/i.test(text)) return true;
   if (/\b(?:qualified|responsive|engaged) audience\b|\baudience (?:remains? |is )?engaged\b|\bpush(?:ing)?\b.{0,65}\bfrequency\b|\bcombat (?:the )?low\b/i.test(text)) return true;
   if (/\b(proves?|definitely caused|confirms? a|conversion funnel problem|in (?:the )?learning phase)\b/i.test(text)) return true;
   if (ctx.resultLabel === "REACH" && ctx.cpr !== ctx.cpm && text.includes(ctx.cpr) && /per (?:one )?thousand impressions|per 1,000 impressions/i.test(text)) return true;

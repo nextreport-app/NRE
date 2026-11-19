@@ -154,13 +154,13 @@ function StatusBadge({ status }: { status: DeliveryStatusIndicator }) {
   );
 }
 
-function MetricGrid({ metrics, assetBaseUrl = "" }: { metrics: DynamicMetricValue[]; assetBaseUrl?: string }) {
+function MetricGrid({ metrics, assetBaseUrl = "", reachEstimated = false }: { metrics: DynamicMetricValue[]; assetBaseUrl?: string; reachEstimated?: boolean }) {
   if (metrics.length === 0) return null;
   const iconPrefix = assetBaseUrl.replace(/\/$/, "");
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {metrics.map((m, i) => (
-        <div key={`${m.key}-${i}`} className="rounded-lg border border-navy-border bg-navy-panel px-3 py-4 text-center">
+        <div key={`${m.key}-${i}`} className="min-w-0 rounded-lg border border-navy-border bg-navy-panel px-3 py-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`${iconPrefix}/metric-icons/${metricIconFile(m)}.png`}
@@ -169,10 +169,10 @@ function MetricGrid({ metrics, assetBaseUrl = "" }: { metrics: DynamicMetricValu
             height={20}
             className="mx-auto mb-2 opacity-90"
           />
-          <p className="truncate text-[14px] font-semibold uppercase tracking-wide text-accent-orange" style={{ letterSpacing: "0.5px" }}>
-            {m.label}
+          <p className="flex min-h-9 items-center justify-center break-words text-[13px] font-semibold uppercase leading-snug tracking-wide text-accent-orange [overflow-wrap:anywhere] sm:text-[14px]" style={{ letterSpacing: "0.5px" }}>
+            {reachEstimated && m.key === "reach" ? "REACH (EST.)" : m.label}
           </p>
-          <p className="mt-1 truncate text-[22px] font-bold text-ink sm:text-[28px]">{m.value}</p>
+          <p className="mt-1 break-words text-[22px] font-bold text-ink [overflow-wrap:anywhere] sm:text-[28px]">{m.value}</p>
         </div>
       ))}
     </div>
@@ -252,7 +252,8 @@ function CampaignCard({
       <DateAndFrequency dateRange={campaign.dateRange} adFrequency={campaign.adFrequency} />
 
       <div className="mt-5">
-        <MetricGrid metrics={campaign.metrics} assetBaseUrl={assetBaseUrl} />
+        <MetricGrid metrics={campaign.metrics} assetBaseUrl={assetBaseUrl} reachEstimated={campaign.reachEstimated} />
+        {campaign.reachEstimated && <p className="mt-2 text-sm text-ink-muted">Reach estimated from daily data.</p>}
       </div>
 
       <AiCopyBlock heading="Campaign Summary" text={campaign.aiSummary} />
@@ -296,10 +297,11 @@ function AdSetCard({
       <DateAndFrequency dateRange={adSet.dateRange} adFrequency={adSet.adFrequency} />
 
       <div className="mt-5">
-        <MetricGrid metrics={adSet.metrics} assetBaseUrl={assetBaseUrl} />
+        <MetricGrid metrics={adSet.metrics} assetBaseUrl={assetBaseUrl} reachEstimated={adSet.reachEstimated} />
+        {adSet.reachEstimated && <p className="mt-2 text-sm text-ink-muted">Reach estimated from daily data.</p>}
       </div>
 
-      <AiCopyBlock heading="Campaign Summary" text={adSet.aiSummary} />
+      <AiCopyBlock heading={platform === "GOOGLE" ? "Ad Group Summary" : "Ad Set Summary"} text={adSet.aiSummary} />
       <AiCopyBlock heading="Key Insights & Updates" text={adSet.aiInsights} />
     </SlideCard>
   );
@@ -505,11 +507,15 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
   const hideMtdRow = !hidePeriodRow && data.periodRow.sameMonthAsCurrentMTD;
   const tableOptions = { showMtdRow: !hideMtdRow, showPeriodRow: !hidePeriodRow };
 
+  const displayPeriodRow = data.reportType === "WEEKLY" && !hidePeriodRow
+    ? {...data.periodRow, monthLabel: `Previous month\n${data.periodRow.monthLabel}`}
+    : data.periodRow;
+
   const rawGrid = isHistoricalMultiMonth
     ? buildHistoricalComparisonTableGrid(data.historicalComparisonRows!, data.tableHeaderLabels)
     : data.platform === "GOOGLE"
-      ? buildGoogleCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions)
-      : buildCombinedTotalTableGrid(data.periodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);
+      ? buildGoogleCombinedTotalTableGrid(displayPeriodRow, data.mtdRow, data.tableHeaderLabels, tableOptions)
+      : buildCombinedTotalTableGrid(displayPeriodRow, data.mtdRow, data.tableHeaderLabels, tableOptions);
 
   const grid = data.reportType === "DAY_BREAKDOWN" ? projectDailyGrid(rawGrid, data.tableHeaderLabels.resultColumns, data.dailyExcludedMetricKeys) : rawGrid;
 
@@ -566,7 +572,7 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
                         (ci === 0 ? "text-left font-semibold" : "text-center")
                       }
                     >
-                      {cell}
+                      {ci === 0 ? cell.split("\n").map((line, index) => <span className="block" key={index}>{line}</span>) : cell}
                     </td>
                   ))}
                 </tr>
@@ -679,7 +685,7 @@ function CombinedTotalTable({ data, compact = false }: { data: ShareReportData; 
                     (ci === 0 ? "text-left font-semibold" : "text-center")
                   }
                 >
-                  {cell}
+                  {ci === 0 ? cell.split("\n").map((line, index) => <span className="block" key={index}>{line}</span>) : cell}
                 </td>
               ))}
             </tr>
@@ -902,6 +908,7 @@ export function ShareReportView({
           <section className={slideClass}><SlideCard>
             <h2 className="mb-4 text-[22px] font-bold text-ink sm:text-[28px]">Monthly Campaign Performance Overview</h2>
             <CombinedTotalTable data={visibleData} compact={isPrint} />
+            {visibleData.platform !== "GOOGLE" && <p className="mt-2 text-sm text-ink-muted">Reach can be estimated from daily data; campaign audiences can overlap.</p>}
           </SlideCard></section>
         )}
 
