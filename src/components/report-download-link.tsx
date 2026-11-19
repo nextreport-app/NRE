@@ -91,8 +91,9 @@ export function ReportDownloadLink({
   const transferred = progress?.received
     ? `${(progress.received / 1024 / 1024).toFixed(1)} MB`
     : null;
-  const loadingLabel =
-    percentage !== null
+  const loadingLabel = progress?.reconnecting
+    ? `Reconnecting…${percentage !== null ? ` ${percentage}%` : ""}`
+    : percentage !== null
       ? `Downloading… ${percentage}%`
       : transferred
         ? `Downloading… ${transferred}`
