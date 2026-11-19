@@ -576,6 +576,8 @@ it("replaces quarter-wide commentary in fresh and cached copy for a November wee
 
 it.each([
  "This ad set drove 18 LINK CLICKS during the period, supporting awareness and consideration objectives through paid social reach. Cost per click came in at $0.10.",
+ "This ad set generated 18 LINK CLICKS at $0.10 per click across a reach of 1,000 people, indicating the creative is driving qualified interest among the audience. Compare landing-page visits next period.",
+ "This ad set generated 18 LINK CLICKS at $0.10 per click against modest reach of 1,664 impressions. Compare spend and result count next period.",
  "This ad set generated 18 LINK CLICKS at $0.10 per click. Compare the conversion rate and return on ad spend for these clicks against the next reporting period.",
 ])("keeps link-click commentary within the supplied objective: %s",async wrong=>{
  const data=makeReportData({resultLabel:"LINK CLICKS",campaignResultsNum:18});const slide=data.campaignSlides[0],key=slideAiKey(slide);vi.mocked(callAI).mockResolvedValue(wrong);

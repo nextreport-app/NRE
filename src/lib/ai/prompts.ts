@@ -412,7 +412,10 @@ export function aiCopyViolatesObjectiveRules(
   if (/\b(proves?|definitely caused|confirms? a|conversion funnel problem|in (?:the )?learning phase)\b/i.test(text)) return true;
   if (ctx.resultLabel === "REACH" && ctx.cpr !== ctx.cpm && text.includes(ctx.cpr) && /per (?:one )?thousand impressions|per 1,000 impressions/i.test(text)) return true;
   if (platform !== "META") return false;
+  // Reach counts people/accounts; impressions count displays, not people.
+  if (/\breach(?:\s+of)?\s+[\d,]+(?:\.\d+)?\s+impressions\b/i.test(text)) return true;
   // Click delivery is not evidence of an awareness objective or purchase return.
+  if (ctx.resultLabel === "LINK CLICKS" && /\bqualified\s+(?:interest|traffic|visitors?|clicks?|audience)\b/i.test(text)) return true;
   if (ctx.resultLabel === "LINK CLICKS" && /\b(?:awareness|consideration|roas)\b|\breturn on ad spend\b/i.test(text)) return true;
   if (!isMetaFormLeadsCampaign(ctx)) return false;
   const lower = text.toLowerCase();
