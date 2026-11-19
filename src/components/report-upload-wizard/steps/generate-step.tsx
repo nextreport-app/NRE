@@ -1,4 +1,5 @@
 "use client";
+import {metaReportTitle} from "@/lib/nre/meta-report-content/selection";
 import {MetaReportContentPanel} from "../ui/meta-report-content-panel";
 import { WizardFinalSettings } from "../ui/wizard-final-settings";
 import { WizardOptionalComparisons } from "../ui/wizard-optional-comparisons";
@@ -116,10 +117,10 @@ export function WizardGenerateStep() {
   } = w;
 
   const slideCount = estimatedSlideCount();
-  const sectionsOnly = (data?.metaContent ?? historicalData?.metaContent)?.includeStandard === false;
+  const sectionsOnly = !!w.reportSelection || (data?.metaContent ?? historicalData?.metaContent)?.includeStandard === false;
 
   const weeklyPeriodNeedsAttention =
-    reportType === "WEEKLY" &&
+    !w.reportSelection && reportType === "WEEKLY" &&
     (dateMode === "custom" || Boolean(customRangeError) || needsLongRangeConfirm);
   const [weeklyPeriodExpanded, setWeeklyPeriodExpanded] = useState(false);
 
@@ -144,7 +145,7 @@ export function WizardGenerateStep() {
     reportBrandingBlocksGenerate ||
     previewRefreshing;
   const generateCtaLabel =
-    w.reportContentBusy ? "Apply or discard section changes" : generateStatus === "loading"
+    w.reportContentBusy ? "Complete report setup" : w.reportSelection && !w.reportContentPrepared ? "Prepare report data" : generateStatus === "loading"
       ? "Generating…"
       : generateStatus === "error"
         ? "Try again"
@@ -175,7 +176,7 @@ export function WizardGenerateStep() {
           generatedWithCsvMismatch={generatedWithCsvMismatch}
           generatedWithCsvVerifySkipped={generatedWithCsvVerifySkipped}
           reportId={reportId}
-          reportTitle={defaultReportTitleFor(reportType)}
+          reportTitle={w.reportSelection ? metaReportTitle(w.reportSelection) : defaultReportTitleFor(reportType)}
           reportType={reportType}
           reportTypeLabel={reportTypeLabel()}
           wizardSharePlatformLabel={wizardSharePlatformLabel()}
@@ -331,7 +332,7 @@ export function WizardGenerateStep() {
               {previewStatus === "invalid" && (
                 <div className="space-y-3">
                   {previewErrors.filter(isNoDataRowsError).map((e, i) =>
-                    previousMonthHasFile ? (
+                    !sectionsOnly && previousMonthHasFile ? (
                       <PreviousMonthSummaryOption
                         key={i}
                         status={pmsStatus}
@@ -383,10 +384,10 @@ export function WizardGenerateStep() {
 
 
 
-            {platform === "META" && w.uploadSessionId && ["WEEKLY","MONTHLY","HISTORICAL"].includes(reportType) && generateStatus !== "done" && <MetaReportContentPanel clientId={clientId} uploadSessionId={w.uploadSessionId} source={w.dataSourceMode} reportType={reportType} dateSelection={w.dateMode === "custom" ? {mode:"custom",customStart:w.customStart,customEnd:w.customEnd} : {mode:w.dateMode}} historicalMonthCount={w.historicalMonthCount} selectedCampaigns={Array.from(w.selectedCampaigns)} onSessionReady={w.onReportContentReady} onWorking={w.setReportContentBusy} disabled={generateStatus === "loading"} />}
+            {platform === "META" && w.uploadSessionId && w.reportSelection && generateStatus !== "done" && <MetaReportContentPanel clientId={clientId} uploadSessionId={w.uploadSessionId} source={w.dataSourceMode} selection={w.reportSelection} dateSelection={{mode:"custom",customStart:w.customStart,customEnd:w.customEnd}} selectedCampaigns={Array.from(w.selectedCampaigns)} onSessionReady={w.onReportContentReady} onWorking={w.setReportContentBusy} onBack={()=>w.setStep(1)} disabled={generateStatus === "loading"} />}
             {generateStepPreviewReady && generateStatus === "idle" && <section aria-label="Report outline" className="rounded-lg border border-dash-border bg-dash-card p-4">
               <h3 className="text-sm font-semibold text-dash-ink">Your report · {slideCount} slides</h3>
-              {(data?.metaContent || historicalData?.metaContent) && <p className="mt-2 text-sm text-dash-ink-secondary">{(data?.metaContent || historicalData?.metaContent)?.pages.length} audience/creative pages · {(data?.metaContent || historicalData?.metaContent)?.includeStandard ? "Standard performance included" : "Audience/creative sections only"}</p>}
+              {(data?.metaContent || historicalData?.metaContent) && <p className="mt-2 text-sm text-dash-ink-secondary">Report pages: {(data?.metaContent || historicalData?.metaContent)?.pages.length} · Cover · Metric guide</p>}
               {(data?.metaContent || historicalData?.metaContent)?.includeStandard !== false && <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? data.isPaused ? `No campaign delivery in the selected ${data.reportType === "WEEKLY" ? "week" : "period"} · activity summary${data.chart ? data.reportType === "WEEKLY" ? " · 30-day chart" : " · performance chart" : ""} · overview · metric guide` : `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign comparisons with current spend · summary including earlier-period campaigns · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>}
             </section>}
             {!sectionsOnly && reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
@@ -467,7 +468,7 @@ export function WizardGenerateStep() {
               </div>
             )}
 
-            {previewKind === "normal" && data && !data.isPaused && data.objectiveWarnings.length > 0 && (
+            {!sectionsOnly && previewKind === "normal" && data && !data.isPaused && data.objectiveWarnings.length > 0 && (
               <div className="space-y-2">
                 {data.objectiveWarnings.map((w) => (
                   <div
@@ -539,13 +540,13 @@ export function WizardGenerateStep() {
             <WizardStickyFooter
               stepLabel={
                 generateStatus === "loading"
-                  ? "Step 4 of 4 · Generating…"
+                  ? (w.reportSelection?"Step 3 of 3 · Generating…":"Step 4 of 4 · Generating…")
                   : generateStatus === "error"
-                    ? "Step 4 of 4 · Try again"
-                    : "Step 4 of 4 · Generate"
+                    ? (w.reportSelection?"Step 3 of 3 · Try again":"Step 4 of 4 · Try again")
+                    : (w.reportSelection?"Step 3 of 3 · Generate":"Step 4 of 4 · Generate")
               }
-              onBack={() => setStep(3)}
-              backLabel="Back to metrics"
+              onBack={() => setStep(w.reportSelection ? 2 : 3)}
+              backLabel={w.reportSelection?"Back to campaigns":"Back to metrics"}
               primaryLabel={generateCtaLabel}
               primaryLoadingLabel={generateCtaLabel}
               onPrimary={handleGenerateStepPrimary}

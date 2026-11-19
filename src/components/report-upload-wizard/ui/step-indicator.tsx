@@ -10,16 +10,18 @@ export function StepIndicator({
   visitedSteps,
   onNavigate,
   flow,
+  contentReport=false,
 }: {
   step: Step;
   visitedSteps: Set<Step>;
   onNavigate: (s: Step) => void;
   flow: "full" | "simple";
+  contentReport?:boolean;
 }) {
   const { locale } = useSiteTheme();
-  const steps = getVisibleWizardSteps(flow);
+  const steps = getVisibleWizardSteps(flow).filter(step=>!contentReport||step!==3);
   return (
-    <nav aria-label="Report progress" className={`grid ${steps.length === 4 ? "grid-cols-4" : "grid-cols-2"} items-center gap-2 text-[12px] sm:flex sm:flex-wrap sm:gap-y-3 sm:text-[14px]`}>
+    <nav aria-label="Report progress" className={`grid ${steps.length === 4 ? "grid-cols-4" : steps.length === 3 ? "grid-cols-3" : "grid-cols-2"} items-center gap-2 text-[12px] sm:flex sm:flex-wrap sm:gap-y-3 sm:text-[14px]`}>
       {steps.map((s, i) => {
         const isCompleted = s < step && visitedSteps.has(s);
         return (

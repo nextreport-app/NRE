@@ -84,15 +84,15 @@ export function WizardCampaignsStep() {
   const stepActive = w.step === 2;
   const zeroSpendSet = new Set(w.zeroSpendCampaigns);
   const selectionKey = w.selectedCampaignsKey();
-  const objectivesReady = w.metricsFetchedForSelection === selectionKey;
+  const objectivesReady = !!w.reportSelection || w.metricsFetchedForSelection === selectionKey;
   const selectedCount = w.selectedCampaigns.size;
 
   const ensureObjectives = w.ensureObjectivesForSelection;
   useEffect(() => {
-    if (!stepActive || selectedCount === 0) return;
+    if (w.reportSelection || !stepActive || selectedCount === 0) return;
     if (objectivesReady) return;
     void ensureObjectives(selectionKey);
-  }, [stepActive, selectionKey, selectedCount, objectivesReady, ensureObjectives]);
+  }, [stepActive, selectionKey, selectedCount, objectivesReady, ensureObjectives,w.reportSelection]);
 
   if (!stepActive) return null;
 
@@ -137,7 +137,7 @@ export function WizardCampaignsStep() {
   const useResultIndicatorHeading =
     metaCsvExportProfile?.kind === "campaigns_table" && metaCsvExportProfile.hasResultIndicatorColumn;
 
-  const showAdSetOptions = supportsAdSetSlides(w.reportType);
+  const showAdSetOptions = !w.reportSelection && supportsAdSetSlides(w.reportType);
 
   const objectivesLoading = selectedCampaigns.size > 0 && (metricsStatus === "loading" || !objectivesReady);
 
@@ -322,7 +322,7 @@ export function WizardCampaignsStep() {
 
       {selectedCampaigns.size > 0 ? (
         <>
-          <section
+          {!w.reportSelection && (      <section
             aria-labelledby="wizard-objectives-section-heading"
             className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
           >
@@ -420,7 +420,7 @@ export function WizardCampaignsStep() {
                 })}
             </ul>
           )}
-          </section>
+          </section>)}
         </>
       ) : null}
 
@@ -433,22 +433,22 @@ export function WizardCampaignsStep() {
         </button>
         <button
           onClick={() => void handleCampaignsContinue()}
-          disabled={selectedCampaigns.size === 0 || objectivesLoading || campaignSpendLoading || hasBlockingObjectives()}
+          disabled={selectedCampaigns.size === 0 || objectivesLoading || campaignSpendLoading || (!w.reportSelection && hasBlockingObjectives())}
           className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
         >
-          {objectivesLoading ? copy.loading : copy.continueToMetrics}
+          {objectivesLoading ? copy.loading : (w.reportSelection ? "Continue to review" : copy.continueToMetrics)}
         </button>
       </div>
 
-      <WizardStepHelp step={2} platform={w.platform} clientTimezone={w.clientTimezone} />
+      {!w.reportSelection&&<WizardStepHelp step={2} platform={w.platform} clientTimezone={w.clientTimezone} />}
 
       <WizardStickyFooter
-        stepLabel={copy.stepOf(2, 4, wizardStepLabel(2, locale))}
+        stepLabel={copy.stepOf(2, w.reportSelection?3:4, wizardStepLabel(2, locale))}
         onBack={() => setStep(1)}
         backLabel={copy.back}
-        primaryLabel={objectivesLoading ? copy.loading : copy.continueToMetrics}
+        primaryLabel={objectivesLoading ? copy.loading : (w.reportSelection ? "Continue to review" : copy.continueToMetrics)}
         onPrimary={() => void handleCampaignsContinue()}
-        primaryDisabled={selectedCampaigns.size === 0 || objectivesLoading || campaignSpendLoading || hasBlockingObjectives()}
+        primaryDisabled={selectedCampaigns.size === 0 || objectivesLoading || campaignSpendLoading || (!w.reportSelection && hasBlockingObjectives())}
         primaryLoading={objectivesLoading}
       />
     </div>

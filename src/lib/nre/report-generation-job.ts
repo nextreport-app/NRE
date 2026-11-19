@@ -391,12 +391,12 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       report: {
         id: reportId,
         shareToken: report.shareToken,
-        reportType: reportData.reportType,
+        reportType: reportData.metaContent?.reportKind ?? reportData.reportType,
         platform,
         displayName: report.displayName,
       },
-      healthScore: reportData.cover.healthScore,
-      healthBadge: reportData.cover.healthBadge,
+      healthScore: reportData.metaContent?.includeStandard === false ? undefined : reportData.cover.healthScore,
+      healthBadge: reportData.metaContent?.includeStandard === false ? undefined : reportData.cover.healthBadge,
     });
     await cleanupUploadSession(job.userId, job.clientId, job.uploadSessionId);
   } catch (err) {

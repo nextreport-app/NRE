@@ -39,6 +39,7 @@ export type WizardDraftSnapshot = {
   uploadSessionId: string;
   platform: WizardPlatformChoice;
   reportType: WizardReportType;
+  reportSelection?: import("@/lib/nre/meta-report-content/selection").MetaReportSelection | null;
   historicalMonthCount?: number;
   comparisonMetricKeys?: string[];
   dailyMetricKeys?: string[];

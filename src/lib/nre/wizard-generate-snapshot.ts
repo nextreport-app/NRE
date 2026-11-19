@@ -14,6 +14,7 @@ export interface WizardGenerateSnapshot {
   shareToken: string | null;
   platform: "META" | "GOOGLE" | "TIKTOK";
   reportType: WizardReportType;
+  reportSelection?: import("@/lib/nre/meta-report-content/selection").MetaReportSelection | null;
   dateMode: "last7" | "prev7" | "last14" | "custom";
   customStart: string;
   customEnd: string;

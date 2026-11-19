@@ -21,6 +21,8 @@ export interface FullReportHistoryItem {
 }
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
+  BREAKDOWN:"Breakdown",
+  CREATIVE:"Creative",
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
   COMPARISON: "Comparison",

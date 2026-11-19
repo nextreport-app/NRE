@@ -170,18 +170,18 @@ function ReportUploadWizardBody() {
         {!generateSuccessScreen ? (
           <>
             <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
-              {w.step === 4
+              {w.reportSelection && w.step===2 ? "Select campaigns" : w.step === 4
                 ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
                 : wizardStepHeading(w.step, w.platform, locale)}
             </h1>
             {wizardStepSubtitle(w.step, w.platform, locale) ? (
-              <p className="text-[14px] text-dash-ink-secondary">{w.step === 3 && w.reportType === "DAY_BREAKDOWN" ? "Review the metrics included in your daily tables." : w.step === 3 && w.reportType === "COMPARISON" ? "Review the metrics included in your comparison report." : wizardStepSubtitle(w.step, w.platform, locale)}</p>
+              <p className="text-[14px] text-dash-ink-secondary">{w.reportSelection && w.step===2 ? "Choose which campaigns to include." : w.step === 3 && w.reportType === "DAY_BREAKDOWN" ? "Review the metrics included in your daily tables." : w.step === 3 && w.reportType === "COMPARISON" ? "Review the metrics included in your comparison report." : wizardStepSubtitle(w.step, w.platform, locale)}</p>
             ) : null}
           </>
         ) : null}
       </div>
       {!generateSuccessScreen ? (
-        <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} />
+        <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} contentReport={!!w.reportSelection} />
       ) : null}
 
       {w.step === 2 && <CsvReportingDateNote automaticPreset={w.reportType === "COMPARISON" ? w.comparisonPreset !== "custom" : ["WEEKLY", "DAY_BREAKDOWN"].includes(w.reportType) && w.dateMode !== "custom"} source={w.dataSourceMode} reportType={w.reportType} dateMode={w.dateMode} currency={w.clientCurrency} bounds={w.dateBounds} timezone={w.clientTimezone} />}

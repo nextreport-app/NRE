@@ -1,4 +1,5 @@
 "use client";
+import {metaReportSelectionSchema,metaReportTitle,type MetaReportSelection} from "@/lib/nre/meta-report-content/selection";
 import { formatClientCalendarDate, formatClientCalendarRange } from "@/lib/client-date-format";
 import { fetchWizardUpload, uploadFailureMessage } from "./upload-transport";
 import { dailyMainTablePages } from "@/lib/nre/daily-report-presentation";
@@ -86,7 +87,7 @@ import { normalizeSavedDateSelection } from "./ui/normalize-date-selection";
 import {
   buildClientReportShareMessage,
   buildShareReportAbsoluteUrl,
-  buildUploadFormData,
+  buildUploadFormData as baseBuildUploadFormData,
   defaultReportTitleFor,
   formatIso as formatIsoDefault,
   formatIsoRange as formatIsoRangeDefault,
@@ -186,6 +187,7 @@ export function useReportUploadWizard({
 
   /** Every step transition in the wizard goes through this — records the step as visited alongside switching to it. */
   function setStep(s: Step) {
+    if(reportSelection&&s===3)s=4;
     const current = stepRef.current;
     if (s < current) invalidateDownstreamFromStep(s);
     stepRef.current = s;
@@ -423,6 +425,16 @@ export function useReportUploadWizard({
   // card, showing its own Period A/B preset picker instead — see
   // fetchPreview/handleGenerate, which branch on this value.
   const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
+  const [reportSelection,setReportSelection]=useState<MetaReportSelection|null>(null);
+  const [reportContentPrepared,setReportContentPrepared]=useState(false);
+  function buildUploadFormData(file:File|null,extra:Record<string,unknown>={},id?:string|null){return baseBuildUploadFormData(file,{...extra,reportSelection:reportSelection??undefined},id);}
+  function handleReportSelectionChange(next:MetaReportSelection){
+    acknowledgePostGenerateEdit();
+    if(!reportSelection){const end=csvReportingCalendar(dataSourceMode==="api"?null:dateBounds,new Date(),clientTimezone).endIso;const start=new Date(end+"T12:00:00Z");start.setUTCDate(start.getUTCDate()-29);setCustomStart(start.toISOString().slice(0,10));setCustomEnd(end);}
+    setReportSelection(next);setReportType("WEEKLY");setDateMode("custom");setLongRangeConfirmed(true);
+    setUploadSessionId(null);setMtdFile(null);setReportContentPrepared(false);setAnalyzeErrors([]);setAnalyzeStatus("idle");resetPreviewState();resetGenerateState();
+    setIncludePreviousMonthComparison(false);
+  }
   const clientPrefsHydratedRef = useRef(false);
 
   // Comparison dates are chosen before upload and preserved across analysis.
@@ -525,6 +537,7 @@ export function useReportUploadWizard({
   useEffect(() => {
     clientPrefsHydratedRef.current = false;
     const prefs = readClientWizardPreferences(clientId);
+    setReportSelection(metaReportSelectionSchema.safeParse(prefs?.reportSelection).data??null);
     if (prefs) {
       if (prefs.reportType && isLaunchReportTypeEnabled(prefs.reportType)) {
         const coerced = coerceLaunchReportType(prefs.reportType);
@@ -560,6 +573,7 @@ export function useReportUploadWizard({
     if (!clientPrefsHydratedRef.current) return;
     saveClientWizardPreferences(clientId, {
       reportType,
+      reportSelection,
       historicalMonthCount,
       dateMode,
       customStart: dateMode === "custom" ? customStart : undefined,
@@ -570,6 +584,7 @@ export function useReportUploadWizard({
   }, [
     clientId,
     reportType,
+    reportSelection,
     historicalMonthCount,
     dateMode,
     customStart,
@@ -582,6 +597,7 @@ export function useReportUploadWizard({
   function handleReportTypeChange(next: ReportTypeValue, options?: { initializeDates?: boolean }) {
     acknowledgePostGenerateEdit();
     const reportTypeChoice = isLaunchReportTypeEnabled(next) ? next : coerceLaunchReportType(next);
+    if(reportSelection){setLongRangeConfirmed(false);setReportSelection(null);setUploadSessionId(null);setMtdFile(null);setReportContentPrepared(false);resetPreviewState();resetGenerateState();}
     setReportType(reportTypeChoice);
     // Month controls supply exact dates/count themselves. Do not replace their
     // one-month choice with every month found in an already uploaded CSV.
@@ -764,6 +780,7 @@ export function useReportUploadWizard({
       ...core,
       platform,
       reportType,
+      reportSelection,
       historicalMonthCount,
       dateMode,
       customStart,
@@ -800,6 +817,8 @@ export function useReportUploadWizard({
     setShareToken(snapshot.shareToken);
     setPlatform(coerceLaunchPlatform(snapshot.platform));
     setReportType(coerceLaunchReportType(snapshot.reportType));
+    setReportSelection(snapshot.reportSelection??null);
+    setReportContentPrepared(!!snapshot.data?.metaContent);
     setDateMode(snapshot.dateMode);
     setCustomStart(snapshot.customStart);
     setCustomEnd(snapshot.customEnd);
@@ -942,6 +961,7 @@ export function useReportUploadWizard({
     const campaignList: string[] = json.campaigns || [];
     const validCampaigns = new Set(campaignList);
 
+    setReportContentPrepared(json.reportContentPrepared===true);
     setUploadSessionId(typeof json.uploadSessionId === "string" ? json.uploadSessionId : null);
     setCsvHeaders(Array.isArray(json.headers) ? json.headers : []);
     setMetricHeaderProfile(json.metricHeaderProfile ?? null);
@@ -1622,6 +1642,7 @@ export function useReportUploadWizard({
       ...(supportsAdSetSlides(reportType) && uploadSessionId ? { uploadSessionId, selectedAdSets: Array.from(selectedAdSets) } : {}),
     });
     const selectionKey = selectedCampaignsKey();
+    if(reportSelection){setStep(4);return;}
     await ensureObjectivesForSelection(selectionKey);
 
     if (hasBlockingObjectives()) return;
@@ -1954,7 +1975,7 @@ export function useReportUploadWizard({
       }
       if (reportType === "WEEKLY") {
         const spanDays = customSpanDays();
-        if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed) {
+        if (dateMode === "custom" && spanDays !== null && spanDays > 7 && !longRangeConfirmed && !reportSelection) {
           releasePreviewLoadingState("idle");
           return null;
         }
@@ -2109,6 +2130,7 @@ export function useReportUploadWizard({
 
   useEffect(() => {
     if (step !== 4 || !usesFullAdWizard(platform)) return;
+    if(reportSelection&&!reportContentPrepared)return;
     // Keep the post-generate success screen until the user edits report settings.
     if (generateStatus === "done" || generateStatus === "loading") return;
     if (!mtdFile && !uploadSessionId) return;
@@ -2141,6 +2163,8 @@ export function useReportUploadWizard({
     step,
     platform,
     reportType,
+    reportSelection,
+    reportContentPrepared,
     historicalMonthCount,
     dateMode,
     customStart,
@@ -2209,7 +2233,7 @@ export function useReportUploadWizard({
           confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
           dateSelection:
             ["WEEKLY", "DAY_BREAKDOWN", "MONTHLY", "DAILY", "HISTORICAL"].includes(reportType) ? currentDateSelection() : undefined,
-          reportTitle: defaultReportTitleFor(reportType),
+          reportTitle: reportSelection?metaReportTitle(reportSelection):defaultReportTitleFor(reportType),
           reportType,
           platform,
           dailyExcludedMetricKeys: reportType === "DAY_BREAKDOWN" ? dailyExcludedMetricKeys : undefined,
@@ -2347,7 +2371,7 @@ export function useReportUploadWizard({
   function buildClientShareMessageInput(reportUrl: string) {
     return {
       clientName,
-      reportTitle: defaultReportTitleFor(reportType),
+      reportTitle: reportSelection ? metaReportTitle(reportSelection) : defaultReportTitleFor(reportType),
       reportTypeLabel: reportTypeLabel(),
       platformLabel: wizardSharePlatformLabel(),
       dateRangeLabel: driveDateRangeLabel() || "this period",
@@ -2525,6 +2549,7 @@ export function useReportUploadWizard({
     setCustomRangeError(null);
     setLongRangeConfirmed(false);
     setReportType("WEEKLY");
+    setReportSelection(null);setReportContentPrepared(false);
     const prefs = readClientWizardPreferences(clientId);
     setShowBudgetOnCover(typeof prefs?.showBudgetOnCover === "boolean" ? prefs.showBudgetOnCover : false);
     setComparisonPreset("thisWeek");
@@ -2564,7 +2589,7 @@ export function useReportUploadWizard({
 
   const spanDays = customSpanDays();
   const needsLongRangeConfirm =
-    reportType === "WEEKLY" &&
+    !reportSelection && reportType === "WEEKLY" &&
     dateMode === "custom" &&
     spanDays !== null &&
     spanDays > 7 &&
@@ -2579,6 +2604,7 @@ export function useReportUploadWizard({
    * "Label: value" line, varying by report type.
    */
   function reportTypeLabel(): string {
+    if(reportSelection)return metaReportTitle(reportSelection);
     if (previewKind === "comparison" || reportType === "COMPARISON") {
       return wizardReportTypePickerLabel("COMPARISON");
     }
@@ -2662,7 +2688,7 @@ export function useReportUploadWizard({
 
   const generateStepPreviewReady = useMemo(() => {
     if (!usesFullAdWizard(platform)) return true;
-    if (reportContentBusy || previousMonthUploading || previewStatus === "invalid" || previewStatus === "error") return false;
+    if ((reportSelection&&!reportContentPrepared) || reportContentBusy || previousMonthUploading || previewStatus === "invalid" || previewStatus === "error") return false;
     if (previewStatus === "loading" || previewRefreshing) return false;
     return !!(data || comparisonData || historicalData || dayBreakdownData);
   }, [
@@ -2671,6 +2697,8 @@ export function useReportUploadWizard({
     previewRefreshing,
     previousMonthUploading,
     reportContentBusy,
+    reportSelection,
+    reportContentPrepared,
     data,
     comparisonData,
     historicalData,
@@ -2770,6 +2798,7 @@ export function useReportUploadWizard({
   }
 
   function driveDateRangeLabel(): string {
+    if (reportSelection && customStart && customEnd) return formatIsoRange({startIso: customStart, endIso: customEnd});
     if (previewKind === "comparison" && comparisonData) return `${comparisonData.periodALabel} vs ${comparisonData.periodBLabel}`;
     if (previewKind === "historical" && historicalData) return historicalData.monthsLabel;
     if (previewKind === "dayBreakdown" && dayBreakdownData) return dayBreakdownData.rangeLabel;
@@ -2945,7 +2974,8 @@ export function useReportUploadWizard({
     setUploadSessionId,
     setReportContentBusy,
     reportContentBusy,
-    onReportContentReady: (id: string) => {setUploadSessionId(id);setPreviewRefreshing(true);resetGenerateState();},
+    reportSelection,handleReportSelectionChange,reportContentPrepared,
+    onReportContentReady: (id: string) => {if(id!==uploadSessionId){setUploadSessionId(id);resetPreviewState();resetGenerateState();}setReportContentPrepared(true);},
     previousMonthHasFile,
     setPreviousMonthHasFile,
     previousMonthUpdatedAt,

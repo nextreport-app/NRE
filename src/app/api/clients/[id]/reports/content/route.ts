@@ -1,3 +1,4 @@
+import {metaReportOptions} from "@/lib/nre/meta-report-content/selection";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -144,8 +145,13 @@ export async function POST(
       throw Error(
         "Your Meta import expired. Return to Import and sync or upload again.",
       );
+    if(upload.reportSelection){
+      const expected=metaReportOptions(upload.reportSelection);
+      if(settings.options.includeStandard||JSON.stringify(settings.options.audience)!==JSON.stringify(expected.audience)||settings.options.creatives!==expected.creatives||(settings.options.locationLevel??"region")!==(expected.locationLevel??"region"))throw Error("The report choice changed. Return to Import to choose a different report.");
+    }
     const ranges = metaContentRanges({
       ...settings,
+      reportSelection:upload.reportSelection,
       rows: upload.rows,
       timezone: client.timezone,
     });
@@ -166,7 +172,8 @@ export async function POST(
     if (settings.options.audience.length || settings.options.creatives) {
       content = {
         version: 1,
-        sourceOnly: upload.metaReportContent?.sourceOnly,
+        sourceOnly: !!upload.reportSelection || upload.metaReportContent?.sourceOnly,
+        selection: upload.reportSelection ?? upload.metaReportContent?.selection,
         options: settings.options,
         sources: [],
         media: {},
@@ -214,6 +221,8 @@ export async function POST(
           throw Error(
             "Sync Meta on Import before fetching audience or creative data.",
           );
+        const coverage=apiQueryCoverage(upload.rows)!;
+        if(ranges.some(range=>range.startIso<coverage.startIso||range.endIso>coverage.endIso))throw Error("Your API import does not cover these dates. Return to Import and sync the selected period again.");
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
         });

@@ -43,6 +43,7 @@ import {
  */
 
 export function reportTypeLabel(data: ShareReportData): string {
+  if(data.metaContent?.title)return data.metaContent.title;
   if (data.reportType === "HISTORICAL") return "Multi-Month Performance Report";
   if (data.reportType === "DAY_BREAKDOWN") return "Day-by-Day Table Report";
   if (data.reportType === "DAILY") return "Yesterday Performance Report";
@@ -833,7 +834,7 @@ export function ShareReportView({
               <p className="mt-1.5 text-[13px] tracking-wide text-ink-muted sm:mt-2 sm:text-[16px]">
                 {reportTypeLabel(visibleData).toUpperCase()}
               </p>
-              {isWeeklyShareReportType(visibleData.reportType) ? (
+              {isWeeklyShareReportType(visibleData.reportType) && !visibleData.metaContent?.title ? (
                 <p className="mt-2 max-w-xl px-1 text-[12px] leading-snug text-ink-muted sm:text-[14px]">
                   {visibleData.metaContent?.includeStandard === false ? "Audience and creative sections for the reporting period below." : weeklyReportScopeLine(visibleData.fileDateRange, visibleData.generatedAt, clientTimezone)}
                 </p>

@@ -282,3 +282,115 @@ describe("Meta content route", () => {
     ).toBeUndefined();
   });
 });
+
+describe("first-class report selection guards", () => {
+  const selection = { kind: "BREAKDOWN", dimension: "age" } as const;
+  const lockedOptions = { ...options, includeStandard: false };
+  function apiUpload() {
+    return {
+      ...upload,
+      reportSelection: selection,
+      metaAdAccountId: "123",
+      rows: primary.rows.map((row) => ({
+        ...row,
+        _raw: {
+          ...row._raw,
+          "NRE API range start": "2026-11-10",
+          "NRE API range end": "2026-11-11",
+        },
+      })),
+    };
+  }
+  it("prepares only the selected dimension and preserves the standalone intent in an immutable session", async () => {
+    vi.mocked(loadWizardUploadSession).mockResolvedValue(apiUpload() as never);
+    const source = parseMetaContentSource(
+      parseCsvText(`${headers},Age\n${row},25-34\n${row2},35-44`),
+      "USD",
+    );
+    vi.mocked(fetchMetaContentSources).mockResolvedValue([
+      { ...source, source: "api" },
+    ]);
+    const response = await POST(
+      req({
+        source: "api",
+        options: lockedOptions,
+        selectedCampaigns: ["Example"],
+      }),
+      context,
+    );
+    expect(response.status).toBe(200);
+    expect(fetchMetaContentSources).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          audience: ["age"],
+          includeStandard: false,
+        }),
+        range: { startIso: "2026-11-10", endIso: "2026-11-11" },
+      }),
+    );
+    expect(saveWizardUploadSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reportSelection: selection,
+        metaReportContent: expect.objectContaining({
+          selection,
+          sourceOnly: true,
+          options: expect.objectContaining({ includeStandard: false }),
+        }),
+      }),
+    );
+  });
+  it.each([
+    { ...lockedOptions, audience: ["location"] },
+    { ...lockedOptions, includeStandard: true },
+    { ...lockedOptions, creatives: true },
+  ])(
+    "rejects a forged report choice before fetching or persisting",
+    async (next) => {
+      vi.mocked(loadWizardUploadSession).mockResolvedValue(
+        apiUpload() as never,
+      );
+      const response = await POST(
+        req({ source: "api", options: next }),
+        context,
+      );
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toMatch(/choice changed/);
+      expect(fetchMetaContentSources).not.toHaveBeenCalled();
+      expect(saveWizardUploadSession).not.toHaveBeenCalled();
+    },
+  );
+  it("requires a fresh import rather than extending the primary API coverage", async () => {
+    vi.mocked(loadWizardUploadSession).mockResolvedValue(apiUpload() as never);
+    const response = await POST(
+      req({
+        source: "api",
+        options: lockedOptions,
+        dateSelection: {
+          mode: "custom",
+          customStart: "2026-11-09",
+          customEnd: "2026-11-11",
+        },
+      }),
+      context,
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/cover|Import/);
+    expect(fetchMetaContentSources).not.toHaveBeenCalled();
+    expect(saveWizardUploadSession).not.toHaveBeenCalled();
+  });
+  it("keeps the previous import intact when Meta preparation fails", async () => {
+    const original = apiUpload();
+    vi.mocked(loadWizardUploadSession).mockResolvedValue(original as never);
+    vi.mocked(fetchMetaContentSources).mockRejectedValue(
+      Error("Meta is temporarily unavailable"),
+    );
+    const response = await POST(
+      req({ source: "api", options: lockedOptions }),
+      context,
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/temporarily unavailable/);
+    expect(saveWizardUploadSession).not.toHaveBeenCalled();
+    expect(original).toEqual(apiUpload());
+  });
+});

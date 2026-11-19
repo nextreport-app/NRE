@@ -1,3 +1,4 @@
+import type {MetaReportSelection} from "./meta-report-content/selection";
 /**
  * Parsed CSV cache for the report upload wizard — avoids re-parsing the same
  * file on metrics, preview (N×), and generate after analyze succeeds.
@@ -32,6 +33,7 @@ export interface WizardUploadSessionPayload {
   metaAdAccountId?: string;
   /** Custom conversion id → Result type label from Meta Graph (optional). */
   metaCustomConversionResultTypes?: Record<string, string>;
+  reportSelection?: MetaReportSelection;
   metaReportContent?: import("./meta-report-content/types").MetaReportContent;
 }
 
@@ -40,6 +42,7 @@ export interface WizardParsedMtd {
   rows: NreRow[];
   headers: string[];
   platform: Platform;
+  reportSelection?: MetaReportSelection;
   metaReportContent?: import("./meta-report-content/types").MetaReportContent;
 }
 
@@ -76,6 +79,7 @@ export async function saveWizardUploadSession(input: {
   metaCampaignPeriodReach?: MetaCampaignPeriodReachMaps;
   metaAdAccountId?: string;
   metaCustomConversionResultTypes?: Record<string, string>;
+  reportSelection?: MetaReportSelection;
   metaReportContent?: import("./meta-report-content/types").MetaReportContent;
 }): Promise<string> {
   const sessionId = randomUUID();
@@ -91,6 +95,7 @@ export async function saveWizardUploadSession(input: {
     fileHash: input.fileHash,
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + WIZARD_UPLOAD_SESSION_TTL_MS).toISOString(),
+    ...(input.reportSelection ? {reportSelection:input.reportSelection} : {}),
     ...(input.metaReportContent ? {metaReportContent:input.metaReportContent} : {}),
     ...(input.metaCampaignPeriodReach ? { metaCampaignPeriodReach: input.metaCampaignPeriodReach } : {}),
     ...(input.metaAdAccountId ? { metaAdAccountId: input.metaAdAccountId } : {}),

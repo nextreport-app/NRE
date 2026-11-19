@@ -23,3 +23,7 @@ The optional stored previous-month CSV supplement remains manual-only by the own
 Before public rollout, the owner must confirm Meta's app is in Live mode with the required `ads_read` access approved for external users. Existing successful owner/developer-account connections do not prove external-user eligibility. This Meta dashboard status cannot be verified from repository tests.
 
 Production deployment is separate from this code change. Keep existing Meta credentials and stable token encryption configuration. If the API kill switch is explicitly false in Vercel, set it true or remove it before redeploying.
+
+## Breakdown and Creative choices
+
+Meta Import also offers standalone **Breakdown** (Age, Location, Placement or Platform) and **Creative** reports through CSV or API. Each uses one explicit date range and one source; it skips the standard metric-card step. API sources are prepared automatically on Review. Creative CSV reports support metrics without images and optional image uploads by Ad ID; API reports use available images/video posters. The deferred legacy CREATIVE wizard is still disabled. The new choice is carried as owned `reportSelection` metadata through the standard generation job, and persisted with its correct report type/title. See [workflow and source contract](reporting/META_AUDIENCE_AND_CREATIVE_PLAN.md).
