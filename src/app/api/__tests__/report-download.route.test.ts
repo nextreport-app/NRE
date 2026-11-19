@@ -3,10 +3,13 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: { report: { findUnique: vi.fn() } },
 }));
-vi.mock("@/lib/storage", () => ({ readReportFile: vi.fn() }));
+vi.mock("@vercel/blob", async (original) => ({
+  ...(await original<typeof import("@vercel/blob")>()),
+  get: vi.fn(),
+}));
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { readReportFile } from "@/lib/storage";
+import { get, BlobError } from "@vercel/blob";
 import { dailyRangeLabel } from "@/lib/nre/daily-period-selection";
 import { GET as ownerDownload } from "../reports/[id]/download/route";
 import { GET as publicDownload } from "../r/[token]/download/route";
@@ -25,7 +28,48 @@ beforeEach(() => {
     fileName,
     client: { userId: "owner" },
   } as never);
-  vi.mocked(readReportFile).mockResolvedValue(bytes);
+  vi.mocked(get).mockImplementation(async (_url, options) => {
+    const headers = new Headers(options.headers);
+    const etag = '\"blob-version-1\"';
+    const range =
+      !headers.has("if-range") || headers.get("if-range") === etag
+        ? headers.get("range")
+        : null;
+    const match = range?.match(/^bytes=(\d*)-(\d*)$/);
+    let data = bytes;
+    const responseHeaders = new Headers({
+      etag,
+      "content-type":
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+    if (match) {
+      const start = match[1]
+        ? Number(match[1])
+        : Math.max(0, bytes.length - Number(match[2]));
+      const end =
+        match[1] && match[2]
+          ? Math.min(Number(match[2]), bytes.length - 1)
+          : bytes.length - 1;
+      if (
+        start >= bytes.length ||
+        end < start ||
+        (!match[1] && !Number(match[2]))
+      )
+        throw new BlobError("Failed to fetch blob: 416 Range Not Satisfiable");
+      data = bytes.subarray(start, end + 1);
+      responseHeaders.set(
+        "content-range",
+        `bytes ${start}-${end}/${bytes.length}`,
+      );
+    }
+    responseHeaders.set("content-length", String(data.length));
+    return {
+      statusCode: 200,
+      headers: responseHeaders,
+      stream: new Response(new Uint8Array(data)).body!,
+      blob: { size: data.length },
+    } as never;
+  });
 });
 describe("download preserves Unicode report filenames safely", () => {
   it.each(["owner", "public"])(
@@ -60,7 +104,7 @@ describe("download preserves Unicode report filenames safely", () => {
         })
       ).status,
     ).toBe(401);
-    expect(readReportFile).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
   });
   it("still rejects another owner's report before reading storage", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "other" } } as never);
@@ -71,7 +115,7 @@ describe("download preserves Unicode report filenames safely", () => {
         })
       ).status,
     ).toBe(404);
-    expect(readReportFile).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
   });
   it("does not download a missing or disabled-token report", async () => {
     vi.mocked(prisma.report.findUnique).mockResolvedValue(null as never);
@@ -85,7 +129,7 @@ describe("download preserves Unicode report filenames safely", () => {
     expect(prisma.report.findUnique).toHaveBeenCalledWith({
       where: { shareToken: "disabled-token" },
     });
-    expect(readReportFile).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
   });
 });
 
@@ -173,4 +217,79 @@ it("honors a matching strong If-Range validator", async () => {
   expect(Buffer.from(await resumed.arrayBuffer())).toEqual(
     bytes.subarray(3, 8),
   );
+});
+
+it("asks private storage for only the requested bytes, including its version validator", async () => {
+  const request = new Request("http://localhost/download", {
+    headers: { Range: "bytes=3-7", "If-Range": '"blob-version-1"' },
+  });
+  const result = await publicDownload(request, {
+    params: Promise.resolve({ token: "shared-token" }),
+  });
+  expect(get).toHaveBeenCalledWith(
+    "private-file",
+    expect.objectContaining({
+      access: "private",
+      abortSignal: request.signal,
+      headers: {
+        Range: "bytes=3-7",
+        "If-Range": '"blob-version-1"',
+        "Accept-Encoding": "identity",
+      },
+    }),
+  );
+  expect(result.status).toBe(206);
+  expect(Buffer.from(await result.arrayBuffer())).toEqual(bytes.subarray(3, 8));
+});
+
+it("returns the storage stream without buffering the whole report and propagates cancellation", async () => {
+  const canceled = vi.fn();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array([80, 75]));
+    },
+    cancel: canceled,
+  });
+  vi.mocked(get).mockResolvedValue({
+    statusCode: 200,
+    headers: new Headers({ "content-length": "1000000", etag: '"origin"' }),
+    stream,
+    blob: { size: 1000000 },
+  } as never);
+  const result = await ownerDownload(new Request("http://localhost/download"), {
+    params: Promise.resolve({ id: "report" }),
+  });
+  const reader = result.body!.getReader();
+  expect((await reader.read()).value).toEqual(new Uint8Array([80, 75]));
+  await reader.cancel();
+  expect(canceled).toHaveBeenCalledOnce();
+});
+
+it("keeps parts bounded and stops reading once the part is complete if storage ignores Range", async () => {
+  const canceled = vi.fn();
+  const source = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(bytes));
+    },
+    cancel: canceled,
+  });
+  vi.mocked(get).mockResolvedValue({
+    statusCode: 200,
+    headers: new Headers({
+      "content-length": String(bytes.length),
+      etag: '"origin"',
+    }),
+    stream: source,
+    blob: { size: bytes.length },
+  } as never);
+  const result = await publicDownload(
+    new Request("http://localhost/download", {
+      headers: { Range: "bytes=3-7" },
+    }),
+    { params: Promise.resolve({ token: "shared-token" }) },
+  );
+  expect(result.status).toBe(206);
+  expect(result.headers.get("content-range")).toBe(`bytes 3-7/${bytes.length}`);
+  expect(Buffer.from(await result.arrayBuffer())).toEqual(bytes.subarray(3, 8));
+  expect(canceled).toHaveBeenCalledOnce();
 });

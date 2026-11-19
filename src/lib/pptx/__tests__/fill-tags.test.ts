@@ -190,7 +190,7 @@ describe("buildCoverSlideXml — Prepared By line", () => {
     expect(xml).toContain("<a:t>Prepared by Bright Path Marketing</a:t>");
   });
 
-  it("shifts PRESENTED_TO and ACCOUNT_NAME up when an agency name is set, so the new line doesn't overlap them", () => {
+  it("keeps the reporting label in place when an agency credit is enabled", () => {
     const withoutAgency = buildCoverSlideXml(template.cover, BASE_COVER);
     const withAgency = buildCoverSlideXml(template.cover, BASE_COVER, { agencyName: "Bright Path Marketing" });
 
@@ -199,7 +199,7 @@ describe("buildCoverSlideXml — Prepared By line", () => {
       const spStart = xml.lastIndexOf("<p:sp>", idx);
       return Number(/<a:off x="\d+" y="(\d+)"/.exec(xml.slice(spStart, idx))![1]);
     };
-    expect(presentedToY(withAgency)).toBeLessThan(presentedToY(withoutAgency));
+    expect(presentedToY(withAgency)).toBe(presentedToY(withoutAgency));
   });
 
   it("ignores a blank/whitespace-only agency name the same as no agency name", () => {

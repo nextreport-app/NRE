@@ -20,7 +20,6 @@ import {
 } from "../nre/report-data";
 import { buildGoogleCombinedTotalTableGrid } from "../nre/google-combined-total";
 import {
-  cloneShapeAsTag,
   ensureCardLabelValueGap,
   enforceMinFontSize,
   findCardIconRelId,
@@ -159,19 +158,9 @@ function truncateToSentence(raw: string, maxChars: number): string {
 export const DEFAULT_REPORT_TITLE = "Weekly Performance Report";
 const DEFAULT_MONTHLY_REPORT_TITLE = "Monthly Performance Report";
 
-// PRESENTED_TO badge and ACCOUNT_NAME's own y offsets in the template
-// (ppt/slides/slide1.xml) — shifted up by this much, together, only when a
-// "Prepared by ..." line needs to be inserted between ACCOUNT_NAME and
-// REPORT_DATE. Chosen so the new line gets the same ~33000 EMU gap on both
-// sides that ACCOUNT_NAME and REPORT_DATE already have between each other
-// (see the empirical cover-slide spacing fix) — when no agency name is set,
-// neither shape is touched and the cover renders pixel-identical to today.
+// Agency credit sits below the reporting dates, clear of the budget row.
+const PREPARED_BY_Y_PT = 506;
 const PRESENTED_TO_Y = 5061635;
-const ACCOUNT_NAME_Y = 5533973;
-const ACCOUNT_NAME_HEIGHT_EMU = 400000;
-const COVER_ROW_GAP_EMU = 32999; // the template's own existing ACCOUNT_NAME-to-REPORT_DATE gap
-const PREPARED_BY_SHIFT_UP_EMU = 310000;
-const PREPARED_BY_Y = ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU + ACCOUNT_NAME_HEIGHT_EMU + COVER_ROW_GAP_EMU;
 
 const COVER_SLIDE_WIDTH_EMU = 12192000;
 const COVER_BUDGET_SHAPE_X_EMU = 5892000;
@@ -192,16 +181,9 @@ function ensureCoverBudgetSingleLine(xml: string, budgetSummary: string): string
   return out;
 }
 
-/**
- * PRESENTED_TO's actual top y at render time — shifted up when an agency
- * name is present (see buildCoverSlideXml above). Exported so other
- * cover-slide placement logic that needs to anchor to this shape (e.g.
- * render.ts's client/agency logo positioning, which sits directly above
- * it) reads the real, current position instead of duplicating — and
- * risking drifting out of sync with — this shift logic.
- */
-export function presentedToTopY(hasAgencyName: boolean): number {
-  return hasAgencyName ? PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU : PRESENTED_TO_Y;
+/** The cover badge stays in place; optional agency credit is below the dates. */
+export function presentedToTopY(): number {
+  return PRESENTED_TO_Y;
 }
 
 const DEFAULT_DAILY_REPORT_TITLE = "Single-Day Performance Report";
@@ -265,7 +247,7 @@ export interface CoverSlideOptions {
   platform?: Platform;
   /** Optional custom title replacing the template's default "WEEKLY PERFORMANCE REPORT" — falls back to DEFAULT_REPORT_TITLE (or DEFAULT_MONTHLY_REPORT_TITLE/DEFAULT_COMPARISON_REPORT_TITLE — see `reportType`) when blank. Always rendered upper-cased to match the template's existing all-caps styling. */
   reportTitle?: string | null;
-  /** Agency name from account settings — when set, adds a "Prepared by ..." line below the account name; when absent, the cover renders exactly as it does without this feature. */
+  /** Agency name from account settings — when set, adds a "Prepared by ..." line below the reporting dates; when absent, the cover renders exactly as it does without this feature. */
   agencyName?: string | null;
   /**
    * Fix 8 — only affects the DEFAULT title text used when `reportTitle` is
@@ -299,10 +281,10 @@ export function buildCoverSlideXml(template: TemplateSlide, cover: CoverData, op
     return block;
   });
   if (agencyName) {
-    const preparedByShape = cloneShapeAsTag(xml, "{{REPORT_DATE}}", "{{PREPARED_BY}}", PREPARED_BY_Y);
-    xml = setShapeOffsetY(xml, "PRESENTED TO", PRESENTED_TO_Y - PREPARED_BY_SHIFT_UP_EMU);
-    xml = setShapeOffsetY(xml, "{{ACCOUNT_NAME}}", ACCOUNT_NAME_Y - PREPARED_BY_SHIFT_UP_EMU);
-    xml = insertShapeBeforeSpTreeClose(xml, preparedByShape);
+    const ids = [...xml.matchAll(/<p:cNvPr\b[^>]*id="(\d+)"/g)].map(match => Number(match[1]));
+    resetShapeIdCounter(Math.max(1, ...ids));
+    xml = insertShapeBeforeSpTreeClose(xml, textBox({ x: 40, y: PREPARED_BY_Y_PT, w: 880, h: 24,
+      text: "{{PREPARED_BY}}", sizePt: 16, fontFamily: "Arial", colorHex: options.isLightTemplate ? "475569" : "94A3B8", align: "l" }));
   }
 
   const reportTitle = resolveCoverReportTitle(options.reportTitle, options.reportType);

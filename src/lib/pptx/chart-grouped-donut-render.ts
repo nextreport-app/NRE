@@ -74,14 +74,13 @@ export function appendGroupedDonutOoxml(
   const legendTextW = opts.leftW - 22;
   for (const seg of opts.segments) {
     const value = formatGroupedDonutLegendValue(seg);
-    const name = `${seg.name} - `;
-    const sizePt = fitFontSizePt(name + value, legendTextW, [14, 13, 12]);
+    const sizePt = fitFontSizePt(seg.name, legendTextW, [layout.legendSizePt, 16, 14]);
+    const valueSizePt = fitFontSizePt(value, legendTextW, [layout.legendValueSizePt, 15, 14]);
     shapes.push(rectangle({ x: opts.leftX, y: legendY + 5, w: 8, h: 8, fillHex: seg.color }));
-    const box = textBox({ x: opts.leftX + 16, y: legendY, w: legendTextW, h: layout.legendRowH,
-      text: name + value, sizePt, colorHex: opts.colors.inkMuted, align: "l" });
-    const props = box.match(/<a:rPr[\s\S]*?<\/a:rPr>/)![0];
-    const nameProps = props.replace('b="0"', 'b="1"').replace(opts.colors.inkMuted, opts.colors.ink ?? opts.colors.inkMuted);
-    shapes.push(box.replace(/<a:r>[\s\S]*?<\/a:r>/, `<a:r>${nameProps}<a:t>${escapeXml(name)}</a:t></a:r><a:r>${props}<a:t>${escapeXml(value)}</a:t></a:r>`));
+    shapes.push(textBox({ x: opts.leftX + 16, y: legendY, w: legendTextW, h: layout.legendNameH,
+      text: seg.name, sizePt, bold: true, colorHex: opts.colors.ink ?? opts.colors.inkMuted, align: "l" }));
+    shapes.push(textBox({ x: opts.leftX + 16, y: legendY + layout.legendNameH, w: legendTextW, h: layout.legendValueH,
+      text: value, sizePt: valueSizePt, colorHex: opts.colors.inkMuted, align: "l" }));
     legendY += layout.legendRowH + layout.legendRowGap;
   }
 }
@@ -140,12 +139,13 @@ export function buildGroupedDonutSvg(opts: {
   let legendY = donutY + layout.donutD + 16;
   const legendTextX = opts.leftX + 16;
   for (const seg of opts.segments) {
-    const name = `${seg.name} - `;
     const value = formatGroupedDonutLegendValue(seg);
-    const sizePt = fitFontSizePt(name + value, opts.leftW - 22, [14, 13, 12]);
+    const sizePt = fitFontSizePt(seg.name, opts.leftW - 22, [layout.legendSizePt, 16, 14]);
+    const valueSizePt = fitFontSizePt(value, opts.leftW - 22, [layout.legendValueSizePt, 15, 14]);
     parts.push(
       `<rect x="${opts.leftX}" y="${legendY + 5}" width="8" height="8" rx="2" fill="#${seg.color}"/>`,
-      `<text x="${legendTextX}" y="${legendY + sizePt}" fill="#94a3b8" font-family="Poppins, Arial, sans-serif" font-size="${sizePt}"><tspan font-weight="600" fill="#cbd5e1">${escapeXml(name)}</tspan><tspan>${escapeXml(value)}</tspan></text>`,
+      `<text x="${legendTextX}" y="${legendY + sizePt}" fill="#cbd5e1" font-family="Poppins, Arial, sans-serif" font-size="${sizePt}" font-weight="600">${escapeXml(seg.name)}</text>`,
+      `<text x="${legendTextX}" y="${legendY + layout.legendNameH + valueSizePt}" fill="#94a3b8" font-family="Poppins, Arial, sans-serif" font-size="${valueSizePt}">${escapeXml(value)}</text>`,
     );
     legendY += layout.legendRowH + layout.legendRowGap;
   }

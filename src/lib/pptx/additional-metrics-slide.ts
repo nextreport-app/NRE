@@ -3,6 +3,8 @@ import type { DynamicMetricValue } from "../nre/dynamic-metrics";
 import { paginateExtraMetrics } from "../nre/metric-pagination";
 import type { TemplateBackgroundImage } from "./package";
 import { backgroundImage, buildBlankSlideXml, resetShapeIdCounter, roundedCard, textBox } from "./shapes";
+import { campaignTypeLabelColor } from "./light-theme-colors";
+import { escapeXmlText } from "./ooxml";
 import { fitCardLabel } from "./text-fit";
 import { slideSurfacePalette } from "./slide-surface-palette";
 
@@ -22,10 +24,17 @@ export function buildAdditionalMetricsSlideXml(slide: SlideData, metrics: Dynami
   resetShapeIdCounter();
   const palette = slideSurfacePalette(isLightTemplate);
   const shapes = [backgroundImage({ relId: "rId2", ...background })];
-  const name = slide.kind === "adset" ? `${slide.campaignName} · ${slide.adSetName}` : slide.campaignName;
+  const isAdSet = slide.kind === "adset" && !!slide.adSetName;
+  const isMonthTotal = slide.kind === "campaign" && !!slide.isMonthTotal;
+  const name = isAdSet ? slide.adSetName! : slide.campaignName;
+  const typeLabel = isAdSet ? " (Ad Set)" : isMonthTotal ? " (Month Total)" : " (Campaign)";
+  const typeColor = campaignTypeLabelColor(isLightTemplate, isAdSet ? "adset" : isMonthTotal ? "monthTotal" : "campaign");
   const title = name.length > 165 ? `${name.slice(0, 162)}…` : name;
   shapes.push(textBox({ x: 40, y: 26, w: 880, h: 24, text: "ADDITIONAL METRICS", sizePt: 15, bold: true, colorHex: palette.heading, align: "l" }));
-  shapes.push(textBox({ x: 40, y: 62, w: 880, h: 52, text: title, sizePt: 20, bold: true, colorHex: palette.text, align: "l" }));
+  const titleBox = textBox({ x: 40, y: 62, w: 880, h: 52, text: title, sizePt: 20, bold: true, colorHex: palette.text, align: "l" });
+  const titleProps = titleBox.match(/<a:rPr[\s\S]*?<\/a:rPr>/)![0];
+  const typeProps = titleProps.replace('sz="2000"', 'sz="1800"').replace('b="1"', 'b="0"').replace(palette.text, typeColor);
+  shapes.push(titleBox.replace("</a:r></a:p>", `</a:r><a:r>${typeProps}<a:t xml:space="preserve">${escapeXmlText(typeLabel)}</a:t></a:r></a:p>`));
   shapes.push(textBox({ x: 40, y: 123, w: 880, h: 30, text: `${slide.ai.dateRange} · ${slide.resultLabel}`, sizePt: 18, colorHex: palette.text, align: "l" }));
   const columns = metrics.length <= 3 ? metrics.length : metrics.length <= 4 ? 2 : metrics.length <= 6 ? 3 : 4;
   const rows = Math.ceil(metrics.length / columns);

@@ -86,12 +86,8 @@ function buildChartSlideRels(backgroundMediaTarget: string): string {
 // height. X aligns with PRESENTED_TO/ACCOUNT_NAME's own left edge (506630
 // EMU) for a clean vertical column.
 //
-// PRESENTED_TO's own y is NOT static — buildCoverSlideXml (fill-tags.ts)
-// shifts it up when an agency name is set (to make room for the "Prepared
-// by ..." line), so this anchors off fill-tags.ts's exported
-// presentedToTopY() rather than a locally-duplicated constant — anchoring
-// to a stale/wrong y here previously caused a real overlap with the
-// PRESENTED_TO badge whenever agencyName was also set.
+// Anchor to the shared cover badge position. Agency credit is below the dates
+// and does not move either the badge or the logo.
 const CLIENT_LOGO_MAX_CX_EMU = 180 * 9525;
 const CLIENT_LOGO_MAX_CY_EMU = 90 * 9525;
 const CLIENT_LOGO_X_EMU = 506630;
@@ -107,8 +103,8 @@ const CLIENT_LOGO_STYLE: ImageFrameStyle = {
   border: { widthPt: 1, colorHex: "FFFFFF", opacityPercent: 80 },
 };
 
-function clientLogoBox(hasAgencyName: boolean) {
-  const bottomY = presentedToTopY(hasAgencyName) - CLIENT_LOGO_GAP_EMU;
+function clientLogoBox() {
+  const bottomY = presentedToTopY() - CLIENT_LOGO_GAP_EMU;
   return {
     corner: "bottom-left" as const,
     marginXEmu: CLIENT_LOGO_X_EMU,
@@ -177,7 +173,6 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
 
   const template = await loadTemplate(templateBuffer);
 
-  const hasAgencyName = !!agencyName?.trim();
 
   if (clientLogo) {
     // Logos are stored in whatever format they were uploaded in (see
@@ -187,7 +182,7 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
     // declared MIME type.
     template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, clientLogo.extension, clientLogo.contentType);
 
-    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(hasAgencyName), {
+    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(), {
       baseName: "client-logo",
       shapeName: "Client Logo",
       style: CLIENT_LOGO_STYLE,
@@ -376,7 +371,7 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
   if (input.clientLogo) {
     const logo = input.clientLogo;
     template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, logo.extension, logo.contentType);
-    const embedded = embedImageInSlide(template.cover, logo, clientLogoBox(!!agencyName?.trim()), { baseName: "client-logo", shapeName: "Client Logo", style: CLIENT_LOGO_STYLE });
+    const embedded = embedImageInSlide(template.cover, logo, clientLogoBox(), { baseName: "client-logo", shapeName: "Client Logo", style: CLIENT_LOGO_STYLE });
     template.cover = embedded.slide;
     template.staticFiles.set(embedded.mediaPath, embedded.mediaBytes);
   }
@@ -435,11 +430,10 @@ export interface RenderHistoricalPptxInput {
 export async function renderHistoricalPptx(input: RenderHistoricalPptxInput): Promise<Buffer> {
   const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false, aiCopyBySlideKey } = input;
   const template = await loadTemplate(templateBuffer);
-  const hasAgencyName = !!agencyName?.trim();
 
   if (clientLogo) {
     template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, clientLogo.extension, clientLogo.contentType);
-    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(hasAgencyName), {
+    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(), {
       baseName: "client-logo",
       shapeName: "Client Logo",
       style: CLIENT_LOGO_STYLE,
@@ -547,11 +541,10 @@ export interface RenderDayBreakdownPptxInput {
 export async function renderDayBreakdownPptx(input: RenderDayBreakdownPptxInput): Promise<Buffer> {
   const { templateBuffer, data, reportTitle, agencyName, clientLogo, isLightTemplate = false } = input;
   const template = await loadTemplate(templateBuffer);
-  const hasAgencyName = !!agencyName?.trim();
 
   if (clientLogo) {
     template.contentTypesXml = ensureContentTypeDefault(template.contentTypesXml, clientLogo.extension, clientLogo.contentType);
-    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(hasAgencyName), {
+    const embedded = embedImageInSlide(template.cover, clientLogo, clientLogoBox(), {
       baseName: "client-logo",
       shapeName: "Client Logo",
       style: CLIENT_LOGO_STYLE,

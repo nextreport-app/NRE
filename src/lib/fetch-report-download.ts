@@ -97,7 +97,7 @@ async function readPart(
     timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, options.idleTimeoutMs ?? 30000);
+    }, options.idleTimeoutMs ?? 15000);
   };
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
@@ -241,50 +241,107 @@ async function readPart(
   }
 }
 
+async function readPartWithRetry(
+  href: string,
+  offset: number,
+  version: { etag: string; total: number } | null,
+  options: DownloadOptions,
+): Promise<Awaited<ReturnType<typeof readPart>>> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await readPart(href, offset, version, options);
+    } catch (error) {
+      if (
+        options.signal?.aborted ||
+        !(error instanceof InterruptedTransfer) ||
+        attempt === ATTEMPTS - 1
+      )
+        throw error;
+      options.onProgress?.({
+        received: offset,
+        total: version?.total ?? null,
+        reconnecting: true,
+      });
+      await retryDelay(options.signal, 250 * (attempt + 1));
+    }
+  }
+}
+
 export async function fetchReportDownload(
   href: string,
   options: DownloadOptions = {},
 ): Promise<{ blob: Blob; fileName: string }> {
-  const parts: Uint8Array[] = [];
-  let offset = 0;
-  let version: { etag: string; total: number } | null = null;
-  let fileName = "report.pptx";
-  for (;;) {
-    let part: Awaited<ReturnType<typeof readPart>> | undefined;
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      try {
-        part = await readPart(href, offset, version, options);
-        break;
-      } catch (error) {
-        if (
-          options.signal?.aborted ||
-          !(error instanceof InterruptedTransfer) ||
-          attempt === ATTEMPTS - 1
-        )
-          throw error;
-        options.onProgress?.({
-          received: offset,
-          total: version?.total ?? null,
-          reconnecting: true,
-        });
-        await retryDelay(options.signal, 250 * (attempt + 1));
+  const transfer = new AbortController();
+  const abort = () => transfer.abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) transfer.abort();
+  const transferOptions = { ...options, signal: transfer.signal };
+  try {
+    const first = await readPartWithRetry(href, 0, null, transferOptions);
+    const parts: Uint8Array[] = [first.bytes];
+    // Establish file identity once, then fetch at most three independent parts
+    // at a time. Promise.all preserves byte order even if responses finish in
+    // a different order. Every part still verifies the same ETag and total.
+    if (first.etag) {
+      const version = { etag: first.etag, total: first.total };
+      for (let offset = first.bytes.length; offset < first.total;) {
+        const starts = Array.from(
+          {
+            length: Math.min(3, Math.ceil((first.total - offset) / PART_BYTES)),
+          },
+          (_, index) => offset + index * PART_BYTES,
+        );
+        const progress = new Map<
+          number,
+          { received: number; reconnecting: boolean }
+        >();
+        const completed = offset;
+        const batch = await Promise.all(
+          starts.map((start) =>
+            readPartWithRetry(href, start, version, {
+              ...transferOptions,
+              onProgress: (state) => {
+                progress.set(start, {
+                  received: state.received - start,
+                  reconnecting: !!state.reconnecting,
+                });
+                const values = [...progress.values()];
+                options.onProgress?.({
+                  received:
+                    completed +
+                    values.reduce((sum, part) => sum + part.received, 0),
+                  total: first.total,
+                  ...(values.some((part) => part.reconnecting)
+                    ? { reconnecting: true }
+                    : {}),
+                });
+              },
+            }),
+          ),
+        );
+        for (const part of batch) {
+          parts.push(part.bytes);
+          offset += part.bytes.length;
+        }
       }
     }
-    if (!part) throw Error("The download failed. Please retry.");
-    if (offset === 0) fileName = part.fileName;
-    parts.push(part.bytes);
-    offset += part.bytes.length;
-    if (!part.etag || offset === part.total) break;
-    version = { etag: part.etag, total: part.total };
+    const size = parts.reduce((sum, part) => sum + part.length, 0);
+    const bytes = new Uint8Array(size);
+    let position = 0;
+    for (const part of parts) {
+      bytes.set(part, position);
+      position += part.length;
+    }
+    if (!completePptx(bytes))
+      throw Error("The download was incomplete. Please retry.");
+    options.onProgress?.({ received: size, total: size });
+    return {
+      blob: new Blob([bytes], { type: REPORT_PPTX_MIME }),
+      fileName: first.fileName,
+    };
+  } finally {
+    options.signal?.removeEventListener("abort", abort);
+    // Stop sibling requests immediately when one part fails or navigation ends.
+    transfer.abort();
   }
-  const bytes = new Uint8Array(offset);
-  let position = 0;
-  for (const part of parts) {
-    bytes.set(part, position);
-    position += part.length;
-  }
-  if (!completePptx(bytes))
-    throw Error("The download was incomplete. Please retry.");
-  options.onProgress?.({ received: offset, total: offset });
-  return { blob: new Blob([bytes], { type: REPORT_PPTX_MIME }), fileName };
 }
