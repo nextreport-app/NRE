@@ -7,11 +7,7 @@ import type {
   MetaObservation,
 } from "./types";
 /** Routing facts for existing date/campaign controls, never a claimed unsegmented source. */
-export function audienceOnlyPrimary(source: MetaContentSource) {
-  if (source.kind === "creative")
-    throw Error(
-      "Use an audience breakdown export for an audience-only import.",
-    );
+export function contentOnlyPrimary(source: MetaContentSource) {
   const groups = new Map<string, MetaObservation[]>();
   for (const row of source.rows) {
     const key = JSON.stringify([
@@ -24,9 +20,9 @@ export function audienceOnlyPrimary(source: MetaContentSource) {
     groups.set(key, group);
   }
   const rows = [...groups.values()].map((group) => {
-    if (new Set(group.map((row) => row.resultType)).size > 1)
+    if (new Set(group.map((row) => row.resultType).filter(Boolean)).size > 1)
       throw Error(
-        "This audience export mixes primary result types within one campaign/day. Export one objective at a time.",
+        "This export mixes primary result types within one campaign/day. Export one objective at a time.",
       );
     const sum = (
       key: "spend" | "impressions" | "clicks" | "results" | "linkClicks",
@@ -47,7 +43,7 @@ export function audienceOnlyPrimary(source: MetaContentSource) {
       String(spend),
       String(impressions),
       results === null ? "—" : String(results),
-      group[0].resultType,
+      group.find((row) => row.resultType)?.resultType ?? "",
       clicks === null ? "—" : String(clicks),
       clicks !== null && impressions > 0
         ? String((clicks / impressions) * 100)
@@ -88,8 +84,11 @@ export function audienceOnlyPrimary(source: MetaContentSource) {
     version: 1,
     sourceOnly: true,
     options: {
-      audience: [...audience],
-      creatives: false,
+      audience:
+        source.kind === "creative"
+          ? []
+          : ([...audience] as import("./types").AudienceDimension[]),
+      creatives: source.kind === "creative",
       includeStandard: false,
       ranking: "cpr",
       minSpend: 0,
@@ -110,3 +109,5 @@ export function hasAudienceColumns(headers: string[]) {
     ),
   );
 }
+
+export const audienceOnlyPrimary = contentOnlyPrimary;

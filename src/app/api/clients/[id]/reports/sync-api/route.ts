@@ -1,3 +1,4 @@
+import {metaReportSelectionSchema} from "@/lib/nre/meta-report-content/selection";
 import { metaClientAccountStatus, normalizeMetaAccountId } from "@/lib/meta-client-account";
 import { metaApiCsvTransport } from "@/lib/meta-api-csv-transport";
 import { metaApiImportRange } from "@/lib/nre/meta-api-import-range";
@@ -32,6 +33,7 @@ export const maxDuration = 300;
 
 const syncApiBodySchema = z.object({
   platform: platformSchema,
+  reportSelection: metaReportSelectionSchema.optional(),
   reportType: reportTypeSchema.optional(),
   dateSelection: dateSelectionSchema.optional(),
   comparisonPeriodA: comparisonPeriodSchema.optional(),

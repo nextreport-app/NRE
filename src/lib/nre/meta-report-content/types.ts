@@ -38,6 +38,7 @@ export interface MetaObservation {
   attribution?: string;
 }
 export interface MetaContentSource {
+  locationLevel?: "region" | "country";
   kind: MetaSourceKind;
   source: "csv" | "api";
   currency: string;
@@ -51,6 +52,7 @@ export interface CreativeMediaSnapshot {
   label: string;
 }
 export interface MetaReportContent {
+  selection?: import("./selection").MetaReportSelection;
   version: 1;
   sourceOnly?: boolean;
   options: MetaContentOptions;
@@ -89,6 +91,8 @@ export interface MetaContentPage {
   visible?: boolean;
 }
 export interface MetaContentPresentation {
+  reportKind?: "BREAKDOWN" | "CREATIVE";
+  title?: string;
   includeStandard: boolean;
   currencySymbol: string;
   pages: MetaContentPage[];

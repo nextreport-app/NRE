@@ -1,4 +1,5 @@
 export type ReportDisplayNameType =
+  | "BREAKDOWN"
   | "WEEKLY"
   | "MONTHLY"
   | "DAILY"
@@ -11,6 +12,7 @@ export type ReportDisplayNameType =
   | "DAY_BREAKDOWN";
 
 const TYPE_LABELS: Record<ReportDisplayNameType, string> = {
+  BREAKDOWN: "Breakdown",
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
   DAILY: "Single-Day",

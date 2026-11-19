@@ -1,3 +1,4 @@
+import type {MetaReportSelection} from "./meta-report-content/selection";
 import { computeMtdRangeIso } from "./date-range";
 import type { DateSelection } from "../validators/report-wizard";
 import type { DateRangeIso } from "./date-range";
@@ -6,6 +7,7 @@ import { computeLastNDaysIsoRange } from "./api-date-range";
 import { historicalPeriods, previousCompleteMonth, reportCalendarYesterday, selectedSinglePeriod } from "./report-period-selection";
 import { comparisonPresetPeriods } from "./comparison-period-selection";
 export interface MetaApiReportSelection {
+  reportSelection?: MetaReportSelection;
   reportType?: string;
   includePreviousMonthComparison?: boolean;
   dateSelection?: DateSelection;
@@ -19,7 +21,10 @@ export function metaApiImportRange(selection: MetaApiReportSelection, now: Date,
   const yesterday = reportCalendarYesterday(now, timezone);
   const custom = selection.dateSelection?.mode === "custom" ? { startIso: selection.dateSelection.customStart ?? "", endIso: selection.dateSelection.customEnd ?? "" } : undefined;
   let ranges: DateRangeIso[];
-  if (type === "WEEKLY") {
+  if(selection.reportSelection){
+    if(!custom)throw Error("Choose the reporting period for this report.");
+    ranges=[custom];
+  } else if (type === "WEEKLY") {
     const rolling = computeLastNDaysIsoRange(now, timezone, 30);
     const weekly = computeWeeklyRangeOptions([], now, timezone);
     const range = custom ?? (selection.dateSelection?.mode === "prev7" ? weekly.prev7 : selection.dateSelection?.mode === "last14" ? weekly.last14 : weekly.last7);

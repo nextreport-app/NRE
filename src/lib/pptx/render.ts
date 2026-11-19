@@ -201,9 +201,9 @@ export async function renderPptx(input: RenderPptxInput): Promise<Buffer> {
   slides.push({
     xml: buildCoverSlideXml(template.cover, data.cover, {
       platform: data.platform,
-      reportTitle,
+      reportTitle: reportTitle || data.metaContent?.title,
       agencyName,
-      reportType: data.reportType,
+      reportType: data.metaContent?.reportKind === "CREATIVE" ? "CREATIVE" : data.reportType,
       isLightTemplate,
     }),
     rels: template.cover.rels,

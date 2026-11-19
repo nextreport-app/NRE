@@ -72,7 +72,7 @@ export function verifyStandardWizardReportAgainstCsv(input: {
     platform,
   });
   if(input.metaReportContent&&report.metaContent){
-    const ranges=metaContentRanges({reportType,dateSelection,rows:mtdRows,timezone:client.timezone,now});
+    const ranges=metaContentRanges({reportType,dateSelection,reportSelection:input.metaReportContent.selection,rows:mtdRows,timezone:client.timezone,now});
     return mergeMetaVerification(standard,verifyMetaContentTotals(input.metaReportContent,report.metaContent,ranges,selectedCampaigns??null),report.metaContent.includeStandard);
   }
   return standard;

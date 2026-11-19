@@ -1,4 +1,5 @@
 "use client";
+import {metaReportRequirement,type MetaReportSelection} from "@/lib/nre/meta-report-content/selection";
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
@@ -34,7 +35,9 @@ export function WizardImportDownloadInstructions({
   reportType,
   platform,
   clientTimezone,
+  reportSelection,
 }: {
+  reportSelection?:MetaReportSelection|null;
   clientId: string;
   reportType: ReportTypeValue;
   platform: Platform;
@@ -120,7 +123,7 @@ export function WizardImportDownloadInstructions({
     <section className="text-sm leading-relaxed text-dash-ink-secondary" aria-labelledby="wizard-download-instructions-heading">
       <div className="rounded-lg border border-[#63b3ed]/30 nre-wizard-panel px-4 py-3">
         <div className="flex items-center gap-2">
-        {platform === "META" ? <WizardMetaCsvImportTooltip monthly={["MONTHLY", "HISTORICAL"].includes(reportType)} /> : null}
+        {!reportSelection && platform === "META" ? <WizardMetaCsvImportTooltip monthly={["MONTHLY", "HISTORICAL"].includes(reportType)} /> : null}
         <button
           type="button"
           id="wizard-download-instructions-heading"
@@ -146,10 +149,10 @@ export function WizardImportDownloadInstructions({
               </p>
             ) : null}
             <dl className="space-y-3">
-              <div><dt className="font-semibold text-dash-ink">What is needed</dt><dd className="mt-1">{reportType === "WEEKLY" && platform === "META" ? guidance.lines[0] : wizardCsvRequirementForReportType({ reportType, clientTimezone }).shortNote}</dd></div>
-              <div><dt className="font-semibold text-dash-ink">What it produces</dt><dd className="mt-1">{reportType === "WEEKLY" && platform === "META" ? guidance.lines[1] : WIZARD_REPORT_TYPE_COPY[reportType].cardOneLiner}</dd></div>
+              <div><dt className="font-semibold text-dash-ink">What is needed</dt><dd className="mt-1">{reportSelection ? metaReportRequirement(reportSelection) : reportType === "WEEKLY" && platform === "META" ? guidance.lines[0] : wizardCsvRequirementForReportType({ reportType, clientTimezone }).shortNote}</dd></div>
+              <div><dt className="font-semibold text-dash-ink">What it produces</dt><dd className="mt-1">{reportSelection ? reportSelection.kind==="CREATIVE"?"Ad performance, rankings and available previews.":`Performance by ${reportSelection.dimension}.` : reportType === "WEEKLY" && platform === "META" ? guidance.lines[1] : WIZARD_REPORT_TYPE_COPY[reportType].cardOneLiner}</dd></div>
             </dl>
-            {platform === "META" && ["WEEKLY", "MONTHLY", "HISTORICAL"].includes(reportType) && <details className="rounded-lg border border-dash-border p-3"><summary className="cursor-pointer font-medium text-dash-ink">Audience or creative reports</summary><p className="mt-2">Add Age, Location, Platform/Placement or Creative performance in Review &amp; generate. Upload separate daily breakdown exports for each audience view; Platform + Placement may share one file. An audience CSV can also be your first upload for an audience-only report. For creative metrics, export at Ad level with Ad ID and Ad name. Images are optional and can be attached to each Ad ID.</p></details>}
+            {reportSelection&&<p className="text-xs">Include Amount spent, Impressions, Results, Result type and Clicks (all). Use the selected dates and breakdown; keep the same account, currency and timezone.</p>}
             <p className="pt-1">
               <Link
                 href={platform === "META" ? "/help/download#video-walkthrough" : "/help/download"}

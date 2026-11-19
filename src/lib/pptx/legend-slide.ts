@@ -16,6 +16,8 @@ export function metricDefinition(term: string, fallback = ""): string {
   if (/CTR.*ALL/.test(t)) return "All ad clicks divided by impressions, expressed as a percentage.";
   if (/LINK CTR/.test(t)) return "Link clicks divided by impressions, expressed as a percentage.";
   if (t === "LINK CLICKS") return "Clicks on links in an ad that lead to the selected destination.";
+  if (t === "ROAS") return "Attributed purchase conversion value divided by ad spend. Available only when matching purchase value is supplied.";
+  if (t === "WEBSITE CVR") return "Website results divided by landing-page views, expressed as a percentage.";
   if (t === "AD SPEND") return "Total amount spent during the displayed report period.";
   if (t === "WEBSITE LEADS") return "Attributed lead events on the advertiser’s website.";
   if (t === "LANDING PAGE VIEWS") return "Attributed visits where the destination page loaded after an ad click.";

@@ -1,3 +1,4 @@
+import { metaReportSelectionSchema } from "./meta-report-content/selection";
 /**
  * Shared MTD CSV resolution for wizard routes — file upload or cached session.
  */
@@ -12,7 +13,12 @@ import {
   loadWizardUploadSession,
   type WizardParsedMtd,
 } from "./wizard-upload-session";
-import { parseJsonFormField, platformSchema, reportTypeSchema, uploadSessionIdSchema } from "@/lib/validators/report-wizard";
+import {
+  parseJsonFormField,
+  platformSchema,
+  reportTypeSchema,
+  uploadSessionIdSchema,
+} from "@/lib/validators/report-wizard";
 
 export interface WizardUploadContext {
   userId: string;
@@ -50,22 +56,75 @@ export async function resolveWizardMtdFromFormData(
     };
   }
 
-  const reportType = parseJsonFormField(formData, "reportType", reportTypeSchema);
-  const uploadSessionId = parseJsonFormField(formData, "uploadSessionId", uploadSessionIdSchema);
+  const reportType = parseJsonFormField(
+    formData,
+    "reportType",
+    reportTypeSchema,
+  );
+  const uploadSessionId = parseJsonFormField(
+    formData,
+    "uploadSessionId",
+    uploadSessionIdSchema,
+  );
   if (uploadSessionId) {
-    const session = await loadWizardUploadSession(ctx.userId, ctx.clientId, uploadSessionId);
+    const session = await loadWizardUploadSession(
+      ctx.userId,
+      ctx.clientId,
+      uploadSessionId,
+    );
     if (!session) {
       return {
         ok: false,
         status: 400,
         body: {
-          error: "Upload session expired or not found. Please re-analyze your file.",
+          error:
+            "Upload session expired or not found. Please re-analyze your file.",
           uploadSessionExpired: true,
         },
       };
     }
-    const validation = validateMtdDailyCsv(session.colMap, session.rows, undefined, session.headers, session.platform, undefined, reportType);
-    if (!validation.valid) return { ok: false, status: 400, body: { valid: false, errors: validation.errors, warnings: validation.warnings, error: "This cached upload no longer passes source validation. Please correct the export and analyze it again." } };
+    const requestedSelection = parseJsonFormField(
+      formData,
+      "reportSelection",
+      metaReportSelectionSchema,
+    );
+    if (
+      formData.has("reportSelection") &&
+      (!requestedSelection ||
+        JSON.stringify(requestedSelection) !==
+          JSON.stringify(session.reportSelection))
+    )
+      return {
+        ok: false,
+        status: 400,
+        body: {
+          error:
+            "The report choice changed. Return to Import and import the selected report data.",
+        },
+      };
+    if (session.reportSelection && !formData.has("reportSelection"))
+      formData.set("reportSelection", JSON.stringify(session.reportSelection));
+    const validation = validateMtdDailyCsv(
+      session.colMap,
+      session.rows,
+      undefined,
+      session.headers,
+      session.platform,
+      undefined,
+      reportType,
+    );
+    if (!validation.valid)
+      return {
+        ok: false,
+        status: 400,
+        body: {
+          valid: false,
+          errors: validation.errors,
+          warnings: validation.warnings,
+          error:
+            "This cached upload no longer passes source validation. Please correct the export and analyze it again.",
+        },
+      };
     return {
       ok: true,
       data: {
@@ -75,17 +134,25 @@ export async function resolveWizardMtdFromFormData(
           headers: session.headers,
           platform: session.platform,
           metaReportContent: session.metaReportContent,
+          reportSelection: session.reportSelection,
         },
         uploadSessionId,
         fromCache: true,
         fileHash: session.fileHash,
         metaCampaignPeriodReach: session.metaCampaignPeriodReach,
         metaAdAccountId: session.metaAdAccountId,
-        metaCustomConversionResultTypes: session.metaCustomConversionResultTypes,
+        metaCustomConversionResultTypes:
+          session.metaCustomConversionResultTypes,
       },
     };
   }
 
+  if (formData.has("reportSelection"))
+    return {
+      ok: false,
+      status: 400,
+      body: { error: "Import and analyze the selected report data first." },
+    };
   const mtdDailyBuffer = await fileFromFormData(formData, "mtdDailyCsv");
   if (!mtdDailyBuffer || mtdDailyBuffer.length === 0) {
     return {
@@ -95,11 +162,26 @@ export async function resolveWizardMtdFromFormData(
     };
   }
 
-  const { headers } = parseUploadedFileHeadersAndRows(mtdDailyBuffer, "MTD Daily CSV");
-  const platformOverride = parseJsonFormField(formData, "platform", platformSchema);
+  const { headers } = parseUploadedFileHeadersAndRows(
+    mtdDailyBuffer,
+    "MTD Daily CSV",
+  );
+  const platformOverride = parseJsonFormField(
+    formData,
+    "platform",
+    platformSchema,
+  );
   const platform: Platform = platformOverride ?? detectPlatform(headers);
   const mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
-  const validation = validateMtdDailyCsv(mtdParsed.colMap, mtdParsed.rows, undefined, mtdParsed.headers, platform, undefined, reportType);
+  const validation = validateMtdDailyCsv(
+    mtdParsed.colMap,
+    mtdParsed.rows,
+    undefined,
+    mtdParsed.headers,
+    platform,
+    undefined,
+    reportType,
+  );
   if (!validation.valid) {
     return {
       ok: false,

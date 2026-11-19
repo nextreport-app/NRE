@@ -259,6 +259,7 @@ enum ReportStatus {
 // against itself across both — no weekly/MTD split, health score, ad-set
 // slides, or MTD chart at all.
 enum ReportType {
+  BREAKDOWN
   WEEKLY
   MONTHLY
   DAILY

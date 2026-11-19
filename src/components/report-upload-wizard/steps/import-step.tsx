@@ -1,4 +1,5 @@
 "use client";
+import {ContentReportPeriodControls} from "../ui/content-report-period-controls";
 import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
 import { metaApiImportRange, type MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
 import { ReportPeriodControls } from "../ui/report-period-controls";
@@ -88,14 +89,14 @@ export function WizardImportStep() {
 
   const setupPlatform = selectedPlatformCard ?? "META";
 
-  const reportTypeSetup = <WizardReportSetupPanel key={w.hasSavedImportSource ? "returning" : "first"} firstVisit={!w.hasSavedImportSource} source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} />;
-  const reportPeriods = <>
+  const reportTypeSetup = <WizardReportSetupPanel key={w.hasSavedImportSource ? "returning" : "first"} firstVisit={!w.hasSavedImportSource} source={dataSourceMode} reportType={reportType} reportTypeLabel={reportTypeLabel()} platform={setupPlatform} clientTimezone={clientTimezone} onReportTypeChange={handleReportTypeChange} reportSelection={w.reportSelection} onReportSelectionChange={w.handleReportSelectionChange} />;
+  const reportPeriods = w.reportSelection ? <ContentReportPeriodControls/> : <>
     <ReportPeriodControls />
     {reportType === "WEEKLY" ? <WeeklyPeriodControls /> : null}
   </>;
   const reportSetup = <>{reportTypeSetup}{reportPeriods}</>;
   const apiSelection: MetaApiReportSelection = {
-    reportType, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
+    reportType, reportSelection:w.reportSelection??undefined, dateSelection: w.dateMode === "custom" ? { mode: "custom", customStart: w.customStart, customEnd: w.customEnd } : { mode: w.dateMode },
     comparisonPeriodA: w.comparisonPeriodA ?? undefined, comparisonPeriodB: w.comparisonPeriodB ?? undefined, historicalMonthCount: w.historicalMonthCount,
   };
   let apiSelectionError: string | null = null;
@@ -173,6 +174,7 @@ export function WizardImportStep() {
           {dataSourceMode === "csv" && <WizardImportDownloadInstructions
             clientId={clientId}
             reportType={reportType}
+            reportSelection={w.reportSelection}
             platform={selectedPlatformCard}
             clientTimezone={clientTimezone}
           />}
@@ -280,7 +282,7 @@ export function WizardImportStep() {
       {dataSourceMode === "csv" && analyzeStatus === "invalid" && (
         <div className="space-y-3">
           {analyzeErrors.filter(isNoDataRowsError).map((e, i) =>
-            previousMonthHasFile ? (
+            !w.reportSelection && previousMonthHasFile ? (
               <PreviousMonthSummaryOption
                 key={i}
                 status={pmsStatus}

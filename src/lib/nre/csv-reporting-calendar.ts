@@ -50,7 +50,7 @@ export function alignCsvSelection(selection: DateSelection | undefined, bounds: 
 }
 /** Preview/generation/reconciliation consume the same canonical request dates. */
 export function alignCsvReportFormData(form: FormData | null, rows: NreRow[], timezone: string, now = new Date()) {
-  if (!form) return;
+  if (!form || form.has("reportSelection")) return;
   const bounds = completeCsvBounds(rows, now, timezone);
   const type = parseJsonFormField(form, "reportType", reportTypeSchema) ?? "WEEKLY";
   const selection = alignCsvSelection(parseJsonFormField(form, "dateSelection", dateSelectionSchema), bounds, type, now, timezone);

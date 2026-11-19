@@ -1,5 +1,5 @@
 import {buildMetaContentPresentation} from "../meta-report-content/data";
-import {metaContentRanges} from "../meta-report-content/range";
+import {metaContentRanges,standaloneMetaRange} from "../meta-report-content/range";
 import { metaApiSelectionCoverageError } from "../meta-api-selection-coverage";
 import { decryptMetaToken } from "@/lib/meta-token-storage";
 import { detectCsvCurrency, resolveReportCurrencySymbol, sourceHeaders } from "../csv-currency";
@@ -52,7 +52,7 @@ import { loadWizardPreviewReportCache } from "../wizard-preview-cache";
 export interface BuildStandardReportWizardInput {
   now?: Date;
   client: Client;
-  mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[]; metaReportContent?: import("../meta-report-content/types").MetaReportContent };
+  mtdParsed: { colMap: ColumnMap; rows: NreRow[]; headers: string[]; reportSelection?: import("../meta-report-content/selection").MetaReportSelection; metaReportContent?: import("../meta-report-content/types").MetaReportContent };
   formData: FormData | null;
   platform: Platform;
   metaCampaignPeriodReachFromSession?: MetaCampaignPeriodReachMaps;
@@ -108,6 +108,7 @@ export async function buildStandardReportForWizard(
   const { client, mtdParsed, formData, platform, metaCampaignPeriodReachFromSession, metaAdAccountIdFromSession } =
     input;
   const sourceNow = now;
+  if(mtdParsed.reportSelection&&!mtdParsed.metaReportContent)return {error:"Prepare the selected report data before generating."};
   const apiCoverageError = metaApiSelectionCoverageError(formData, mtdParsed.rows, client.timezone, now);
   if (apiCoverageError) return { error: apiCoverageError };
   alignCsvReportFormData(formData, mtdParsed.rows, client.timezone, now);
@@ -160,20 +161,20 @@ export async function buildStandardReportForWizard(
     if (reportType === "MONTHLY") now = reportPeriodAnchor(range.endIso, client.timezone);
     else weeklyRange = range;
   } else if (reportType !== "CREATIVE" && reportType !== "QUARTER" && reportType !== "YTD") {
-    const dateResolution = resolveDateSelection(mtdParsed.rows, dateSelection, now, client.timezone);
+    const dateResolution = mtdParsed.reportSelection ? (()=>{try{return{ok:true,weeklyRange:standaloneMetaRange(mtdParsed.rows,dateSelection,client.timezone,sourceNow)}}catch(error){return{ok:false,error:(error as Error).message}}})() : resolveDateSelection(mtdParsed.rows, dateSelection, now, client.timezone);
     if (!dateResolution.ok) {
       return { error: dateResolution.error || "Invalid date selection." };
     }
     weeklyRange = dateResolution.weeklyRange;
   }
 
-  const includePreviousMonthComparison = reportType === "WEEKLY" && resolveIncludePreviousMonthComparison(formData);
+  const includePreviousMonthComparison = !mtdParsed.reportSelection && reportType === "WEEKLY" && resolveIncludePreviousMonthComparison(formData);
   const previousSelection = formData ? parseJsonFormField(formData, "previousMonthSelectedCampaigns", selectedCampaignsSchema) : undefined;
   const periodRows = includePreviousMonthComparison ? await resolveWeeklyPreviousMonthRows(mtdParsed.rows, client, previousSelection, now) : undefined;
   if (includePreviousMonthComparison && !periodRows) return { error: "Your import does not cover the full previous month. Upload a CSV covering that month to include its totals." };
 
   let metaAccessToken: string | null = null;
-  if (platform === "META") {
+  if (platform === "META" && !mtdParsed.reportSelection) {
     const reachRanges = collectReportReachDateRanges({
       mtdDailyRows: mtdParsed.rows,
       timezone: client.timezone,
@@ -236,7 +237,7 @@ export async function buildStandardReportForWizard(
 
   if (mtdParsed.metaReportContent) {
     try {
-      data.metaContent = buildMetaContentPresentation(mtdParsed.metaReportContent, metaContentRanges({reportType,dateSelection,rows:mtdParsed.rows,timezone:client.timezone,now:sourceNow}),selectedCampaigns??null,reportCurrency);
+      data.metaContent = buildMetaContentPresentation(mtdParsed.metaReportContent, metaContentRanges({reportType,dateSelection,reportSelection:mtdParsed.reportSelection,rows:mtdParsed.rows,timezone:client.timezone,now:sourceNow}),selectedCampaigns??null,reportCurrency);
     } catch(error) { return {error:error instanceof Error?error.message:"Refresh audience and creative sections."}; }
   }
   data.currencySymbol = reportCurrency;

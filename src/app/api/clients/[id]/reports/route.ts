@@ -491,7 +491,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       : platform === "TIKTOK"
         ? "TikTok Ads Report - "
         : "Meta Ads Report - ";
-  const fileName = filePrefix + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
+  const fileName = (data.metaContent?.title?data.metaContent.title+" - ":filePrefix) + data.fileDateRange.replace(/[\s/]/g, "_") + ".pptx";
   const shareToken = generateShareToken();
 
   let report;
@@ -516,12 +516,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         clientId: client.id,
         status: "GENERATING",
-        reportType: data.reportType,
+        reportType: data.metaContent?.reportKind ?? data.reportType,
         platform,
         weekStart,
         weekEnd,
         fileName,
-        displayName: defaultReportDisplayName(data.reportType, weekStart, weekEnd),
+        displayName: data.metaContent?.title ? `${data.metaContent.title} — ${data.cover.dateRange}` : defaultReportDisplayName(data.reportType, weekStart, weekEnd),
         shareToken,
         summaryJson: JSON.stringify({
           isPaused: data.isPaused,

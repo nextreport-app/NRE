@@ -1,3 +1,5 @@
+import {standaloneMetaRange} from "@/lib/nre/meta-report-content/range";
+import {metaReportSelectionSchema,metaReportOptions,assertMetaReportSource} from "@/lib/nre/meta-report-content/selection";
 import {audienceOnlyPrimary,hasAudienceColumns} from "@/lib/nre/meta-report-content/primary";
 import {parseMetaContentSource} from "@/lib/nre/meta-report-content/data";
 import {detectCsvCurrency} from "@/lib/nre/csv-currency";
@@ -91,16 +93,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const platform = platformOverride ?? detectedPlatform;
 
     let mtdParsed = parseMtdCsvForAdPlatform(mtdDailyBuffer, platform);
+    const reportSelection=formData?parseJsonFormField(formData,"reportSelection",metaReportSelectionSchema):undefined;
+    if(formData?.has("reportSelection")&&!reportSelection)return NextResponse.json({valid:false,errors:[{field:"reportSelection",message:"Choose a valid Breakdown or Creative report."}],warnings:[]});
+    if(reportSelection&&platform!=="META")return NextResponse.json({valid:false,errors:[{field:"platform",message:"Breakdown and Creative reports are available for Meta."}],warnings:[]});
+    const isApiImport=!!formData?.get("metaAdAccountId");
     let metaReportContent:MetaReportContent|undefined;
-    if(platform === "META" && hasAudienceColumns(mtdParsed.headers)){
+    if(hasAudienceColumns(mtdParsed.headers)&&!reportSelection)return NextResponse.json({valid:false,errors:[{field:"reportSelection",message:"Choose Breakdown on Import and select the matching audience view before uploading this CSV."}],warnings:[]});
+    if(platform === "META" && (hasAudienceColumns(mtdParsed.headers)||reportSelection&&!isApiImport)){
       const type=formData?parseJsonFormField(formData,"reportType",reportTypeSchema):undefined;
       if(type && !["WEEKLY","MONTHLY","HISTORICAL"].includes(type))return NextResponse.json({valid:false,errors:[{field:"reportType",message:"Audience reports are available with Weekly or Monthly dates. Choose one of those report types."}],warnings:[]});
       try {
       const currency=detectCsvCurrency(mtdParsed.headers,mtdParsed.rows);if(currency.error)throw Error(currency.error);
       const source=parseMetaContentSource(mtdParsed,currency.code??client.currency);
+      if(reportSelection)assertMetaReportSource(reportSelection,source);
       const converted=audienceOnlyPrimary(source);mtdParsed=converted.parsed;metaReportContent=converted.content;
+      if(reportSelection){metaReportContent.selection=reportSelection;metaReportContent.options=metaReportOptions(reportSelection);metaReportContent.notices=[];}
       } catch(error) {return NextResponse.json({valid:false,errors:[{field:"reportContent",message:error instanceof Error?error.message:"Could not read this audience export."}],warnings:[]});}
     }
+    if(reportSelection){try{standaloneMetaRange(mtdParsed.rows,parseJsonFormField(formData!,"dateSelection",dateSelectionSchema),client.timezone);}catch(error){return NextResponse.json({valid:false,errors:[{field:"dateSelection",message:(error as Error).message}],warnings:[]});}}
     alignCsvReportFormData(formData, mtdParsed.rows, client.timezone);
     const metaAdAccountIdEarly = formData
       ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema)
@@ -200,6 +210,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const uploadSessionId = await saveWizardUploadSession({
       metaReportContent,
+      reportSelection,
       userId: session.user.id,
       clientId: id,
       platform,
@@ -215,6 +226,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({
       valid: true,
       sourceContentOnly:metaReportContent?.sourceOnly??false,
+      reportContentPrepared:!!metaReportContent,
       errors: [],
       warnings: validation.warnings,
       detectedPlatform,

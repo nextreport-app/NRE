@@ -1,3 +1,4 @@
+import { metaReportTitle } from "./selection";
 import type { NreRow } from "../columns";
 import { getRowDate } from "../columns";
 import { parseDate, getDateRangeAbbrLabel } from "../dates";
@@ -183,6 +184,53 @@ export function parseMetaContentSource(
     identities.add(id);
     return o;
   });
+  // Meta omits Result type on zero-result days/cohorts. Inherit only an
+  // unambiguous event explicitly observed in the same campaign/ad-set scope;
+  // otherwise off-day spend would be excluded from that event's period cost.
+  const events = new Map<string, Map<string, MetaObservation>>();
+  const scope = (row: MetaObservation) =>
+    JSON.stringify([row.campaignId || row.campaign, row.adSetId || row.adSet]);
+  for (const row of observations)
+    if (row.resultType) {
+      const map = events.get(scope(row)) ?? new Map<string, MetaObservation>();
+      map.set(row.resultType, row);
+      events.set(scope(row), map);
+    }
+  observations.forEach((row, index) => {
+    if (row.resultType) return;
+    const count = number(rows[index].results, true);
+    if (count !== null && count > 0)
+      throw Error(
+        "Positive Results need a Result type. Include the primary Result type column in the export.",
+      );
+    const known = events.get(scope(row));
+    if (known?.size !== 1) return;
+    const event = [...known.values()][0];
+    row.resultType = event.resultType;
+    row.resultLabel = event.resultLabel;
+    row.costLabel = event.costLabel;
+    row.resultAction = event.resultAction;
+    row.results = count;
+    const websitePurchase =
+      /website.*purchase|purchase.*website/i.test(row.resultType) ||
+      /offsite.*purchase/i.test(row.resultAction ?? "");
+    row.purchaseValue = number(
+      rawCell(rows[index], [
+        "nre purchase value",
+        ...(websitePurchase
+          ? [
+              "website purchases conversion value",
+              "website purchase conversion value",
+            ]
+          : [
+              "purchases conversion value",
+              "purchase conversion value",
+              "purchase value",
+            ]),
+      ]),
+      true,
+    );
+  });
   if (kind !== "creative") {
     const adSets = new Map<string, Set<string>>();
     for (const row of observations) {
@@ -205,6 +253,12 @@ export function parseMetaContentSource(
     );
   return {
     kind,
+    locationLevel:
+      kind === "location"
+        ? header(["country"])
+          ? "country"
+          : "region"
+        : undefined,
     source: "csv",
     currency,
     coverage: { startIso: coverage.minIso, endIso: coverage.maxIso },
@@ -486,6 +540,8 @@ export function buildMetaContentPresentation(
       ),
   );
   const result = {
+    reportKind: content.selection?.kind,
+    title: content.selection ? metaReportTitle(content.selection) : undefined,
     includeStandard: content.options.includeStandard,
     currencySymbol,
     pages,
@@ -515,6 +571,7 @@ export function metaContentSummary(content: MetaReportContent | undefined) {
           });
   return {
     sourceOnly: content.sourceOnly,
+    selection: content.selection,
     options: content.options,
     campaigns: content.campaigns,
     sources: content.sources.map((s) => ({
