@@ -2,7 +2,6 @@ import { reportDownloadResponse } from "@/lib/report-download-response";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { readReportFile } from "@/lib/storage";
 import { apiErrorResponse } from "@/lib/api-error";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,10 +18,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Report is not ready for download." }, { status: 409 });
     }
 
-    const buffer = await readReportFile(report.filePath);
     const fileName = report.fileName || "report.pptx";
 
-    return reportDownloadResponse(req, buffer, fileName);
+    return await reportDownloadResponse(req, report.filePath, fileName);
   } catch (err) {
     return apiErrorResponse(err, "reports:download");
   }

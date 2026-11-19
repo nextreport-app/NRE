@@ -63,10 +63,11 @@ describe("client-readable chart identity and metric contracts", () => {
       const results = runs.find(run => run.includes("5,642 link clicks"));
       const spend = runs.find(run => run.includes("50.2% of spend"));
       expect(results).toContain('sz="1600"');
-      expect(spend).toContain('sz="1400"');
+      expect(spend).toContain('sz="1600"');
     }
     expect(svg).toMatch(/font-size="16"[^>]*>5,642 link clicks/);
-    expect(svg).toMatch(/font-size="14"[^>]*><tspan[^>]*>Reach - <\/tspan><tspan>50.2% of spend/);
+    expect(svg).toMatch(/font-size="18"[^>]*>Reach<\/text>/);
+    expect(svg).toMatch(/font-size="16"[^>]*>50.2% of spend/);
   });
 
   it("aggregates repeated objectives into one slice while preserving campaign bars", () => {

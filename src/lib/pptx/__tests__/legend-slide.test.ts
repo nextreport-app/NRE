@@ -23,11 +23,11 @@ describe("selected metric guide",()=>{
     expect(metricDefinition("COST PER LPV")).toContain("landing page views");
     expect(metricDefinition("META FORM LEADS")).toContain("within Meta platforms");
   });
-  it("keeps one readable page and explicitly discloses overflow",async()=>{
+  it("keeps one readable page without the definitions footer",async()=>{
     const template=await loadTemplate(fs.readFileSync("templates/dark.pptx"));
     const xml=buildLegendSlideXml(template.legend.xml,Array.from({length:16},(_,i)=>({term:`Metric ${i}`,explanation:`Definition ${i}`})));
-    expect(xml).toContain("12 of 16 selected terms shown");
-    expect(xml).toContain("nextreport.in/help/metrics");
+    expect(xml).not.toContain("selected terms shown");
+    expect(xml).not.toContain("nextreport.in/help/metrics");
     expect(xml).not.toContain("Metric 12</a:t>");
   });
   it("escapes metric text",async()=>{

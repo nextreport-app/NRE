@@ -284,8 +284,8 @@ describe("bounded resumable report transfer", () => {
     const pending = fetchReportDownload("/download", { onProgress: progress });
     await vi.advanceTimersByTimeAsync(1000);
     const result = await pending;
-    expect(new Uint8Array(await result.blob.arrayBuffer())).toEqual(largeBytes);
-    expect(offsets).toEqual([0, PART, PART, PART, PART * 2]);
+    expect(Buffer.from(await result.blob.arrayBuffer()).equals(Buffer.from(largeBytes))).toBe(true);
+    expect(offsets).toEqual([0, PART, PART * 2, PART, PART]);
     expect(validators).toEqual([
       null,
       '"version-1"',
@@ -294,11 +294,14 @@ describe("bounded resumable report transfer", () => {
       '"version-1"',
     ]);
     expect(result.fileName).toBe("weekly.pptx");
-    expect(progress).toHaveBeenCalledWith({
-      received: PART,
-      total: largeBytes.length,
-      reconnecting: true,
-    });
+    expect(progress).toHaveBeenCalledWith(
+      expect.objectContaining({ total: largeBytes.length, reconnecting: true }),
+    );
+    expect(
+      progress.mock.calls.every(
+        ([state]) => state.received >= 0 && state.received <= largeBytes.length,
+      ),
+    ).toBe(true);
   });
   it("gives a visible error after bounded retries instead of retrying forever", async () => {
     vi.useFakeTimers();
@@ -343,7 +346,7 @@ describe("bounded resumable report transfer", () => {
     await expect(fetchReportDownload("/download")).rejects.toThrow(
       /changed|verified/,
     );
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
   it("never appends a full replacement when If-Range falls back to 200", async () => {
     vi.stubGlobal(
@@ -351,10 +354,10 @@ describe("bounded resumable report transfer", () => {
       vi
         .fn()
         .mockResolvedValueOnce(partial(0, PART - 1))
-        .mockResolvedValueOnce(response(largeBytes)),
+        .mockResolvedValue(response(largeBytes)),
     );
     await expect(fetchReportDownload("/download")).rejects.toThrow(/changed/);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
   it("stops immediately if authorization expires between parts", async () => {
     vi.stubGlobal(
@@ -362,12 +365,14 @@ describe("bounded resumable report transfer", () => {
       vi
         .fn()
         .mockResolvedValueOnce(partial(0, PART - 1))
-        .mockResolvedValueOnce(new Response(null, { status: 401 })),
+        .mockImplementation(() =>
+          Promise.resolve(new Response(null, { status: 401 })),
+        ),
     );
     await expect(fetchReportDownload("/download")).rejects.toThrow(
       /session expired/,
     );
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
   it("recovers a transient service error before the first part", async () => {
     vi.useFakeTimers();
@@ -397,4 +402,79 @@ describe("bounded resumable report transfer", () => {
     await expect(pending).rejects.toThrow(/Aborted/);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+});
+
+it("downloads at most three parts concurrently and assembles out-of-order completions correctly", async () => {
+  const zip = new JSZip();
+  zip.file("ppt/media/photo.png", new Uint8Array(PART * 5 + 100).fill(17));
+  const source = await zip.generateAsync({
+    type: "uint8array",
+    compression: "STORE",
+  });
+  vi.useFakeTimers();
+  let active = 0,
+    peak = 0;
+  const finishes: number[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((_url, options) => {
+      const [start, requestedEnd] = requestedRange(options);
+      const end = Math.min(requestedEnd, source.length - 1);
+      active++;
+      peak = Math.max(peak, active);
+      return new Promise((resolve) =>
+        setTimeout(
+          () => {
+            active--;
+            finishes.push(start);
+            resolve(
+              new Response(source.slice(start, end + 1) as BodyInit, {
+                status: 206,
+                headers: {
+                  "content-type": REPORT_PPTX_MIME,
+                  "content-length": String(end - start + 1),
+                  "content-range": `bytes ${start}-${end}/${source.length}`,
+                  etag: '"same-version"',
+                },
+              }),
+            );
+          },
+          start === PART ? 80 : 10,
+        ),
+      );
+    }),
+  );
+  const pending = fetchReportDownload("/download");
+  await vi.advanceTimersByTimeAsync(1000);
+  const result = await pending;
+  expect(peak).toBe(3);
+  expect(finishes.indexOf(PART * 2)).toBeLessThan(finishes.indexOf(PART));
+  expect(
+    Buffer.from(await result.blob.arrayBuffer()).equals(Buffer.from(source)),
+  ).toBe(true);
+});
+
+it("aborts a sibling transfer immediately when another part changes version", async () => {
+  const siblingAborted = vi.fn();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((_url, options) => {
+      const [start, end] = requestedRange(options);
+      if (start === 0) return Promise.resolve(partial(start, end));
+      if (start === PART)
+        return Promise.resolve(partial(start, end, { etag: '"changed"' }));
+      return new Promise((_resolve, reject) =>
+        options.signal.addEventListener(
+          "abort",
+          () => {
+            siblingAborted();
+            reject(new DOMException("Aborted", "AbortError"));
+          },
+          { once: true },
+        ),
+      );
+    }),
+  );
+  await expect(fetchReportDownload("/download")).rejects.toThrow(/changed/);
+  expect(siblingAborted).toHaveBeenCalledOnce();
 });

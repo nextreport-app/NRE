@@ -941,12 +941,8 @@ describe("renderPptx — client logo + agency name branding (real production tem
       expect(gap).toBeGreaterThanOrEqual(MIN_GAP_EMU);
     });
 
-    // Regression: PRESENTED_TO shifts up (fill-tags.ts) whenever an agency
-    // name is also set, to make room for the "Prepared by ..." line. The
-    // client logo must track that shift — anchoring to a stale/static
-    // PRESENTED_TO position here previously caused a real, visually
-    // confirmed overlap between the logo and the PRESENTED_TO badge.
-    it("still keeps the minimum gap above PRESENTED_TO when an agency name is ALSO set (shifts PRESENTED_TO up)", async () => {
+    // Agency credit below the dates must not affect the logo/badge spacing.
+    it("keeps the logo gap above PRESENTED_TO when agency credit appears below the dates", async () => {
       const templateBuffer = fs.readFileSync(DARK_TEMPLATE_PATH);
       const clientLogo = loadLogoAsset("logo.png");
       const buffer = await renderPptx({
