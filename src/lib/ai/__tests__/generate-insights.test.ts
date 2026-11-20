@@ -601,3 +601,11 @@ it("rejects the live API report's unsupported moderate-form-engagement claim in 
     expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]])).get(key)).toEqual(expected);
   } finally { vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK); }
 });
+
+
+it("does not let ad CTR become a form-interaction metric even without an adjective", () => {
+  const data=makeReportData({resultLabel:"META FORM LEADS",campaignResultsNum:44});
+  const slide=data.campaignSlides[0],key=slideAiKey(slide);
+  const wrong="The campaign generated 44 META FORM LEADS. Click-through rate indicates form engagement.";
+  expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]])).get(key)).toEqual({summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)});
+});

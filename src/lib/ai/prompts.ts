@@ -412,6 +412,8 @@ export function aiCopyViolatesObjectiveRules(
   if (/\b(proves?|definitely caused|confirms? a|conversion funnel problem|in (?:the )?learning phase)\b/i.test(text)) return true;
   if (ctx.resultLabel === "REACH" && ctx.cpr !== ctx.cpm && text.includes(ctx.cpr) && /per (?:one )?thousand impressions|per 1,000 impressions/i.test(text)) return true;
   if (platform !== "META") return false;
+  // Ad click-through rate is not a measurement of instant-form interaction.
+  if (isMetaFormLeadsCampaign(ctx) && /\b(?:ctr|click[- ]through rate)\b[^.!?]{0,180}\b(?:indicat\w*|suggest\w*|reflect\w*|signal\w*)\b[^.!?]{0,100}\bform\s+(?:engagement|completion|abandonment)\b/i.test(text)) return true;
   // Reach counts people/accounts; impressions count displays, not people.
   if (/\breach(?:\s+of)?\s+[\d,]+(?:\.\d+)?\s+impressions\b/i.test(text)) return true;
   // Click delivery is not evidence of an awareness objective or purchase return.
