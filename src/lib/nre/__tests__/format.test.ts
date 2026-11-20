@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtCurrency, fmtCurrency2dp, fmtNumber, fmtPercent, formatMetricValue, parseCellNum } from "../format";
+import { fmtCurrency, fmtCurrency2dp, fmtCurrencyAdaptive, fmtNumber, fmtPercent, formatMetricValue, parseCellNum } from "../format";
 
 describe("parseCellNum", () => {
   it("strips commas, currency symbols, percent signs and whitespace", () => {
@@ -75,4 +75,27 @@ describe("formatMetricValue", () => {
     expect(formatMetricValue(2.5, "ratio", "$")).toBe("2.50x");
     expect(formatMetricValue("Search Campaign", "text", "$")).toBe("Search Campaign");
   });
+});
+
+
+describe("shared currency half-cent rounding",()=>{
+ it.each([
+  [45.69/6,"7.62"], [46.18/4,"11.55"], [1.005,"1.01"], [2.675,"2.68"],
+  [-45.69/6,"-7.62"], [-46.18/4,"-11.55"], [-1.005,"-1.01"],
+  [7.6149,"7.61"], [11.5449,"11.54"], [1.00499999,"1.00"],
+ ])("formats %s consistently without changing genuine below-half values",(value,expected)=>{
+  for(const symbol of ["$","₹","€"]){
+   expect(fmtCurrency2dp(value,symbol)).toBe(symbol+expected);
+   expect(formatMetricValue(value,"currency",symbol)).toBe(symbol+expected);
+   expect(fmtCurrency(value,symbol)).toBe(symbol+expected);
+   expect(fmtCurrencyAdaptive(value,symbol)).toBe(symbol+(expected==="1.00"?"1":expected));
+  }
+ });
+ it("preserves grouping and whole-unit conventions",()=>{
+  expect(fmtCurrency2dp(12345.685,"$")).toBe("$12345.69");
+  expect(formatMetricValue(12345.685,"currency","$")).toBe("$12,345.69");
+  expect(fmtCurrency(12345,"$")).toBe("$12,345");
+  expect(fmtCurrency2dp(12345,"$")).toBe("$12345.00");
+  expect(fmtCurrencyAdaptive(12345,"$")).toBe("$12,345");
+ });
 });
