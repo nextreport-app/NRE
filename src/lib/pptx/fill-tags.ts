@@ -692,6 +692,9 @@ export function buildCampaignOrAdSetSlideXml(
     xml = enforceMinFontSize(xml, 13);
   }
 
+  // Font sizing already fits this fixed header; grow-to-fit can move its first
+  // line above the slide edge in native presentation renderers for long names.
+  xml = setShapeNoAutofit(xml, "{{CAMPAIGN_NAME}}");
   const campaignNameSizePt = fitNameSizePt(heading, typeLabelText, CAMPAIGN_NAME_MAX_WIDTH_PT, CAMPAIGN_NAME_CANDIDATE_SIZES_PT);
   xml = replaceTagRunWithSuffixes(xml, "{{CAMPAIGN_NAME}}", heading, { sizePt: campaignNameSizePt, bold: true }, [
     typeLabelText ? { text: typeLabelText, style: { sizePt: TYPE_LABEL_SIZE_PT, bold: false, color: typeLabelColor } } : null,

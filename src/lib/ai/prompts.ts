@@ -1,3 +1,5 @@
+// Legacy free-form prompt/capping helpers. Production campaign/ad-set sections use
+// report-commentary.ts's fact/action contract through generate-insights.ts.
 /**
  * AI prompt construction for the two per-slide AI calls (campaign/ad-set
  * summary + key insights). Both prompts are a fixed, exact structure
