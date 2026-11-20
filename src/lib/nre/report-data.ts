@@ -148,7 +148,7 @@ export interface AiContext {
   entityLabel?: "campaign" | "ad set" | "ad group";
   reachEstimated?: boolean;
   ctx: string;
-  /** The weekly reporting window as a plain human-readable range (e.g. "July 13 - July 19") — the AI prompt's {date_range} field. Unlike the slide's own dateRangeLine, never has the "\nAd Frequency: ..." suffix appended. */
+  /** The reporting window as a plain human-readable range (e.g. "July 13 - July 19") — the AI prompt's {date_range} field. Unlike the slide's own dateRangeLine, never has the "\nAd Frequency: ..." suffix appended. */
   dateRange: string;
   spend: string;
   reach: string;
@@ -164,9 +164,9 @@ export interface AiContext {
   freq: number;
   resultsNum: number;
   hasResults: boolean;
-  /** Raw spend for this slide (same value `spend` formats for display) — drives generate-insights.ts's zero-spend/paused-campaign check, which needs a number, not a currency-formatted string. */
+  /** Raw spend for this slide (same value `spend` formats for display). Used to choose whether an AI next-step selection is useful; zero spend alone does not establish a pause. */
   spendNum: number;
-  /** True when the CSV's own delivery_status column reports this campaign/ad set as Paused/Inactive (see delivery-status.ts) — independent of spendNum, which can still be nonzero for a campaign paused partway through the week. Always false for Google Ads (no delivery-status detection there). Drives generate-insights.ts's Fix 4 paused-vs-active zero-results templates. */
+  /** True when the CSV's own delivery_status column reports this campaign/ad set as Paused/Inactive (see delivery-status.ts) — independent of spendNum, which can still be nonzero for a campaign paused partway through the week. Always false for Google Ads (no delivery-status detection there). Retained as source status metadata; the commentary contract does not infer historical pause timing from it. */
   isInactive: boolean;
 }
 

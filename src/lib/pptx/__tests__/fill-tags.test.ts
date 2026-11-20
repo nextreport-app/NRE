@@ -782,3 +782,18 @@ it("keeps the enabled cover budget above the slide-number lane",()=>{
  const y=Number(shape.match(/<a:off[^>]* y="(\d+)"/)![1]),height=Number(shape.match(/<a:ext[^>]* cy="(\d+)"/)![1]);
  expect((y+height)/12700).toBeLessThan(509);expect(shape).toContain('wrap="none"');expect(xml).toContain("Prepared by NextReport");
 });
+
+
+it("keeps a long monthly ad-set header in its fixed box instead of letting native auto-fit shift it off-slide",()=>{
+ const base=makeCampaignSlide("Parent campaign");
+ const name="Regional Retargeting - Returning Leads - October 2026";
+ const xml=buildCampaignOrAdSetSlideXml(template.campaign,{...base,kind:"adset",adSetName:name,rowFreq:5.14},undefined,"MONTHLY");
+ const i=xml.indexOf(name);expect(i).toBeGreaterThan(-1);
+ const shape=xml.slice(xml.lastIndexOf("<p:sp>",i),xml.indexOf("</p:sp>",i)+7);
+ expect(shape).toContain("YOUR MONTHLY PERFORMANCE REPORT");
+ expect(shape).toContain(" (Ad Set)");
+ expect(shape).toContain("<a:noAutofit/>");
+ expect(shape).not.toContain("<a:spAutoFit/>");
+ expect(sizeOfRunContaining(xml,name)).toBeGreaterThanOrEqual(16);
+ expect(sizeOfRunContaining(xml,"YOUR MONTHLY PERFORMANCE REPORT")).toBe(28);
+});
