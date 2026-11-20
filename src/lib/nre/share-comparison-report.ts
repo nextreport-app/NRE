@@ -32,3 +32,8 @@ export function buildShareComparisonReportData(
     agencyName: extras.agencyName ?? null,
   };
 }
+
+/** Shared report metadata runs on the server; keep labels outside client views. */
+export function comparisonReportTypeLabel(): string {
+  return "Comparison Report";
+}

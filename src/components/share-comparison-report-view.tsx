@@ -1,4 +1,5 @@
 "use client";
+import { ReportDownloadLink } from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
 import { comparisonTone, comparisonPercent } from "@/lib/nre/comparison-presentation";
@@ -143,13 +144,13 @@ export function ShareComparisonReportView({
           shareToken={shareToken}
           rightSlot={
             shareToken ? (
-              <a
+              <ReportDownloadLink
                 href={`/api/r/${shareToken}/download`}
-                aria-label="Download PowerPoint report"
+                ariaLabel="Download PowerPoint report"
                 className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#f5b45a] bg-[#f5b45a] px-3 py-2 text-[12px] font-semibold leading-none text-[#0b1728] transition-colors hover:bg-[#e9a447] sm:px-4 sm:py-2.5 sm:text-[14px]"
               >
                 <span className="hidden min-[400px]:inline">Download</span><span>PPTX</span>
-              </a>
+              </ReportDownloadLink>
             ) : null
           }
         />
@@ -222,8 +223,4 @@ export function ShareComparisonReportView({
       ) : null}
     </div>
   );
-}
-
-export function comparisonReportTypeLabel(): string {
-  return "Comparison Report";
 }
