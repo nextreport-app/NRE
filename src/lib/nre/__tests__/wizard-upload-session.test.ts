@@ -8,6 +8,7 @@ import {
   saveWizardUploadSession,
   loadWizardUploadSession,
   deleteWizardUploadSession,
+  releaseWizardUploadSession,
   type WizardUploadSessionPayload,
 } from "../wizard-upload-session";
 
@@ -112,5 +113,27 @@ describe("wizard-upload-session", () => {
   it("deleteWizardUploadSession delegates to storage", async () => {
     await deleteWizardUploadSession(userId, clientId, sessionId);
     expect(deleteWizardUploadSessionBlob).toHaveBeenCalledWith(userId, clientId, sessionId);
+  });
+});
+
+
+describe("completed report source lifetime", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("retains an API snapshot only within its existing expiry", async () => {
+    const payload = samplePayload({metaAdAccountId:"act_123"});
+    vi.mocked(readWizardUploadSessionBlob).mockResolvedValue(JSON.stringify(payload));
+    await releaseWizardUploadSession(userId,clientId,sessionId);
+    expect(deleteWizardUploadSessionBlob).not.toHaveBeenCalled();
+    expect(await loadWizardUploadSession(userId,clientId,sessionId)).toEqual(payload);
+  });
+  it("continues deleting completed manual upload sessions", async () => {
+    vi.mocked(readWizardUploadSessionBlob).mockResolvedValue(JSON.stringify(samplePayload()));
+    await releaseWizardUploadSession(userId,clientId,sessionId);
+    expect(deleteWizardUploadSessionBlob).toHaveBeenCalledWith(userId,clientId,sessionId);
+  });
+  it("does not keep an expired API snapshot alive", async () => {
+    vi.mocked(readWizardUploadSessionBlob).mockResolvedValue(JSON.stringify(samplePayload({metaAdAccountId:"act_123",expiresAt:new Date(Date.now()-1000).toISOString()})));
+    await releaseWizardUploadSession(userId,clientId,sessionId);
+    expect(deleteWizardUploadSessionBlob).toHaveBeenCalledWith(userId,clientId,sessionId);
   });
 });

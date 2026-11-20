@@ -1,4 +1,5 @@
 "use client";
+import {ApiSourceDownload} from "../ui/api-source-download";
 import {metaReportTitle} from "@/lib/nre/meta-report-content/selection";
 import {MetaReportContentPanel} from "../ui/meta-report-content-panel";
 import { WizardFinalSettings } from "../ui/wizard-final-settings";
@@ -171,6 +172,7 @@ export function WizardGenerateStep() {
       <div className="space-y-6">
         <WizardGenerateSuccessPanel
           clientCurrency={w.clientCurrency} clientTimezone={w.clientTimezone}
+          apiSourceSessionId={w.dataSourceMode === "api" && platform === "META" ? w.uploadSessionId : null}
           clientName={clientName}
           clientId={clientId}
           generatedWithCsvMismatch={generatedWithCsvMismatch}
@@ -409,7 +411,10 @@ export function WizardGenerateStep() {
                 previewKind === "dayBreakdown") &&
               generateStepPreviewReady &&
               generateStatus === "idle" ? (
+                <>
                 <CsvVerificationPanel currency={w.clientCurrency} verification={csvVerification} refreshing={previewRefreshing} />
+                {w.dataSourceMode === "api" && platform === "META" && w.uploadSessionId && <ApiSourceDownload clientId={clientId} uploadSessionId={w.uploadSessionId} />}
+                </>
               ) : null}
 
               {(generateStatus === "idle" || generateStatus === "error") && (

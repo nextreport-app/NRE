@@ -10,7 +10,7 @@ import { claimReportGeneration, failReportGeneration } from "@/lib/report-capaci
  */
 
 import { prisma } from "@/lib/prisma";
-import { deleteWizardUploadSession } from "@/lib/nre/wizard-upload-session";
+import { releaseWizardUploadSession } from "@/lib/nre/wizard-upload-session";
 import {
   parseReportGenerationJob,
 } from "@/lib/nre/report-generation-job-payload";
@@ -96,7 +96,7 @@ function dispatchReportNotifications(params: {
 
 async function cleanupUploadSession(userId: string, clientId: string, sessionId: string | undefined) {
   if (sessionId) {
-    await deleteWizardUploadSession(userId, clientId, sessionId).catch(() => {});
+    await releaseWizardUploadSession(userId, clientId, sessionId).catch(() => {});
   }
 }
 

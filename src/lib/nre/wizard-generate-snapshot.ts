@@ -10,6 +10,8 @@ const SNAPSHOT_VERSION = 1 as const;
 export interface WizardGenerateSnapshot {
   version: typeof SNAPSHOT_VERSION;
   reportId: string;
+  uploadSessionId?: string | null;
+  dataSourceMode?: "csv" | "api";
   downloadUrl: string;
   shareToken: string | null;
   platform: "META" | "GOOGLE" | "TIKTOK";
