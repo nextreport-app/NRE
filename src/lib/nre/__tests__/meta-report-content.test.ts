@@ -43,6 +43,35 @@ function content(
   };
 }
 describe("Meta optional content calculation", () => {
+  it("rolls up disjoint device-platform rows without conflating Facebook and Instagram placements", () => {
+    const csv = [
+      "Campaign name,Reporting starts,Reporting ends,Platform,Placement,Device platform,Amount spent (USD),Impressions,Results,Result indicator,Clicks (all)",
+      "Example,2026-11-10,2026-11-10,Facebook,Feed,In-app,10,100,2,actions:link_click,4",
+      "Example,2026-11-10,2026-11-10,Facebook,Feed,Desktop,2,20,, ,1",
+      "Example,2026-11-11,2026-11-11,Facebook,Feed,Mobile web,3,30,1,actions:link_click,2",
+      "Example,2026-11-11,2026-11-11,Instagram,Feed,In-app,5,50,2,actions:link_click,3",
+    ].join("\n");
+    const parsed = parseCsvText(csv);
+    const joint = parseMetaContentSource(parsed, "USD");
+    expect(joint.rows).toHaveLength(4);
+    expect(joint.rows.map(row => row.devicePlatform)).toEqual(["In-app", "Desktop", "Mobile web", "In-app"]);
+    const config = content([joint], {audience: ["platform", "placement"]});
+    const result = buildMetaContentPresentation(config, [range], null, "$")!;
+    const placement = result.pages.find(page => page.kind === "audience" && page.title.startsWith("Placement"))!;
+    expect(placement.rows.map(row => row.name)).toEqual(["Facebook · Feed", "Instagram · Feed"]);
+    expect(placement.rows[0]).toMatchObject({spend: 15, impressions: 150, results: 3, cpr: 5, ctr: 7 / 150 * 100});
+    const platform = result.pages.find(page => page.kind === "audience" && page.title.startsWith("Platform"))!;
+    expect(platform.rows[0]).toMatchObject({name: "Facebook", spend: 15, impressions: 150, results: 3});
+    expect(verifyMetaContentTotals(config, result, [range], null).status).toBe("ok");
+    expect(() => parseMetaContentSource(parseCsvText(csv + "\n" + csv.split("\n")[1]), "USD")).toThrow("duplicate rows");
+    for (const deviceTotal of ["", "All devices"]) {
+      const total = csv.split("\n")[1].replace(",In-app,", `,${deviceTotal},`);
+      expect(() => parseMetaContentSource(parseCsvText(csv + "\n" + total), "USD")).toThrow("overlapping totals");
+    }
+    const totals = csv.split("\n")[0] + "\n" + csv.split("\n")[1].replace(",In-app,", ",All devices,") + "\n" + csv.split("\n")[1].replace(",In-app,", ",Total,");
+    expect(() => parseMetaContentSource(parseCsvText(totals), "USD")).toThrow("duplicate rows");
+  });
+
   it("puts one factual overview before each objective table and excludes it from source accounting", () => {
     const age = source("Age", [
       "Example,Set,2026-11-10,10,100,5,1,Leads (form),25-34",

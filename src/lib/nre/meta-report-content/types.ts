@@ -35,6 +35,8 @@ export interface MetaObservation {
   location?: string;
   platform?: string;
   placement?: string;
+  /** Source-only subdivision; roll up into the selected platform/placement view. */
+  devicePlatform?: string;
   attribution?: string;
 }
 export interface MetaContentSource {

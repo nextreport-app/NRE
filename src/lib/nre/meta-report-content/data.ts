@@ -99,6 +99,8 @@ export function parseMetaContentSource(
   const coverage = computeCsvDateBounds(rows);
   if (!coverage) throw Error("The export has no valid date coverage.");
   const identities = new Set<string>();
+  const hasDevicePlatform = header(["device platform"]);
+  const deviceScopes = new Map<string, boolean>();
   const observations = rows.map((row) => {
     const date = parseDate(getRowDate(row));
     if (!date || !row.campaign_name?.trim())
@@ -155,6 +157,7 @@ export function parseMetaContentSource(
         true,
       ),
       attribution: rawCell(row, ["attribution setting"]),
+      devicePlatform: rawCell(row, ["device platform"])?.trim() || undefined,
       ...(dimensions[0] ? { age: dim(row, ["age"]) } : {}),
       ...(dimensions[1] ? { location: dim(row, ["region", "country"]) } : {}),
       ...(dimensions[2]
@@ -170,7 +173,7 @@ export function parseMetaContentSource(
       );
     if (kind === "creative" && !/^\d{1,40}$/.test(o.adId!))
       throw Error("The export has an invalid Ad ID.");
-    const id = JSON.stringify([
+    const identity = [
       o.campaignId || o.campaign,
       o.adSetId || o.adSet,
       o.adId,
@@ -179,7 +182,15 @@ export function parseMetaContentSource(
       o.location,
       o.platform,
       o.placement,
-    ]);
+    ];
+    // Device platform subdivides one placement (e.g. Desktop versus In-app).
+    // Preserve disjoint slices, but never combine a placement total with them.
+    const deviceTotal = !o.devicePlatform || /^(?:all|total)(?: devices?| platforms?)?$/i.test(o.devicePlatform);
+    const scopeId = JSON.stringify(identity);
+    if (hasDevicePlatform && deviceScopes.has(scopeId) && deviceScopes.get(scopeId) !== deviceTotal)
+      throw Error("This export mixes placement totals with device-level rows. Export one consistent breakdown without overlapping totals.");
+    deviceScopes.set(scopeId, deviceTotal);
+    const id = JSON.stringify([...identity, deviceTotal ? null : o.devicePlatform]);
     if (identities.has(id))
       throw Error(
         "This export has duplicate rows at the same day and breakdown/ad level. Remove overlapping totals before uploading.",
