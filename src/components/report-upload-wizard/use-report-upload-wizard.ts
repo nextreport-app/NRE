@@ -2721,7 +2721,7 @@ export function useReportUploadWizard({
 
   const coverBudgetPreviewLine = useMemo(() => {
     if (previewKind !== "normal" || !data) return null;
-    return buildBudgetCoverPreview(data.mtdSpendTotal, clientMonthlyBudget, currencySymbol, clientTimezone);
+    return buildBudgetCoverPreview(data.mtdSpendTotal, clientMonthlyBudget, currencySymbol, clientTimezone, new Date(), data.calculationContext?.combinedRange.startIso.slice(0, 7));
   }, [previewKind, data, clientMonthlyBudget, currencySymbol, clientTimezone]);
 
   async function handleShowBudgetOnCoverChange(next: boolean) {
@@ -2737,6 +2737,7 @@ export function useReportUploadWizard({
           budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
             showOnCover: next,
             timezone: clientTimezone,
+            reportMonthIso: prev.calculationContext?.combinedRange.startIso.slice(0, 7),
           }),
         },
       };
@@ -2759,6 +2760,7 @@ export function useReportUploadWizard({
               budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
                 showOnCover: previous,
                 timezone: clientTimezone,
+                reportMonthIso: prev.calculationContext?.combinedRange.startIso.slice(0, 7),
               }),
             },
           };
@@ -2776,6 +2778,7 @@ export function useReportUploadWizard({
             budgetSummary: buildBudgetSummary(prev.mtdSpendTotal, clientMonthlyBudget, currencySymbol, {
               showOnCover: previous,
               timezone: clientTimezone,
+              reportMonthIso: prev.calculationContext?.combinedRange.startIso.slice(0, 7),
             }),
           },
         };

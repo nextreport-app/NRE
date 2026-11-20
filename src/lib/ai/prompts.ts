@@ -398,7 +398,7 @@ export function aiCopyViolatesObjectiveRules(
   // No targets, historical periods, margins or audience diagnostics are in AiContext.
   if (/\b(?:benchmarks?|targets?|profitab\w*|historical|week[- ]over[- ]week|fatigue|saturation|efficient(?:ly)?|expected range|solid efficiency|strong efficiency|resonat\w*|conversion leaks)\b/i.test(text)) return true;
   if (/\b(?:held|holding|remained?|stayed?|remain(?:ing)?|stay(?:ing)?)\s+(?:steady|stable|consistent|unchanged)\b/i.test(text)) return true;
-  if (/\b(?:steady|stable|consistent)\s+(?:(?:audience|click|lead|conversion)\s+)?(?:performance|engagement|lead generation|results?|rate|delivery)\b/i.test(text)) return true;
+  if (/\b(?:steady|stable|consistent)\s+(?:(?:audience|click|lead|conversion)\s+)?(?:performance|engagement|lead generation|form submission activity|unit costs?|results?|rate|delivery)\b/i.test(text)) return true;
   // Modifiers do not make an unsupported judgment valid: "solid creative
   // engagement", "solid click efficiency" and "reasonable cost" all need
   // an external benchmark that the single-period context does not contain.
@@ -414,6 +414,7 @@ export function aiCopyViolatesObjectiveRules(
   if (platform !== "META") return false;
   // Ad click-through rate is not a measurement of instant-form interaction.
   if (isMetaFormLeadsCampaign(ctx) && /\b(?:ctr|click[- ]through rate)\b[^.!?]{0,180}\b(?:indicat\w*|suggest\w*|reflect\w*|signal\w*)\b[^.!?]{0,100}\bform\s+(?:engagement|completion|abandonment)\b/i.test(text)) return true;
+  if (isMetaFormLeadsCampaign(ctx) && /\bform\s+(?:engagement|completion|abandonment)(?:\s+rates?)?\b[^.!?]{0,120}\balign\w*\b[^!?]{0,100}\b(?:ctr|click[- ]through rate)\b/i.test(text)) return true;
   // Reach counts people/accounts; impressions count displays, not people.
   if (/\breach(?:\s+of)?\s+[\d,]+(?:\.\d+)?\s+impressions\b/i.test(text)) return true;
   // Click delivery is not evidence of an awareness objective or purchase return.
