@@ -43,6 +43,30 @@ function content(
   };
 }
 describe("Meta optional content calculation", () => {
+  it("accepts daily Campaigns-table date pairs and Result indicators without inventing all-click CTR", () => {
+    const parsed = parseCsvText([
+      "Campaign name,Reporting starts,Reporting ends,Region,Amount spent (USD),Impressions,Results,Result indicator",
+      "Lead campaign,2026-11-10,2026-11-10,Delhi,10,100,2,actions:leadgen.other",
+      "Lead campaign,2026-11-11,2026-11-11,Delhi,5,50,,",
+      "Traffic campaign,2026-11-10,2026-11-10,Delhi,4,80,8,actions:link_click",
+      "Traffic campaign,2026-11-11,2026-11-11,Delhi,1,20,,",
+    ].join("\n"));
+    const region = parseMetaContentSource(parsed, "USD");
+    expect(region.coverage).toEqual(range);
+    const result = buildMetaContentPresentation(content([region], {audience: ["location"]}), [range], null, "$")!;
+    const lead = result.pages.find(page => page.objective === "META FORM LEADS")!;
+    const traffic = result.pages.find(page => page.objective === "LINK CLICKS")!;
+    expect(lead.rows[0]).toMatchObject({spend: 15, results: 2, cpr: 7.5, ctr: null});
+    expect(traffic.rows[0]).toMatchObject({spend: 5, results: 8, cpr: 0.625, ctr: null});
+    expect(verifyMetaContentTotals(content([region], {audience: ["location"]}), result, [range], null).status).toBe("ok");
+  });
+  it("rejects aggregate or mixed-granularity date pairs instead of assigning totals to one day", () => {
+    const header = "Campaign name,Reporting starts,Reporting ends,Region,Amount spent (USD),Impressions,Results,Result indicator";
+    for (const lines of [
+      ["Lead campaign,2026-11-10,2026-11-11,Delhi,10,100,2,actions:leadgen.other"],
+      ["Lead campaign,2026-11-10,2026-11-10,Delhi,10,100,2,actions:leadgen.other", "Lead campaign,2026-11-10,2026-11-11,Mumbai,10,100,2,actions:leadgen.other"],
+    ]) expect(() => parseMetaContentSource(parseCsvText([header, ...lines].join("\n")), "USD")).toThrow("Day breakdown");
+  });
   it("preserves fractional attributed results in client-facing counts", () => {
     expect(metricNumber(0.5, "number", "$")).toBe("0.5");
     expect(metricNumber(1234, "number", "$")).toBe("1,234");

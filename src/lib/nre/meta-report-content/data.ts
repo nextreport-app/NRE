@@ -1,9 +1,9 @@
 import { metaReportTitle } from "./selection";
 import type { NreRow } from "../columns";
-import { getRowDate } from "../columns";
+import { getRowDate, rowHasDailyDate } from "../columns";
 import { parseDate, getDateRangeAbbrLabel } from "../dates";
 import { computeCsvDateBounds, type DateRangeIso } from "../date-range";
-import { getResultLabels } from "../objective";
+import { getResultLabels, resultTypeTextForObjectiveDetection } from "../objective";
 import { objectiveRate } from "../objective-rate";
 import { fmtCurrency2dp } from "../format";
 import { detectCsvCurrency } from "../csv-currency";
@@ -91,7 +91,7 @@ export function parseMetaContentSource(
     throw Error(
       `This export uses ${detected.code}; the report uses ${currency}. Upload matching currencies.`,
     );
-  if (!header(["day", "date", "date start"]))
+  if (!rows.every(rowHasDailyDate))
     throw Error(
       "Export these sections with a Day breakdown so the report can select the correct dates.",
     );
@@ -103,7 +103,9 @@ export function parseMetaContentSource(
     if (!date || !row.campaign_name?.trim())
       throw Error("Every breakdown/ad row needs a campaign and a valid Day.");
     const resultType =
-      row.result_type?.trim() || rawCell(row, ["result type"])?.trim() || "";
+      resultTypeTextForObjectiveDetection(row) ||
+      rawCell(row, ["result type"])?.trim() ||
+      "";
     if (resultType.length > 200)
       throw Error(
         "The Result type label is too long. Use the primary result column from Ads Manager.",
