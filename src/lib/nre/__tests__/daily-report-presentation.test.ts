@@ -158,3 +158,18 @@ describe("Daily period totals and uniform tables", () => {
     30_000,
   );
 });
+
+
+it("rounds half-cent goal costs the same way in daily rows, browser data and PPTX",async()=>{
+ const parsed=parseCsvText("Campaign name,Day,Amount spent (USD),Results,Result type,Reach,Impressions,Clicks (all)\nForm campaign,2026-11-17,45.69,6,Leads (form),100,1000,25\nTraffic,2026-11-17,10,20,Link clicks,100,1000,25\nForm campaign,2026-11-18,46.18,4,Leads (form),100,1000,25\nTraffic,2026-11-18,10,20,Link clicks,100,1000,25");
+ const data=buildDayBreakdownReportData({...base,mtdDailyRows:parsed.rows,csvHeaders:parsed.headers,dateRange:{startIso:"2026-11-17",endIso:"2026-11-18"},now:new Date("2026-11-20T12:00:00Z")});
+ expect(data.dayRows.map(row=>row.resultColumns.find(col=>col.label==="META FORM LEADS")!.cprValue)).toEqual(["$7.62","$11.55"]);
+ expect(data.dayRows.map(row=>row.spend)).toEqual(["$55.69","$56.18"]);
+ const browser=JSON.stringify(buildDayBreakdownShareReportData(data));
+ const zip=await JSZip.loadAsync(await renderDayBreakdownPptx({templateBuffer:readFileSync("templates/dark.pptx"),data,agencyName:"Example Agency"}));
+ const xml=(await Promise.all(Object.keys(zip.files).filter(p=>/^ppt\/slides\/slide\d+\.xml$/.test(p)).map(p=>zip.file(p)!.async("string")))).join("");
+ for(const output of [browser,xml]){
+  expect(output).toContain("$7.62");expect(output).toContain("$11.55");
+  expect(output).not.toContain("$7.61");expect(output).not.toContain("$11.54");
+ }
+});

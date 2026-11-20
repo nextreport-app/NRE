@@ -34,20 +34,33 @@ export function parseCellNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Decimal half-cents round away from zero, consistently across currency displays.
+ * Division can put a true half-cent one or two binary ULPs below the boundary
+ * (45.69 / 6). Snap only that tiny boundary error, never ordinary sub-half values.
+ */
+function roundCurrency(n: number): number {
+  const scaled = Math.abs(n) * 100;
+  const lower = Math.floor(scaled);
+  if (!Number.isSafeInteger(lower)) return n;
+  const tolerance = Math.min(1e-7, Number.EPSILON * Math.max(1, scaled) * 2);
+  const cents = Math.abs(scaled - (lower + 0.5)) <= tolerance ? lower + 1 : Math.round(scaled);
+  return cents === 0 ? 0 : Math.sign(n) * cents / 100;
+}
+
 /** Comma-grouped money; retain cents so positive sub-unit spend remains visible. */
 export function fmtCurrency(v: unknown, symbol: string): string {
   const n = parseCellNum(v);
-  return symbol + n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+  return symbol + roundCurrency(n).toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
 }
 
-/** Port of fmtCurrency2dp_ — 2 decimal places, comma-grouped. */
+/** Fixed two-decimal currency without grouping; same rounding as other money displays. */
 export function fmtCurrency2dp(v: unknown, symbol: string): string {
-  return symbol + parseCellNum(v).toFixed(2);
+  return symbol + roundCurrency(parseCellNum(v)).toFixed(2);
 }
 
 /** Whole dollars when .00; otherwise 2dp with comma grouping — chart donut legend spend. */
 export function fmtCurrencyAdaptive(v: unknown, symbol: string): string {
-  const n = Math.round(parseCellNum(v) * 100) / 100;
+  const n = roundCurrency(parseCellNum(v));
   if (Math.abs(n - Math.round(n)) < 0.005) {
     return fmtCurrency(n, symbol);
   }
@@ -91,13 +104,12 @@ export function fmtRatio(v: unknown): string {
 
 /**
  * Comma-grouped 2dp currency, for the dynamic metric dictionary system only.
- * Unlike fmtCurrency2dp (a direct, intentionally ungrouped port of the legacy
- * fmtCurrency2dp_ Apps Script function — see its test), dynamic "currency"
+ * Unlike ungrouped fmtCurrency2dp, dynamic "currency"
  * metrics include aggregate totals like Google's "cost" that can exceed
  * 1,000 and need a thousand separator to stay readable.
  */
 function fmtCurrency2dpGrouped(v: unknown, symbol: string): string {
-  return symbol + parseCellNum(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return symbol + roundCurrency(parseCellNum(v)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /**
