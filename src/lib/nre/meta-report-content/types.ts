@@ -80,7 +80,7 @@ export interface MetaPerformanceRow {
 }
 export interface MetaContentPage {
   id: string;
-  kind: "audience" | "creative-table" | "creative-preview";
+  kind: "audience" | "creative-table" | "creative-preview" | "summary";
   title: string;
   dateLabel: string;
   objective: string;

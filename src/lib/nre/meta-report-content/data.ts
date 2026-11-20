@@ -1,3 +1,4 @@
+import { metaClientNarrative } from "../report-client-narrative";
 import { metaReportTitle } from "./selection";
 import type { NreRow } from "../columns";
 import { getRowDate, rowHasDailyDate } from "../columns";
@@ -489,6 +490,17 @@ export function buildMetaContentPresentation(
           dimension === "creative"
             ? `Ranked within this objective by ${content.options.ranking === "cpr" ? "cost per result" : content.options.ranking.toUpperCase()}. Minimum spend ${currencySymbol}${content.options.minSpend}; ${content.options.minResults} results for cost/ROAS rankings. Unranked ads remain included. CTR uses all clicks; ROAS uses purchase value / spend; CVR uses website results / landing-page views. — means unavailable. Previews are representative assets, not asset-level attribution.`
             : "";
+        const narrative = metaClientNarrative({
+          rows: metrics, total: aggregate(scoped, "total", "Total", content),
+          objective, costLabel: scoped[0].costLabel, currency: currencySymbol,
+          dimension: dimension === "creative" ? "Creative" : DIMENSION_LABELS[dimension],
+          creative: dimension === "creative", options: content.options,
+        });
+        pages.push({id: `${prefix}-summary`, kind: "summary",
+          title: `${dimension === "creative" ? "Creative" : DIMENSION_LABELS[dimension]} overview`,
+          dateLabel, objective, costLabel: scoped[0].costLabel, rows: [],
+          insight: narrative.summary, note: narrative.insights.join("\n"),
+        });
         for (let start = 0; start < metrics.length; start += 8)
           pages.push({
             id: `${prefix}-${start}`,

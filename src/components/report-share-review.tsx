@@ -357,7 +357,7 @@ export function ReportShareReview({
         shareReview: {
           publish: true,
           target: "browser",
-          metaPages: metaPages.map(({id,title,note,visible})=>({id,title,note,visible:visible!==false})),
+          metaPages: metaPages.map(({id,title,note,insight,visible})=>({id,title,note,insight,visible:visible!==false})),
           visibility,
           campaigns: campaigns.map((c) => ({
             campaignName: c.campaignName,
@@ -524,7 +524,7 @@ export function ReportShareReview({
         </aside>
 
         <div className="min-w-0 space-y-4">
-          {selectedMetaPage && <div className="rounded-lg border border-dash-border bg-dash-card p-4"><p className="text-sm font-semibold text-dash-ink">Audience / creative section</p><p className="mt-1 text-xs text-dash-ink-secondary">Edit the title and note here. Metrics and creative images come from the source data; update them in the report wizard and regenerate.</p><label className="mt-3 block text-sm text-dash-ink">Section title<input value={selectedMetaPage.title} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id===selectedMetaPage.id?{...page,title:e.target.value}:page))} className="mt-1 w-full rounded border border-dash-border bg-dash-bg p-2"/></label><label className="mt-3 block text-sm text-dash-ink">Section note<textarea aria-label="Section note" value={selectedMetaPage.note} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id===selectedMetaPage.id?{...page,note:e.target.value}:page))} className="mt-1 min-h-24 w-full rounded border border-dash-border bg-dash-bg p-2"/></label></div>}
+          {selectedMetaPage && <div className="rounded-lg border border-dash-border bg-dash-card p-4"><p className="text-sm font-semibold text-dash-ink">Audience / creative section</p><p className="mt-1 text-xs text-dash-ink-secondary">Edit the report text here. Metrics and creative images come from the source data; update them in the report wizard and regenerate.</p><label className="mt-3 block text-sm text-dash-ink">Section title<input value={selectedMetaPage.title} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id===selectedMetaPage.id?{...page,title:e.target.value}:page))} className="mt-1 w-full rounded border border-dash-border bg-dash-bg p-2"/></label>{selectedMetaPage.kind === "summary" && <label className="mt-3 block text-sm text-dash-ink">Campaign summary<textarea aria-label="Campaign summary" value={selectedMetaPage.insight ?? ""} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id === selectedMetaPage.id ? {...page,insight:e.target.value} : page))} maxLength={3000} className="mt-1 min-h-24 w-full rounded border border-dash-border bg-dash-bg p-2"/></label>}<label className="mt-3 block text-sm text-dash-ink">{selectedMetaPage.kind === "summary" ? "Key insights (one per line)" : "Section note"}<textarea aria-label="Section note" value={selectedMetaPage.note} onChange={e=>setMetaPages(pages=>pages.map(page=>page.id===selectedMetaPage.id?{...page,note:e.target.value}:page))} className="mt-1 min-h-24 w-full rounded border border-dash-border bg-dash-bg p-2"/></label></div>}
           {coverSelected && coverEdit ? (
             <div className="rounded-lg border border-dash-border bg-dash-card p-4">
               <p className="text-[14px] font-semibold text-dash-ink">Cover slide</p>

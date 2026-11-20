@@ -1,3 +1,4 @@
+import { clientNarrativeBody } from "./client-narrative-slide";
 import {
   buildBlankSlideXml,
   resetShapeIdCounter,
@@ -74,7 +75,9 @@ export function appendMetaContentSlides(
       }),
     ];
     let imageRel = "";
-    if (page.kind === "creative-preview") {
+    if (page.kind === "summary") {
+      shapes.push(...clientNarrativeBody({summary: page.insight ?? "", insights: page.note.split("\n").filter(Boolean)}, light));
+    } else if (page.kind === "creative-preview") {
       const row = page.rows[0],
         image = content.media[row.adId ?? ""];
       shapes.push(
@@ -233,7 +236,7 @@ export function appendMetaContentSlides(
           }),
         );
     }
-    if (page.note) {
+    if (page.note && page.kind !== "summary") {
       shapes.push(
         textBox({
           x: 40,

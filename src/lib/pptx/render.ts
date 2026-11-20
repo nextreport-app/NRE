@@ -1,3 +1,4 @@
+import { buildClientNarrativeSlide } from "./client-narrative-slide";
 import {appendMetaContentSlides} from "./meta-content-slides";
 import { orderSlidesBySpend } from "../nre/slide-spend-order";
 import { dailyClientCopy } from "../nre/daily-client-copy";
@@ -383,7 +384,8 @@ export async function renderComparisonPptx(input: RenderComparisonPptxInput): Pr
     rels: template.cover.rels,
   });
 
-  for (const campaign of data.campaigns.filter(item => item.metricsA.spend.value > 0)) {
+  for (const campaign of data.campaigns.filter(item => (item.metricsA.spend.value > 0 || item.metricsB.spend.value > 0))) {
+    if (campaign.narrative) slides.push({xml: buildClientNarrativeSlide(`${campaign.campaignName} · Overview`, `Period A (${data.periodATitle ?? "Period A"}): ${data.periodALabel} · Period B (${data.periodBTitle ?? "Period B"}): ${data.periodBLabel} · ${campaign.objective}`, campaign.narrative, isLightTemplate), rels: buildComparisonSlideRels(template.background.mediaTarget)});
     slides.push({
       xml: buildComparisonCampaignSlideXml(campaign, data.periodALabel, data.periodBLabel, template.background, isLightTemplate, { a: data.periodATitle ?? "PERIOD A", b: data.periodBTitle ?? "PERIOD B" }),
       rels: buildComparisonSlideRels(template.background.mediaTarget),

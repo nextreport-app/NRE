@@ -43,6 +43,22 @@ function content(
   };
 }
 describe("Meta optional content calculation", () => {
+  it("puts one factual overview before each objective table and excludes it from source accounting", () => {
+    const age = source("Age", [
+      "Example,Set,2026-11-10,10,100,5,1,Leads (form),25-34",
+      "Example,Set,2026-11-11,20,200,10,2,Leads (form),35-44",
+    ]);
+    const config = content([age]);
+    const result = buildMetaContentPresentation(config, [range], null, "$")!;
+    expect(result.pages.map(page => page.kind)).toEqual(["summary", "audience"]);
+    expect(result.pages[0].rows).toEqual([]);
+    expect(result.pages[0].insight).toContain("$30.00");
+    expect(result.pages[0].insight).toContain("3 meta form leads");
+    expect(result.pages[0].insight).toContain("$10.00");
+    expect(result.pages[1].note).toBe("");
+    expect(verifyMetaContentTotals(config, result, [range], null).status).toBe("ok");
+  });
+
   it("accepts daily Campaigns-table date pairs and Result indicators without inventing all-click CTR", () => {
     const parsed = parseCsvText([
       "Campaign name,Reporting starts,Reporting ends,Region,Amount spent (USD),Impressions,Results,Result indicator",
@@ -54,8 +70,8 @@ describe("Meta optional content calculation", () => {
     const region = parseMetaContentSource(parsed, "USD");
     expect(region.coverage).toEqual(range);
     const result = buildMetaContentPresentation(content([region], {audience: ["location"]}), [range], null, "$")!;
-    const lead = result.pages.find(page => page.objective === "META FORM LEADS")!;
-    const traffic = result.pages.find(page => page.objective === "LINK CLICKS")!;
+    const lead = result.pages.find(page => page.kind !== "summary" && page.objective === "META FORM LEADS")!;
+    const traffic = result.pages.find(page => page.kind !== "summary" && page.objective === "LINK CLICKS")!;
     expect(lead.rows[0]).toMatchObject({spend: 15, results: 2, cpr: 7.5, ctr: null});
     expect(traffic.rows[0]).toMatchObject({spend: 5, results: 8, cpr: 0.625, ctr: null});
     expect(verifyMetaContentTotals(content([region], {audience: ["location"]}), result, [range], null).status).toBe("ok");
@@ -81,13 +97,13 @@ describe("Meta optional content calculation", () => {
     expect(verifyMetaContentTotals(config, result, [range], null).status).toBe(
       "ok",
     );
-    result.pages[0].rows[0].spend += 1;
+    result.pages.find(page => page.kind !== "summary")!.rows[0].spend += 1;
     const wrong = verifyMetaContentTotals(config, result, [range], null);
     expect(wrong.status).toBe("mismatch");
     expect(
       mergeMetaVerification({ status: "ok", checks: [] }, wrong, true).status,
     ).toBe("mismatch");
-    result.pages[0].rows.shift();
+    result.pages.find(page => page.kind !== "summary")!.rows.shift();
     expect(verifyMetaContentTotals(config, result, [range], null).status).toBe(
       "mismatch",
     );
@@ -103,7 +119,7 @@ describe("Meta optional content calculation", () => {
     ];
     const config = content([age]);
     const result = buildMetaContentPresentation(config, ranges, null, "$")!;
-    expect(result.pages.map((page) => page.rows[0].spend)).toEqual([10, 20]);
+    expect(result.pages.filter(page => page.kind !== "summary").map((page) => page.rows[0].spend)).toEqual([10, 20]);
     expect(verifyMetaContentTotals(config, result, ranges, null).status).toBe(
       "ok",
     );
@@ -119,7 +135,7 @@ describe("Meta optional content calculation", () => {
       [range],
       null,
       "$",
-    )!.pages;
+    )!.pages.filter(page => page.kind !== "summary");
     expect(pages[0].rows.find((row) => row.name === "18-24")).toMatchObject({
       spend: 100,
       results: 10,
@@ -147,13 +163,13 @@ describe("Meta optional content calculation", () => {
       null,
       "$",
     )!;
-    expect(result.pages).toHaveLength(2);
+    expect(result.pages.filter(page => page.kind !== "summary")).toHaveLength(2);
     expect(
-      result.pages.map((page) =>
+      result.pages.filter(page => page.kind !== "summary").map((page) =>
         page.rows.reduce((n, row) => n + row.spend, 0),
       ),
     ).toEqual([30, 30]);
-    expect(result.pages[1].rows.map((row) => row.name).sort()).toEqual([
+    expect(result.pages.filter(page => page.kind !== "summary")[1].rows.map((row) => row.name).sort()).toEqual([
       "facebook · Feed",
       "instagram · Feed",
     ]);
@@ -164,7 +180,7 @@ describe("Meta optional content calculation", () => {
       "Example,Set,2026-11-11,10,100,—,1,Leads (form),18-24",
     ]);
     expect(
-      buildMetaContentPresentation(content([age]), [range], null, "$")!.pages[0]
+      buildMetaContentPresentation(content([age]), [range], null, "$")!.pages.find(page => page.kind !== "summary")!
         .rows[0].ctr,
     ).toBeNull();
   });
@@ -234,7 +250,7 @@ describe("Meta optional content calculation", () => {
       null,
       "$",
     )!;
-    expect(result.pages[0].rows[0]).toMatchObject({
+    expect(result.pages.find(page => page.kind !== "summary")!.rows[0]).toMatchObject({
       spend: 50,
       results: 5,
       roas: 5,
@@ -250,7 +266,7 @@ describe("Meta optional content calculation", () => {
     ]);
     expect(
       buildMetaContentPresentation(content([impressions]), [range], null, "$")!
-        .pages[0].rows[0].cpr,
+        .pages.find(page => page.kind !== "summary")!.rows[0].cpr,
     ).toBe(15);
     const reach = source("Age", [
       "Example,Set,2026-11-10,10,100,5,50,Reach,25-34",
@@ -258,7 +274,7 @@ describe("Meta optional content calculation", () => {
     ]);
     expect(
       buildMetaContentPresentation(content([reach]), [range], null, "$")!
-        .pages[0].rows[0],
+        .pages.find(page => page.kind !== "summary")!.rows[0],
     ).toMatchObject({ results: null, cpr: null });
   });
   it("keeps independent objectives separate and supports selected ads", () => {
@@ -272,8 +288,8 @@ describe("Meta optional content calculation", () => {
       null,
       "$",
     )!;
-    expect(result.pages).toHaveLength(2);
-    expect(result.pages.every((p) => p.rows[0].rank === 1)).toBe(true);
+    expect(result.pages.filter(page => page.kind !== "summary")).toHaveLength(2);
+    expect(result.pages.filter(page => page.kind !== "summary").every((p) => p.rows[0].rank === 1)).toBe(true);
     const selected = buildMetaContentPresentation(
       content([ads], { audience: [], creatives: true, selectedAdIds: ["100"] }),
       [range],

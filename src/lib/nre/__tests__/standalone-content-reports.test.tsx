@@ -65,8 +65,8 @@ describe("first-class Breakdown and Creative reports", () => {
       null,
       "$",
     )!;
-    expect(result.pages).toHaveLength(1);
-    expect(result.pages[0].rows[0]).toMatchObject({
+    expect(result.pages.filter(page => page.kind !== "summary")).toHaveLength(1);
+    expect(result.pages.find(page => page.kind !== "summary")!.rows[0]).toMatchObject({
       spend: 30,
       results: 1,
       cpr: 30,
@@ -144,7 +144,7 @@ describe("first-class Breakdown and Creative reports", () => {
       const data = built.data;
       expect(data.metaContent?.includeStandard).toBe(false);
       expect(data.metaContent?.reportKind).toBe(kind);
-      expect(data.metaContent?.pages[0].rows[0].cpr).toBe(30);
+      expect(data.metaContent?.pages.find(page => page.kind !== "summary")!.rows[0].cpr).toBe(30);
       expect(
         verifyStandardWizardReportAgainstCsv({
           client,
@@ -177,7 +177,7 @@ describe("first-class Breakdown and Creative reports", () => {
       const files = Object.keys(zip.files).filter((path) =>
         /^ppt\/slides\/slide\d+\.xml$/.test(path),
       );
-      expect(files).toHaveLength(3);
+      expect(files).toHaveLength(4);
       const cover = await zip.file("ppt/slides/slide1.xml")!.async("string");
       expect(cover).toContain(
         kind === "CREATIVE"

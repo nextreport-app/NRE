@@ -142,7 +142,7 @@ describe.each(["dark.pptx", "meta-ads-light.pptx"])("report scopes survive actua
     const data = buildComparisonReportData({ ...base, periodA: { startIso: aStart, endIso: aEnd }, periodB: { startIso: bStart, endIso: bEnd } });
     const output = await texts(await renderComparisonPptx({ ...theme, data }));
     expect(output.join("\n")).toContain(spend);
-    expect(output).toHaveLength(4); // Cover, campaign comparison, summary, guide.
+    expect(output).toHaveLength(5); // Cover, narrative, campaign comparison, account summary, guide.
     expect(output.at(-1)).toMatch(/METRIC ABBREVIATION GUIDE/i);
     expect(output.join("\n")).not.toMatch(/MONTHLY CAMPAIGN|WEEKLY PERFORMANCE|Last 30 Days/);
   }, 30_000);

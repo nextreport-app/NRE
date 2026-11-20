@@ -1,3 +1,4 @@
+import { ClientNarrativeView } from "./client-narrative-view";
 import type { MetaContentPresentation } from "@/lib/nre/meta-report-content/types";
 import {
   metaPageTable,
@@ -26,12 +27,14 @@ export function MetaContentReportView({
             <p className="mt-2 text-sm text-ink-secondary">
               {page.dateLabel} · {page.objective}
             </p>
-            {page.insight && (
+            {page.insight && page.kind !== "summary" && (
               <p className="mt-3 text-sm font-medium text-ink">
                 {page.insight}
               </p>
             )}
-            {page.kind === "creative-preview" ? (
+            {page.kind === "summary" ? (
+              <ClientNarrativeView narrative={{summary: page.insight ?? "", insights: page.note.split("\n").filter(Boolean)}}/>
+            ) : page.kind === "creative-preview" ? (
               <div className="mt-5 grid gap-5 md:grid-cols-2">
                 <div className="flex min-h-48 items-center justify-center rounded-lg border border-ink/10 bg-ink/5 p-3">
                   {content.media[page.rows[0].adId ?? ""] ? (
@@ -125,7 +128,7 @@ export function MetaContentReportView({
                 )}
               </div>
             )}
-            {page.note && (
+            {page.note && page.kind !== "summary" && (
               <p className="mt-4 text-xs leading-relaxed text-ink-muted">
                 {page.note}
               </p>

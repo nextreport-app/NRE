@@ -33,7 +33,7 @@ describe("audience-only first upload", () => {
       [{ startIso: "2026-11-10", endIso: "2026-11-11" }],
       null,
       "$",
-    )!.pages;
+    )!.pages.filter(page => page.kind !== "summary");
     expect(pages[0].rows.reduce((n, row) => n + row.spend, 0)).toBe(60);
     expect(pages[0].rows.map((row) => row.name).sort()).toEqual([
       "18-24",

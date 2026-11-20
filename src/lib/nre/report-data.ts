@@ -1,3 +1,4 @@
+import { comparisonClientNarrative } from "./report-client-narrative";
 import { isLaunchReportTypeEnabled } from "../meta-launch-scope";
 import { apiQueryCoverage } from "./api-query-coverage";
 import { previousCompleteMonth } from "./report-period-selection";
@@ -2270,6 +2271,7 @@ export interface ComparisonCampaignData {
   metricsA: ComparisonMetricSet;
   metricsB: ComparisonMetricSet;
   changes: ComparisonChanges;
+  narrative?: import("./report-client-narrative").ClientNarrative;
 }
 
 export interface ComparisonReportData {
@@ -2533,6 +2535,7 @@ export function buildComparisonReportData(input: BuildComparisonReportDataInput)
   const totalCprA = totalResultsA > 0 ? totalSpendA / totalResultsA : 0;
   const totalCprB = totalResultsB > 0 ? totalSpendB / totalResultsB : 0;
 
+  campaigns.forEach(campaign => { campaign.narrative = comparisonClientNarrative(campaign); });
   return {
     isPaused: totalSpendA === 0 && totalSpendB === 0,
     accountName,
