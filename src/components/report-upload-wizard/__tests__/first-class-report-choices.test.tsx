@@ -43,6 +43,12 @@ describe("first-class report choices on Import", () => {
       expect(html).not.toContain("Add audience views");
     },
   );
+  it("orders breakdown choices Age, Placement, Location, Platform", () => {
+    const html = render({kind: "BREAKDOWN", dimension: "age"});
+    const positions = ["Age", "Placement", "Location", "Platform"].map(label => html.indexOf(`/>${label}</label>`));
+    expect(positions.every(position => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
   it("keeps CSV creative requirements distinct from automatic API fetching", () => {
     const csv = render({ kind: "CREATIVE" });
     expect(csv).toContain("Ad ID + Ad name");

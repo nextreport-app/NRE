@@ -218,8 +218,8 @@ export function WizardReportSetupPanel({
             {(
               [
                 ["age", "Age"],
-                ["location", "Location"],
                 ["placement", "Placement"],
+                ["location", "Location"],
                 ["platform", "Platform"],
               ] as const
             ).map(([dimension, label]) => (
