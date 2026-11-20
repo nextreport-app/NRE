@@ -587,3 +587,17 @@ it.each([
   expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]] )).get(key)).toEqual(result.get(key));
  }finally{vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK)}
 });
+
+
+it("rejects the live API report's unsupported moderate-form-engagement claim in fresh and cached copy", async () => {
+  const data = makeReportData({resultLabel:"META FORM LEADS",campaignResultsNum:44,campaignSpend:346.33});
+  const slide=data.campaignSlides[0],key=slideAiKey(slide);
+  Object.assign(slide.ai,{results:"44",cpr:"$7.87",reach:"6,226",impressions:"11,324",ctr:"2.82%",dateRange:"November 13 - November 19"});
+  const wrong="The campaign generated 44 META FORM LEADS at $7.87 per lead across a 6,226-person reach, with 2.82% click-through rate indicating moderate form engagement. Test whether lead quality improves by refining the instant form's question order or field count in the next period to identify if submission friction is affecting downstream performance.";
+  vi.mocked(callAI).mockResolvedValue(wrong);
+  try {
+    const expected={summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)};
+    expect((await generateInsights(data,{anthropicApiKey:"test"})).get(key)).toEqual(expected);
+    expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]])).get(key)).toEqual(expected);
+  } finally { vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK); }
+});

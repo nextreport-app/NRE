@@ -402,7 +402,7 @@ export function aiCopyViolatesObjectiveRules(
   // Modifiers do not make an unsupported judgment valid: "solid creative
   // engagement", "solid click efficiency" and "reasonable cost" all need
   // an external benchmark that the single-period context does not contain.
-  const judgment = "(?:solid|strong|good|healthy|excellent|poor|weak|reasonable|competitive|impressive|robust|effective|efficient|acceptable|favo[u]?rable|promising|encouraging|optimal|high|low)";
+  const judgment = "(?:solid|strong|good|healthy|excellent|poor|weak|moderate|reasonable|competitive|impressive|robust|effective|efficient|acceptable|favo[u]?rable|promising|encouraging|optimal|high|low)";
   const metric = "(?:engagement|efficiency|performance|costs?|results?|returns?|ctr|cpc|cpl|cpm|roas)";
   if (new RegExp(`\\b${judgment}\\s+(?:[a-z-]+\\s+){0,3}${metric}\\b`, "i").test(text)) return true;
   if (new RegExp(`\\b${metric}\\b.{0,80}\\b(?:is|are|remains?|appears?|seems?)\\s+(?:[a-z-]+\\s+){0,2}${judgment}\\b`, "i").test(text)) return true;
