@@ -5,10 +5,10 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { ShareReportData } from "@/lib/nre/share-report";
 import { isShareWebsiteReportData, type ShareWebsiteReportData } from "@/lib/nre/share-website-report";
-import { ShareComparisonReportView, comparisonReportTypeLabel } from "@/components/share-comparison-report-view";
+import { ShareComparisonReportView } from "@/components/share-comparison-report-view";
 import { ShareReportView, reportTypeLabel } from "@/components/share-report-view";
 import { ShareWebsiteReportView, websiteReportTypeLabel } from "@/components/share-website-report-view";
-import { isShareComparisonReportData } from "@/lib/nre/share-comparison-report";
+import { isShareComparisonReportData, comparisonReportTypeLabel } from "@/lib/nre/share-comparison-report";
 import { reportBrandingFromShareJson, sharePageTitleSuffix } from "@/lib/report-branding";
 
 type SharedReportPayload = (
