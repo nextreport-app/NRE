@@ -609,3 +609,20 @@ it("does not let ad CTR become a form-interaction metric even without an adjecti
   const wrong="The campaign generated 44 META FORM LEADS. Click-through rate indicates form engagement.";
   expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]])).get(key)).toEqual({summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)});
 });
+
+it.each([
+  "This campaign generated 186 META FORM LEADS during the period, demonstrating consistent form submission activity. The cost per lead was $8.25, and we recommend monitoring lead quality and conversion performance next period to validate campaign efficiency.",
+  "The campaign generated 186 META FORM LEADS at $8.25 per lead across 38,023 people reached in October. To verify whether form completion rates align with the 2.75% click-through rate, test refreshing creative assets in the next period and monitor whether lead volume responds.",
+  "With 2,055 LINK CLICKS at $0.27 per click across 49,383 people, the campaign delivered measurable traffic volume at a consistent unit cost. To validate whether click quality aligns with conversion goals, compare form completion rates or other downstream metrics from this period against next period after any creative or targeting adjustments.",
+])("rejects monthly aggregates presented as an observed consistency or form-CTR comparison: %s", async (wrong) => {
+  const data=makeReportData({resultLabel:wrong.includes("LINK CLICKS")?"LINK CLICKS":"META FORM LEADS"});
+  data.reportType="MONTHLY";
+  const slide=data.campaignSlides[0],key=slideAiKey(slide);
+  Object.assign(slide.ai,{dateRange:"October 1 - October 31",results:"186",cpr:"$8.25",reach:"38,023",impressions:"54,945",ctr:"2.75%"});
+  const expected={summary:buildFallbackSummary(slide.ai),insights:buildFallbackInsights(slide.ai)};
+  vi.mocked(callAI).mockResolvedValue(wrong);
+  try {
+    expect((await generateInsights(data,{anthropicApiKey:"test"})).get(key)).toEqual(expected);
+    expect(revalidateCachedInsights(data,new Map([[key,{summary:wrong,insights:wrong}]])).get(key)).toEqual(expected);
+  } finally { vi.mocked(callAI).mockImplementation(DEFAULT_AI_MOCK); }
+});

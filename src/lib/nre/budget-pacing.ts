@@ -7,6 +7,8 @@ export interface BudgetPacingOptions {
   /** Client timezone — used for days-remaining on the cover line. */
   timezone?: string;
   asOf?: Date;
+  /** YYYY-MM of the spend shown; a different month must not use today's countdown. */
+  reportMonthIso?: string;
 }
 
 /** Whole days left in the current calendar month (client timezone), including today. */
@@ -14,6 +16,15 @@ export function monthDaysRemaining(timezone: string, asOf: Date = new Date()): n
   const today = getCalendarDateInTimezone(asOf, timezone);
   const lastDayOfMonth = new Date(today.year, today.month, 0).getDate();
   return Math.max(0, lastDayOfMonth - today.day);
+}
+
+function budgetDaysSuffix(options: BudgetPacingOptions): string {
+  if (options.timezone == null) return "";
+  const asOf = options.asOf ?? new Date();
+  const today = getCalendarDateInTimezone(asOf, options.timezone);
+  const currentMonth = `${today.year}-${String(today.month).padStart(2, "0")}`;
+  if (options.reportMonthIso && options.reportMonthIso !== currentMonth) return "";
+  return ` — ${monthDaysRemaining(options.timezone, asOf)} days remaining`;
 }
 
 /**
@@ -29,8 +40,7 @@ export function buildBudgetSummary(
   if (!options.showOnCover) return "";
   if (monthlyBudget == null || monthlyBudget <= 0 || mtdSpend <= 0) return "";
 
-  const daysSuffix =
-    options.timezone != null ? ` — ${monthDaysRemaining(options.timezone, options.asOf)} days remaining` : "";
+  const daysSuffix = budgetDaysSuffix(options);
 
   const pct = Math.round((mtdSpend / monthlyBudget) * 100);
   if (pct > 100) {
@@ -49,16 +59,18 @@ export function buildBudgetCoverPreview(
   currencySymbol: string,
   timezone: string,
   asOf: Date = new Date(),
+  reportMonthIso?: string,
 ): string | null {
   if (monthlyBudget == null || monthlyBudget <= 0) return null;
   const spend = mtdSpend > 0 ? mtdSpend : 0;
   if (spend <= 0) {
-    return `Monthly Ad Budget: ${fmtCurrency(0, currencySymbol)} of ${fmtCurrency(monthlyBudget, currencySymbol)} used (0%) — ${monthDaysRemaining(timezone, asOf)} days remaining`;
+    return `Monthly Ad Budget: ${fmtCurrency(0, currencySymbol)} of ${fmtCurrency(monthlyBudget, currencySymbol)} used (0%)${budgetDaysSuffix({ timezone, asOf, reportMonthIso })}`;
   }
   return buildBudgetSummary(spend, monthlyBudget, currencySymbol, {
     showOnCover: true,
     timezone,
     asOf,
+    reportMonthIso,
   });
 }
 

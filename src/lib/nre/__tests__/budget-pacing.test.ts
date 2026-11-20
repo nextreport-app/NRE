@@ -56,3 +56,20 @@ describe("budgetPacingWarning", () => {
     expect(budgetPacingWarning(3000, 1000, true)).toMatch(/turn off the cover toggle/i);
   });
 });
+
+it("omits the current-month countdown for a completed reporting month in both cover and preview", () => {
+  const asOf = new Date("2026-11-20T12:00:00Z");
+  const expected = "Monthly Ad Budget: $2,081.26 of $3,000 used (69%)";
+  expect(buildBudgetSummary(2081.26, 3000, "$", {showOnCover:true,timezone:"UTC",asOf,reportMonthIso:"2026-10"})).toBe(expected);
+  expect(buildBudgetCoverPreview(2081.26,3000,"$","UTC",asOf,"2026-10")).toBe(expected);
+  expect(buildBudgetCoverPreview(0,3000,"$","UTC",asOf,"2026-10")).not.toContain("days remaining");
+  expect(buildBudgetSummary(4000,3000,"$",{showOnCover:true,timezone:"UTC",asOf,reportMonthIso:"2026-10"})).not.toContain("days remaining");
+});
+
+it("keeps current-month pacing and compares reporting months in the client timezone", () => {
+  const asOf = new Date("2026-11-20T12:00:00Z");
+  expect(buildBudgetSummary(1000,3000,"$",{showOnCover:true,timezone:"UTC",asOf,reportMonthIso:"2026-11"})).toContain("10 days remaining");
+  const boundary = new Date("2026-11-01T00:30:00Z");
+  expect(buildBudgetSummary(1000,3000,"$",{showOnCover:true,timezone:"America/Los_Angeles",asOf:boundary,reportMonthIso:"2026-10"})).toContain("0 days remaining");
+  expect(buildBudgetSummary(1000,3000,"$",{showOnCover:true,timezone:"Asia/Kolkata",asOf:boundary,reportMonthIso:"2026-10"})).not.toContain("days remaining");
+});

@@ -1408,6 +1408,7 @@ export function buildReportData(input: BuildReportDataInput): ReportData {
   const budgetSummaryLine = buildBudgetSummary(mtdSpendTotal, monthlyBudget, currencySymbol, {
     showOnCover: showBudgetPacingOnCover,
     timezone,
+    reportMonthIso: mtdCalendarRange.startIso.slice(0, 7),
   });
 
   // ── Cover ──────────────────────────────────────────────────────────────

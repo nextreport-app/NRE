@@ -414,7 +414,7 @@ export function ShareMtdOverviewSlide({ chart }: { chart: ShareChartData }) {
   return (
     <SlideCard>
       <div className="flex flex-col">
-        <h2 className="line-clamp-2 text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]">
+        <h2 className="break-words text-center text-[22px] font-bold leading-tight text-[#94a3b8] sm:text-[28px]">
           {model.title}
         </h2>
 

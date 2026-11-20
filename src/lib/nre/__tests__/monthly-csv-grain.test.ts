@@ -81,3 +81,17 @@ describe("monthly CSV interval facts",()=>{
   expect(()=>selectedSinglePeriod("MONTHLY",{mode:"custom",customStart:"2026-09-01",customEnd:"2026-09-15"},new Date("2026-10-01T12:00:00Z"),"UTC")).toThrow();
  });
 });
+
+
+it("keeps the completed-month budget aligned through the real wizard report path", async () => {
+ vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-20T12:00:00Z"));
+ try {
+  const parsed=parseCsvText("Campaign name,Day,Amount spent (USD),Results,Result type,Reach,Impressions,Clicks (all),Link clicks\n" + Array.from({length:31},(_,i)=>`Example,2026-10-${String(i+1).padStart(2,"0")},10,1,Website leads,100,300,3,2`).join("\n"));
+  const formData=new FormData();formData.set("reportType",JSON.stringify("MONTHLY"));formData.set("dateSelection",JSON.stringify({mode:"custom",customStart:"2026-10-01",customEnd:"2026-10-31"}));
+  const result=await buildStandardReportForWizard({client:{...client,monthlyBudget:1000,showBudgetPacingOnCover:true},platform:"META",mtdParsed:parsed,formData,now:new Date()});
+  if(!("data" in result))throw Error(result.error);
+  expect(result.data.cover.dateRange).toContain("October 31");
+  expect(result.data.cover.budgetSummary).toBe("Monthly Ad Budget: $310 of $1,000 used (31%)");
+  expect(result.data.mtdSpendTotal).toBe(310);
+ } finally {vi.useRealTimers();}
+});
