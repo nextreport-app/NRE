@@ -1,4 +1,5 @@
 "use client";
+import { ClientNarrativeView } from "./client-narrative-view";
 import { ReportDownloadLink } from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
@@ -78,6 +79,7 @@ function CampaignComparisonSection({
     <section className="mb-8 break-inside-avoid rounded-xl border border-navy-border bg-navy-panel p-4 sm:p-6">
       <h2 className="text-lg font-bold text-ink sm:text-xl">{campaign.campaignName}</h2>
       <p className="mt-1 text-sm text-ink-muted">{campaign.objective}</p>
+      {campaign.narrative && <ClientNarrativeView narrative={campaign.narrative}/>}
       <div className="mt-4 grid grid-cols-2 gap-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ink-muted sm:text-xs">
         <div>
           <p>{periodATitle}</p>
@@ -183,7 +185,7 @@ export function ShareComparisonReportView({
           </section>
         ) : (
           <>
-            {data.campaigns.filter(campaign => campaign.metricsA.spend.value > 0).map((campaign) => (
+            {data.campaigns.filter(campaign => (campaign.metricsA.spend.value > 0 || campaign.metricsB.spend.value > 0)).map((campaign) => (
               <CampaignComparisonSection
                 key={campaign.campaignName}
                 campaign={campaign}

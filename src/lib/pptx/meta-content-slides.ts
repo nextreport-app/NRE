@@ -1,3 +1,4 @@
+import { clientNarrativeBody } from "./client-narrative-slide";
 import {
   buildBlankSlideXml,
   resetShapeIdCounter,
@@ -74,7 +75,9 @@ export function appendMetaContentSlides(
       }),
     ];
     let imageRel = "";
-    if (page.kind === "creative-preview") {
+    if (page.kind === "summary") {
+      shapes.push(...clientNarrativeBody({summary: page.insight ?? "", insights: page.note.split("\n").filter(Boolean)}, light));
+    } else if (page.kind === "creative-preview") {
       const row = page.rows[0],
         image = content.media[row.adId ?? ""];
       shapes.push(
@@ -233,17 +236,19 @@ export function appendMetaContentSlides(
           }),
         );
     }
-    shapes.push(
-      textBox({
-        x: 40,
-        y: 480,
-        w: 880,
-        h: 45,
-        text: page.note,
-        sizePt: 10,
-        colorHex: palette.label,
-      }),
-    );
+    if (page.note && page.kind !== "summary") {
+      shapes.push(
+        textBox({
+          x: 40,
+          y: 480,
+          w: 880,
+          h: 45,
+          text: page.note,
+          sizePt: 10,
+          colorHex: palette.label,
+        }),
+      );
+    }
     slides.push({
       xml: buildBlankSlideXml(shapes),
       rels: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${escapeXmlText(template.background.mediaTarget)}"/>${imageRel}</Relationships>`,

@@ -48,6 +48,7 @@ export function verifyMetaContentTotals(
             (page) =>
               page.id.startsWith(`${dimension}-${range.startIso}-`) &&
               page.kind !== "creative-preview" &&
+              page.kind !== "summary" &&
               page.objective === objective,
           )
           .flatMap((page) => page.rows);

@@ -128,6 +128,12 @@ describe("Meta content client-facing output", () => {
         <ShareReportView data={buildShareReportData(data, new Map())} />,
       );
       expect(html).toContain("Age performance");
+      expect(html).toContain("Campaign summary");
+      expect(html).toContain("Key insights &amp; updates");
+      for (const page of data.metaContent!.pages.filter(page => page.kind === "summary")) {
+        expect(html).toContain(page.insight!);
+        expect(text).toContain(page.insight!);
+      }
       expect(html).toContain("$30.00");
       expect(html).toContain("data:image/jpeg;base64,");
       expect(html).toContain("Sample creative");

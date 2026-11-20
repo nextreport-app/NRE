@@ -338,7 +338,7 @@ function buildSlides({
     const summaries = comparisonSummaryPages(comparisonData.campaigns);
     summaries.forEach((_, index) => slides.push({ key: `comparison-summary-${index}`, render: () => <ComparisonSummarySlide page={index} pages={summaries.length} /> }));
 
-    const extraCampaigns = Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0)) + comparisonData.campaigns.slice(1).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0);
+    const extraCampaigns = comparisonData.campaigns.filter(campaign => campaign.metricsA.spend.value > 0 && campaign.narrative).length + Math.max(0, comparisonData.campaigns.length - (first ? 1 : 0)) + comparisonData.campaigns.slice(1).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0);
     const hidden = extraCampaigns + Math.max(0, slides.length - MAX_SLIDES);
     const moreText = hidden > 0 ? `+ ${hidden} more slides in your full report (campaign and additional comparison slides)` : null;
     return { slides: slides.slice(0, MAX_SLIDES), moreText };

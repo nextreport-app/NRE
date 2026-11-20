@@ -2821,7 +2821,7 @@ export function useReportUploadWizard({
   /** Report Summary card's "Estimated slides" line: cover (1) + one slide per campaign + one slide per selected ad set + the MTD chart (1) + the combined-total table (1) + the metric guide (1) — matches the actual slide types the PPTX generator emits for a normal (non-comparison) report. Comparison reports have their own different slide shape (no ad set/chart/table/guide slides), so this only counts the cover + one slide per compared campaign there. */
   function estimatedSlideCount(): number {
     if (previewKind === "comparison") {
-      return 1 + (comparisonData?.campaigns.filter(c => c.metricsA.spend.value > 0).length ?? summaryCampaignNames().length) + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + 1 + (comparisonData?.campaigns.filter(c => c.metricsA.spend.value > 0).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
+      return 1 + (comparisonData?.campaigns.filter(c => (c.metricsA.spend.value > 0 || c.metricsB.spend.value > 0)).length ?? summaryCampaignNames().length) + (comparisonData?.campaigns.filter(c => (c.metricsA.spend.value > 0 || c.metricsB.spend.value > 0) && c.narrative).length ?? 0) + comparisonSummaryPages(comparisonData?.campaigns ?? []).length + 1 + (comparisonData?.campaigns.filter(c => (c.metricsA.spend.value > 0 || c.metricsB.spend.value > 0)).reduce((sum, campaign) => sum + paginateComparisonMetrics(campaign.additionalMetrics ?? []).length, 0) ?? 0);
     }
     if (previewKind === "historical" && historicalData) {
       const extra=historicalData.metaContent?.pages.length??0;
