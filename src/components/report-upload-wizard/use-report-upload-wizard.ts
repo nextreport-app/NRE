@@ -778,6 +778,8 @@ export function useReportUploadWizard({
     return {
       version: 1,
       ...core,
+      uploadSessionId: dataSourceMode === "api" ? uploadSessionId : null,
+      dataSourceMode,
       platform,
       reportType,
       reportSelection,
@@ -808,6 +810,8 @@ export function useReportUploadWizard({
 
   function applyGenerateSnapshot(snapshot: WizardGenerateSnapshot) {
     setReportId(snapshot.reportId);
+    if (snapshot.uploadSessionId) setUploadSessionId(snapshot.uploadSessionId);
+    if (snapshot.dataSourceMode) setDataSourceMode(snapshot.dataSourceMode);
     setComparisonMetricKeys(snapshot.comparisonMetricKeys ?? []);
     setDailyMetricKeys(snapshot.dailyMetricKeys ?? []);
     setDailyExcludedMetricKeys(snapshot.dailyExcludedMetricKeys ?? []);
@@ -2295,7 +2299,7 @@ export function useReportUploadWizard({
       setGenerateMessage(null);
     }
 
-    setUploadSessionId(null);
+    if (dataSourceMode !== "api") setUploadSessionId(null);
     setShareToken(finalShareToken);
     setPublishedAt(null);
     setGeneratedAt(new Date().toISOString());
@@ -2354,7 +2358,7 @@ export function useReportUploadWizard({
       }
     }
 
-    setUploadSessionId(null);
+    if (dataSourceMode !== "api") setUploadSessionId(null);
     setPmsResult({
       reportId: json.reportId,
       downloadUrl: `/api/reports/${json.reportId}/download`,

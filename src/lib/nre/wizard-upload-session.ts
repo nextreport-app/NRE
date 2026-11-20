@@ -131,3 +131,10 @@ export async function loadWizardUploadSession(
 export async function deleteWizardUploadSession(userId: string, clientId: string, sessionId: string): Promise<void> {
   await deleteWizardUploadSessionBlob(userId, clientId, sessionId);
 }
+
+/** Keep API evidence available for its existing 24h TTL; cron reclaims stale blobs. */
+export async function releaseWizardUploadSession(userId: string, clientId: string, sessionId: string): Promise<void> {
+  const source = await loadWizardUploadSession(userId, clientId, sessionId);
+  if (!source || (source.platform === "META" && source.metaAdAccountId)) return;
+  await deleteWizardUploadSession(userId, clientId, sessionId);
+}

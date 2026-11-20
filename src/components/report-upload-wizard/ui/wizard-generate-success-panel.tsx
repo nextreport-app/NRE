@@ -1,4 +1,5 @@
 "use client";
+import {ApiSourceDownload} from "./api-source-download";
 import {ReportDownloadLink} from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
@@ -55,6 +56,7 @@ function formatGeneratedAt(iso: string): string {
 type WizardGenerateSuccessPanelProps = {
   clientCurrency?: string;
   clientTimezone?: string;
+  apiSourceSessionId?: string | null;
   clientName: string;
   clientId: string;
   reportId: string | null;
@@ -90,7 +92,7 @@ type WizardGenerateSuccessPanelProps = {
 };
 
 export function WizardGenerateSuccessPanel({
-  clientCurrency, clientTimezone,
+  clientCurrency, clientTimezone, apiSourceSessionId,
   clientName,
   clientId,
   reportId,
@@ -255,6 +257,7 @@ export function WizardGenerateSuccessPanel({
             ) : <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
           </div>
           <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">Edit your downloaded PPTX in PowerPoint or your saved Google Slides copy in Slides.</p>
+          {apiSourceSessionId && <ApiSourceDownload clientId={clientId} uploadSessionId={apiSourceSessionId} />}
         </section>
 
         {publishedAt && <p className="text-sm text-dash-ink-secondary">Published edits are live.</p>}

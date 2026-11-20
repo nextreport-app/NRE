@@ -102,4 +102,10 @@ describe("wizard-generate-snapshot", () => {
     expect(loaded?.driveView).toBe("collapsed");
     expect(loaded?.driveSaveUrl).toBeNull();
   });
+  it("retains the exact API source session when restoring the completed report", () => {
+    const source={...snapshot,dataSourceMode:"api" as const,uploadSessionId:"550e8400-e29b-41d4-a716-446655440000"};
+    saveWizardGenerateSnapshot(clientId,source);
+    expect(loadWizardGenerateSnapshot(clientId,source.reportId)).toEqual(source);
+  });
+
 });
