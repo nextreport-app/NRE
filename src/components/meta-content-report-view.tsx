@@ -125,9 +125,11 @@ export function MetaContentReportView({
                 )}
               </div>
             )}
-            <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-              {page.note}
-            </p>
+            {page.note && (
+              <p className="mt-4 text-xs leading-relaxed text-ink-muted">
+                {page.note}
+              </p>
+            )}
           </section>
         ))}
     </>
