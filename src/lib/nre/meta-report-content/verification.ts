@@ -1,3 +1,4 @@
+import { assertMetaSourceRange } from "./data";
 import type {
   CsvVerificationResult,
   CsvVerificationCheck,
@@ -28,10 +29,11 @@ export function verifyMetaContentTotals(
             source.kind === "platform-placement"),
       );
       if (!source) throw Error(`Missing ${dimension} source for verification.`);
+      assertMetaSourceRange(source, range);
       const rows = source.rows.filter(
         (row) =>
-          row.date >= range.startIso &&
-          row.date <= range.endIso &&
+          (source.granularity === "period" || (row.date >= range.startIso &&
+          row.date <= range.endIso)) &&
           (!selected || selected.has(row.campaign.trim().toLowerCase())) &&
           (dimension !== "creative" ||
             !content.options.selectedAdIds ||

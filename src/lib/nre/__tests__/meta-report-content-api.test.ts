@@ -44,6 +44,41 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("Meta content API capability boundaries", () => {
+  it("rejects a period response that does not cover the requested dates", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({data: [{...base, age: "25-34"}]})));
+    await expect(fetchMetaContentSources({token: "test", account: "123", currency: "USD", range,
+      periodTotals: true, options, primaryRows: primary})).rejects.toThrow("different dates");
+  });
+  it.each([false, true])("requests a single exact period for standalone reports (creative=%s), preserving unavailable values", async creatives => {
+    const period = {startIso: "2026-10-21", endIso: "2026-11-19"};
+    const fetcher = vi.fn<(raw: unknown) => Promise<Response>>(async () => Response.json({data: [
+      {...base, date_start: period.startIso, date_stop: period.endIso, age: "25-34", adset_id: "11", ad_id: "100", ad_name: "Image"},
+      {...base, date_start: period.startIso, date_stop: period.endIso, age: "35-44", adset_id: "11", ad_id: "101", ad_name: "Video", actions: undefined},
+    ]}));
+    vi.stubGlobal("fetch", fetcher);
+    const [source] = await fetchMetaContentSources({token: "test", account: "123", currency: "USD", range: period,
+      periodTotals: true, options: {...options, audience: creatives ? [] : ["age"], creatives}, primaryRows: primary});
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const params = new URL(String(fetcher.mock.calls[0][0])).searchParams;
+    expect(params.get("time_increment")).toBe("all_days");
+    expect(JSON.parse(params.get("time_range")!)).toEqual({since: period.startIso, until: period.endIso});
+    expect(source).toMatchObject({granularity: "period", coverage: period});
+    expect(source.rows.map(row => row.results)).toEqual([2, null]);
+  });
+  it("keeps optional weekly/monthly sections daily and chunks their date range", async () => {
+    const fetcher = vi.fn(async (raw: unknown) => {
+      const params = new URL(String(raw)).searchParams;
+      const {since} = JSON.parse(params.get("time_range")!);
+      expect(params.get("time_increment")).toBe("1");
+      return Response.json({data: [{...base, date_start: since, date_stop: since, age: "25-34"}]});
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const [source] = await fetchMetaContentSources({token: "test", account: "123", currency: "USD",
+      range: {startIso: "2026-10-21", endIso: "2026-11-19"}, options, primaryRows: primary});
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(source.granularity).toBe("daily");
+  });
+
   it("fetches audience at campaign level and creatives at ad level with unified attribution", async () => {
     const fetcher = vi.fn(async (raw: unknown) => {
       const url = new URL(String(raw));

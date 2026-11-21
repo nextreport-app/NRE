@@ -43,6 +43,18 @@ function content(
   };
 }
 describe("Meta optional content calculation", () => {
+  it("uses period observations only for their exact date coverage in both presentation and verification", () => {
+    const age = source("Age", ["Example,Set,2026-11-10,20,100,5,2,Leads (form),25-34"]);
+    age.granularity = "period";
+    age.coverage = range;
+    const config = content([age]);
+    const result = buildMetaContentPresentation(config, [range], null, "$")!;
+    expect(result.pages.find(page => page.kind === "audience")!.rows[0]).toMatchObject({results: 2, cpr: 10});
+    expect(verifyMetaContentTotals(config, result, [range], null).status).toBe("ok");
+    const partial = [{startIso: "2026-11-11", endIso: "2026-11-11"}];
+    expect(() => buildMetaContentPresentation(config, partial, null, "$")).toThrow("period totals do not match");
+    expect(() => verifyMetaContentTotals(config, result, partial, null)).toThrow("period totals do not match");
+  });
   it("rolls up disjoint device-platform rows without conflating Facebook and Instagram placements", () => {
     const csv = [
       "Campaign name,Reporting starts,Reporting ends,Platform,Placement,Device platform,Amount spent (USD),Impressions,Results,Result indicator,Clicks (all)",

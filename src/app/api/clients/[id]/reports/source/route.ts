@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
+import { metaReportSourceExport } from "@/lib/nre/meta-report-content/source-export";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -45,6 +46,12 @@ export async function GET(
       );
     if (source.userId !== session.user.id || source.clientId !== id)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const reportSource = source.reportSelection
+      ? metaReportSourceExport(source.reportSelection, source.metaReportContent) : null;
+    if (source.reportSelection && !reportSource)
+      return NextResponse.json({ error: "Prepare the selected report in Review & generate, then download its source." }, { status: 409 });
+    const headers = reportSource?.headers ?? source.headers;
+    const rowCount = reportSource?.rowCount ?? source.rows.length;
     const details = format === "details";
     let rowIndex = 0;
     const body = details
@@ -54,12 +61,14 @@ export async function GET(
             importedAt: source.createdAt,
             expiresAt: source.expiresAt,
             importedFileSha256: source.fileHash,
-            rowCount: source.rows.length,
-            headers: source.headers,
+            rowCount,
+            headers,
+            granularity: reportSource?.granularity ?? "daily",
+            coverage: reportSource?.coverage ?? null,
             metaAdAccountId: source.metaAdAccountId ?? null,
             campaignPeriodReachAtImport: source.metaCampaignPeriodReach ?? null,
             reportSelection: source.reportSelection ?? null,
-            note: "CSV is reconstructed from the imported rows; its formatting may differ from the original file hash. Reach lookups cover only the listed ranges; additional period lookups can be fetched during report preparation.",
+            note: reportSource ? "CSV contains the selected report dataset. Period totals cover exactly the listed dates; they cannot be split into daily values. Unavailable values remain —. The imported file hash refers to the original import, not this reconstructed CSV." : "CSV is reconstructed from the imported rows; its formatting may differ from the original file hash. Reach lookups cover only the listed ranges; additional period lookups can be fetched during report preparation.",
           },
           null,
           2,
@@ -70,7 +79,7 @@ export async function GET(
               new TextEncoder().encode(
                 "\uFEFF" +
                   Papa.unparse(
-                    { fields: source.headers, data: [] },
+                    { fields: headers, data: [] },
                     { quotes: true },
                   ) +
                   "\r\n",
@@ -78,18 +87,20 @@ export async function GET(
             );
           },
           pull(controller) {
-            if (rowIndex >= source.rows.length) {
+            if (rowIndex >= rowCount) {
               controller.close();
               return;
             }
-            const rows = source.rows.slice(rowIndex, rowIndex + 100);
-            rowIndex += rows.length;
+            const end = Math.min(rowIndex + 100, rowCount);
+            const rows = Array.from({ length: end - rowIndex }, (_, offset) => {
+              const index = rowIndex + offset;
+              return reportSource ? reportSource.row(index) : headers.map(header => source.rows[index]._raw?.[header] ?? "");
+            });
+            rowIndex = end;
             const csv = Papa.unparse(
               {
-                fields: source.headers,
-                data: rows.map((row) =>
-                  source.headers.map((header) => row._raw?.[header] ?? ""),
-                ),
+                fields: headers,
+                data: rows,
               },
               { quotes: true, header: false },
             );

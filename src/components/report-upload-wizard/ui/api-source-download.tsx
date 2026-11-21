@@ -60,7 +60,7 @@ export function ApiSourceDownload({
           onClick={() => void download("csv")}
           className="font-medium text-dash-accent hover:underline disabled:opacity-50"
         >
-          {busy ? "Preparing source…" : "Download synced CSV"}
+          {busy ? "Preparing source…" : "Download report source CSV"}
         </button>
         <details>
           <summary className="cursor-pointer">Sync details</summary>

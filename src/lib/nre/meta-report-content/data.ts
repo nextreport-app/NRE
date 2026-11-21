@@ -383,6 +383,7 @@ export function buildMetaContentPresentation(
   for (const range of ranges) {
     const dateLabel = getDateRangeAbbrLabel(range.startIso, range.endIso);
     const inRange = (source: MetaContentSource) => {
+      assertMetaSourceRange(source, range);
       if (
         source.coverage.startIso > range.startIso ||
         source.coverage.endIso < range.endIso
@@ -392,8 +393,8 @@ export function buildMetaContentPresentation(
         );
       return source.rows.filter(
         (r) =>
-          r.date >= range.startIso &&
-          r.date <= range.endIso &&
+          (source.granularity === "period" || (r.date >= range.startIso &&
+          r.date <= range.endIso)) &&
           (!selected || selected.has(r.campaign.toLowerCase())),
       );
     };
@@ -607,4 +608,11 @@ export function metaContentSummary(content: MetaReportContent | undefined) {
     ads: [...ads.values()],
     notices: content.notices,
   };
+}
+
+/** A period aggregate cannot safely supply a different date range. */
+export function assertMetaSourceRange(source: MetaContentSource, range: DateRangeIso): void {
+  if (source.granularity === "period" &&
+    (source.coverage.startIso !== range.startIso || source.coverage.endIso !== range.endIso))
+    throw Error("The period totals do not match these dates. Refresh this section for the selected period.");
 }

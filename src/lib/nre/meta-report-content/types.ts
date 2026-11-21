@@ -45,6 +45,8 @@ export interface MetaContentSource {
   source: "csv" | "api";
   currency: string;
   coverage: DateRangeIso;
+  /** Period observations cover exactly coverage, and cannot be sliced by date. */
+  granularity?: "daily" | "period";
   rows: MetaObservation[];
 }
 export interface CreativeMediaSnapshot {

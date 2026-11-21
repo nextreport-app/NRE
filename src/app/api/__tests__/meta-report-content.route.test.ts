@@ -250,6 +250,7 @@ describe("Meta content route", () => {
         account: "123",
         token: "read-token",
         currency: "USD",
+        periodTotals: false,
       }),
     );
   });
@@ -321,6 +322,7 @@ describe("first-class report selection guards", () => {
     expect(response.status).toBe(200);
     expect(fetchMetaContentSources).toHaveBeenCalledWith(
       expect.objectContaining({
+        periodTotals: true,
         options: expect.objectContaining({
           audience: ["age"],
           includeStandard: false,
