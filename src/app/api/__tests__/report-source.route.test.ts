@@ -56,6 +56,33 @@ beforeEach(() => {
   };
 });
 describe("owner-only imported source export", () => {
+  it("exports the selected Age report dataset with honest period dates, nulls and no unrelated import rows", async () => {
+    Object.assign(state.source as object, {
+      reportSelection: {kind: "BREAKDOWN", dimension: "age"},
+      metaReportContent: {sources: [{kind: "age", source: "api", currency: "USD", granularity: "period",
+        coverage: {startIso: "2026-10-21", endIso: "2026-11-19"},
+        rows: [{campaign: "Forms", campaignId: "1", date: "2026-10-21", age: "25-34", spend: 25, impressions: 100,
+          results: null, resultType: "Leads (form)", clicks: 5, linkClicks: 2}]}]},
+    });
+    const result = await request();
+    const text = await result.text();
+    expect(text).not.toContain("NEVER-EXPORT");
+    const rows = Papa.parse<Record<string,string>>(text, {header: true, skipEmptyLines: true}).data;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({"Campaign name": "Forms", Age: "25-34", "Reporting starts": "2026-10-21",
+      "Reporting ends": "2026-11-19", Results: "—", "Clicks (all)": "5"});
+    expect(rows[0]).not.toHaveProperty("Day");
+    const details = await (await request(`uploadSessionId=${id}&format=details`)).json();
+    expect(details.granularity).toBe("period");
+    expect(details.headers).toContain("Age");
+    expect(details.rowCount).toBe(1);
+  });
+  it.each([undefined, {sources: [{kind: "creative", rows: []}]}])("never silently exports unrelated primary data before the selected breakdown is prepared", async metaReportContent => {
+    Object.assign(state.source as object, {reportSelection: {kind: "BREAKDOWN", dimension: "age"}, metaReportContent});
+    const result = await request();
+    expect(result.status).toBe(409);
+    expect((await result.json()).error).toContain("Review & generate");
+  });
   it("round-trips source values including names, quotes and newlines without recomputing metrics", async () => {
     const result = await request();
     expect(result.status).toBe(200);

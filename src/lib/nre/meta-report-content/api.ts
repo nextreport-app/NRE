@@ -67,6 +67,7 @@ async function insightsChunk(
   kind: string,
   campaignIds: string[],
   locationLevel = "region",
+  periodTotals = false,
 ): Promise<Record<string, unknown>[]> {
   const result: Record<string, unknown>[] = [];
   let after: string | undefined;
@@ -110,7 +111,7 @@ async function insightsChunk(
       filtering: JSON.stringify([
         { field: "campaign.id", operator: "IN", value: campaignIds },
       ]),
-      time_increment: "1",
+      time_increment: periodTotals ? "all_days" : "1",
       time_range: JSON.stringify({
         since: range.startIso,
         until: range.endIso,
@@ -144,7 +145,11 @@ async function insights(
   kind: string,
   campaignIds: string[],
   locationLevel = "region",
+  periodTotals = false,
 ): Promise<Record<string, unknown>[]> {
+  // Whole-period results must come from Meta, not sums of privacy-limited days.
+  if (periodTotals)
+    return insightsChunk(token, account, range, kind, campaignIds, locationLevel, true);
   const rows: Record<string, unknown>[] = [];
   for (const chunk of splitIsoDateRangeIntoChunks(
     range.startIso,
@@ -175,6 +180,8 @@ export async function fetchMetaContentSources(input: {
   range: DateRangeIso;
   options: MetaContentOptions;
   primaryRows: import("../columns").NreRow[];
+  /** Standalone reports consume exactly one selected period. */
+  periodTotals?: boolean;
 }): Promise<MetaContentSource[]> {
   const kinds: string[] = [];
   if (input.options.audience.includes("age")) kinds.push("age");
@@ -223,6 +230,7 @@ export async function fetchMetaContentSources(input: {
       kind,
       campaignIds,
       input.options.locationLevel,
+      input.periodTotals,
     );
     if (!raw.length) {
       datasets.push({
@@ -230,6 +238,7 @@ export async function fetchMetaContentSources(input: {
         source: "api",
         currency: input.currency,
         coverage: input.range,
+        granularity: input.periodTotals ? "period" : "daily",
         rows: [],
       });
       continue;
@@ -256,6 +265,8 @@ export async function fetchMetaContentSources(input: {
               : [4, 5];
     const rows = raw.map((raw) => {
       const row = raw as unknown as MetaInsightRow;
+      if (input.periodTotals && (row.date_start !== input.range.startIso || row.date_stop !== input.range.endIso))
+        throw Error("Meta returned totals for different dates. Refresh this section before generating the report.");
       const candidates =
         kind === "creative"
           ? [byId.get(row.adset_id ?? "")]
@@ -369,7 +380,8 @@ export async function fetchMetaContentSources(input: {
     );
     const parsed = parseCsvText(rowsToCsv(headers, rows));
     const source = parseMetaContentSource(parsed, input.currency);
-    datasets.push({ ...source, source: "api", coverage: input.range });
+    datasets.push({ ...source, source: "api", coverage: input.range,
+      granularity: input.periodTotals ? "period" : "daily" });
   }
   return datasets;
 }

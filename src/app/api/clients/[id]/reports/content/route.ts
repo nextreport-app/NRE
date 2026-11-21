@@ -256,6 +256,7 @@ export async function POST(
           account: upload.metaAdAccountId,
           currency,
           range,
+          periodTotals: !!upload.reportSelection,
           options: settings.options,
           primaryRows: upload.rows.filter(
             (row) =>
@@ -263,6 +264,8 @@ export async function POST(
               settings.selectedCampaigns.includes(row.campaign_name ?? ""),
           ),
         });
+        if (content.sources.some(source => source.rows.some(row => row.results === null)))
+          content.notices.push("Meta did not return complete results for some rows. Affected results and costs show —. Use a matching CSV if you need those figures.");
         const ads =
           content.sources.find((s) => s.kind === "creative")?.rows ?? [];
         const spend = new Map<string, number>();
