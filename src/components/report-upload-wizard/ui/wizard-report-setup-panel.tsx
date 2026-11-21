@@ -196,12 +196,17 @@ export function WizardReportSetupPanel({
                   >
                     <ReportTypeIcon type={type} />
                   </span>
-                  <span>
+                  <span className="flex flex-wrap items-center justify-center gap-1.5">
                     {special
                       ? labels[type]
                       : locale === "en"
                         ? (labels[type] ?? copy!.cardHeading)
                         : copy!.cardHeading}
+                    {type === "CREATIVE" && (
+                      <span className="rounded-full border border-dash-accent/40 bg-dash-accent/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-dash-accent">
+                        Beta
+                      </span>
+                    )}
                   </span>
                 </span>
               </label>
