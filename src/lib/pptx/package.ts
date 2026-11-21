@@ -10,6 +10,7 @@
  */
 
 import JSZip from "jszip";
+import { pruneUnusedPptxMedia } from "./prune-unused-media";
 
 export interface TemplateSlide {
   xml: string;
@@ -215,5 +216,6 @@ export async function assemblePptx(template: LoadedTemplate, slides: SlideToInse
   const presentationXml = template.presentationXml.replace(/<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>/, newSldIdLst);
   zip.file("ppt/presentation.xml", presentationXml);
 
+  await pruneUnusedPptxMedia(zip);
   return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }
