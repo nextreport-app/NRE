@@ -4,7 +4,7 @@ import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { useEffect, useRef } from "react";
 import { normalizeMetaAccountId } from "@/lib/meta-client-account";
 import Link from "next/link";
-import { WebsiteReportWizard } from "@/components/website-report-wizard";
+import dynamic from "next/dynamic";
 import { getAdWizardFlow } from "@/lib/nre/platform-labels";
 import { wizardStepHeading, wizardStepSubtitle } from "@/lib/wizard-i18n";
 import { useSiteTheme } from "@/components/site-theme-provider";
@@ -15,9 +15,15 @@ import { StepIndicator } from "./ui/step-indicator";
 import { UploadSessionRecoveryBanner } from "./ui/upload-session-recovery-banner";
 import { WizardLeaveDialog } from "./ui/wizard-leave-dialog";
 import { WizardImportStep } from "./steps/import-step";
-import { WizardCampaignsStep } from "./steps/campaigns-step";
-import { WizardMetricsStep } from "./steps/metrics-step";
-import { WizardGenerateStep } from "./steps/generate-step";
+const WizardCampaignsStep = dynamic(() => import("./steps/campaigns-step").then(module => module.WizardCampaignsStep), { loading: LoadingStep });
+const WizardMetricsStep = dynamic(() => import("./steps/metrics-step").then(module => module.WizardMetricsStep), { loading: LoadingStep });
+const WizardGenerateStep = dynamic(() => import("./steps/generate-step").then(module => module.WizardGenerateStep), { loading: LoadingStep });
+
+const WebsiteReportWizard = dynamic(() => import("@/components/website-report-wizard").then(module => module.WebsiteReportWizard), { loading: LoadingStep });
+
+function LoadingStep() {
+  return <p role="status" className="py-6 text-sm text-dash-ink-secondary">Loading…</p>;
+}
 
 export function ReportUploadWizard(props: ReportUploadWizardProps) {
   return (
@@ -195,10 +201,10 @@ function ReportUploadWizardBody() {
         />
       ) : null}
 
-      <WizardImportStep />
-      <WizardCampaignsStep />
-      <WizardMetricsStep />
-      <WizardGenerateStep />
+      {w.step === 1 && <WizardImportStep />}
+      {w.step === 2 && <WizardCampaignsStep />}
+      {w.step === 3 && <WizardMetricsStep />}
+      {w.step === 4 && <WizardGenerateStep />}
 
       <WizardLeaveDialog
         open={!!w.pendingLeaveHref}
