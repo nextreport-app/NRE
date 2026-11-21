@@ -1,3 +1,4 @@
+import { metaAudienceLabel } from "./audience-label";
 import { metaClientNarrative } from "../report-client-narrative";
 import { metaReportTitle } from "./selection";
 import type { NreRow } from "../columns";
@@ -456,10 +457,11 @@ export function buildMetaContentPresentation(
             dimension === "creative"
               ? `${group[0].adName || key}`
               : dimension === "placement"
-                ? [group[0].platform, group[0].placement]
+                ? [group[0].platform ? metaAudienceLabel(group[0].platform, "platform") : "",
+                    metaAudienceLabel(group[0].placement ?? "Unknown", "placement")]
                     .filter(Boolean)
                     .join(" · ")
-                : key,
+                : dimension === "platform" ? metaAudienceLabel(key, "platform") : key,
             content,
           ),
         );

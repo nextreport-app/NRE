@@ -6,6 +6,21 @@ const row = (name: string, spend: number, results: number | null): MetaPerforman
 const options: MetaContentOptions={audience:['age'],creatives:false,includeStandard:false,ranking:'cpr',minSpend:0,minResults:5};
 const run = (rows: MetaPerformanceRow[], overrides: Partial<Parameters<typeof metaClientNarrative>[0]> = {}) => metaClientNarrative({rows,total:{...row('Total',rows.reduce((n,r)=>n+r.spend,0),rows.every(r=>r.results!==null)?rows.reduce((n,r)=>n+r.results!,0):null),impressions:rows.reduce((n,r)=>n+r.impressions,0)},objective:'META FORM LEADS',costLabel:'COST PER LEAD',dimension:'Age',currency:'$',creative:false,options,...overrides});
 describe('shared client narrative facts',()=>{
+ it('distinguishes a known subtotal from incomplete results without inventing a total or overall cost',()=>{
+  const n=run([row('Feed',50,10),row('Search',5,null)],{dimension:'Placement'});
+  expect(n.summary).toContain('Available segments report 10 meta form leads; 1 segment has unavailable results');
+  expect(n.summary).toContain('Overall results and cost per lead are unavailable');
+  expect(n.summary).not.toContain('Cost per lead:');
+  expect(n.insights.join(' ')).not.toContain('recorded the most meta form leads');
+  expect(n.insights.join(' ')).toContain('Among segments with available results and at least 5 results');
+  const zero=run([row('Feed',50,0),row('Search',5,null)]);
+  expect(zero.summary).toContain('Available segments report 0 meta form leads');
+  expect(zero.insights.join(' ')).not.toContain('No meta form leads were recorded');
+  const reach=run([row('A',10,100),row('B',20,null)],{objective:'REACH'});
+  expect(reach.summary).not.toContain('Available segments report');
+  const creative=run([row('Ad 1',50,10),row('Ad 2',5,null)],{creative:true});
+  expect(creative.summary).toContain('Available ads report 10 meta form leads; 1 ad has unavailable results');
+ });
  it('uses weighted total cost and never promotes a one-result segment as best',()=>{
   const n=run([row('High delivery',100,10),row('Low cost',50,10),row('One result',1,1)]);
   expect(n.summary).toContain('$151.00');expect(n.summary).toContain('21 meta form leads');expect(n.summary).toContain('$7.19');
