@@ -43,6 +43,23 @@ function content(
   };
 }
 describe("Meta optional content calculation", () => {
+  it("uses readable API labels without changing source identities, metrics or platform grouping", () => {
+    const joint=source("Platform,Placement", [
+      "Example,Set,2026-11-10,20,100,5,2,Leads (form),facebook,feed",
+      "Example,Set,2026-11-10,10,50,3,1,Leads (form),instagram,feed",
+      "Example,Set,2026-11-10,5,20,1,0,Leads (form),audience_network,an_classic",
+      "Example,Set,2026-11-10,1,10,1,0,Leads (form),threads,threads_feed",
+    ]);
+    const config=content([joint], {audience:["placement", "platform"]});
+    const labelRange={startIso:"2026-11-10",endIso:"2026-11-10"};
+    const result=buildMetaContentPresentation(config,[labelRange],null,"$")!;
+    const placements=result.pages.find(page=>page.kind==="audience" && page.title.startsWith("Placement"))!.rows;
+    expect(placements.map(row=>row.name)).toEqual(["Facebook · Feed", "Instagram · Feed", "Audience Network · Native/banner/interstitial", "Threads · Feed"]);
+    expect(placements[0]).toMatchObject({spend:20, results:2});
+    expect(joint.rows[0]).toMatchObject({platform:"facebook", placement:"feed"});
+    expect(result.pages.find(page=>page.kind==="summary")!.insight).not.toContain("facebook");
+    expect(verifyMetaContentTotals(config,result,[labelRange],null).status).toBe("ok");
+  });
   it("uses period observations only for their exact date coverage in both presentation and verification", () => {
     const age = source("Age", ["Example,Set,2026-11-10,20,100,5,2,Leads (form),25-34"]);
     age.granularity = "period";
@@ -211,8 +228,8 @@ describe("Meta optional content calculation", () => {
       ),
     ).toEqual([30, 30]);
     expect(result.pages.filter(page => page.kind !== "summary")[1].rows.map((row) => row.name).sort()).toEqual([
-      "facebook · Feed",
-      "instagram · Feed",
+      "Facebook · Feed",
+      "Instagram · Feed",
     ]);
   });
   it("does not average percentages when exact click counts are missing", () => {

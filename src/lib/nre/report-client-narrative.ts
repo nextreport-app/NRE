@@ -17,14 +17,20 @@ export function metaClientNarrative(input: {
   const money = (n: number) => fmtCurrency2dp(n, currency);
   const label = objective.toLowerCase(), cost = costLabel.toLowerCase();
   const context = creative ? "Selected ads" : `The ${input.dimension.toLowerCase()} breakdown`;
-  const summary = `${context} recorded ${money(total.spend)} spend and ${fmtResultCount(total.impressions)} impressions across the selected campaigns.${total.results !== null ? ` Results: ${fmtResultCount(total.results)} ${label}.` : ` ${objective} totals are unavailable.`}${total.cpr !== null ? ` ${costLabel.charAt(0) + costLabel.slice(1).toLowerCase()}: ${money(total.cpr)}.` : ""}`;
+  const available = rows.filter(r => r.results !== null);
+  const missing = rows.length - available.length;
+  const partial = total.results === null && available.length > 0 && missing > 0 &&
+    !["REACH", "AD RECALL LIFT"].includes(objective.toUpperCase());
+  const partialResults = partial
+    ? ` Available ${creative ? "ads" : "segments"} report ${fmtResultCount(available.reduce((n, row) => n + row.results!, 0))} ${label}; ${missing} ${creative ? (missing === 1 ? "ad has" : "ads have") : (missing === 1 ? "segment has" : "segments have")} unavailable results. Overall results and ${cost} are unavailable.`
+    : ` ${objective} totals are unavailable.`;
+  const summary = `${context} recorded ${money(total.spend)} spend and ${fmtResultCount(total.impressions)} impressions across the selected campaigns.${total.results !== null ? ` Results: ${fmtResultCount(total.results)} ${label}.` : partialResults}${total.cpr !== null ? ` ${costLabel.charAt(0) + costLabel.slice(1).toLowerCase()}: ${money(total.cpr)}.` : ""}`;
   const insights: string[] = [];
   const highestSpend = Math.max(...rows.map(r => r.spend));
   if (highestSpend > 0) {
     const top = rows.filter(r => Math.abs(r.spend - highestSpend) < 1e-8);
     insights.push(`${short(top[0].name)} received the most spend${tie(top.length)}: ${money(highestSpend)} (${(highestSpend / total.spend * 100).toFixed(1)}% of this view).`);
   }
-  const available = rows.filter(r => r.results !== null);
   if (available.length === rows.length && total.results !== null) {
     const peak = Math.max(0, ...available.map(r => r.results!));
     if (peak > 0) {
@@ -47,7 +53,7 @@ export function metaClientNarrative(input: {
     if (eligible.length) {
       const best = Math.min(...eligible.map(r => r.cpr!));
       const top = eligible.filter(r => Math.abs(r.cpr! - best) < 1e-8);
-      insights.push(`Among segments with at least ${threshold} results, ${short(top[0].name)} had the lowest ${cost}${tie(top.length)}: ${money(best)}.`);
+      insights.push(`Among segments with ${partial ? "available results and " : ""}at least ${threshold} results, ${short(top[0].name)} had the lowest ${cost}${tie(top.length)}: ${money(best)}.`);
     } else if (total.results !== null && total.results > 0) insights.push(`No segment has at least ${threshold} results for an efficiency ranking.`);
   }
   if (!insights.length) insights.push("Only the selected campaigns, dates and available source metrics are included.");
