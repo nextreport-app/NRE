@@ -179,6 +179,7 @@ export async function buildStandardReportForWizard(
       mtdDailyRows: mtdParsed.rows,
       timezone: client.timezone,
       dateSelection,
+      now,
     });
     const skipMetaLiveFetch = sessionMapsCoverReachRanges(metaCampaignPeriodReachFromSession, reachRanges);
     if (!skipMetaLiveFetch) {
@@ -205,6 +206,7 @@ export async function buildStandardReportForWizard(
     sessionMaps: metaCampaignPeriodReachFromSession,
     metaAdAccountId,
     metaAccessToken,
+    now,
   });
 
   const currencyCheck = detectCsvCurrency([...mtdParsed.headers, ...sourceHeaders(periodRows ?? [])], [...mtdParsed.rows, ...(periodRows ?? [])]);

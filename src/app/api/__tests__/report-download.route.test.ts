@@ -293,3 +293,14 @@ it("keeps parts bounded and stops reading once the part is complete if storage i
   expect(Buffer.from(await result.arrayBuffer())).toEqual(bytes.subarray(3, 8));
   expect(canceled).toHaveBeenCalledOnce();
 });
+
+it("keeps scheduled drafts private on public download while allowing owner review",async()=>{
+ vi.mocked(prisma.report.findUnique).mockResolvedValue({status:"COMPLETE",requiresApproval:true,approvedAt:null,filePath:"private-file",fileName,client:{userId:"owner"}} as never);
+ const result=await publicDownload(new Request("http://localhost/download"),{params:Promise.resolve({token:"draft-token"})});
+ expect(result.status).toBe(404);expect(get).not.toHaveBeenCalled();
+ const owner=await ownerDownload(new Request("http://localhost/download"),{params:Promise.resolve({id:"draft"})});expect(owner.status).toBe(200);
+});
+it("releases the approved scheduled PPTX",async()=>{
+ vi.mocked(prisma.report.findUnique).mockResolvedValue({status:"COMPLETE",requiresApproval:true,approvedAt:new Date(),filePath:"private-file",fileName} as never);
+ expect((await publicDownload(new Request("http://localhost/download"),{params:Promise.resolve({token:"approved-token"})})).status).toBe(200);
+});

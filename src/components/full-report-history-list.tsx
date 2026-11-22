@@ -16,6 +16,7 @@ export interface FullReportHistoryItem {
   shareToken: string | null;
   /** Report.displayName, already resolved to the auto-generated default when no custom name was saved. */
   displayName: string;
+  approvalPending?: boolean;
   /** Client-timezone month/year label ("August 2026") — consecutive rows sharing this value are rendered under one date separator, computed server-side (clients/[id]/reports/page.tsx). */
   monthLabel: string;
 }
@@ -239,7 +240,7 @@ export function FullReportHistoryList({
                         />
                       ) : (
                         <p className="flex items-center gap-1.5 text-[15px] text-dash-ink">
-                          <span className="truncate">{r.displayName}</span>
+                          <span className="truncate">{r.displayName}{r.approvalPending ? " · Private draft" : ""}</span>
                           <button
                             type="button"
                             onClick={() => startEditing(r)}

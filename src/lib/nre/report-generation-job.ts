@@ -118,7 +118,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
   if (job.userId !== report.client.userId || job.clientId !== report.clientId) { await markReportFailed(reportId, "Report ownership could not be verified."); return; }
   const client = report.client;
-  const userIntegrations = await prisma.user.findUnique({
+  const userIntegrations = report.requiresApproval ? null : await prisma.user.findUnique({
     where: { id: job.userId },
     select: { slackWebhookUrl: true, automationWebhookUrl: true },
   });

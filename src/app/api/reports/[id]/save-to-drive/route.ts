@@ -39,6 +39,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!report || report.client.userId !== session.user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    if (report.requiresApproval && !report.approvedAt) return NextResponse.json({error:"Approve this scheduled draft before sharing or exporting to Drive."},{status:409});
     if (report.status !== "COMPLETE" || !report.filePath) {
       return NextResponse.json({ error: "Report is not ready yet." }, { status: 409 });
     }
@@ -77,8 +78,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const folderName = parsed.data.folderName || DEFAULT_DRIVE_FOLDER_NAME;
+    if(report.requiresApproval){
+      const updated=await prisma.report.updateMany({where:{id:report.id,filePath:report.filePath,summaryJson:report.summaryJson,approvedAt:{not:null}},data:{slidesUrl:webViewLink}});
+      if(!updated.count)return NextResponse.json({error:"The report changed during export. Review and export the current version again."},{status:409});
+    }else await prisma.report.update({where:{id:report.id},data:{slidesUrl:webViewLink}});
     await Promise.all([
-      prisma.report.update({ where: { id: report.id }, data: { slidesUrl: webViewLink } }),
       prisma.client.update({
         where: { id: report.client.id },
         data: { lastDriveFolderId: parsed.data.folderId, lastDriveFolderName: folderName },

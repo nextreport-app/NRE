@@ -1,3 +1,4 @@
+import { updateReviewReport } from "@/lib/report-schedules/review-update";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +16,9 @@ export async function POST(request: Request, {params}: {params: Promise<{id:stri
   try {
     const {id}=await params;
     const shareToken=body.action === "disable" ? null : generateShareToken();
-    const updated=await prisma.report.updateMany({where:{id,status:"COMPLETE",client:{userId:session.user.id}},data:{shareToken}});
+    const scheduled=await prisma.report.findFirst({where:{id,status:"COMPLETE",requiresApproval:true,client:{userId:session.user.id}},select:{id:true,requiresApproval:true}});
+    if(scheduled){await updateReviewReport(scheduled,{shareToken});return NextResponse.json({shareToken});}
+    const updated=await prisma.report.updateMany({where:{id,status:"COMPLETE",requiresApproval:false,client:{userId:session.user.id}},data:{shareToken}});
     if (!updated.count) return NextResponse.json({error:"Report not found"},{status:404});
     return NextResponse.json({shareToken});
   } catch(error) { return apiErrorResponse(error,"reports:share-link"); }

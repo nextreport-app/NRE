@@ -41,10 +41,11 @@ export default async function ReportCopyPage({
         {backLabel}
       </Link>
       <h1 className="text-[20px] font-semibold text-dash-ink">Edit browser report</h1>
+      {report.requiresApproval && !report.approvedAt && <p className="rounded-lg border border-dash-accent/40 p-3 text-sm text-dash-ink">Scheduled draft · private until approval. Save your edits here, then return to the client’s Scheduled reports section to approve delivery.</p>}
       <ReportShareReview
         clientId={id}
         reportId={reportId}
-        shareToken={report.shareToken}
+        shareToken={report.requiresApproval && !report.approvedAt ? null : report.shareToken}
         returnToGenerateHref={fromGenerate ? backHref : null}
       />
     </div>

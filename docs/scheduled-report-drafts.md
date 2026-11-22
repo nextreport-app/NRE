@@ -1,0 +1,27 @@
+# Scheduled report drafts (Beta)
+
+Client Manage → Scheduled reports. One Weekly and one Monthly schedule per client. Meta API only; manual CSV workflows stay in the wizard. Weekly uses the previous seven completed account-local days; Monthly uses the previous full calendar month. Dates are anchored to the due occurrence, including when a worker is late. Monthly start days are limited to 1–28. DST folds use the first occurrence and gaps advance to the first valid minute.
+
+## Agency workflow
+
+1. Link the client's Meta account and save a schedule, recipient emails (maximum five), local start time, and optional exact campaign names/cover budget. Blank scope means all campaigns. Current client template and agency branding apply at preparation. This release uses campaign-level, objective-based metrics; configure custom detail reports in the wizard.
+2. Use **Prepare now** on a paused schedule to exercise the workflow. It prepares a report for the period ending before today (or the previous calendar month), not a preview of a future occurrence. Normal verification, subscription, concurrency, complexity and report-credit limits apply. Empty or unreconciled data fails rather than becoming a zero report.
+3. The agency owner receives a ready/failure notice. Review in the existing editor and download PPTX/source CSV. Source retention is 24 hours. Public browser/PPTX/logo routes reject drafts; Drive exports and normal send-email are blocked for unapproved drafts. Generation does not trigger Slack/Zapier/webhook delivery for scheduled drafts.
+4. Check **I reviewed the report and recipients**, then approve the exact saved version. Approval makes its browser/PPTX links available. Optionally save the approved version to Google Drive for a Slides link, then explicitly **Send approved report**. Email includes links, not file attachments. Approved copies are not emailed automatically. No client mail is sent merely by saving or enabling a schedule.
+5. Schedule edits affect future drafts only. Skip an existing draft and prepare a new one to change its recipient list. Editing an unsent approved report revokes approval; browser/PPTX edits are saved together. Sending/provider-review states block edits. A sent report remains editable through the normal editor, which also changes what recipients see at its live URL.
+
+“Email accepted” means Resend accepted the request, not that an inbox received it. Existing durable email delivery uses one immutable message key per run and provider deduplication. An ambiguous send beyond the safe retry window becomes **REVIEW**: verify Resend logs before creating another copy. Skipping cannot recall a sent message. Pausing stops future preparation; explicitly skip drafts already underway to discard them. A worker already generating may finish privately after a skip.
+
+## Deployment and activation
+
+- Apply migration `20261122000300_scheduled_report_drafts` and regenerate Prisma (normal deployment build does both).
+- Keep `REPORT_SCHEDULER_ENABLED=false` until the timer is installed. Paused schedules and manual preparation work in this state. This PR does not configure production timers, Meta credentials, Resend, or send any real email.
+- Install a scheduler that supports an authenticated HTTP GET **every five minutes** to `https://nextreport.in/api/cron/report-schedules`, with `Authorization: Bearer <CRON_SECRET>`. Use a private scheduler secret/header configuration, never a public URL query parameter. This cadence needs an external scheduler or an appropriate hosting plan; the existing daily fallback cron is insufficient. No unsupported frequent Hobby cron is added.
+- Set `REPORT_SCHEDULER_ENABLED=true`, invoke the protected endpoint and confirm a recent successful heartbeat. UI only allows enabling schedules with a heartbeat newer than 20 minutes. A saved time means preparation starts at the next worker check, not guaranteed delivery at that minute. Monitor endpoint failures and stale heartbeats externally; the UI surfaces stale health when opened.
+- The worker atomically enqueues occurrences, leases preparation, and resumes existing jobs without a second report reservation. If downtime missed multiple occurrences, only the latest due occurrence is prepared. Each tick admits up to ten schedules and examines up to fifteen eligible pending runs; monitor backlog and increase worker capacity before onboarding high volume.
+- Configure Resend with the verified sending domain and monitor actual account quotas. No plan upgrade is required by code, but owner notices plus client delivery both consume provider limits. Review real limits before enabling many schedules. Retain the existing email retry cron alongside this worker.
+- Acceptance before activation: prepare a Weekly and Monthly Express Text draft, compare fresh source CSV/browser/PPTX, edit/reapprove, test one owner-controlled recipient and optional Drive copy, then enable one schedule and verify the timed draft/notice. No connected production Meta/Resend/database credentials were available for this development session; these live checks remain necessary.
+
+## Follow-up scope
+
+Daily/fortnightly schedules, bespoke metric/ad-set presets, other platforms, automatic Drive-folder setup and unattended client delivery are not in this first release. GA4/agency dashboards and performance alerts remain separate Phase 2 tasks. Creative reporting remains Beta.

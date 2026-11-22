@@ -1,3 +1,4 @@
+import { isReportPublished } from "@/lib/report-publication";
 import { reportDownloadResponse } from "@/lib/report-download-response";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   try {
     const { token } = await params;
     const report = await prisma.report.findUnique({ where: { shareToken: token } });
-    if (!report || report.status !== "COMPLETE" || !report.filePath) {
+    if (!report || !isReportPublished(report) || report.status !== "COMPLETE" || !report.filePath) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

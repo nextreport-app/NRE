@@ -35,6 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!report || report.client.userId !== session.user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    if (report.requiresApproval) return NextResponse.json({error:"Use Scheduled reports to approve and send this report."},{status:409});
     if (report.status !== "COMPLETE") {
       return NextResponse.json({ error: "Report is not ready yet." }, { status: 409 });
     }

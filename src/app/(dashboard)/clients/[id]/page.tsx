@@ -1,3 +1,4 @@
+import { ScheduledReportsCard } from "@/components/scheduled-reports-card";
 import { BudgetMonitorCard } from "@/components/budget-monitor-card";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import { SettingsDisclosure } from "@/components/settings-disclosure";
@@ -133,7 +134,8 @@ export default async function ClientDetailPage({
     status: r.status,
     reportType: r.reportType,
     createdAt: r.createdAt.toISOString(),
-    shareToken: r.shareToken,
+    approvalPending: r.requiresApproval && !r.approvedAt,
+    shareToken: r.requiresApproval && !r.approvedAt ? null : r.shareToken,
     displayName: r.displayName ?? defaultReportDisplayName(r.reportType, r.weekStart, r.weekEnd),
   }));
 
@@ -195,6 +197,8 @@ export default async function ClientDetailPage({
         ) : null}
 
         <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId,client.budgetMonitorTolerance])} clientId={client.id} />
+
+        <ScheduledReportsCard clientId={client.id} />
 
         <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
           <PreviousMonthDataUpload
