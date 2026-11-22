@@ -14,6 +14,11 @@ import {
   type Verdict,
 } from "./performance-monitor/decision";
 import { readCampaignTargets } from "./performance-monitor/settings";
+import {
+  campaignBrief,
+  campaignRank,
+  type PortfolioState,
+} from "./performance-monitor/portfolio";
 import { budgetWindow } from "./budget-monitor-facts";
 export interface OverviewClient extends BudgetConfig, PerformanceConfig {
   id: string;
@@ -35,6 +40,7 @@ export function overviewRow(client: OverviewClient, now = new Date()) {
     client.budgetMonitorEnabled &&
     !!budget?.facts &&
     !budget.error &&
+    Date.parse(budget.checkedAt) <= now.getTime() &&
     now.getTime() - Date.parse(budget.checkedAt) < 26 * 3600000;
   const performanceFresh =
     client.performanceMonitorEnabled && isPerformanceFresh(performance, now);
@@ -69,7 +75,47 @@ export function overviewRow(client: OverviewClient, now = new Date()) {
         : counts.improving
           ? "improving"
           : "neutral";
+  const briefs = performanceFresh
+    ? [...performance!.facts!.campaigns]
+        .sort((a, b) => campaignRank(a) - campaignRank(b))
+        .map(campaignBrief)
+    : [];
+  const coverage = {
+    assessed: briefs.filter(
+      (c) => !["insufficient", "no-delivery"].includes(c.state),
+    ).length,
+    insufficient: briefs.filter((c) => c.state === "insufficient").length,
+    inactive: briefs.filter((c) => c.state === "no-delivery").length,
+    total: briefs.length,
+  };
+  const state: PortfolioState =
+    verdict === "critical"
+      ? "critical"
+      : verdict === "review"
+        ? "review"
+        : unavailable
+          ? "check"
+          : !client.metaAdAccountId || !client.performanceMonitorEnabled
+            ? "setup"
+            : !briefs.length
+              ? "no-delivery"
+              : verdict === "improving"
+                ? "positive"
+                : coverage.insufficient
+                  ? "insufficient"
+                  : briefs.some((c) => c.state === "neutral")
+                    ? "neutral"
+                    : "no-delivery";
   return {
+    portfolio: {
+      state,
+      coverage,
+      lead: briefs[0] ?? null,
+      positiveCampaigns: briefs.filter((c) => c.state === "positive").length,
+      reviewCampaigns: briefs.filter(
+        (c) => c.state === "review" || c.state === "critical",
+      ).length,
+    },
     verdict,
     counts,
     budgetCritical,
