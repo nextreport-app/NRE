@@ -194,7 +194,7 @@ export default async function ClientDetailPage({
           </Card>
         ) : null}
 
-        <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId])} clientId={client.id} />
+        <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId,client.budgetMonitorTolerance])} clientId={client.id} />
 
         <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
           <PreviousMonthDataUpload

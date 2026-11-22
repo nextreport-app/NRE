@@ -298,6 +298,7 @@ model Client {
   monthlyBudget Float?
   budgetMonitorEnabled Boolean @default(false)
   budgetMonitorEmailEnabled Boolean @default(true)
+  budgetMonitorTolerance Float?
   budgetMonitorSnapshot String? @db.Text
   budgetMonitorLastAttemptAt DateTime?
   budgetMonitorLeaseUntil DateTime?

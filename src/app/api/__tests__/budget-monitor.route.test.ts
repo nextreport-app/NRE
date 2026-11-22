@@ -22,3 +22,10 @@ it("checks only the authenticated owner and explicitly saves opt-out",async()=>{
  await POST(req({action:"settings",enabled:false,emailEnabled:false}),ctx);expect(m.update).toHaveBeenCalledWith({where:{id:"c"},data:{budgetMonitorEnabled:false,budgetMonitorEmailEnabled:false}});
 });
 it("validates actions and settings",async()=>{expect((await POST(req({action:"settings",enabled:"true",emailEnabled:true}),ctx)).status).toBe(400);expect(m.update).not.toHaveBeenCalled();});
+
+it("validates and saves an explicit variance without changing the approved budget",async()=>{
+ expect((await POST(req({action:"settings",enabled:true,emailEnabled:true,tolerance:10}),ctx)).status).toBe(200);
+ expect(m.update).toHaveBeenCalledWith({where:{id:"c"},data:{budgetMonitorEnabled:true,budgetMonitorEmailEnabled:true,budgetMonitorTolerance:10}});
+ m.update.mockClear();expect((await POST(req({action:"settings",enabled:true,emailEnabled:true,tolerance:800}),ctx)).status).toBe(400);expect(m.update).not.toHaveBeenCalled();
+ expect((await POST(req({action:"settings",enabled:true,emailEnabled:true,tolerance:-1}),ctx)).status).toBe(400);
+});
