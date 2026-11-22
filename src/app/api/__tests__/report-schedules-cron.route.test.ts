@@ -1,3 +1,9 @@
+vi.mock("@/lib/email-delivery", () => ({
+  retryPendingEmails: vi
+    .fn()
+    .mockResolvedValue({ checked: 0, accepted: 0, failed: 0 }),
+}));
+import { retryPendingEmails } from "@/lib/email-delivery";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -50,4 +56,23 @@ describe("private scheduler tick", () => {
     expect(service.retryScheduledDelivery).toHaveBeenCalledWith("delivery");
     expect(service.retryScheduledDelivery).not.toHaveBeenCalledWith("draft");
   });
+});
+
+it("does not publish a successful heartbeat when tick preparation throws", async () => {
+  vi.mocked(service.enqueueDueSchedules).mockRejectedValueOnce(
+    Error("Synthetic preparation outage"),
+  );
+  expect((await GET(request())).status).toBe(500);
+  expect(prisma.reportSchedulerState.upsert).not.toHaveBeenCalled();
+  expect(retryPendingEmails).not.toHaveBeenCalled();
+});
+it("retries only existing delivery intents after processing", async () => {
+  const result = await GET(request());
+  expect(result.status).toBe(200);
+  expect(retryPendingEmails).toHaveBeenCalledWith(10);
+  expect(
+    vi.mocked(retryPendingEmails).mock.invocationCallOrder[0],
+  ).toBeLessThan(
+    vi.mocked(prisma.reportSchedulerState.upsert).mock.invocationCallOrder[0],
+  );
 });

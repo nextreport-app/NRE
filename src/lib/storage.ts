@@ -19,6 +19,7 @@
  * would ever need a presigned URL to fetch directly from Blob's CDN.
  */
 
+import { randomUUID } from "node:crypto";
 import { put, del, get, issueSignedToken, presignUrl } from "@vercel/blob";
 import { contentTypeForLogoFormat, extensionForLogoFormat, type LogoFormat } from "./logo-processing";
 
@@ -55,19 +56,20 @@ export async function deleteReportFile(url: string): Promise<void> {
 
 const LOGO_FORMATS: LogoFormat[] = ["png", "jpeg", "webp", "svg"];
 
-export async function saveAgencyLogo(userId: string, buffer: Buffer, format: LogoFormat): Promise<string> {
-  const keyPrefix = `logos/agency-${userId}`;
-  const ext = extensionForLogoFormat(format);
-  const blob = await put(`${keyPrefix}.${ext}`, buffer, {
+export async function saveAgencyLogo(
+  userId: string,
+  buffer: Buffer,
+  format: LogoFormat,
+): Promise<string> {
+  // Published report JSON retains this private URL. Every upload is a new
+  // immutable revision; profile replacement/removal must not delete old versions.
+  const key = `logos/agency-${userId}/${randomUUID()}.${extensionForLogoFormat(format)}`;
+  const blob = await put(key, buffer, {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: false,
     contentType: contentTypeForLogoFormat(format),
   });
-  await Promise.all(
-    LOGO_FORMATS.filter((f) => f !== format).map((f) =>
-      deleteLogoFile(`${keyPrefix}.${extensionForLogoFormat(f)}`).catch(() => {}),
-    ),
-  );
   return blob.url;
 }
 

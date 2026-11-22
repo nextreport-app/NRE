@@ -1,3 +1,4 @@
+import { retryPendingEmails } from "@/lib/email-delivery";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -23,11 +24,6 @@ export async function GET(req: Request) {
     );
   try {
     const started = Date.now();
-    await prisma.reportSchedulerState.upsert({
-      where: { id: "main" },
-      create: { id: "main", checkedAt: new Date() },
-      update: { checkedAt: new Date() },
-    });
     const enqueued = await enqueueDueSchedules();
     const pending = await prisma.scheduledReportRun.findMany({
       where: {
@@ -53,8 +49,20 @@ export async function GET(req: Request) {
       else await processScheduledRun(run.id);
       processed++;
     }
+    // Recover existing immutable delivery intents; this does not approve or
+    // initiate a client send. Leave time for the function to finish cleanly.
+    const emailRetries =
+      Date.now() - started < 50000
+        ? await retryPendingEmails(10)
+        : { checked: 0, accepted: 0, failed: 0, skipped: true };
+    await prisma.reportSchedulerState.upsert({
+      where: { id: "main" },
+      create: { id: "main", checkedAt: new Date() },
+      update: { checkedAt: new Date() },
+    });
     return NextResponse.json({
       ok: true,
+      emailRetries,
       enqueued,
       processed,
       remaining: pending.length - processed,

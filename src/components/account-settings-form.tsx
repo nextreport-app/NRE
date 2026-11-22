@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
 import { agencyLogoUploadGuidance } from "@/lib/agency-logo-spec";
@@ -29,9 +29,10 @@ export function AccountSettingsForm({
   const router = useRouter();
   const { showToast } = useToast();
   const [agencyName, setAgencyName] = useState(initialAgencyName ?? "");
-  const [reportBrandingMode, setReportBrandingMode] = useState<ReportBrandingMode>(
-    initialReportBrandingMode,
-  );
+  const [reportBrandingMode, setReportBrandingMode] =
+    useState<ReportBrandingMode>(initialReportBrandingMode);
+  const [savedLogo, setSavedLogo] = useState(hasAgencyLogo);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -39,12 +40,20 @@ export function AccountSettingsForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(
+    () => () => {
+      if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
+    },
+    [logoPreviewUrl],
+  );
+
   const trimmedAgencyName = agencyName.trim();
   const logoPreviewSrc =
-    logoPreviewUrl ?? (hasAgencyLogo && !removeLogo ? "/api/account/logo" : null);
+    logoPreviewUrl ?? (savedLogo && !removeLogo ? "/api/account/logo" : null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
     if (reportBrandingMode === "agency" && !trimmedAgencyName) {
@@ -55,50 +64,72 @@ export function AccountSettingsForm({
     setLoading(true);
 
     try {
-    const showAgencyNameOnCover =
-      reportCreditName({ reportBrandingMode, agencyName: trimmedAgencyName }) !== null;
+      const showAgencyNameOnCover =
+        reportCreditName({
+          reportBrandingMode,
+          agencyName: trimmedAgencyName,
+        }) !== null;
 
-    const res = await fetch("/api/account", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        agencyName: trimmedAgencyName || null,
-        reportBrandingMode,
-        showAgencyNameOnCover,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setLoading(false);
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agencyName: trimmedAgencyName || null,
+          reportBrandingMode,
+          showAgencyNameOnCover,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      const message = data.error || "Something went wrong.";
-      setError(message);
-      showToast(message, "error");
-      return;
-    }
-
-    if (logoFile) {
-      const logoFormData = new FormData();
-      logoFormData.append("logo", logoFile);
-      const logoRes = await fetch("/api/account/logo", { method: "POST", body: logoFormData });
-      if (!logoRes.ok) {
-        const logoData = await logoRes.json().catch(() => ({}));
-        const message = logoData.error || "Settings saved, but the logo upload failed.";
+      if (!res.ok) {
+        const message = data.error || "Something went wrong.";
+        setError(message);
         showToast(message, "error");
-        router.refresh();
         return;
       }
-    } else if (removeLogo) {
-      const removal = await fetch("/api/account/logo", { method: "DELETE" });
-      if (!removal.ok) { const message = "Settings saved, but the logo could not be removed. Please retry."; setError(message); showToast(message, "error"); return; }
-    }
 
-    showToast("Agency details saved.");
-    router.refresh();
+      if (logoFile) {
+        const logoFormData = new FormData();
+        logoFormData.append("logo", logoFile);
+        const logoRes = await fetch("/api/account/logo", {
+          method: "POST",
+          body: logoFormData,
+        });
+        if (!logoRes.ok) {
+          const logoData = await logoRes.json().catch(() => ({}));
+          const message =
+            logoData.error || "Settings saved, but the logo upload failed.";
+          showToast(message, "error");
+          router.refresh();
+          return;
+        }
+        setSavedLogo(true);
+      } else if (removeLogo) {
+        const removal = await fetch("/api/account/logo", { method: "DELETE" });
+        if (!removal.ok) {
+          const message =
+            "Settings saved, but the logo could not be removed. Please retry.";
+          setError(message);
+          showToast(message, "error");
+          return;
+        }
+      }
+
+      if (removeLogo) setSavedLogo(false);
+      setLogoFile(null);
+      setRemoveLogo(false);
+      setLogoPreviewUrl(null);
+      if (fileInput.current) fileInput.current.value = "";
+      showToast("Agency details saved.");
+      router.refresh();
     } catch {
-      const message = "Could not save your settings. Check your connection and try again.";
-      setError(message); showToast(message, "error");
-    } finally { setLoading(false); }
+      const message =
+        "Could not save your settings. Check your connection and try again.";
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -111,18 +142,13 @@ export function AccountSettingsForm({
     }
     setLogoFile(file);
     setRemoveLogo(false);
-    setLogoPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
-    });
+    setLogoPreviewUrl(URL.createObjectURL(file));
   }
 
   function handleRemoveLogo() {
     setLogoFile(null);
-    setLogoPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
+    setLogoPreviewUrl(null);
+    if (fileInput.current) fileInput.current.value = "";
     setRemoveLogo(true);
   }
 
@@ -135,7 +161,9 @@ export function AccountSettingsForm({
         <label
           key={mode}
           className={`flex cursor-pointer gap-3 rounded-md border px-3 py-3 ${
-            selected ? "border-dash-accent bg-dash-accent/5" : "border-dash-border"
+            selected
+              ? "border-dash-accent bg-dash-accent/5"
+              : "border-dash-border"
           }`}
         >
           <input
@@ -147,7 +175,9 @@ export function AccountSettingsForm({
             className="mt-1"
           />
           <span>
-            <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
+            <span className="block text-sm font-medium text-dash-ink">
+              {option.title}
+            </span>
             <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
               {option.description}
             </span>
@@ -160,7 +190,9 @@ export function AccountSettingsForm({
       <div
         key={mode}
         className={`rounded-md border px-3 py-3 ${
-          selected ? "border-dash-accent bg-dash-accent/5" : "border-dash-border"
+          selected
+            ? "border-dash-accent bg-dash-accent/5"
+            : "border-dash-border"
         }`}
       >
         <label className="flex cursor-pointer gap-3">
@@ -173,7 +205,9 @@ export function AccountSettingsForm({
             className="mt-1"
           />
           <span>
-            <span className="block text-sm font-medium text-dash-ink">{option.title}</span>
+            <span className="block text-sm font-medium text-dash-ink">
+              {option.title}
+            </span>
             <span className="mt-0.5 block text-[13px] leading-snug text-dash-ink-secondary">
               {option.description}
             </span>
@@ -182,7 +216,9 @@ export function AccountSettingsForm({
 
         {selected ? (
           <div className="mt-3 border-t border-dash-border/80 pt-3 pl-7">
-            <label className="mb-1 block text-sm font-medium text-dash-ink">Agency or your name</label>
+            <label className="mb-1 block text-sm font-medium text-dash-ink">
+              Agency or your name
+            </label>
             <input
               value={agencyName}
               onChange={(e) => setAgencyName(e.target.value)}
@@ -198,33 +234,48 @@ export function AccountSettingsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-0">
-      <fieldset>
-        <legend className="mb-1 block text-sm font-medium text-dash-ink">Client-facing credit on reports</legend>
+      <fieldset disabled={loading}>
+        <legend className="mb-1 block text-sm font-medium text-dash-ink">
+          Client-facing credit on reports
+        </legend>
         <div className="mb-4 space-y-1 text-[13px] leading-snug text-dash-ink-secondary">
-          <p>Pick one option below. It applies to the same report everywhere.</p>
+          <p>
+            Pick one option below. It applies to the same report everywhere.
+          </p>
           <p>{REPORT_BRANDING_SURFACES}.</p>
           <p>
-            New accounts start with <span className="text-dash-ink">NextReport (default)</span> until you change it
-            here.
+            New accounts start with{" "}
+            <span className="text-dash-ink">NextReport (default)</span> until
+            you change it here.
           </p>
         </div>
-        <div className="space-y-2">{ACCOUNT_REPORT_BRANDING_MODES.map((mode) => renderModeOption(mode))}</div>
+        <div className="space-y-2">
+          {ACCOUNT_REPORT_BRANDING_MODES.map((mode) => renderModeOption(mode))}
+        </div>
 
         {reportBrandingMode === "agency" ? (
           <div className={`${sectionDividerClass}`}>
-            <label className="mb-1 block text-sm font-medium text-dash-ink">Agency logo — optional</label>
+            <label className="mb-1 block text-sm font-medium text-dash-ink">
+              Agency logo — optional
+            </label>
             <p className="mb-3 text-[13px] leading-snug text-dash-ink-secondary">
-              Only for the live share link header when white-label is on. Not required for the PowerPoint cover.
+              Only for the live share link header when white-label is on. Not
+              required for the PowerPoint cover.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <input
+                ref={fileInput}
                 type="file"
                 accept={ACCEPTED_LOGO_TYPES}
                 onChange={handleLogoChange}
                 className="max-w-full text-sm text-dash-ink-secondary file:mr-3 file:rounded-md file:border-0 file:bg-dash-border file:px-3 file:py-1.5 file:text-sm file:text-dash-ink"
               />
-              {((hasAgencyLogo && !removeLogo) || logoFile) && (
-                <button type="button" onClick={handleRemoveLogo} className="text-sm text-dash-error hover:underline">
+              {((savedLogo && !removeLogo) || logoFile) && (
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  className="text-sm text-dash-error hover:underline"
+                >
                   Remove logo
                 </button>
               )}
@@ -237,13 +288,25 @@ export function AccountSettingsForm({
                 className="mt-3 h-12 w-auto max-w-[200px] object-contain"
               />
             )}
-            {logoError && <p className="mt-1 text-sm text-dash-error">{logoError}</p>}
-            <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">{agencyLogoUploadGuidance()}</p>
+            {logoError && (
+              <p className="mt-1 text-sm text-dash-error">{logoError}</p>
+            )}
+            <p className="mt-1.5 text-[13px] leading-snug text-dash-ink-secondary">
+              {agencyLogoUploadGuidance()}
+            </p>
+            <p className="mt-1.5 text-xs text-dash-ink-secondary">
+              Logo changes apply to future reports. Saved reports keep their
+              original logo.
+            </p>
           </div>
         ) : null}
       </fieldset>
 
-      {error && <p className={`text-sm text-dash-error ${sectionDividerClass}`}>{error}</p>}
+      {error && (
+        <p className={`text-sm text-dash-error ${sectionDividerClass}`}>
+          {error}
+        </p>
+      )}
 
       <div className={sectionDividerClass}>
         <button

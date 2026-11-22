@@ -37,3 +37,5 @@ Every prepared draft consumes the normal report allowance; daily schedules can u
 Latest-due recovery now searches the calendar directly instead of iterating a capped number of missed occurrences, so daily schedules recovering from more than 400 missed cycles prepare only the newest due period. Existing Weekly/Monthly schedules retain their saved times and periods; no database migration is needed because cadence/settings are stored as strings/JSON.
 
 Before enabling either new cadence in production: prepare one Daily and one Fortnightly draft, verify account-local dates, source/PPTX/browser parity, recipients and branding, then test owner-controlled delivery. The external five-minute timer and provider acceptance gates above still apply.
+
+The final hardening release includes an optional opt-in GitHub runner, successful-tick heartbeat validation and bounded retry of existing email intents. See [Phase 2 completion and activation](phase-two-completion.md) for exact private settings, Actions usage considerations, activation steps and the consolidated owner acceptance pass. Existing Vercel daily crons are not a substitute for that frequent scheduler.
