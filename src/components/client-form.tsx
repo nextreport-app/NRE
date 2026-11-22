@@ -60,8 +60,10 @@ export function ClientForm({
   savedMessage,
   submitFullWidth = false,
   inline = false,
+  showTemplatePicker=true,
 }: {
   clientId?: string;
+  showTemplatePicker?:boolean;
   initial?: Partial<ClientFormValues>;
   /** Whether this client already has a logo uploaded — drives the initial preview/remove-button state on edit. Irrelevant on create (no clientId yet). */
   hasLogo?: boolean;
@@ -169,7 +171,7 @@ export function ClientForm({
       accountName: values.accountName,
       currency: values.currency,
       timezone: values.timezone,
-      template: values.template,
+      ...(showTemplatePicker?{template:values.template}:{}),
       notes: values.notes,
       monthlyBudget: budgetNum != null && !Number.isNaN(budgetNum) && budgetNum > 0 ? budgetNum : null,
     };
@@ -303,6 +305,7 @@ export function ClientForm({
         </p>
       </div>
 
+      {showTemplatePicker ? (
       <div>
         <label htmlFor="client-template" className="mb-1 block text-sm text-dash-ink-secondary">Report template</label>
         <select
@@ -317,6 +320,8 @@ export function ClientForm({
           ))}
         </select>
       </div>
+
+      ) : <p className="text-sm text-dash-ink-secondary">Change report design in <a href={`/clients/${clientId}#report-design`} className="text-dash-accent hover:underline">Report design</a>.</p>}
 
       <div>
         <label htmlFor="client-logo-upload" className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>

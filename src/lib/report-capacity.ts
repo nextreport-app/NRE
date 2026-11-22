@@ -21,7 +21,7 @@ export async function createReportWithinCapacity(userId: string, args: { data: P
     if (!user.emailVerified) throw new ServiceError("Verify your email before generating reports.", 403);
     const status = getSubscriptionStatus(user);
     if (status.isBlocked) throw new ServiceError("Your trial or paid access has ended. Visit Billing to continue.", 403);
-    const client = await tx.client.findFirst({ where: { id: args.data.clientId, userId }, select: { id: true } });
+    const client = await tx.client.findFirst({ where: { id: args.data.clientId, userId }, select: { id: true, template:true, agencyTemplateId:true } });
     if (!client) throw new ServiceError("Client not found.", 404);
     const cutoff = new Date(Date.now() - GENERATION_LEASE_MS);
     const recent = { status: "GENERATING" as const, OR: [{ createdAt: { gt: cutoff } }, { processingStartedAt: { gt: cutoff } }] };
@@ -33,7 +33,15 @@ export async function createReportWithinCapacity(userId: string, args: { data: P
     const reserveTrial = status.isTrialing && !status.isAdminOverride;
     if (reserveTrial && user.trialReportsUsed >= TRIAL_REPORT_LIMIT) throw new ServiceError("You have used your 10 trial reports. Subscribe to generate more.", 403);
     if (reserveTrial) await tx.user.update({ where: { id: userId }, data: { trialReportsUsed: { increment: 1 } } });
-    return tx.report.create({ data: { ...args.data, trialCreditReserved: reserveTrial, ...(args.data.reportType === "WEBSITE" ? { processingStartedAt: new Date() } : {}) } });
+    let templateSnapshot: {agencyTemplateId?:string|null;renderTemplateVariant?:"DARK"|"LIGHT"}={};
+    if((args.data.platform??"META")==="META"&&client.template){
+      templateSnapshot={agencyTemplateId:null,renderTemplateVariant:client.template};
+      if(client.agencyTemplateId){const asset=await tx.agencyTemplate.findFirst({where:{id:client.agencyTemplateId,userId,status:"READY",archivedAt:null,approvedAt:{not:null}}});
+        if(!asset)throw new ServiceError("The selected agency design is unavailable. Choose another report design on the client page.",409);
+        templateSnapshot={agencyTemplateId:asset.id,renderTemplateVariant:asset.baseVariant};
+      }
+    }
+    return tx.report.create({ data: { ...args.data,...templateSnapshot, trialCreditReserved: reserveTrial, ...(args.data.reportType === "WEBSITE" ? { processingStartedAt: new Date() } : {}) } });
   });
 }
 

@@ -1,3 +1,4 @@
+import { AgencyTemplateLibrary } from "@/components/agency-template-library";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -98,7 +99,7 @@ export default async function AccountSettingsPage({
       <h1 className="mb-8 text-[24px] font-bold text-dash-ink">Account settings</h1>
 
       <p className="-mt-5 mb-5 text-[14px] leading-relaxed text-dash-ink-secondary">Agency-wide settings apply to every client. Client currency, timezone, budget and logo live in each client’s settings.</p>
-      <nav aria-label="Account sections" className="mb-6 flex flex-wrap gap-2 text-[12px] text-dash-ink-secondary">{[["branding","Branding"],["retention","Storage"],["google-drive","Connections"],["automations","Automations"],["account-billing","Billing"]].map(([id,label]) => <a key={id} href={`#${id}`} className="rounded-full border border-dash-border px-3 py-1.5 hover:text-dash-ink">{label}</a>)}</nav>
+      <nav aria-label="Account sections" className="mb-6 flex flex-wrap gap-2 text-[12px] text-dash-ink-secondary">{[["branding","Branding"],["report-designs","Report designs"],["retention","Storage"],["google-drive","Connections"],["automations","Automations"],["account-billing","Billing"]].map(([id,label]) => <a key={id} href={`#${id}`} className="rounded-full border border-dash-border px-3 py-1.5 hover:text-dash-ink">{label}</a>)}</nav>
       <section className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-dash-border bg-dash-card p-5"><div><h2 className="text-[14px] font-semibold text-dash-ink">Your account</h2><p className="mt-1 break-all text-[13px] text-dash-ink-secondary">{user.email}</p><p className={`mt-1 text-xs ${user.emailVerified ? "text-emerald-400" : "text-dash-accent"}`}>{user.emailVerified ? "✓ Email verified" : "Email verification needed"}</p></div><Link href={`/forgot-password?email=${encodeURIComponent(user.email)}`} className="text-[13px] font-medium text-dash-accent hover:underline">Password &amp; account access →</Link></section>
       <section id="branding" className="mb-10 scroll-mt-6">
         <SectionHeading>Agency &amp; white-label branding</SectionHeading>
@@ -108,6 +109,8 @@ export default async function AccountSettingsPage({
           hasAgencyLogo={!!user.agencyLogoUrl}
         />
       </section>
+
+      <section id="report-designs" className="mb-10 scroll-mt-6"><SectionHeading>Agency report designs</SectionHeading><AgencyTemplateLibrary/></section>
 
       <section id="retention" className="mb-10 scroll-mt-6">
         <SectionHeading>Report retention</SectionHeading>

@@ -15,6 +15,7 @@ import type { ShareVisibility } from "@/lib/nre/share-report";
 import { defaultShareVisibility } from "@/lib/nre/share-report";
 import { regeneratePptxFromShare, type ShareReportWithArchive } from "@/lib/nre/regenerate-report";
 import { loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
+import { loadReportTemplate } from "@/lib/agency-templates/load";
 import { detectLogoFormat, readLogoDimensions, extensionForLogoFormat, contentTypeForLogoFormat } from "@/lib/logo-processing";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
 
@@ -293,7 +294,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (syncPpt) {
         const throttle = await enforceRateLimit("report-publish", session.user.id, 3, 60);
         if (throttle) return throttle;
-        const templateBuffer = await loadTemplateBufferForPlatform(report.platform, report.client.template);
+        const variant=report.renderTemplateVariant??(share._renderArchive?.isLightTemplate===true?"LIGHT":share._renderArchive?.isLightTemplate===false?"DARK":report.client.template);
+        const templateBuffer=report.agencyTemplateId?await loadReportTemplate(report.platform,variant,session.user.id,report.agencyTemplateId):await loadTemplateBufferForPlatform(report.platform,variant);
         const clientLogo = await loadLogoAsset(report.client.logoUrl);
         const pptxBuffer = await regeneratePptxFromShare(share, templateBuffer, clientLogo);
         filePath = await saveReportFile(report.requiresApproval?`${reportId}_revision_${randomUUID()}`:reportId, pptxBuffer);

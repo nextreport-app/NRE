@@ -19,6 +19,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
       </Link>
       <h1 className="mb-6 mt-2 text-[24px] font-bold text-dash-ink">Edit Client</h1>
       <ClientForm
+            showTemplatePicker={false}
         clientId={client.id}
         initial={{
           accountName: client.accountName,
