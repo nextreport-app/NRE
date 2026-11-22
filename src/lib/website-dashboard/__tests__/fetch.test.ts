@@ -221,3 +221,89 @@ it("does not call unchanged values an increase or round a small decline into zer
   expect(copy).toContain("decreased by less than 0.1 percentage points");
   expect(copy).not.toContain("-0.0");
 });
+
+it("fetches prior-period channels separately and keeps their values distinct", async () => {
+  const original = vi.mocked(runGa4Report).getMockImplementation()!;
+  vi.mocked(runGa4Report).mockImplementation(async (...args) => {
+    const response = await original(...args);
+    if (
+      args[2].dimensions?.[0]?.name === "sessionDefaultChannelGroup" &&
+      args[2].dateRanges[0].endDate === "2026-11-12"
+    ) {
+      const index = args[2].metrics.findIndex((m) => m.name === "sessions");
+      response.rows![0].metricValues![index].value = "40";
+    }
+    return response;
+  });
+  const snapshot = await fetchWebsiteSnapshot("token", "552954256", 7, now);
+  expect(snapshot.channels[0].sessions).toBe(100);
+  expect(snapshot.previousChannels?.[0].sessions).toBe(40);
+  const calls = vi
+    .mocked(runGa4Report)
+    .mock.calls.filter(
+      (c) => c[2].dimensions?.[0]?.name === "sessionDefaultChannelGroup",
+    );
+  expect(calls).toHaveLength(2);
+  expect(calls.map((c) => c[2].dateRanges[0])).toEqual(
+    expect.arrayContaining([
+      { startDate: "2026-11-13", endDate: "2026-11-19" },
+      { startDate: "2026-11-06", endDate: "2026-11-12" },
+    ]),
+  );
+});
+it("applies prior-only data-quality notices to the whole comparison", async () => {
+  const original = vi.mocked(runGa4Report).getMockImplementation()!;
+  vi.mocked(runGa4Report).mockImplementation(async (...args) => {
+    const response = await original(...args);
+    return args[2].dimensions?.[0]?.name === "sessionDefaultChannelGroup" &&
+      args[2].dateRanges[0].endDate === "2026-11-12"
+      ? { ...response, metadata: { subjectToThresholding: true } }
+      : response;
+  });
+  const snapshot = await fetchWebsiteSnapshot("token", "552954256", 7, now);
+  expect(snapshot.warnings).toContain(
+    "GA4 privacy thresholds may limit reported data.",
+  );
+});
+it("rejects duplicate rows only present in prior channels", async () => {
+  const original = vi.mocked(runGa4Report).getMockImplementation()!;
+  vi.mocked(runGa4Report).mockImplementation(async (...args) => {
+    const response = await original(...args);
+    return args[2].dimensions?.[0]?.name === "sessionDefaultChannelGroup" &&
+      args[2].dateRanges[0].endDate === "2026-11-12"
+      ? {
+          ...response,
+          rowCount: 2,
+          rows: [response.rows![0], response.rows![0]],
+        }
+      : response;
+  });
+  await expect(
+    fetchWebsiteSnapshot("token", "552954256", 7, now),
+  ).rejects.toThrow("duplicate channel");
+});
+
+it("keeps per-snapshot GA4 concurrency at five after adding prior channels", async () => {
+  const original = vi.mocked(runGa4Report).getMockImplementation()!;
+  let active = 0,
+    max = 0;
+  vi.mocked(runGa4Report).mockImplementation(async (...args) => {
+    active++;
+    max = Math.max(max, active);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      return await original(...args);
+    } finally {
+      active--;
+    }
+  });
+  await fetchWebsiteSnapshot("token", "552954256", 7, now);
+  expect(max).toBeLessThanOrEqual(5);
+  expect(
+    vi
+      .mocked(runGa4Report)
+      .mock.calls.filter(
+        (c) => c[2].dimensions?.[0]?.name === "sessionDefaultChannelGroup",
+      ),
+  ).toHaveLength(2);
+});

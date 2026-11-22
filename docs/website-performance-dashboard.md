@@ -11,11 +11,13 @@ Overview → Website traffic (GA4), or Client Manage → Google Analytics proper
 
 For owner acceptance, use a separate **NextReport website** client linked to property **552954256** under the already-connected Google account. Do not link that property to Express Text: it is a different business/website. No production property was linked or modified during development.
 
+Current change signals and channel comparison semantics are documented in [website change analysis](website-change-analysis.md).
+
 ## Data contract
 
 - Period overview is parsed from GA4 dimensionless **rows**, not from absent `totals` or sums of daily users. Total users are unique over the whole period; new users and sessions are separate metrics.
 - Core metrics: sessions, total/new users, engaged sessions, engagement/bounce rates, page views, key events, session key-event rate and average session duration. Modern `keyEvents` is used. `sessionKeyEventRate` comes from GA4; dividing key-event count by sessions would not be a valid session conversion rate.
-- All returned session-default-channel groups are preserved, including Organic Search, Organic Social, Paid Social, Paid Search, Cross-network, Direct, Referral, Email, Unassigned and `(not set)`. Channel queries paginate and fail rather than silently truncate. Sessions are not summed into user totals. Channel attribution does not establish incremental paid-ad impact.
+- Current and previous period session-default-channel groups are preserved, including Organic Search, Organic Social, Paid Social, Paid Search, Cross-network, Direct, Referral, Email, Unassigned and `(not set)`. Channel queries paginate and fail rather than silently truncate. Sessions are not summed into user totals. Channel attribution does not establish incremental paid-ad impact.
 - Daily sessions/key events are displayed and charted only for returned dates; missing dates and metrics are not filled with invented zeros. Top ten landing pages use `landingPage`, excluding query strings. No demographic/advertising-personalization data is requested.
 - Requests stay within GA4's ten-metric limit. Sampling, privacy thresholding, `(other)` data loss and restricted-metric notices are surfaced; limited snapshots suppress confident summary interpretation. Missing/invalid numeric values stay unavailable. Malformed/incomplete headers, duplicate dimension rows, pagination gaps and timezone changes fail closed.
 - Summaries are deterministic descriptions of observed figures, reusable across all clients. Rate differences use percentage points; zero baselines do not become infinite percentage changes. They do not diagnose tracking, creative quality or channel causality. No LLM or external provider call runs during page load.
