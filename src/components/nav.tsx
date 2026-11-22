@@ -18,6 +18,7 @@ const LINK_HREFS = [
 /** Active-page match: exact for "/", prefix for everything else (so /clients/abc still highlights "My Clients"). */
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
+  if (href === "/overview" && pathname === "/websites") return true;
   return pathname === href || pathname.startsWith(href + "/");
 }
 

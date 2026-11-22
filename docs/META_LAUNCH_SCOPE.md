@@ -27,3 +27,5 @@ Production deployment is separate from this code change. Keep existing Meta cred
 ## Breakdown and Creative choices
 
 Meta Import also offers standalone **Breakdown** (Age, Location, Placement or Platform) and **Creative** reports through CSV or API. Each uses one explicit date range and one source; it skips the standard metric-card step. API sources are prepared automatically on Review. Creative CSV reports support metrics without images and optional image uploads by Ad ID; API reports use available images/video posters. The deferred legacy CREATIVE wizard is still disabled. The new choice is carried as owned `reportSelection` metadata through the standard generation job, and persisted with its correct report type/title. See [workflow and source contract](reporting/META_AUDIENCE_AND_CREATIVE_PLAN.md).
+
+GA4 website-dashboard Beta: GA4 account connection and client property setup are now visible for the private website dashboard. Ad report platform selection remains Meta-only; Google/TikTok and GA4 report generation remain gated. Marketing/pricing platform scope is unchanged.

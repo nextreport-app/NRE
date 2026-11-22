@@ -413,6 +413,7 @@ model Client {
   ga4PropertyName String?
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  websiteDashboardSnapshots WebsiteDashboardSnapshot[]
   reports Report[]
   reportSchedules ReportSchedule[]
   qualityIncidents ReportQualityIncident[]
@@ -468,6 +469,21 @@ model ReportSchedulerState {
   id String @id
   checkedAt DateTime
 }
+model WebsiteDashboardSnapshot {
+  id String @id @default(cuid())
+  clientId String
+  days Int
+  propertyId String
+  connectionKey String
+  dataJson String? @db.Text
+  error String? @db.Text
+  checkedAt DateTime?
+  lastAttemptAt DateTime?
+  leaseUntil DateTime?
+  client Client @relation(fields:[clientId],references:[id],onDelete:Cascade)
+  @@unique([clientId,days])
+}
+
 model Report {
   requiresApproval Boolean @default(false)
   approvedAt DateTime?
