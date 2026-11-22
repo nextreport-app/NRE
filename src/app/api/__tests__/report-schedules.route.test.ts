@@ -195,3 +195,44 @@ describe("owner scheduled report controls", () => {
     expect(JSON.stringify(json)).not.toContain('"summaryJson"');
   });
 });
+
+it.each(["DAILY", "FORTNIGHTLY"])(
+  "accepts paused %s schedules through the existing owner endpoint",
+  async (cadence) => {
+    const next = {
+      ...settings,
+      cadence,
+      ...(cadence === "FORTNIGHTLY" ? { anchorDate: "2026-12-07" } : {}),
+    };
+    expect(
+      (
+        await POST(
+          request({ action: "save", enabled: false, settings: next }),
+          params,
+        )
+      ).status,
+    ).toBe(200);
+    expect(service.saveReportSchedule).toHaveBeenCalledWith(
+      "client",
+      "owner",
+      expect.objectContaining({ cadence, showBudget: false }),
+      false,
+    );
+    expect(service.sendApprovedDraft).not.toHaveBeenCalled();
+  },
+);
+it("rejects a fortnightly schedule without its anchor date before saving", async () => {
+  expect(
+    (
+      await POST(
+        request({
+          action: "save",
+          enabled: false,
+          settings: { ...settings, cadence: "FORTNIGHTLY" },
+        }),
+        params,
+      )
+    ).status,
+  ).toBe(400);
+  expect(service.saveReportSchedule).not.toHaveBeenCalled();
+});

@@ -401,3 +401,74 @@ it("requests unique reach for the due period rather than today's window", async 
     }),
   );
 });
+
+it.each(["DAILY", "FORTNIGHTLY"] as const)(
+  "prepares %s using the verified daily-table worker and matching source window",
+  async (cadence) => {
+    const scheduledSettings = {
+      ...settings,
+      cadence,
+      ...(cadence === "FORTNIGHTLY" ? { anchorDate: "2026-11-23" } : {}),
+    };
+    mocks.db.scheduledReportRun.findUnique.mockResolvedValue({
+      ...run,
+      settingsJson: JSON.stringify({
+        settings: scheduledSettings,
+        accountId: "account",
+        currency: "USD",
+        timezone: "UTC",
+      }),
+    });
+    mocks.fetch.mockResolvedValue({
+      rowCount: 1,
+      csvText:
+        "Campaign name,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all),Link clicks\nCampaign,2026-11-22,50,5,On-Facebook leads,1000,30,20",
+    });
+    await processScheduledRun("run");
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sinceIso: cadence === "DAILY" ? "2026-11-22" : "2026-11-09",
+        untilIso: "2026-11-22",
+      }),
+    );
+    expect(mocks.build).not.toHaveBeenCalled();
+    expect(mocks.capacity).toHaveBeenCalledWith(
+      "owner",
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reportType: "DAY_BREAKDOWN",
+          requiresApproval: true,
+          weekStart: cadence === "DAILY" ? "2026-11-22" : "2026-11-09",
+          weekEnd: "2026-11-22",
+        }),
+      }),
+    );
+    const created = mocks.capacity.mock.calls[0][1].data;
+    const payload = JSON.parse(created.jobPayload);
+    expect(payload.kind).toBe("DAY_BREAKDOWN");
+    expect(payload.shareToken).toBe(created.shareToken);
+    expect(payload.dayBreakdownData.dateRange.endIso).toBe("2026-11-22");
+    expect(payload.reportTitle).toContain(
+      cadence === "DAILY" ? "Daily" : "Fortnightly",
+    );
+    expect(mocks.queue).not.toHaveBeenCalled();
+  },
+);
+it("does not reserve a credit when a daily source contains out-of-period rows", async () => {
+  mocks.db.scheduledReportRun.findUnique.mockResolvedValue({
+    ...run,
+    settingsJson: JSON.stringify({
+      settings: { ...settings, cadence: "DAILY" },
+      accountId: "account",
+      currency: "USD",
+      timezone: "UTC",
+    }),
+  });
+  await processScheduledRun("run");
+  expect(mocks.capacity).not.toHaveBeenCalled();
+  expect(mocks.db.scheduledReportRun.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({ status: "FAILED" }),
+    }),
+  );
+});

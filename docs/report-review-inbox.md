@@ -1,6 +1,6 @@
 # Central report review inbox
 
-**Reports** in the app navigation, or **Report inbox** from Overview, opens `/reports`. This inbox contains scheduled Meta Weekly/Monthly drafts across the signed-in owner's clients. Manual wizard reports remain on the client page.
+**Reports** in the app navigation, or **Report inbox** from Overview, opens `/reports`. This inbox contains scheduled Meta Daily/Weekly/Fortnightly/Monthly drafts across the signed-in owner's clients. Manual wizard reports remain on the client page.
 
 ## Workflow
 
