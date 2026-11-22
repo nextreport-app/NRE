@@ -1,3 +1,4 @@
+import { BudgetMonitorCard } from "@/components/budget-monitor-card";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import { SettingsDisclosure } from "@/components/settings-disclosure";
 import Link from "next/link";
@@ -192,6 +193,8 @@ export default async function ClientDetailPage({
             />
           </Card>
         ) : null}
+
+        <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId])} clientId={client.id} />
 
         <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
           <PreviousMonthDataUpload

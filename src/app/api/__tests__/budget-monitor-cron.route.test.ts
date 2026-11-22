@@ -1,0 +1,11 @@
+import{beforeEach,afterEach,it,expect,vi}from "vitest";
+const m=vi.hoisted(()=>({find:vi.fn(),check:vi.fn()}));
+vi.mock("@/lib/prisma",()=>({prisma:{client:{findMany:m.find}}}));
+vi.mock("@/lib/budget-monitor",()=>({checkClientBudget:m.check}));
+import{GET}from "../cron/budget-monitor/route";
+const req=(token="secret")=>new Request("https://nextreport.in/api/cron/budget-monitor",{headers:{Authorization:`Bearer ${token}`}});
+beforeEach(()=>{vi.clearAllMocks();vi.stubEnv("CRON_SECRET","secret");m.find.mockResolvedValue([{id:"a",userId:"owner"},{id:"b",userId:"owner"},{id:"c",userId:"owner"}]);m.check.mockResolvedValue({});});
+afterEach(()=>vi.unstubAllEnvs());
+it("fails closed when cron authentication is absent or invalid",async()=>{vi.stubEnv("CRON_SECRET","");expect((await GET(req())).status).toBe(503);vi.stubEnv("CRON_SECRET","secret");expect((await GET(req("wrong"))).status).toBe(401);expect(m.find).not.toHaveBeenCalled();});
+it("processes the bounded batch with ownership and reports accurate counts",async()=>{const r=await GET(req());expect(r.status).toBe(200);expect(await r.json()).toMatchObject({checked:3,failed:0,remaining:0});expect(m.check).toHaveBeenCalledWith("a","owner");});
+it("counts failed snapshots and thrown jobs without losing the remainder",async()=>{m.check.mockResolvedValueOnce({error:"Unavailable"}).mockRejectedValueOnce(Error("failed")).mockResolvedValueOnce({});const r=await GET(req());expect(r.status).toBe(503);expect(await r.json()).toMatchObject({checked:3,failed:2,remaining:0});});

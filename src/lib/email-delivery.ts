@@ -1,3 +1,5 @@
+import { budgetAlertKey } from "./budget-alert-key";
+import { readBudgetSnapshot } from "./budget-monitor-facts";
 import { prisma } from "./prisma";
 import { FROM_ADDRESS, getResendClient } from "./email";
 import { getSubscriptionStatus } from "./subscription";
@@ -31,6 +33,16 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
     const obsolete = !user || user.planId !== "trial" || getSubscriptionStatus(user).isAdminOverride
       || (row.kind === "TRIAL_ENDING" && expired) || (row.kind === "TRIAL_EXPIRED" && (!expired || (user && now.getTime() - user.trialEndsAt.getTime() > 2 * 86400000))) || (row.kind === "WELCOME" && expired);
     if (obsolete) { await prisma.emailDelivery.update({ where: { key }, data: { status: "CANCELLED" } }); return { accepted: false, cancelled: true }; }
+  }
+  if (row.kind === "BUDGET_ALERT") {
+    const id=row.key.split(":")[1];
+    const client=id ? await prisma.client.findUnique({where:{id},include:{user:true}}) : null;
+    const snapshot=client ? readBudgetSnapshot(client.budgetMonitorSnapshot,client,now) : null;
+    const payload=JSON.parse(row.payloadJson) as QueuedEmail;
+    const valid=client && !getSubscriptionStatus(client.user).isBlocked && payload.to.length===1 && payload.to[0]===client.user.email && client.userId===row.userId && client.budgetMonitorEnabled && client.budgetMonitorEmailEnabled &&
+      snapshot?.facts && !snapshot.error && now.getTime()-Date.parse(snapshot.checkedAt)<26*3600000 &&
+      row.key===budgetAlertKey(client.id,snapshot.month,client,snapshot.facts.level);
+    if (!valid) {await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
   if (!process.env.RESEND_API_KEY?.trim()) return { accepted: false, error: "Email sending is not configured." };
   // lastAttemptAt is also the claim identity; a stale sender cannot overwrite a newer claim.
