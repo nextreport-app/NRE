@@ -1,5 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import {
+  cadenceLabel,
+  SCHEDULE_CADENCES,
+  type ScheduleCadence,
+} from "@/lib/report-schedules/cadence";
+import { nextScheduledAt, localDate } from "@/lib/report-schedules/calendar";
 import type { ScheduleSettings } from "@/lib/report-schedules/calendar";
 import { extractDriveFolderIdFromLink } from "@/lib/drive-link";
 import { ApiSourceDownload } from "./report-upload-wizard/ui/api-source-download";
@@ -44,8 +50,9 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const [editing, setEditing] = useState(false),
-    [cadence, setCadence] = useState<"WEEKLY" | "MONTHLY">("WEEKLY"),
+    [cadence, setCadence] = useState<ScheduleCadence>("WEEKLY"),
     [day, setDay] = useState(1),
+    [anchorDate, setAnchorDate] = useState(""),
     [time, setTime] = useState("09:00"),
     [recipients, setRecipients] = useState(""),
     [campaigns, setCampaigns] = useState(""),
@@ -107,6 +114,24 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
     setCadence(s?.cadence ?? "WEEKLY");
     setDay(s ? (s.cadence === "WEEKLY" ? s.weekday : s.monthDay) : 1);
     setTime(s?.time ?? "09:00");
+    setAnchorDate(
+      s?.anchorDate ??
+        (view
+          ? localDate(
+              nextScheduledAt({
+                cadence: "DAILY",
+                weekday: 1,
+                monthDay: 1,
+                time: "09:00",
+                timezone: view.timezone,
+                campaignNames: [],
+                showBudget: false,
+                recipients: [],
+              }),
+              view.timezone,
+            )
+          : ""),
+    );
     setRecipients(s?.recipients.join(", ") ?? "");
     setCampaigns(s?.campaignNames.join("\n") ?? "");
     setBudget(s?.showBudget ?? false);
@@ -192,6 +217,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               enabled,
               settings: {
                 cadence,
+                ...(cadence === "FORTNIGHTLY" ? { anchorDate } : {}),
                 weekday: cadence === "WEEKLY" ? day : 1,
                 monthDay: cadence === "MONTHLY" ? day : 1,
                 time,
@@ -204,7 +230,9 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
                   .split("\n")
                   .map((s) => s.trim())
                   .filter(Boolean),
-                showBudget: budget,
+                showBudget: ["DAILY", "FORTNIGHTLY"].includes(cadence)
+                  ? false
+                  : budget,
               },
             });
             if (ok) setEditing(false);
@@ -219,37 +247,70 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               onChange={(e) => {
                 setCadence(e.target.value as typeof cadence);
                 setDay(1);
+                if (["DAILY", "FORTNIGHTLY"].includes(e.target.value))
+                  setBudget(false);
               }}
             >
-              <option value="WEEKLY">Weekly · previous 7 days</option>
-              <option value="MONTHLY">Monthly · previous calendar month</option>
-            </select>
-          </label>
-          <label className="text-sm">
-            {cadence === "WEEKLY" ? "Start on" : "Day of month"}
-            <select
-              className={input}
-              value={day}
-              onChange={(e) => setDay(Number(e.target.value))}
-            >
-              {(cadence === "WEEKLY"
-                ? [
-                    "Sunday",
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                  ]
-                : Array.from({ length: 28 }, (_, i) => String(i + 1))
-              ).map((label, i) => (
-                <option key={label} value={cadence === "WEEKLY" ? i : i + 1}>
-                  {label}
+              {SCHEDULE_CADENCES.map((value) => (
+                <option key={value} value={value}>
+                  {cadenceLabel(value)} ·{" "}
+                  {value === "DAILY"
+                    ? "yesterday"
+                    : value === "WEEKLY"
+                      ? "previous 7 days"
+                      : value === "FORTNIGHTLY"
+                        ? "previous 14 days"
+                        : "previous calendar month"}
                 </option>
               ))}
             </select>
           </label>
+          {cadence === "FORTNIGHTLY" ? (
+            <label className="text-sm">
+              First preparation date
+              <input
+                aria-label="First preparation date"
+                type="date"
+                required
+                className={input}
+                value={anchorDate}
+                onChange={(e) => setAnchorDate(e.target.value)}
+              />
+              <span className="mt-1 block text-xs text-dash-ink-secondary">
+                Repeats every 14 days from this date, including across months.
+              </span>
+            </label>
+          ) : cadence === "DAILY" ? (
+            <p className="self-center text-sm text-dash-ink-secondary">
+              Every day, using yesterday&apos;s account-local data.
+            </p>
+          ) : (
+            <label className="text-sm">
+              {cadence === "WEEKLY" ? "Start on" : "Day of month"}
+              <select
+                className={input}
+                value={day}
+                onChange={(e) => setDay(Number(e.target.value))}
+              >
+                {(cadence === "WEEKLY"
+                  ? [
+                      "Sunday",
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                    ]
+                  : Array.from({ length: 28 }, (_, i) => String(i + 1))
+                ).map((label, i) => (
+                  <option key={label} value={cadence === "WEEKLY" ? i : i + 1}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="text-sm">
             Start preparing at ({view.timezone})
             <input
@@ -275,9 +336,10 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               Report settings
             </summary>
             <p className="mt-2 text-sm text-dash-ink-secondary">
-              Campaign-level reports with objective-based metrics and current
-              client template/branding. A prepared draft uses one report credit
-              where applicable.
+              {["DAILY", "FORTNIGHTLY"].includes(cadence)
+                ? "Account-level daily tables with each objective's results kept separate."
+                : "Campaign-level reports with objective-based metrics."}{" "}
+              Uses the current client template and agency branding.
             </p>
             <label className="mt-3 block text-sm">
               Campaign names · leave blank for all
@@ -288,15 +350,47 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
                 placeholder="Exact names, one per line"
               />
             </label>
-            <label className="mt-3 flex gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={budget}
-                onChange={(e) => setBudget(e.target.checked)}
-              />
-              Show monthly budget on cover
-            </label>
+            {!["DAILY", "FORTNIGHTLY"].includes(cadence) && (
+              <label className="mt-3 flex gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={budget}
+                  onChange={(e) => setBudget(e.target.checked)}
+                />
+                Show monthly budget on cover
+              </label>
+            )}
           </details>
+          <p className="text-xs text-dash-ink-secondary sm:col-span-2">
+            {["DAILY", "FORTNIGHTLY"].includes(cadence)
+              ? "Day-by-day performance table; monthly cover budget pacing is not included. "
+              : ""}
+            Each prepared draft uses your report allowance. Approval never sends
+            an email.
+          </p>
+          {(() => {
+            try {
+              const next = nextScheduledAt({
+                cadence,
+                weekday: day,
+                monthDay: day,
+                time,
+                timezone: view.timezone,
+                anchorDate,
+                campaignNames: [],
+                showBudget: false,
+                recipients: [],
+              });
+              return (
+                <p className="text-xs text-dash-ink-secondary sm:col-span-2">
+                  Next occurrence if enabled: {date(next.toISOString())} (
+                  {view.timezone})
+                </p>
+              );
+            } catch {
+              return null;
+            }
+          })()}
           <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <input
               type="checkbox"
@@ -333,7 +427,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-semibold">
-                {s.settings.cadence === "WEEKLY" ? "Weekly" : "Monthly"} ·{" "}
+                {cadenceLabel(s.settings.cadence)} ·{" "}
                 {s.enabled ? "Active" : "Paused"}
               </h3>
               <p className="text-xs text-dash-ink-secondary">
@@ -386,7 +480,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
             >
               <p className="font-medium">
                 {r.report?.displayName ??
-                  `${s.settings.cadence === "WEEKLY" ? "Weekly" : "Monthly"} draft`}{" "}
+                  `${cadenceLabel(s.settings.cadence)} draft`}{" "}
                 ·{" "}
                 {r.status === "SENT"
                   ? "Email accepted"

@@ -1,13 +1,13 @@
 # Scheduled report drafts (Beta)
 
-Client Manage → Scheduled reports. One Weekly and one Monthly schedule per client. Meta API only; manual CSV workflows stay in the wizard. Weekly uses the previous seven completed account-local days; Monthly uses the previous full calendar month. Dates are anchored to the due occurrence, including when a worker is late. Monthly start days are limited to 1–28. DST folds use the first occurrence and gaps advance to the first valid minute.
+Client Manage → Scheduled reports. One Daily, Weekly, Fortnightly and Monthly schedule per client. Meta API only; manual CSV workflows stay in the wizard. Daily uses yesterday, Weekly the previous seven completed account-local days, Fortnightly the previous fourteen, and Monthly the previous full calendar month. Daily and Fortnightly use the tested day-by-day table format, with each objective kept separate; their cover does not include monthly budget pacing. Dates are anchored to the due occurrence, including when a worker is late. Monthly start days are limited to 1–28. Fortnightly preparation repeats every 14 local dates from its saved first-preparation date. The form previews the next occurrence. DST folds use the first occurrence and gaps advance to the first valid minute.
 
 All-client review is also available in [Report inbox](report-review-inbox.md); existing per-client controls remain available.
 
 ## Agency workflow
 
-1. Link the client's Meta account and save a schedule, recipient emails (maximum five), local start time, and optional exact campaign names/cover budget. Blank scope means all campaigns. Current client template and agency branding apply at preparation. This release uses campaign-level, objective-based metrics; configure custom detail reports in the wizard.
-2. Use **Prepare now** on a paused schedule to exercise the workflow. It prepares a report for the period ending before today (or the previous calendar month), not a preview of a future occurrence. Normal verification, subscription, concurrency, complexity and report-credit limits apply. Empty or unreconciled data fails rather than becoming a zero report.
+1. Link the client's Meta account and save a schedule, recipient emails (maximum five), local start time, and optional exact campaign names/cover budget. Blank scope means all campaigns. Current client template and agency branding apply at preparation. Weekly/Monthly use campaign-level, objective-based metrics; Daily/Fortnightly use account-level day-by-day tables with objective-specific results. Configure custom detail reports in the wizard.
+2. Use **Prepare now** on a paused schedule to exercise the workflow. It prepares a report for the cadence’s period ending before today (or the previous calendar month), not a preview of a future occurrence. Normal verification, subscription, concurrency, complexity and report-credit limits apply. Empty or unreconciled data fails rather than becoming a zero report.
 3. The agency owner receives a ready/failure notice. Review in the existing editor and download PPTX/source CSV. Source retention is 24 hours. Public browser/PPTX/logo routes reject drafts; Drive exports and normal send-email are blocked for unapproved drafts. Generation does not trigger Slack/Zapier/webhook delivery for scheduled drafts.
 4. Check **I reviewed the report and recipients**, then approve the exact saved version. Approval makes its browser/PPTX links available. Optionally save the approved version to Google Drive for a Slides link, then explicitly **Send approved report**. Email includes links, not file attachments. Approved copies are not emailed automatically. No client mail is sent merely by saving or enabling a schedule.
 5. Schedule edits affect future drafts only. Skip an existing draft and prepare a new one to change its recipient list. Editing an unsent approved report revokes approval; browser/PPTX edits are saved together. Sending/provider-review states block edits. A sent report remains editable through the normal editor, which also changes what recipients see at its live URL.
@@ -26,4 +26,14 @@ All-client review is also available in [Report inbox](report-review-inbox.md); e
 
 ## Follow-up scope
 
-Daily/fortnightly schedules, bespoke metric/ad-set presets, other platforms, automatic Drive-folder setup and unattended client delivery are not in this first release. GA4/agency dashboards and performance alerts remain separate Phase 2 tasks. Creative reporting remains Beta.
+Bespoke metric/ad-set presets, other platforms, automatic Drive-folder setup and unattended client delivery are not in this first release. GA4/agency dashboards and performance alerts remain separate Phase 2 tasks. Creative reporting remains Beta.
+
+## Daily and fortnightly acceptance
+
+Daily fetches only yesterday’s source. Fortnightly fetches exactly the previous 14 completed dates, with no rolling chart or MTD expansion. Both use the existing day-table builder and CSV reconciliation before reserving a report credit, and the existing DAY_BREAKDOWN worker, custom template and agency branding. The approved browser report is a day-by-day table over the same dates; the scheduled report name/PPTX cover identify its cadence. Sparse API delivery dates stay sparse rather than inventing source observations. An empty/unreconciled window fails privately and does not create a zero report for delivery.
+
+Every prepared draft consumes the normal report allowance; daily schedules can use it quickly. Existing subscription/concurrency limits apply. These cadences remain subject to the same review, approval and explicit-send process. No schedule is enabled by this release and no client email is sent by saving a schedule. Monthly budget pacing stays available in Overview and on Weekly/Monthly covers.
+
+Latest-due recovery now searches the calendar directly instead of iterating a capped number of missed occurrences, so daily schedules recovering from more than 400 missed cycles prepare only the newest due period. Existing Weekly/Monthly schedules retain their saved times and periods; no database migration is needed because cadence/settings are stored as strings/JSON.
+
+Before enabling either new cadence in production: prepare one Daily and one Fortnightly draft, verify account-local dates, source/PPTX/browser parity, recipients and branding, then test owner-controlled delivery. The external five-minute timer and provider acceptance gates above still apply.

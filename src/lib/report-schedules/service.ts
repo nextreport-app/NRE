@@ -1,8 +1,11 @@
+import { scheduledReportType, cadenceLabel } from "./cadence";
+import { buildScheduledTableDraft } from "./table-draft";
 import { prisma } from "../prisma";
 import { ServiceError } from "../service-error";
 import {
   scheduleSettingsSchema,
   nextScheduledAt,
+  latestScheduledAt,
   periodForOccurrence,
   type ScheduleSettings,
 } from "./calendar";
@@ -133,13 +136,8 @@ export async function enqueueDueSchedules(now = new Date()) {
       const settings = scheduleSettingsSchema.parse(
         JSON.parse(schedule.settingsJson),
       );
-      // Resume with the most recent due occurrence, without a storm of old drafts after downtime.
-      let dueAt = schedule.nextRunAt;
-      for (let i = 0; i < 400; i++) {
-        const next = nextScheduledAt(settings, dueAt);
-        if (next > now) break;
-        dueAt = next;
-      }
+      // Resume only the newest due occurrence, even after years of downtime.
+      const dueAt = latestScheduledAt(settings, schedule.nextRunAt, now);
       await tx.scheduledReportRun.upsert({
         where: { scheduleId_dueAt: { scheduleId: schedule.id, dueAt } },
         create: {
@@ -313,7 +311,7 @@ export async function processScheduledRun(runId: string) {
         "Meta account currency/timezone no longer matches the schedule.",
       );
     const period = periodForOccurrence(settings, run.dueAt),
-      type = settings.cadence;
+      type = scheduledReportType(settings.cadence);
     const dateSelection = {
       mode: "custom" as const,
       customStart: period.startIso,
@@ -342,21 +340,23 @@ export async function processScheduledRun(runId: string) {
         "Meta returned no delivery rows for this report window. Prepare a manual report or review the account/date selection.",
       );
     const parsed = parseCsvText(source.csvText);
-    // Persist the same unique reach windows used by the report, anchored to its occurrence.
-    const reachMaps = await fetchMetaCampaignPeriodReachMaps({
-      accessToken: fresh.accessToken,
-      adAccountId: config.accountId,
-      ranges: collectReportReachDateRanges({
-        mtdDailyRows: parsed.rows,
-        timezone: config.timezone,
-        dateSelection,
-        now: run.dueAt,
-      }),
-    });
-    source.campaignPeriodReachMaps = mergeMetaCampaignPeriodReachMaps(
-      reachMaps,
-      source.campaignPeriodReachMaps,
-    )!;
+    if (type !== "DAY_BREAKDOWN") {
+      // Persist the same unique reach windows used by the report, anchored to its occurrence.
+      const reachMaps = await fetchMetaCampaignPeriodReachMaps({
+        accessToken: fresh.accessToken,
+        adAccountId: config.accountId,
+        ranges: collectReportReachDateRanges({
+          mtdDailyRows: parsed.rows,
+          timezone: config.timezone,
+          dateSelection,
+          now: run.dueAt,
+        }),
+      });
+      source.campaignPeriodReachMaps = mergeMetaCampaignPeriodReachMaps(
+        reachMaps,
+        source.campaignPeriodReachMaps,
+      )!;
+    }
     if (
       settings.campaignNames.length &&
       settings.campaignNames.some(
@@ -374,29 +374,49 @@ export async function processScheduledRun(runId: string) {
     form.set("selectedAdSets", "[]");
     if (settings.campaignNames.length)
       form.set("selectedCampaigns", JSON.stringify(settings.campaignNames));
-    const built = await buildStandardReportForWizard({
-      client,
-      platform: "META",
-      mtdParsed: parsed,
-      formData: form,
-      now: run.dueAt,
-      metaAdAccountIdFromSession: config.accountId,
-      metaCampaignPeriodReachFromSession: source.campaignPeriodReachMaps,
-    });
-    if ("error" in built) throw new ServiceError(built.error);
-    const verification = verifyStandardWizardReportAgainstCsv({
-      client,
-      mtdRows: parsed.rows,
-      report: built.data,
-      reportType: type,
-      formData: form,
-      platform: "META",
-      now: run.dueAt,
-    });
-    if (verification.status !== "ok")
-      throw new ServiceError(
-        "Source verification did not pass. Review this report manually before preparing another draft.",
-      );
+    let standardData: import("../nre/report-data").ReportData | undefined;
+    let tableData:
+      | import("../nre/day-breakdown-report-data").DayBreakdownReportData
+      | undefined;
+    let verification: ReturnType<typeof verifyStandardWizardReportAgainstCsv>;
+    if (type === "DAY_BREAKDOWN") {
+      const result = buildScheduledTableDraft({
+        accountName: client.accountName,
+        currency: config.currency,
+        rows: parsed.rows,
+        headers: parsed.headers,
+        period,
+        settings,
+        dueAt: run.dueAt,
+      });
+      tableData = result.data;
+      verification = result.verification;
+    } else {
+      const standard = await buildStandardReportForWizard({
+        client,
+        platform: "META",
+        mtdParsed: parsed,
+        formData: form,
+        now: run.dueAt,
+        metaAdAccountIdFromSession: config.accountId,
+        metaCampaignPeriodReachFromSession: source.campaignPeriodReachMaps,
+      });
+      if ("error" in standard) throw new ServiceError(standard.error);
+      verification = verifyStandardWizardReportAgainstCsv({
+        client,
+        mtdRows: parsed.rows,
+        report: standard.data,
+        reportType: type,
+        formData: form,
+        platform: "META",
+        now: run.dueAt,
+      });
+      if (verification.status !== "ok")
+        throw new ServiceError(
+          "Source verification did not pass. Review this report manually before preparing another draft.",
+        );
+      standardData = standard.data;
+    }
     const latest = await prisma.reportSchedule.findUnique({
       where: { id: run.scheduleId },
       include: { client: true },
@@ -428,6 +448,7 @@ export async function processScheduledRun(runId: string) {
       data: { sourceSessionId, verificationJson: JSON.stringify(verification) },
     });
     const reportId = `scheduled_${run.id}`;
+    const shareToken = generateShareToken();
     let report = await prisma.report.findUnique({ where: { id: reportId } });
     if (!report)
       report = await createReportWithinCapacity(user.id, {
@@ -439,19 +460,32 @@ export async function processScheduledRun(runId: string) {
           reportType: type,
           weekStart: period.startIso,
           weekEnd: period.endIso,
-          fileName: `Meta Ads ${type.toLowerCase()} report - ${period.startIso} to ${period.endIso}.pptx`,
-          displayName: `${type === "WEEKLY" ? "Weekly" : "Monthly"} — ${period.startIso}–${period.endIso}`,
-          shareToken: generateShareToken(),
+          fileName: `Meta Ads ${settings.cadence.toLowerCase()} report - ${period.startIso} to ${period.endIso}.pptx`,
+          displayName: `${cadenceLabel(settings.cadence)} — ${period.startIso}–${period.endIso}`,
+          shareToken,
           requiresApproval: true,
           scheduleRunId: run.id,
-          jobPayload: serializeReportGenerationJob({
-            version: 1,
-            kind: "STANDARD",
-            userId: user.id,
-            clientId: client.id,
-            platform: "META",
-            reportData: built.data,
-          }),
+          jobPayload: serializeReportGenerationJob(
+            tableData
+              ? {
+                  version: 1,
+                  kind: "DAY_BREAKDOWN",
+                  userId: user.id,
+                  clientId: client.id,
+                  platform: "META",
+                  dayBreakdownData: tableData,
+                  shareToken,
+                  reportTitle: `${cadenceLabel(settings.cadence)} Performance Report`,
+                }
+              : {
+                  version: 1,
+                  kind: "STANDARD",
+                  userId: user.id,
+                  clientId: client.id,
+                  platform: "META",
+                  reportData: standardData!,
+                },
+          ),
         },
       });
     if (report.clientId !== client.id || report.scheduleRunId !== run.id)

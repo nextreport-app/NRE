@@ -1,4 +1,5 @@
 "use client";
+import { cadenceLabel } from "@/lib/report-schedules/cadence";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InboxItem, InboxView } from "@/lib/report-schedules/inbox";
@@ -239,9 +240,9 @@ export function ReportInbox() {
             {query ? "No matching drafts" : "Nothing in this view"}
           </h2>
           <p className="mt-2 text-sm text-dash-ink-secondary">
-            Save a Weekly or Monthly schedule on a client page, then use Prepare
-            now or enable recurring preparation. Client emails always require
-            approval and an explicit send.
+            Save a schedule on a client page, then use Prepare now or enable
+            recurring preparation. Client emails always require approval and an
+            explicit send.
           </p>
           <Link
             href="/clients"
@@ -262,7 +263,7 @@ export function ReportInbox() {
                 <h2 className="break-words font-semibold">{item.clientName}</h2>
                 <p className="mt-1 break-words text-sm">
                   {item.report?.displayName ??
-                    `${item.cadence === "MONTHLY" ? "Monthly" : "Weekly"} draft`}
+                    `${cadenceLabel(item.cadence)} draft`}
                 </p>
               </div>
               <span
