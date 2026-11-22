@@ -408,6 +408,7 @@ model Client {
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports Report[]
+  reportSchedules ReportSchedule[]
   qualityIncidents ReportQualityIncident[]
 
   createdAt DateTime @default(now())
@@ -416,7 +417,55 @@ model Client {
   @@index([userId])
 }
 
+model ReportSchedule {
+  id String @id @default(cuid())
+  clientId String
+  cadence String
+  settingsJson String @db.Text
+  accountId String
+  currency String
+  timezone String
+  enabled Boolean @default(false)
+  nextRunAt DateTime
+  client Client @relation(fields:[clientId], references:[id], onDelete:Cascade)
+  runs ScheduledReportRun[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([clientId,cadence])
+  @@index([enabled,nextRunAt])
+}
+model ScheduledReportRun {
+  id String @id @default(cuid())
+  scheduleId String
+  dueAt DateTime
+  settingsJson String @db.Text
+  manual Boolean @default(false)
+  verificationJson String? @db.Text
+  status String @default("PENDING")
+  leaseUntil DateTime?
+  attempts Int @default(0)
+  error String? @db.Text
+  sourceSessionId String?
+  approvalDigest String?
+  approvedById String?
+  approvedAt DateTime?
+  deliveredAt DateTime?
+  schedule ReportSchedule @relation(fields:[scheduleId], references:[id], onDelete:Cascade)
+  report Report?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([scheduleId,dueAt])
+  @@index([status,leaseUntil])
+}
+model ReportSchedulerState {
+  id String @id
+  checkedAt DateTime
+}
 model Report {
+  requiresApproval Boolean @default(false)
+  approvedAt DateTime?
+  scheduleRunId String? @unique
+  scheduleRun ScheduledReportRun? @relation(fields:[scheduleRunId],references:[id],onDelete:SetNull)
   id         String       @id @default(cuid())
   clientId   String
   status     ReportStatus @default(PENDING)

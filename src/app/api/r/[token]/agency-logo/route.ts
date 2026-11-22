@@ -1,3 +1,4 @@
+import { isReportPublished } from "@/lib/report-publication";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { reportBrandingFromShareJson } from "@/lib/report-branding";
@@ -9,9 +10,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const { token } = await params;
   const report = await prisma.report.findUnique({
     where: { shareToken: token },
-    select: { status: true, summaryJson: true },
+    select: { status: true, summaryJson: true, requiresApproval: true, approvedAt: true },
   });
-  if (!report || report.status !== "COMPLETE" || !report.summaryJson) {
+  if (!report || !isReportPublished(report) || report.status !== "COMPLETE" || !report.summaryJson) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

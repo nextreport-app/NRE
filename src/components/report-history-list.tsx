@@ -18,6 +18,7 @@ export interface ReportHistoryItem {
   shareToken: string | null;
   /** Report.displayName, already resolved to the auto-generated default (lib/nre/report-display-name.ts) when no custom name was saved — always a non-empty display string, never re-derived client-side. */
   displayName: string;
+  approvalPending?: boolean;
 }
 
 /**
@@ -232,7 +233,7 @@ export function ReportHistoryList({
                   />
                 ) : (
                   <p className="flex items-center gap-1.5 text-[15px] text-dash-ink">
-                    <span className="truncate">{r.displayName}</span>
+                    <span className="truncate">{r.displayName}{r.approvalPending ? " · Private draft" : ""}</span>
                     <button
                       type="button"
                       onClick={() => startEditing(r)}

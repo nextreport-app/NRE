@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { updateReviewReport } from "@/lib/report-schedules/review-update";
 import { restoreHistoricalShareCharts } from "@/lib/nre/share-report";
 import { countVisibleSlides } from "@/lib/nre/share-visibility";
 import { enforceRateLimit } from "@/lib/usage-rate-limit";
@@ -213,10 +215,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (typeof body.displayName === "string") {
       const trimmed = body.displayName.trim().slice(0, MAX_DISPLAY_NAME_LENGTH);
-      const updated = await prisma.report.update({
-        where: { id: reportId },
-        data: { displayName: trimmed || null },
-      });
+      const updated = await updateReviewReport(report,{displayName:trimmed||null});
       return NextResponse.json({ ok: true, displayName: updated.displayName });
     }
 
@@ -288,7 +287,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         share.publishedAt = new Date().toISOString();
       }
 
-      const syncPpt = parsed.data.publish && parsed.data.target !== "browser" && !!share._renderArchive;
+      if (report.requiresApproval && (!parsed.data.publish || !share._renderArchive)) return NextResponse.json({error:"Save this draft with its PowerPoint copy before approval."},{status:409});
+      const syncPpt = parsed.data.publish && (report.requiresApproval || parsed.data.target !== "browser") && !!share._renderArchive;
       let filePath = report.filePath;
       if (syncPpt) {
         const throttle = await enforceRateLimit("report-publish", session.user.id, 3, 60);
@@ -296,16 +296,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const templateBuffer = await loadTemplateBufferForPlatform(report.platform, report.client.template);
         const clientLogo = await loadLogoAsset(report.client.logoUrl);
         const pptxBuffer = await regeneratePptxFromShare(share, templateBuffer, clientLogo);
-        filePath = await saveReportFile(reportId, pptxBuffer);
+        filePath = await saveReportFile(report.requiresApproval?`${reportId}_revision_${randomUUID()}`:reportId, pptxBuffer);
       }
 
-      await prisma.report.update({
-        where: { id: reportId },
-        data: {
+      await updateReviewReport(report,{
           summaryJson: JSON.stringify(share),
           ...(syncPpt && filePath ? { filePath } : {}),
           ...(syncPpt ? { slidesUrl: null } : {}),
-        },
       });
 
       return NextResponse.json({
@@ -316,6 +313,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // Legacy copy-only PATCH
     if (body.copyReview) {
+      if (report.requiresApproval) return NextResponse.json({error:"Use the report editor to save the browser and PPTX copies together."},{status:409});
       const legacySchema = z.object({
         campaigns: z.array(copySlideSchema),
         adSets: z.array(copySlideSchema).optional(),
@@ -339,10 +337,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           return next ? { ...c, aiSummary: next.aiSummary, aiInsights: next.aiInsights } : c;
         });
       }
-      await prisma.report.update({
-        where: { id: reportId },
-        data: { summaryJson: JSON.stringify(share) },
-      });
+      await updateReviewReport(report,{summaryJson:JSON.stringify(share)});
       return NextResponse.json({ ok: true });
     }
 

@@ -20,6 +20,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (!report || report.client.userId !== session.user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    if (report.requiresApproval && !report.approvedAt) return NextResponse.json({error:"Approve this scheduled draft before sharing or exporting to Drive."},{status:409});
     if (report.status !== "COMPLETE" || !report.filePath) {
       return NextResponse.json({ error: "Report is not ready yet." }, { status: 409 });
     }
@@ -52,7 +53,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     await shareFilePublicly(accessToken, fileId);
 
     const slidesUrl = webViewLink || `https://docs.google.com/presentation/d/${fileId}/edit`;
-    await prisma.report.update({ where: { id: report.id }, data: { slidesUrl } });
+    if(report.requiresApproval){
+      const updated=await prisma.report.updateMany({where:{id:report.id,filePath:report.filePath,summaryJson:report.summaryJson,approvedAt:{not:null}},data:{slidesUrl}});
+      if(!updated.count)return NextResponse.json({error:"The report changed during export. Review and export the current version again."},{status:409});
+    }else await prisma.report.update({where:{id:report.id},data:{slidesUrl}});
 
     return NextResponse.json({ url: slidesUrl });
   } catch (err) {

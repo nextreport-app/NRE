@@ -112,7 +112,8 @@ export default async function ClientAllReportsPage({
     status: r.status,
     reportType: r.reportType,
     createdAt: r.createdAt.toISOString(),
-    shareToken: r.shareToken,
+    approvalPending: r.requiresApproval && !r.approvedAt,
+    shareToken: r.requiresApproval && !r.approvedAt ? null : r.shareToken,
     displayName: r.displayName ?? defaultReportDisplayName(r.reportType, r.weekStart, r.weekEnd),
     monthLabel: monthFormatter.format(r.createdAt),
   }));

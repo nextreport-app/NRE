@@ -1,3 +1,4 @@
+import { isReportPublished } from "@/lib/report-publication";
 import { restoreHistoricalShareCharts } from "@/lib/nre/share-report";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -31,7 +32,7 @@ type SharedReportPayload = (
  */
 const getReportByToken = cache(async (token: string): Promise<SharedReportPayload | null> => {
   const report = await prisma.report.findUnique({ where: { shareToken: token }, include: { client: { select: { currency: true, timezone: true } } } });
-  if (!report || report.status !== "COMPLETE" || !report.summaryJson) return null;
+  if (!report || !isReportPublished(report) || report.status !== "COMPLETE" || !report.summaryJson) return null;
   try {
     const parsed = JSON.parse(report.summaryJson);
     const dateContext = { currency: report.client?.currency, timezone: report.client?.timezone };

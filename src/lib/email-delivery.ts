@@ -1,3 +1,4 @@
+import { scheduledDeliveryIsCurrent } from "./report-schedules/delivery-guard";
 import { budgetAlertKey } from "./budget-alert-key";
 import { readBudgetSnapshot } from "./budget-monitor-facts";
 import { prisma } from "./prisma";
@@ -33,6 +34,13 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
     const obsolete = !user || user.planId !== "trial" || getSubscriptionStatus(user).isAdminOverride
       || (row.kind === "TRIAL_ENDING" && expired) || (row.kind === "TRIAL_EXPIRED" && (!expired || (user && now.getTime() - user.trialEndsAt.getTime() > 2 * 86400000))) || (row.kind === "WELCOME" && expired);
     if (obsolete) { await prisma.emailDelivery.update({ where: { key }, data: { status: "CANCELLED" } }); return { accepted: false, cancelled: true }; }
+  }
+  if (["SCHEDULE_NOTICE","SCHEDULE_CLIENT"].includes(row.kind)) {
+    const id=row.key.split(":")[1];
+    const run=id?await prisma.scheduledReportRun.findUnique({where:{id},include:{report:true,schedule:{include:{client:{include:{user:true}}}}}}):null;
+    const payload=JSON.parse(row.payloadJson) as QueuedEmail;
+    const valid=scheduledDeliveryIsCurrent(row.kind,row.key,row.userId,payload.to,run);
+    if(!valid){await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
   if (row.kind === "BUDGET_ALERT") {
     const id=row.key.split(":")[1];
