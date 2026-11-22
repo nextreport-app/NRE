@@ -40,7 +40,7 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
     const snapshot=client ? readBudgetSnapshot(client.budgetMonitorSnapshot,client,now) : null;
     const payload=JSON.parse(row.payloadJson) as QueuedEmail;
     const valid=client && !getSubscriptionStatus(client.user).isBlocked && payload.to.length===1 && payload.to[0]===client.user.email && client.userId===row.userId && client.budgetMonitorEnabled && client.budgetMonitorEmailEnabled &&
-      snapshot?.facts && !snapshot.error && now.getTime()-Date.parse(snapshot.checkedAt)<26*3600000 &&
+      snapshot?.facts?.alertable && !snapshot.error && now.getTime()-Date.parse(snapshot.checkedAt)<26*3600000 &&
       row.key===budgetAlertKey(client.id,snapshot.month,client,snapshot.facts.level);
     if (!valid) {await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
