@@ -282,7 +282,7 @@ export function ClientForm({
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-dash-ink [&::-webkit-details-marker]:hidden">Branding, budget &amp; notes <span className="text-xs text-dash-ink-secondary">Optional ▾</span></summary>
         <div className="space-y-5 border-t border-dash-border p-4">
       <div id={CLIENT_MONTHLY_BUDGET_HASH} className="scroll-mt-24">
-        <label htmlFor="client-monthly-budget-input" className="mb-1 block text-sm text-dash-ink-secondary">Monthly ad budget — optional</label>
+        <label htmlFor="client-monthly-budget-input" className="mb-1 block text-sm text-dash-ink-secondary">Approved monthly ad spend — excluding tax</label>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dash-ink-secondary">
             {CURRENCY_SYMBOL[values.currency]}
@@ -298,7 +298,7 @@ export function ClientForm({
           />
         </div>
         <p className="mt-2 text-xs leading-relaxed text-dash-ink-muted">
-          You can choose whether to show budget pacing on the cover when you generate a report. Update this figure when
+          This is the approved monthly Meta ad-spend limit, excluding tax and agency fees. You can also show it on the report cover. Update it when
           budgets change mid-month.
         </p>
       </div>

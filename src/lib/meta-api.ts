@@ -632,3 +632,24 @@ export function parseMetaSignedRequest(
 export function createMetaDeletionConfirmationCode(metaUserId: string): string {
   return `nre-del-${metaUserId}-${randomUUID().slice(0, 8)}`;
 }
+
+/** Whole-account media spend; never filtered by campaigns, ads or delivery status. */
+export async function fetchMetaAccountSpend(token: string, account: string, since: string, until: string): Promise<number> {
+  if (!/^(act_)?\d+$/.test(account) || !/^\d{4}-\d{2}-\d{2}$/.test(since) || !/^\d{4}-\d{2}-\d{2}$/.test(until) || since > until)
+    throw new ServiceError("Choose a valid account and budget period.");
+  const url = new URL(`${metaGraphBase()}/act_${account.replace(/^act_/, "")}/insights`);
+  url.searchParams.set("fields", "spend,date_start,date_stop");
+  url.searchParams.set("level", "account");
+  url.searchParams.set("time_increment", "all_days");
+  url.searchParams.set("time_range", JSON.stringify({since, until}));
+  const response = await fetchMetaGraph(url, token);
+  const json = await response.json() as {data?: {spend?: string; date_start?: string; date_stop?: string}[]; error?: unknown; paging?: {next?: string}};
+  if (!response.ok || json.error || !Array.isArray(json.data) || json.data.length > 1 || json.paging?.next)
+    throw new ServiceError("Meta spend could not be confirmed. Check the Meta connection and retry.", 502);
+  // An empty Insights result is Meta's no-delivery response, not a failed request.
+  if (!json.data.length) return 0;
+  const row=json.data[0];
+  if (row.spend === undefined || row.spend.trim() === "" || !Number.isFinite(Number(row.spend)) || Number(row.spend) < 0 || row.date_start !== since || row.date_stop !== until)
+    throw new ServiceError("Meta returned incomplete budget data. Retry before trusting this snapshot.", 502);
+  return Number(row.spend);
+}

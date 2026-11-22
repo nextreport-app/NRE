@@ -296,6 +296,12 @@ model Client {
   currency      Currency       @default(INR)
   timezone      String         @default("Asia/Kolkata")
   monthlyBudget Float?
+  budgetMonitorEnabled Boolean @default(false)
+  budgetMonitorEmailEnabled Boolean @default(true)
+  budgetMonitorSnapshot String? @db.Text
+  budgetMonitorLastAttemptAt DateTime?
+  budgetMonitorLeaseUntil DateTime?
+  @@index([budgetMonitorEnabled, budgetMonitorLastAttemptAt])
   // When true and monthlyBudget is set, cover slide shows budget pacing line.
   // Off by default — budgets change mid-month and wrong values embarrass agencies on client-facing decks.
   showBudgetPacingOnCover Boolean @default(false)
