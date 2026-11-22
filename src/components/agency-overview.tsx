@@ -5,9 +5,19 @@ import type { OverviewRow } from "@/lib/agency-overview";
 import {
   DecisionSettingsPanel,
   CampaignTargetForm,
-  VerdictBadge,
 } from "./performance-decision-controls";
-import { campaignVerdict } from "@/lib/performance-monitor/decision";
+import {
+  PortfolioBoard,
+  PortfolioBadge,
+  PORTFOLIO_FILTERS,
+  matchesPortfolio,
+} from "./portfolio-board";
+import { PortfolioRefresh } from "./portfolio-refresh";
+import {
+  campaignBrief,
+  campaignRank,
+  portfolioRank,
+} from "@/lib/performance-monitor/portfolio";
 import type { PeriodMetrics } from "@/lib/performance-monitor/facts";
 const button =
   "rounded-lg border border-dash-border px-3 py-2 text-sm disabled:opacity-50";
@@ -18,10 +28,36 @@ export function AgencyOverview({
 }) {
   const [clients, setClients] = useState<OverviewRow[] | null>(null),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState<string | null>(null),
+    [singleBusy, setBusy] = useState<string | null>(null),
+    [bulkRunning, setBulkRunning] = useState(false),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
     [expanded, setExpanded] = useState(initialClientId);
+  const busy = singleBusy ?? (bulkRunning ? "bulk" : null);
+  const loaded = clients !== null;
+  useEffect(() => {
+    const panel =
+      expanded && loaded
+        ? document.getElementById(`account-${expanded}`)
+        : null;
+    if (panel) {
+      panel.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+        block: "start",
+      });
+      panel.focus({ preventScroll: true });
+    }
+  }, [expanded, loaded]);
+  function selectAccount(id: string) {
+    const closing = expanded === id;
+    setExpanded(closing ? "" : id);
+    if (closing)
+      requestAnimationFrame(() =>
+        document.getElementById(`open-account-${id}`)?.focus(),
+      );
+  }
   const load = useCallback(async () => {
     const r = await fetch("/api/agency-overview", { cache: "no-store" });
     const data = await r.json();
@@ -79,17 +115,12 @@ export function AgencyOverview({
   const visible = clients?.filter(
     (c) =>
       (!search || c.name.toLowerCase().includes(search.toLowerCase())) &&
-      (filter === "all" ||
-        (filter === "attention" && c.needsAttention) ||
-        (filter === "improving" && c.verdict === "improving") ||
-        (filter === "check" && c.unavailable)),
+      matchesPortfolio(c, filter),
   );
   visible?.sort(
     (a, b) =>
       Number(b.id === initialClientId) - Number(a.id === initialClientId) ||
-      Number(b.verdict === "critical") - Number(a.verdict === "critical") ||
-      Number(b.needsAttention) - Number(a.needsAttention) ||
-      Number(b.unavailable) - Number(a.unavailable) ||
+      portfolioRank[a.portfolio.state] - portfolioRank[b.portfolio.state] ||
       a.name.localeCompare(b.name),
   );
   const money = (n: number | null | undefined, c: OverviewRow) =>
@@ -147,28 +178,27 @@ export function AgencyOverview({
         </Link>
       </nav>
       {clients && (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            [
-              "Critical",
-              clients.filter((c) => c.verdict === "critical").length,
-            ],
-            ["Need review", clients.filter((c) => c.needsAttention).length],
-            [
-              "Improving",
-              clients.filter((c) => c.verdict === "improving").length,
-            ],
-            ["Check needed", clients.filter((c) => c.unavailable).length],
-          ].map(([label, count]) => (
-            <div
-              key={label}
-              className="rounded-xl border border-dash-border bg-dash-card p-3"
+        <nav
+          aria-label="Account status"
+          className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3"
+        >
+          {PORTFOLIO_FILTERS.filter((f) => f.key !== "all").map((f) => (
+            <button
+              key={f.key}
+              aria-pressed={filter === f.key}
+              className={`rounded-xl border bg-dash-card p-3 text-left ${filter === f.key ? "border-dash-accent" : "border-dash-border"}`}
+              onClick={() => {
+                setFilter(f.key);
+                setExpanded("");
+              }}
             >
-              <p className="text-xs text-dash-ink-secondary">{label}</p>
-              <p className="mt-1 text-2xl font-semibold">{count}</p>
-            </div>
+              <span className="text-xs text-dash-ink-secondary">{f.label}</span>
+              <span className="mt-1 block text-2xl font-semibold">
+                {clients.filter((c) => matchesPortfolio(c, f.key)).length}
+              </span>
+            </button>
           ))}
-        </div>
+        </nav>
       )}
       <div className="mt-5 flex flex-wrap gap-3">
         <input
@@ -181,13 +211,17 @@ export function AgencyOverview({
         <select
           aria-label="Filter accounts"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setExpanded("");
+          }}
           className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2"
         >
-          <option value="all">All clients</option>
-          <option value="attention">Need review</option>
-          <option value="improving">Improving</option>
-          <option value="check">Check needed</option>
+          {PORTFOLIO_FILTERS.map((f) => (
+            <option key={f.key} value={f.key}>
+              {f.label}
+            </option>
+          ))}
         </select>
         <button
           disabled={!!busy}
@@ -197,11 +231,24 @@ export function AgencyOverview({
           Reload overview
         </button>
       </div>
-      <p className="mt-2 text-xs text-dash-ink-secondary">
-        Saved snapshots are shown without a live Meta request. Check Meta for
-        fresh data. Budgets exclude tax. Each account uses its own currency and
-        timezone; missing metrics appear as —.
-      </p>
+      <details className="mt-3 text-xs text-dash-ink-secondary">
+        <summary className="cursor-pointer">How statuses work</summary>
+        <p className="mt-2">
+          Sorted by urgency using saved snapshots. Positive means an observed
+          improvement or a saved target met. Neutral requires sufficient
+          comparable outcomes. Needs data includes stale, low-volume and
+          no-delivery accounts. Check timestamps before acting. Each account
+          uses its own currency and timezone; budgets exclude tax.
+        </p>
+      </details>
+      {clients && (
+        <PortfolioRefresh
+          clients={clients}
+          disabled={!!singleBusy}
+          onActivity={setBulkRunning}
+          onComplete={load}
+        />
+      )}
       {error && (
         <p role="alert" className="mt-3 text-sm text-amber-400">
           {error}
@@ -222,455 +269,409 @@ export function AgencyOverview({
       {clients && clients.length > 0 && visible?.length === 0 && (
         <p className="mt-5 text-sm">No clients match this view.</p>
       )}
-      {clients?.some((c) => c.needsAttention) && (
-        <aside className="mt-5 rounded-xl border border-dash-border p-4">
-          <h2 className="font-semibold">Look here first</h2>
-          <p className="mt-1 text-xs text-dash-ink-secondary">
-            Observed changes and budget risks. Open an account for evidence and
-            suggested checks.
-          </p>
-          <div className="mt-3 grid gap-2">
-            {clients
-              .filter((c) => c.needsAttention)
-              .sort(
-                (a, b) =>
-                  Number(b.verdict === "critical") -
-                  Number(a.verdict === "critical"),
-              )
-              .slice(0, 8)
-              .map((c) => (
-                <a
-                  key={c.id}
-                  href={`#account-${c.id}`}
-                  onClick={() => setExpanded(c.id)}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border border-dash-border p-3 text-sm"
-                >
-                  <VerdictBadge verdict={c.verdict} />
-                  <strong>{c.name}</strong>
-                  <span>
-                    {c.counts.critical
-                      ? `${c.counts.critical} critical campaign(s)`
-                      : `${c.counts.review} campaign(s) to review`}
-                    {c.budgetAttention ? ` · ${c.budgetLabel}` : ""}
-                  </span>
-                  {c.priorityReason && (
-                    <span className="basis-full text-xs text-dash-ink-secondary">
-                      {c.priorityReason}
-                    </span>
-                  )}
-                </a>
-              ))}
-          </div>
-        </aside>
+      {visible && (
+        <PortfolioBoard
+          rows={visible}
+          selected={expanded}
+          onOpen={selectAccount}
+        />
       )}
-      {visible?.map((c) => (
-        <section
-          id={`account-${c.id}`}
-          key={c.id}
-          className="mt-4 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">{c.name}</h2>
-              <p className="mt-1 text-xs text-dash-ink-secondary">
-                {c.currency} · {c.timezone}
-              </p>
-            </div>
-            <VerdictBadge
-              verdict={c.verdict}
-              fallback={
-                c.unavailable
-                  ? "Check needed"
-                  : !c.linked
-                    ? "Not linked"
-                    : !c.performanceEnabled && !c.budgetEnabled
-                      ? "Monitoring off"
-                      : "No strong signal"
-              }
-            />
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-sm font-medium">{c.budgetLabel}</p>
-              {c.budget?.facts && (
-                <p
-                  className={`mt-1 text-sm ${c.budgetFresh ? "" : "text-dash-ink-secondary"}`}
-                >
-                  {money(c.budget.facts.spent, c)} spent of{" "}
-                  {money(c.budget.config.monthlyBudget, c)} · Projected{" "}
-                  {money(c.budget.facts.projected, c)}
-                  {c.budgetFresh && (
-                    <span className="mt-1 block text-xs">
-                      {(c.budget.facts.projectedOver ?? 0) >
-                      c.budget.facts.tolerance ? (
-                        <>
-                          Projected over budget by{" "}
-                          {money(c.budget.facts.projectedOver, c)}.{" "}
-                        </>
-                      ) : (c.budget.facts.projectedShortfall ?? 0) >
-                        c.budget.facts.tolerance ? (
-                        <>
-                          Projected underspend of{" "}
-                          {money(c.budget.facts.projectedShortfall, c)}.{" "}
-                        </>
-                      ) : null}
-                      Remaining daily allowance: {money(c.dailyAllowance, c)}{" "}
-                      through month end, including today. Planning guide; adjust
-                      budgets in Ads Manager.
-                    </span>
-                  )}
-                </p>
-              )}
-              {c.budget?.checkedAt && (
+      {visible
+        ?.filter((c) => c.id === expanded)
+        .map((c) => (
+          <section
+            id={`account-${c.id}`}
+            tabIndex={-1}
+            aria-label={`${c.name} performance and settings`}
+            key={c.id}
+            className="mt-4 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">{c.name}</h2>
                 <p className="mt-1 text-xs text-dash-ink-secondary">
-                  {c.budgetFresh ? "Checked" : "Prior snapshot"}:{" "}
-                  {date(c.budget.checkedAt, c)}
+                  {c.currency} · {c.timezone}
                 </p>
-              )}
-              {c.budget?.error && (
-                <p className="mt-1 text-xs text-amber-400">{c.budget.error}</p>
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-medium">
-                {c.performanceFresh
-                  ? `${c.warnings} performance signal${c.warnings === 1 ? "" : "s"} to review`
-                  : c.performanceEnabled
-                    ? "Performance check needed"
-                    : "Performance monitoring off"}
-              </p>
-              {c.performance?.facts && (
-                <p className="mt-1 text-xs text-dash-ink-secondary">
-                  {c.performance.facts.periodA.startIso} –{" "}
-                  {c.performance.facts.periodA.endIso} vs{" "}
-                  {c.performance.facts.periodB.startIso} –{" "}
-                  {c.performance.facts.periodB.endIso}
-                </p>
-              )}
-              {c.performance?.checkedAt && (
-                <p className="mt-1 text-xs text-dash-ink-secondary">
-                  {c.performanceFresh ? "Checked" : "Prior snapshot"}:{" "}
-                  {date(c.performance.checkedAt, c)}
-                </p>
-              )}
-              {c.performance?.error && (
-                <p className="mt-1 text-xs text-amber-400">
-                  {c.performance.error}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              className={button}
-              aria-expanded={expanded === c.id}
-              onClick={() => setExpanded(expanded === c.id ? "" : c.id)}
-            >
-              {expanded === c.id ? "Hide details" : "Performance & settings"}
-            </button>
-            <a className={button} href={`/clients/${c.id}`}>
-              Manage client
-            </a>
-            {c.adsManagerUrl && (
-              <a
-                className={button}
-                href={c.adsManagerUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Ads Manager
-              </a>
-            )}
-            {c.performanceEnabled && (
-              <button
-                disabled={!!busy}
-                className={button}
-                onClick={() =>
-                  void action(c.id, "performance-monitor", { action: "check" })
-                }
-              >
-                {busy === c.id ? "Checking…" : "Check Meta"}
-              </button>
-            )}
-            {c.budgetEnabled && (
-              <button
-                disabled={!!busy}
-                className={button}
-                onClick={() =>
-                  void action(c.id, "budget-monitor", { action: "check" })
-                }
-              >
-                Check budget
-              </button>
-            )}
-          </div>
-          {expanded === c.id && (
-            <div className="mt-5 border-t border-dash-border pt-4">
-              <DecisionSettingsPanel
-                client={c}
-                busy={!!busy}
-                save={(body) => action(c.id, "performance-monitor", body)}
-              />
-              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-sm">
-                <label className="flex gap-2">
-                  <input
-                    type="checkbox"
-                    checked={c.performanceEnabled}
-                    disabled={!!busy || !c.linked}
-                    onChange={(e) =>
-                      void action(c.id, "performance-monitor", {
-                        action: "settings",
-                        enabled: e.target.checked,
-                        emailEnabled: c.emailEnabled,
-                      })
-                    }
-                  />
-                  Monitor Meta performance
-                </label>
-                <label className="flex gap-2">
-                  <input
-                    type="checkbox"
-                    checked={c.emailEnabled}
-                    disabled={!!busy || !c.performanceEnabled}
-                    onChange={(e) =>
-                      void action(c.id, "performance-monitor", {
-                        action: "settings",
-                        enabled: c.performanceEnabled,
-                        emailEnabled: e.target.checked,
-                      })
-                    }
-                  />
-                  Email agency owner about warning signals
-                </label>
               </div>
-              <p className="mt-2 text-xs text-dash-ink-secondary">
-                Daily background sweep for rolling periods plus Check Meta. New
-                issues only: at most one review and one critical email per
-                account/comparison/ending date. Continuing issues stay here.
-                Minimum delivery and result thresholds reduce small-sample
-                noise. Budget notifications are managed on the client page.
-              </p>
-              {!c.linked && (
-                <p className="mt-3 text-sm">
-                  Link a Meta account in Client settings first. CSV reporting
-                  remains available.
-                </p>
-              )}
-              {c.performance?.emailError && (
-                <p className="mt-3 text-xs text-amber-400">
-                  {c.performance.emailError}
-                </p>
-              )}
-              {c.performance?.facts && (
-                <div className="mt-5">
-                  <p className="mb-3 text-sm font-medium">
-                    Current completed period
-                    {!c.performanceFresh
-                      ? " · Older snapshot, check Meta before acting"
-                      : ""}
+              <PortfolioBadge state={c.portfolio.state} />
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-medium">{c.budgetLabel}</p>
+                {c.budget?.facts && (
+                  <p
+                    className={`mt-1 text-sm ${c.budgetFresh ? "" : "text-dash-ink-secondary"}`}
+                  >
+                    {money(c.budget.facts.spent, c)} spent of{" "}
+                    {money(c.budget.config.monthlyBudget, c)} · Projected{" "}
+                    {money(c.budget.facts.projected, c)}
+                    {c.budgetFresh && (
+                      <span className="mt-1 block text-xs">
+                        {(c.budget.facts.projectedOver ?? 0) >
+                        c.budget.facts.tolerance ? (
+                          <>
+                            Projected over budget by{" "}
+                            {money(c.budget.facts.projectedOver, c)}.{" "}
+                          </>
+                        ) : (c.budget.facts.projectedShortfall ?? 0) >
+                          c.budget.facts.tolerance ? (
+                          <>
+                            Projected underspend of{" "}
+                            {money(c.budget.facts.projectedShortfall, c)}.{" "}
+                          </>
+                        ) : null}
+                        Remaining daily allowance: {money(c.dailyAllowance, c)}{" "}
+                        through month end, including today. Planning guide;
+                        adjust budgets in Ads Manager.
+                      </span>
+                    )}
                   </p>
-                  {c.performance.facts.valueWarning && (
-                    <p className="mb-3 text-sm text-amber-400">
-                      Purchase value lookup was incomplete. Available delivery
-                      metrics remain visible; refresh before assessing ROAS.
-                    </p>
-                  )}
-                  {c.performance.facts.empty ? (
-                    <p className="text-sm">
-                      Meta returned no delivery for either period.
-                    </p>
-                  ) : (
-                    metrics(c.performance.facts.current, c)
-                  )}
-                  {[...c.performance.facts.campaigns]
-                    .sort((a, b) => {
-                      const rank = {
-                        critical: 0,
-                        review: 1,
-                        improving: 2,
-                        neutral: 3,
-                      };
-                      return (
-                        rank[campaignVerdict(a)] - rank[campaignVerdict(b)]
-                      );
+                )}
+                {c.budget?.checkedAt && (
+                  <p className="mt-1 text-xs text-dash-ink-secondary">
+                    {c.budgetFresh ? "Checked" : "Prior snapshot"}:{" "}
+                    {date(c.budget.checkedAt, c)}
+                  </p>
+                )}
+                {c.budget?.error && (
+                  <p className="mt-1 text-xs text-amber-400">
+                    {c.budget.error}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  {c.performanceFresh
+                    ? `${c.warnings} performance signal${c.warnings === 1 ? "" : "s"} to review`
+                    : c.performanceEnabled
+                      ? "Performance check needed"
+                      : "Performance monitoring off"}
+                </p>
+                {c.performance?.facts && (
+                  <p className="mt-1 text-xs text-dash-ink-secondary">
+                    {c.performance.facts.periodA.startIso} –{" "}
+                    {c.performance.facts.periodA.endIso} vs{" "}
+                    {c.performance.facts.periodB.startIso} –{" "}
+                    {c.performance.facts.periodB.endIso}
+                  </p>
+                )}
+                {c.performance?.checkedAt && (
+                  <p className="mt-1 text-xs text-dash-ink-secondary">
+                    {c.performanceFresh ? "Checked" : "Prior snapshot"}:{" "}
+                    {date(c.performance.checkedAt, c)}
+                  </p>
+                )}
+                {c.performance?.error && (
+                  <p className="mt-1 text-xs text-amber-400">
+                    {c.performance.error}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                className={button}
+                aria-expanded={expanded === c.id}
+                onClick={() => selectAccount(c.id)}
+              >
+                {expanded === c.id ? "Hide details" : "Performance & settings"}
+              </button>
+              <a className={button} href={`/clients/${c.id}`}>
+                Manage client
+              </a>
+              {c.adsManagerUrl && (
+                <a
+                  className={button}
+                  href={c.adsManagerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ads Manager
+                </a>
+              )}
+              {c.performanceEnabled && (
+                <button
+                  disabled={!!busy}
+                  className={button}
+                  onClick={() =>
+                    void action(c.id, "performance-monitor", {
+                      action: "check",
                     })
-                    .map((campaign) => (
-                      <details
-                        key={campaign.name}
-                        className="mt-4 min-w-0 rounded-lg border border-dash-border p-3"
-                      >
-                        <summary className="cursor-pointer break-words text-sm font-medium">
-                          {campaign.name}{" "}
-                          <span className="text-xs text-dash-ink-secondary">
-                            {" "}
-                            · {campaign.objective} ·{" "}
-                          </span>
-                          <VerdictBadge
-                            verdict={
-                              c.performanceFresh
-                                ? campaignVerdict(campaign)
-                                : "neutral"
-                            }
-                            fallback="Check needed"
-                          />
-                        </summary>
-                        <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
-                          Swipe the table to compare both periods →
-                        </p>
-                        <div className="mt-3 max-w-full overflow-x-auto">
-                          <table className="w-full min-w-[480px] text-left text-sm">
-                            <thead>
-                              <tr className="text-xs text-dash-ink-secondary">
-                                <th className="pb-2 font-medium">Metric</th>
-                                <th className="pb-2 font-medium">
-                                  Current period
-                                </th>
-                                <th className="pb-2 font-medium">
-                                  Previous period
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[
-                                [
-                                  "Ad spend",
-                                  money(campaign.current.spend, c),
-                                  money(campaign.previous.spend, c),
-                                ],
-                                [
-                                  "Impressions",
-                                  value(campaign.current.impressions),
-                                  value(campaign.previous.impressions),
-                                ],
-                                [
-                                  "CTR (all)",
-                                  campaign.current.ctr === null
-                                    ? "—"
-                                    : `${value(campaign.current.ctr, 2)}%`,
-                                  campaign.previous.ctr === null
-                                    ? "—"
-                                    : `${value(campaign.previous.ctr, 2)}%`,
-                                ],
-                                [
-                                  "CPC (all)",
-                                  money(campaign.current.cpc, c),
-                                  money(campaign.previous.cpc, c),
-                                ],
-                                [
-                                  campaign.objective,
-                                  value(campaign.current.results, 2),
-                                  value(campaign.previous.results, 2),
-                                ],
-                                [
-                                  campaign.costLabel,
-                                  money(campaign.current.cpr, c),
-                                  money(campaign.previous.cpr, c),
-                                ],
-                                ...(/purchase/i.test(campaign.objective)
-                                  ? [
-                                      [
-                                        "Purchase ROAS",
-                                        campaign.current.roas == null
-                                          ? "—"
-                                          : `${value(campaign.current.roas, 2)}×`,
-                                        campaign.previous.roas == null
-                                          ? "—"
-                                          : `${value(campaign.previous.roas, 2)}×`,
-                                      ],
-                                      [
-                                        "Purchase value",
-                                        money(
-                                          campaign.current.purchaseValue,
-                                          c,
-                                        ),
-                                        money(
-                                          campaign.previous.purchaseValue,
-                                          c,
-                                        ),
-                                      ],
-                                      [
-                                        "ROAS spend basis (campaign)",
-                                        money(campaign.current.roasSpend, c),
-                                        money(campaign.previous.roasSpend, c),
-                                      ],
-                                    ]
-                                  : []),
-                              ].map(([label, a, b]) => (
-                                <tr
-                                  key={label}
-                                  className="border-t border-dash-border"
-                                >
-                                  <th className="py-2 pr-3 font-normal">
-                                    {label}
-                                  </th>
-                                  <td className="py-2 pr-3">{a}</td>
-                                  <td className="py-2">{b}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        {!campaign.comparableResults && (
-                          <p className="mt-2 text-xs text-dash-ink-secondary">
-                            Result trends need comparable goals and reported
-                            results in both periods.
-                          </p>
-                        )}
-                        {campaign.signals.map((signal) => (
-                          <p
-                            key={signal.key}
-                            className={`mt-3 text-sm ${signal.tone === "critical" ? "text-red-400" : signal.tone === "warning" ? "text-amber-400" : "text-emerald-400"}`}
-                          >
-                            <strong>
-                              {signal.metric}
-                              {signal.change === null
-                                ? ""
-                                : `: ${signal.change > 0 ? "+" : ""}${Math.round(signal.change)}%`}
-                              .{" "}
-                              {signal.state === "continuing"
-                                ? "Continuing"
-                                : signal.state === "recovered"
-                                  ? "Recovered"
-                                  : "New"}
-                              {signal.role === "supporting"
-                                ? " · Supporting metric"
-                                : ""}
-                              .
-                            </strong>{" "}
-                            {signal.message}
-                          </p>
-                        ))}
-                        {/purchase/i.test(campaign.objective) && (
-                          <p className="mt-2 text-xs text-dash-ink-secondary">
-                            ROAS uses matching purchase values and
-                            campaign-level period spend. Other metrics use the
-                            ad-set delivery source. Attribution can revise
-                            recent results.
-                          </p>
-                        )}
-                        <CampaignTargetForm
-                          client={c}
-                          campaign={campaign}
-                          busy={!!busy}
-                          save={(body) =>
-                            action(c.id, "performance-monitor", body)
-                          }
-                        />
-                        {!campaign.signals.length && (
-                          <p className="mt-2 text-xs text-dash-ink-secondary">
-                            No threshold signals. This is not a campaign health
-                            guarantee; new or low-volume campaigns may need more
-                            data.
-                          </p>
-                        )}
-                      </details>
-                    ))}
-                </div>
+                  }
+                >
+                  {busy === c.id ? "Checking…" : "Check Meta"}
+                </button>
+              )}
+              {c.budgetEnabled && (
+                <button
+                  disabled={!!busy}
+                  className={button}
+                  onClick={() =>
+                    void action(c.id, "budget-monitor", { action: "check" })
+                  }
+                >
+                  Check budget
+                </button>
               )}
             </div>
-          )}
-        </section>
-      ))}
+            {expanded === c.id && (
+              <div className="mt-5 border-t border-dash-border pt-4">
+                <DecisionSettingsPanel
+                  client={c}
+                  busy={!!busy}
+                  save={(body) => action(c.id, "performance-monitor", body)}
+                />
+                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-sm">
+                  <label className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      checked={c.performanceEnabled}
+                      disabled={!!busy || !c.linked}
+                      onChange={(e) =>
+                        void action(c.id, "performance-monitor", {
+                          action: "settings",
+                          enabled: e.target.checked,
+                          emailEnabled: c.emailEnabled,
+                        })
+                      }
+                    />
+                    Monitor Meta performance
+                  </label>
+                  <label className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      checked={c.emailEnabled}
+                      disabled={!!busy || !c.performanceEnabled}
+                      onChange={(e) =>
+                        void action(c.id, "performance-monitor", {
+                          action: "settings",
+                          enabled: c.performanceEnabled,
+                          emailEnabled: e.target.checked,
+                        })
+                      }
+                    />
+                    Email agency owner about warning signals
+                  </label>
+                </div>
+                <p className="mt-2 text-xs text-dash-ink-secondary">
+                  Daily background sweep for rolling periods plus Check Meta.
+                  New issues only: at most one review and one critical email per
+                  account/comparison/ending date. Continuing issues stay here.
+                  Minimum delivery and result thresholds reduce small-sample
+                  noise. Budget notifications are managed on the client page.
+                </p>
+                {!c.linked && (
+                  <p className="mt-3 text-sm">
+                    Link a Meta account in Client settings first. CSV reporting
+                    remains available.
+                  </p>
+                )}
+                {c.performance?.emailError && (
+                  <p className="mt-3 text-xs text-amber-400">
+                    {c.performance.emailError}
+                  </p>
+                )}
+                {c.performance?.facts && (
+                  <div className="mt-5">
+                    <p className="mb-3 text-sm font-medium">
+                      Current completed period
+                      {!c.performanceFresh
+                        ? " · Older snapshot, check Meta before acting"
+                        : ""}
+                    </p>
+                    {c.performance.facts.valueWarning && (
+                      <p className="mb-3 text-sm text-amber-400">
+                        Purchase value lookup was incomplete. Available delivery
+                        metrics remain visible; refresh before assessing ROAS.
+                      </p>
+                    )}
+                    {c.performance.facts.empty ? (
+                      <p className="text-sm">
+                        Meta returned no delivery for either period.
+                      </p>
+                    ) : (
+                      metrics(c.performance.facts.current, c)
+                    )}
+                    {[...c.performance.facts.campaigns]
+                      .sort((a, b) => {
+                        return campaignRank(a) - campaignRank(b);
+                      })
+                      .map((campaign) => (
+                        <details
+                          key={campaign.name}
+                          className="mt-4 min-w-0 rounded-lg border border-dash-border p-3"
+                        >
+                          <summary className="cursor-pointer break-words text-sm font-medium">
+                            {campaign.name}{" "}
+                            <span className="text-xs text-dash-ink-secondary">
+                              {" "}
+                              · {campaign.objective} ·{" "}
+                            </span>
+                            <PortfolioBadge
+                              state={
+                                c.performanceFresh
+                                  ? campaignBrief(campaign).state
+                                  : "check"
+                              }
+                            />
+                          </summary>
+                          <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
+                            Swipe the table to compare both periods →
+                          </p>
+                          <div className="mt-3 max-w-full overflow-x-auto">
+                            <table className="w-full min-w-[480px] text-left text-sm">
+                              <thead>
+                                <tr className="text-xs text-dash-ink-secondary">
+                                  <th className="pb-2 font-medium">Metric</th>
+                                  <th className="pb-2 font-medium">
+                                    Current period
+                                  </th>
+                                  <th className="pb-2 font-medium">
+                                    Previous period
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[
+                                  [
+                                    "Ad spend",
+                                    money(campaign.current.spend, c),
+                                    money(campaign.previous.spend, c),
+                                  ],
+                                  [
+                                    "Impressions",
+                                    value(campaign.current.impressions),
+                                    value(campaign.previous.impressions),
+                                  ],
+                                  [
+                                    "CTR (all)",
+                                    campaign.current.ctr === null
+                                      ? "—"
+                                      : `${value(campaign.current.ctr, 2)}%`,
+                                    campaign.previous.ctr === null
+                                      ? "—"
+                                      : `${value(campaign.previous.ctr, 2)}%`,
+                                  ],
+                                  [
+                                    "CPC (all)",
+                                    money(campaign.current.cpc, c),
+                                    money(campaign.previous.cpc, c),
+                                  ],
+                                  [
+                                    campaign.objective,
+                                    value(campaign.current.results, 2),
+                                    value(campaign.previous.results, 2),
+                                  ],
+                                  [
+                                    campaign.costLabel,
+                                    money(campaign.current.cpr, c),
+                                    money(campaign.previous.cpr, c),
+                                  ],
+                                  ...(/purchase/i.test(campaign.objective)
+                                    ? [
+                                        [
+                                          "Purchase ROAS",
+                                          campaign.current.roas == null
+                                            ? "—"
+                                            : `${value(campaign.current.roas, 2)}×`,
+                                          campaign.previous.roas == null
+                                            ? "—"
+                                            : `${value(campaign.previous.roas, 2)}×`,
+                                        ],
+                                        [
+                                          "Purchase value",
+                                          money(
+                                            campaign.current.purchaseValue,
+                                            c,
+                                          ),
+                                          money(
+                                            campaign.previous.purchaseValue,
+                                            c,
+                                          ),
+                                        ],
+                                        [
+                                          "ROAS spend basis (campaign)",
+                                          money(campaign.current.roasSpend, c),
+                                          money(campaign.previous.roasSpend, c),
+                                        ],
+                                      ]
+                                    : []),
+                                ].map(([label, a, b]) => (
+                                  <tr
+                                    key={label}
+                                    className="border-t border-dash-border"
+                                  >
+                                    <th className="py-2 pr-3 font-normal">
+                                      {label}
+                                    </th>
+                                    <td className="py-2 pr-3">{a}</td>
+                                    <td className="py-2">{b}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {!campaign.comparableResults && (
+                            <p className="mt-2 text-xs text-dash-ink-secondary">
+                              Result trends need comparable goals and reported
+                              results in both periods.
+                            </p>
+                          )}
+                          {campaign.signals.map((signal) => (
+                            <p
+                              key={signal.key}
+                              className={`mt-3 text-sm ${!c.performanceFresh ? "text-dash-ink-secondary" : signal.tone === "critical" ? "text-red-400" : signal.tone === "warning" ? "text-amber-400" : "text-emerald-400"}`}
+                            >
+                              <strong>
+                                {signal.metric}
+                                {signal.change === null
+                                  ? ""
+                                  : `: ${signal.change > 0 ? "+" : ""}${Math.round(signal.change)}%`}
+                                .{" "}
+                                {signal.state === "continuing"
+                                  ? "Continuing"
+                                  : signal.state === "recovered"
+                                    ? "Recovered"
+                                    : "New"}
+                                {signal.role === "supporting"
+                                  ? " · Supporting metric"
+                                  : ""}
+                                .
+                              </strong>{" "}
+                              {signal.message}
+                            </p>
+                          ))}
+                          {/purchase/i.test(campaign.objective) && (
+                            <p className="mt-2 text-xs text-dash-ink-secondary">
+                              ROAS uses matching purchase values and
+                              campaign-level period spend. Other metrics use the
+                              ad-set delivery source. Attribution can revise
+                              recent results.
+                            </p>
+                          )}
+                          <CampaignTargetForm
+                            client={c}
+                            campaign={campaign}
+                            busy={!!busy}
+                            save={(body) =>
+                              action(c.id, "performance-monitor", body)
+                            }
+                          />
+                          {!campaign.signals.length && (
+                            <p className="mt-2 text-xs text-dash-ink-secondary">
+                              {c.performanceFresh
+                                ? campaignBrief(campaign).reason
+                                : "Prior snapshot only. Refresh before assessing current performance."}
+                            </p>
+                          )}
+                        </details>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        ))}
     </div>
   );
 }

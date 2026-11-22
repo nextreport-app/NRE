@@ -73,7 +73,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
               <button type="button" onClick={handleSignOut} className={navText}>
                 {marketing.navSignOut}
               </button>
-              <Link href="/clients" className={navPrimaryPill}>
+              <Link href="/overview" className={navPrimaryPill}>
                 {marketing.navDashboard}
               </Link>
             </>
@@ -125,7 +125,7 @@ export function PublicNav({ loggedIn }: { loggedIn: boolean }) {
           <div className="mt-4 flex flex-col gap-2 border-t border-navy-border pt-4">
             {loggedIn ? (
               <>
-                <Link href="/clients" onClick={() => setOpen(false)} className={`${navPrimaryPill} w-full py-2 text-center`}>
+                <Link href="/overview" onClick={() => setOpen(false)} className={`${navPrimaryPill} w-full py-2 text-center`}>
                   {marketing.navDashboard}
                 </Link>
                 <button type="button" onClick={handleSignOut} className={`${navOutlinePill} w-full py-2`}>
