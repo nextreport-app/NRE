@@ -404,6 +404,10 @@ model Client {
   // limit enforced by the form/validator, not the column itself.
   notes String? @db.Text
 
+  performanceWindowDays Int @default(7)
+  performanceCustomStart String?
+  performanceCustomEnd String?
+  performanceTargetRules String? @db.Text
   performanceMonitorEnabled Boolean @default(false)
   performanceMonitorEmailEnabled Boolean @default(true)
   performanceMonitorSnapshot String? @db.Text

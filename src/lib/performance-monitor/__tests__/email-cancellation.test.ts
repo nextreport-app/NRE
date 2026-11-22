@@ -27,7 +27,7 @@ import { deliverQueuedEmail } from "../../email-delivery";
 import { buildPerformanceFacts } from "../facts";
 import { parseCsvText } from "../../nre/parse-csv";
 const now = new Date("2026-11-20T12:00Z"),
-  key = "performance-alert:client:2026-11-19",
+  key = "performance-alert:client:2026-11-19:2026-11-13:review",
   config = { currency: "USD", timezone: "UTC", metaAdAccountId: "123" };
 function client() {
   const parsed = parseCsvText(
@@ -41,7 +41,7 @@ function client() {
     performanceMonitorEmailEnabled: true,
     user: { email: "owner@example.com", emailVerified: now },
     performanceMonitorSnapshot: JSON.stringify({
-      version: 1,
+      version: 2,
       config,
       checkedAt: now.toISOString(),
       facts: buildPerformanceFacts(parsed.rows, parsed.headers, config, now),

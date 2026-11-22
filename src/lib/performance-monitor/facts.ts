@@ -1,11 +1,18 @@
+import { decisionSignals } from "./decision";
+import {
+  decisionPeriods,
+  settingsEqual,
+  readCampaignTargets,
+  type DecisionSettings,
+} from "./settings";
+import { PURCHASE_ACTIONS, type PurchaseEvidence } from "./purchase-values";
 import { z } from "zod";
 import type { NreRow } from "../nre/columns";
 import { getRowDate } from "../nre/columns";
 import { parseDate } from "../nre/dates";
 import { buildComparisonReportData } from "../nre/report-data";
-import { comparisonPresetPeriods } from "../nre/comparison-period-selection";
 import { parseCellNum } from "../nre/format";
-export interface PerformanceConfig {
+export interface PerformanceConfig extends DecisionSettings {
   metaAdAccountId: string | null;
   currency: string;
   timezone: string;
@@ -18,15 +25,24 @@ export interface PeriodMetrics {
   cpc: number | null;
   results: number | null;
   cpr: number | null;
+  roas?: number | null;
+  purchaseValue?: number | null;
+  roasSpend?: number | null;
 }
 export interface PerformanceSignal {
   key: string;
-  tone: "warning" | "positive";
+  tone: "critical" | "warning" | "positive";
+  role?: "primary" | "supporting";
+  state?: "new" | "continuing" | "recovered";
+  firstSeenAt?: string;
   metric: string;
-  change: number;
+  change: number | null;
   message: string;
 }
 export interface CampaignPerformance {
+  id?: string | null;
+  target?: import("./settings").CampaignTarget;
+  targetMismatch?: boolean;
   name: string;
   objective: string;
   costLabel: string;
@@ -42,9 +58,10 @@ export interface PerformanceFacts {
   previous: PeriodMetrics;
   campaigns: CampaignPerformance[];
   empty: boolean;
+  valueWarning?: boolean;
 }
 export interface PerformanceSnapshot {
-  version: 1;
+  version: 2;
   config: PerformanceConfig;
   checkedAt: string;
   facts?: PerformanceFacts;
@@ -52,7 +69,7 @@ export interface PerformanceSnapshot {
   emailError?: string;
 }
 export function performanceWindow(timezone: string, now = new Date()) {
-  return comparisonPresetPeriods("thisWeek", now, timezone);
+  return decisionPeriods(timezone, {}, now);
 }
 export function samePerformanceConfig(
   a: PerformanceConfig,
@@ -61,6 +78,7 @@ export function samePerformanceConfig(
   return (
     a.metaAdAccountId?.replace(/^act_/, "") ===
       b.metaAdAccountId?.replace(/^act_/, "") &&
+    settingsEqual(a, b) &&
     a.currency === b.currency &&
     a.timezone === b.timezone
   );
@@ -73,14 +91,21 @@ const metricSchema = z.object({
   cpc: z.number().finite().nonnegative().nullable(),
   results: z.number().finite().nonnegative().nullable(),
   cpr: z.number().finite().nonnegative().nullable(),
+  roas: z.number().finite().nonnegative().nullable().optional(),
+  purchaseValue: z.number().finite().nonnegative().nullable().optional(),
+  roasSpend: z.number().finite().nonnegative().nullable().optional(),
 });
 const periodSchema = z.object({
   startIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 const snapshotSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   config: z.object({
+    performanceWindowDays: z.number().optional(),
+    performanceCustomStart: z.string().nullable().optional(),
+    performanceCustomEnd: z.string().nullable().optional(),
+    performanceTargetRules: z.string().nullable().optional(),
     metaAdAccountId: z.string().nullable(),
     currency: z.string(),
     timezone: z.string(),
@@ -95,8 +120,18 @@ const snapshotSchema = z.object({
       current: metricSchema,
       previous: metricSchema,
       empty: z.boolean(),
+      valueWarning: z.boolean().optional(),
       campaigns: z.array(
         z.object({
+          id: z.string().nullable().optional(),
+          target: z
+            .object({
+              objective: z.string(),
+              maxCpr: z.number().positive().optional(),
+              minRoas: z.number().positive().optional(),
+            })
+            .optional(),
+          targetMismatch: z.boolean().optional(),
           name: z.string(),
           objective: z.string(),
           costLabel: z.string(),
@@ -106,9 +141,12 @@ const snapshotSchema = z.object({
           signals: z.array(
             z.object({
               key: z.string(),
-              tone: z.enum(["warning", "positive"]),
+              tone: z.enum(["critical", "warning", "positive"]),
               metric: z.string(),
-              change: z.number().finite(),
+              change: z.number().finite().nullable(),
+              role: z.enum(["primary", "supporting"]).optional(),
+              state: z.enum(["new", "continuing", "recovered"]).optional(),
+              firstSeenAt: z.string().optional(),
               message: z.string(),
             }),
           ),
@@ -145,7 +183,8 @@ export function isPerformanceFresh(
     age >= 0 &&
     age < 26 * 3600000 &&
     snapshot.facts.periodA.endIso ===
-      performanceWindow(snapshot.config.timezone, now).periodA.endIso
+      decisionPeriods(snapshot.config.timezone, snapshot.config, now).periodA
+        .endIso
   );
 }
 function rowIso(row: NreRow) {
@@ -189,96 +228,17 @@ export function campaignSignals(
   previous: PeriodMetrics,
   comparableResults: boolean,
 ): PerformanceSignal[] {
-  const result: PerformanceSignal[] = [];
-  const add = (
-    key: string,
-    metric: string,
-    a: number | null,
-    b: number | null,
-    threshold: number,
-    tone: "warning" | "positive",
-    down: boolean,
-    message: string,
-  ) => {
-    if (
-      a === null ||
-      b === null ||
-      b <= 0 ||
-      !Number.isFinite(a) ||
-      !Number.isFinite(b)
-    )
-      return;
-    const change = (a / b - 1) * 100;
-    if ((down ? -change : change) + 1e-8 >= threshold)
-      result.push({ key, metric, change, tone, message });
-  };
-  const delivery = current.impressions >= 1000 && previous.impressions >= 1000;
-  if (delivery && (current.clicks ?? 0) >= 10 && (previous.clicks ?? 0) >= 30)
-    add(
-      "ctr-down",
-      "CTR (all)",
-      current.ctr,
-      previous.ctr,
-      20,
-      "warning",
-      true,
-      "CTR fell. Review creative and audience delivery; this signal does not identify the cause.",
-    );
-  if (delivery && (current.clicks ?? 0) >= 30 && (previous.clicks ?? 0) >= 30)
-    add(
-      "cpc-up",
-      "CPC (all)",
-      current.cpc,
-      previous.cpc,
-      25,
-      "warning",
-      false,
-      "CPC rose. Review auction costs and click quality before changing budgets.",
-    );
-  if (comparableResults && delivery && (previous.results ?? 0) >= 10) {
-    if ((current.results ?? 0) >= 5) {
-      add(
-        "cpr-up",
-        "Cost per result",
-        current.cpr,
-        previous.cpr,
-        25,
-        "warning",
-        false,
-        "Cost per result rose. Review conversion quality and tracking before making changes.",
-      );
-      add(
-        "cpr-down",
-        "Cost per result",
-        current.cpr,
-        previous.cpr,
-        20,
-        "positive",
-        true,
-        "Cost per result improved with sufficient reported results. Check lead or purchase quality before scaling.",
-      );
-    }
-    if (current.spend >= previous.spend * 0.8 && previous.spend > 0)
-      add(
-        "results-down",
-        "Results",
-        current.results,
-        previous.results,
-        30,
-        "warning",
-        true,
-        "Reported results fell despite broadly maintained spend. Review delivery and conversion tracking; recent conversions can be delayed.",
-      );
-  }
-  return result;
+  return decisionSignals(current, previous, comparableResults);
 }
+
 export function buildPerformanceFacts(
   rows: NreRow[],
   headers: string[],
   config: PerformanceConfig,
   now = new Date(),
+  purchaseEvidence?: PurchaseEvidence,
 ): PerformanceFacts {
-  const { periodA, periodB } = performanceWindow(config.timezone, now);
+  const { periodA, periodB } = decisionPeriods(config.timezone, config, now);
   if (
     rows.some((row) => {
       const date = rowIso(row);
@@ -342,14 +302,59 @@ export function buildPerformanceFacts(
         b,
         types.size === 1 && hasResults(b) ? c.metricsB.results.value : null,
       );
+    const ids = new Set(
+      group.map((row) => row._raw?.["Campaign ID"]?.trim()).filter(Boolean),
+    );
+    const id = ids.size === 1 ? [...ids][0]! : null;
+    const actions = new Set(
+      group
+        .map((row) => row._raw?.["NRE API result action"]?.trim())
+        .filter(Boolean),
+    );
+    const purchase = /purchase/i.test(c.objective);
+    const action = actions.size === 1 ? [...actions][0]! : null;
+    if (purchase && id && action && PURCHASE_ACTIONS.has(action)) {
+      for (const [metrics, evidence] of [
+        [current, purchaseEvidence?.[id]?.current],
+        [previous, purchaseEvidence?.[id]?.previous],
+      ] as const) {
+        const value = evidence?.values[action];
+        metrics.purchaseValue = value ?? null;
+        metrics.roasSpend = evidence?.spend ?? null;
+        metrics.roas =
+          value !== null &&
+          value !== undefined &&
+          evidence &&
+          evidence.spend > 0
+            ? value / evidence.spend
+            : null;
+      }
+    }
+    const rule = id
+      ? readCampaignTargets(
+          config.performanceTargetRules,
+          config.metaAdAccountId,
+          config.currency,
+        )[id]
+      : undefined;
+    const target = rule?.objective === c.objective ? rule : undefined,
+      targetMismatch = !!rule && !target;
     return {
+      id,
+      target,
+      targetMismatch,
       name: c.campaignName,
       objective: c.objective,
       costLabel: c.costLabel,
       current,
       previous,
       comparableResults,
-      signals: campaignSignals(current, previous, comparableResults),
+      signals: decisionSignals(current, previous, comparableResults, {
+        objective: c.objective,
+        purchase,
+        target,
+        targetMismatch,
+      }),
     };
   });
   return {

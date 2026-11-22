@@ -132,7 +132,7 @@ describe("signals with evidence thresholds", () => {
       base,
       true,
     );
-    expect(signals.map((s) => s.key)).toEqual(["results-down"]);
+    expect(signals.map((s) => s.key)).toEqual(["results-stopped"]);
     expect(signals[0].change).toBe(-100);
   });
   it("does not diagnose falling results when spend falls substantially", () =>
@@ -145,7 +145,7 @@ describe("signals with evidence thresholds", () => {
     ).toBe(false));
   it("recognizes improved cost efficiency without generic scaling advice", () => {
     const s = campaignSignals({ ...base, cpr: 4, results: 25 }, base, true);
-    expect(s).toHaveLength(1);
+    expect(s.map((s) => s.key)).toEqual(["cpr-down", "results-up"]);
     expect(s[0]).toMatchObject({ key: "cpr-down", tone: "positive" });
   });
   it("never compares unlike goals", () =>
@@ -155,7 +155,7 @@ describe("signals with evidence thresholds", () => {
 });
 describe("cache and overview safety", () => {
   const snap = () => ({
-    version: 1 as const,
+    version: 2 as const,
     config,
     checkedAt: now.toISOString(),
     facts: fixture().facts,
@@ -204,4 +204,41 @@ describe("cache and overview safety", () => {
       overviewRow({ ...client, performanceMonitorEnabled: false }, now),
     ).toMatchObject({ warnings: 0, performance: null });
   });
+});
+
+it("uses exact purchase actions and campaign period spend for ROAS, without alias sums", () => {
+  const parsed = parseCsvText(
+    "Campaign name,Campaign ID,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all),NRE API result action\nShop,123,2026-11-19,100,10,Website purchases,10000,100,offsite_conversion.fb_pixel_purchase\nShop,123,2026-11-12,100,10,Website purchases,10000,100,offsite_conversion.fb_pixel_purchase",
+  );
+  const facts = buildPerformanceFacts(
+    parsed.rows,
+    parsed.headers,
+    config,
+    now,
+    {
+      "123": {
+        current: {
+          spend: 120,
+          values: {
+            "offsite_conversion.fb_pixel_purchase": 360,
+            omni_purchase: 999,
+          },
+        },
+        previous: {
+          spend: 100,
+          values: { "offsite_conversion.fb_pixel_purchase": 200 },
+        },
+      },
+    },
+  );
+  expect(facts.campaigns[0].current).toMatchObject({
+    spend: 100,
+    purchaseValue: 360,
+    roasSpend: 120,
+    roas: 3,
+  });
+  expect(facts.campaigns[0].previous.roas).toBe(2);
+  expect(facts.campaigns[0].signals.some((s) => s.key === "roas-up")).toBe(
+    true,
+  );
 });

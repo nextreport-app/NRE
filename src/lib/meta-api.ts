@@ -233,6 +233,7 @@ export interface MetaInsightResultMetric {
 }
 
 export interface MetaInsightRow {
+  action_values?: MetaInsightAction[];
   campaign_name?: string;
   adset_name?: string;
   spend?: string;
@@ -652,4 +653,51 @@ export async function fetchMetaAccountSpend(token: string, account: string, sinc
   if (row.spend === undefined || row.spend.trim() === "" || !Number.isFinite(Number(row.spend)) || Number(row.spend) < 0 || row.date_start !== since || row.date_stop !== until)
     throw new ServiceError("Meta returned incomplete budget data. Retry before trusting this snapshot.", 502);
   return Number(row.spend);
+}
+
+/** Campaign-level purchase values: never sum potentially overlapping ad-set conversion values. */
+export async function fetchMetaCampaignValueInsights(params: {
+  accessToken: string;
+  adAccountId: string;
+  sinceIso: string;
+  untilIso: string;
+}): Promise<MetaInsightRow[]> {
+  const url = new URL(
+    `${metaGraphBase()}/${normalizeMetaAdAccountId(params.adAccountId)}/insights`,
+  );
+  url.searchParams.set("level", "campaign");
+  url.searchParams.set(
+    "fields",
+    "campaign_id,date_start,date_stop,spend,actions,action_values",
+  );
+  url.searchParams.set("time_increment", "all_days");
+  url.searchParams.set(
+    "time_range",
+    JSON.stringify({ since: params.sinceIso, until: params.untilIso }),
+  );
+  url.searchParams.set("use_unified_attribution_setting", "true");
+  url.searchParams.set("action_report_time", "impression");
+  url.searchParams.set("limit", "250");
+  url.searchParams.set("access_token", params.accessToken);
+  const rows: MetaInsightRow[] = [],
+    visited = new Set<string>();
+  let next: string | undefined = url.toString();
+  while (next) {
+    if (visited.has(next) || visited.size >= 100)
+      throw Error("Campaign value pagination did not finish.");
+    visited.add(next);
+    const page = await fetchMetaInsightsPageWithRetry(next, params.accessToken);
+    if (
+      !Array.isArray(page.data) ||
+      page.data.some(
+        (row) =>
+          row.date_start !== params.sinceIso ||
+          row.date_stop !== params.untilIso,
+      )
+    )
+      throw Error("Campaign values did not match the requested dates.");
+    rows.push(...page.data);
+    next = page.paging?.next;
+  }
+  return rows;
 }

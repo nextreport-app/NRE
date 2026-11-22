@@ -1,3 +1,4 @@
+import { decisionAlertKey,actionableSignals } from "./performance-monitor/decision";
 import { scheduledDeliveryIsCurrent } from "./report-schedules/delivery-guard";
 import { budgetAlertKey } from "./budget-alert-key";
 import { readBudgetSnapshot } from "./budget-monitor-facts";
@@ -58,8 +59,9 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
     const client=id?await prisma.client.findUnique({where:{id},include:{user:true}}):null;
     const snapshot=client?readPerformanceSnapshot(client.performanceMonitorSnapshot,client,now):null;
     const payload=JSON.parse(row.payloadJson) as QueuedEmail;
-    const warnings=snapshot?.facts?.campaigns.some(c=>c.signals.some(s=>s.tone==="warning"));
-    const valid=client && !getSubscriptionStatus(client.user).isBlocked && !!client.user.emailVerified && client.userId===row.userId && client.performanceMonitorEnabled && client.performanceMonitorEmailEnabled && isPerformanceFresh(snapshot,now) && warnings && payload.to.length===1 && payload.to[0]===client.user.email && row.key===`performance-alert:${client.id}:${snapshot!.facts!.periodA.endIso}` && payload.text.includes(`Last checked: ${snapshot!.checkedAt}.`);
+    const newSignals=snapshot?.facts?.campaigns.flatMap(c=>actionableSignals(c).filter(s=>s.state!=="continuing"))??[];
+    const warnings=newSignals.length>0;
+    const valid=client && !getSubscriptionStatus(client.user).isBlocked && !!client.user.emailVerified && client.userId===row.userId && client.performanceMonitorEnabled && client.performanceMonitorEmailEnabled && isPerformanceFresh(snapshot,now) && warnings && payload.to.length===1 && payload.to[0]===client.user.email && !client.performanceCustomStart && row.key===decisionAlertKey(client.id,snapshot!.facts!.periodA.endIso,snapshot!.facts!.periodA.startIso,newSignals.some(s=>s.tone==="critical")?"critical":"review") && payload.text.includes(`Last checked: ${snapshot!.checkedAt}.`);
     if(!valid){await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
   if (!process.env.RESEND_API_KEY?.trim()) return { accepted: false, error: "Email sending is not configured." };

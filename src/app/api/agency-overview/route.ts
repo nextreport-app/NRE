@@ -24,6 +24,10 @@ export async function GET() {
         performanceMonitorEnabled: true,
         performanceMonitorEmailEnabled: true,
         performanceMonitorSnapshot: true,
+        performanceWindowDays: true,
+        performanceCustomStart: true,
+        performanceCustomEnd: true,
+        performanceTargetRules: true,
       },
     });
     const now = new Date();

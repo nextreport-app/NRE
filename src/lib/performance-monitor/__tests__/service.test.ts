@@ -5,6 +5,7 @@ const m = vi.hoisted(() => ({
   blocked: false,
   fetch: vi.fn(),
   metadata: vi.fn(),
+  values: vi.fn(),
   queue: vi.fn(),
   deliver: vi.fn(),
 }));
@@ -17,6 +18,7 @@ vi.mock("../../meta-api", () => ({
     .fn()
     .mockResolvedValue({ accessToken: "fresh", refreshed: false }),
   fetchMetaAdAccountMetadata: m.metadata,
+  fetchMetaCampaignValueInsights: m.values,
 }));
 vi.mock("../../meta-token-storage", () => ({
   decryptMetaToken: () => "token",
@@ -106,7 +108,7 @@ it("uses fresh Meta data, exact closed periods, and owner email only", async () 
   );
   expect(m.queue).toHaveBeenCalledWith(
     expect.objectContaining({
-      key: "performance-alert:client:2026-11-19",
+      key: "performance-alert:client:2026-11-19:2026-11-13:review",
       kind: "PERFORMANCE_ALERT",
       payload: expect.objectContaining({ to: ["owner@example.com"] }),
     }),
@@ -162,4 +164,24 @@ it("marks failed email separately without losing measured facts", async () => {
   expect(s.facts).toBeDefined();
   expect(s.error).toBeUndefined();
   expect(s.emailError).toContain("not been confirmed");
+});
+
+it("does not repeat continuing owner warnings", async()=>{
+ const first=await checkClientPerformance("client","owner",now);
+ m.queue.mockClear();m.deliver.mockClear();
+ m.client.findUnique.mockResolvedValue({...client,performanceMonitorSnapshot:JSON.stringify(first)});
+ const next=await checkClientPerformance("client","owner",now);
+ expect(next.facts?.campaigns[0].signals.every(s=>s.state==="continuing")).toBe(true);
+ expect(m.queue).not.toHaveBeenCalled();
+});
+it("fixed historical custom comparisons never email",async()=>{
+ m.client.findUnique.mockResolvedValue({...client,performanceCustomStart:"2026-11-13",performanceCustomEnd:"2026-11-19",performanceWindowDays:7});
+ const result=await checkClientPerformance("client","owner",now);
+ expect(result.error).toBeUndefined();expect(result.facts?.campaigns[0].signals.length).toBeGreaterThan(0);expect(m.queue).not.toHaveBeenCalled();
+});
+it("purchase lookup failure preserves delivery data and marks ROAS unavailable",async()=>{
+ m.fetch.mockResolvedValue({csvText:csv.replaceAll("On-Facebook leads","Website purchases")});
+ m.values.mockRejectedValue(Error("Meta temporarily unavailable"));
+ const result=await checkClientPerformance("client","owner",now);
+ expect(result.error).toBeUndefined();expect(result.facts?.valueWarning).toBe(true);expect(result.facts?.current.spend).toBe(100);expect(result.facts?.campaigns[0].signals.some(s=>s.key==="roas-unavailable")).toBe(true);
 });
