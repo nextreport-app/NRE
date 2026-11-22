@@ -162,7 +162,7 @@ export function AgencyOverview({
   }
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
-      <h1 className="text-2xl font-bold">Agency overview</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Agency overview</h1><Link className={button} href="/reports">Report inbox →</Link></div>
       <p className="mt-2 text-sm text-dash-ink-secondary">
         Meta performance and approved budget pacing, across your clients.
       </p>

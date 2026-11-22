@@ -1150,3 +1150,9 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-success-share {
 html[data-site-theme="light"] .nre-report-wizard :is(.text-emerald-400,.text-emerald-300,.text-dash-success) { color: #047857; }
 html[data-site-theme="light"] .nre-report-wizard :is(.text-amber-300,.text-amber-200,.text-sky-400) { color: #854d0e; }
 .nre-report-wizard :is(input,select,textarea) { font-family: inherit; }
+
+/* Keep report-inbox warning/approval labels readable on the light app surface. */
+html[data-site-theme="light"] .nre-report-inbox .text-amber-400 { color: #92400e; }
+html[data-site-theme="light"] .nre-report-inbox .border-amber-400 { border-color: #b45309; }
+html[data-site-theme="light"] .nre-report-inbox .text-emerald-400 { color: #047857; }
+html[data-site-theme="light"] .nre-report-inbox .border-emerald-400 { border-color: #047857; }
