@@ -5,6 +5,7 @@ export type DashboardCopy = {
   navHome: string;
   navClients: string;
   navOverview: string;
+  navReports: string;
   navAccount: string;
   navBilling: string;
   navSupport: string;
@@ -61,6 +62,7 @@ const EN: DashboardCopy = {
   navHome: "Home",
   navClients: "My Clients",
   navOverview: "Overview",
+  navReports: "Reports",
   navAccount: "Account",
   navBilling: "Billing",
   navSupport: "Support",

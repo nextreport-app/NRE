@@ -7,6 +7,7 @@ import { useSiteCopy } from "@/hooks/use-site-copy";
 const LINK_HREFS = [
   { href: "/", key: "navHome" as const, hideOnMobile: true },
   { href: "/overview", key: "navOverview" as const, hideOnMobile: false },
+  { href: "/reports", key: "navReports" as const, hideOnMobile: false },
   { href: "/clients", key: "navClients" as const, hideOnMobile: false },
   { href: "/account", key: "navAccount" as const, hideOnMobile: false },
   { href: "/billing", key: "navBilling" as const, hideOnMobile: false },

@@ -2,6 +2,8 @@
 
 Client Manage → Scheduled reports. One Weekly and one Monthly schedule per client. Meta API only; manual CSV workflows stay in the wizard. Weekly uses the previous seven completed account-local days; Monthly uses the previous full calendar month. Dates are anchored to the due occurrence, including when a worker is late. Monthly start days are limited to 1–28. DST folds use the first occurrence and gaps advance to the first valid minute.
 
+All-client review is also available in [Report inbox](report-review-inbox.md); existing per-client controls remain available.
+
 ## Agency workflow
 
 1. Link the client's Meta account and save a schedule, recipient emails (maximum five), local start time, and optional exact campaign names/cover budget. Blank scope means all campaigns. Current client template and agency branding apply at preparation. This release uses campaign-level, objective-based metrics; configure custom detail reports in the wizard.
