@@ -27,6 +27,7 @@ beforeEach(() => {
     id: "client",
     userId: "owner",
     metaAdAccountId: "123",
+    timezone:"UTC",currency:"USD",
   } as never);
   vi.mocked(prisma.client.findMany).mockResolvedValue([]);
   vi.mocked(checkClientPerformance).mockResolvedValue({ version: 1 } as never);
@@ -102,4 +103,23 @@ describe("performance monitoring owner controls", () => {
     ).toBe(400);
     expect(prisma.client.update).not.toHaveBeenCalled();
   });
+});
+
+it("saves owned comparison settings and invalidates cached evidence without fetching",async()=>{
+ expect((await POST(request({action:"comparison",days:30}),params)).status).toBe(200);
+ expect(prisma.client.update).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({performanceWindowDays:30,performanceMonitorSnapshot:null})}));
+ expect(checkClientPerformance).not.toHaveBeenCalled();
+});
+it("rejects invalid historical dates before mutation",async()=>{
+ expect((await POST(request({action:"comparison",days:7,customStart:"2026-02-30",customEnd:"2026-03-01"}),params)).status).toBe(400);
+ expect(prisma.client.update).not.toHaveBeenCalled();
+});
+it("binds targets to the owned account and currency",async()=>{
+ expect((await POST(request({action:"targets",rules:{"456":{objective:"PURCHASES",maxCpr:20,minRoas:2}}}),params)).status).toBe(200);
+ const data=vi.mocked(prisma.client.update).mock.calls[0][0].data;
+ expect(JSON.parse(data.performanceTargetRules as string)).toEqual({accountId:"123",currency:"USD",rules:{"456":{objective:"PURCHASES",maxCpr:20,minRoas:2}}});
+});
+it("rejects ROAS targets on non-purchase objectives",async()=>{
+ expect((await POST(request({action:"targets",rules:{"456":{objective:"LEADS",minRoas:2}}}),params)).status).toBe(400);
+ expect(prisma.client.update).not.toHaveBeenCalled();
 });

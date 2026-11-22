@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     const clients = await prisma.client.findMany({
       where: {
         performanceMonitorEnabled: true,
+        performanceCustomStart: null,
         metaAdAccountId: { not: null },
         OR: [
           { performanceMonitorLastAttemptAt: null },

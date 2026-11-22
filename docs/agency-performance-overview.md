@@ -1,3 +1,5 @@
+Current decision/status rules and comparison settings: see [objective decision layer](objective-decision-layer.md). The original implementation notes below describe the initial baseline.
+
 # Agency overview and Meta performance signals
 
 Open **Overview** in the app navigation or **View Meta performance & signals** on Client Manage. Initial load and Reload overview read saved snapshots only; they do not call Meta. Search, attention/check-needed filters and expandable campaign tables keep multi-account review compact. Currency totals are never combined across accounts. Existing approved-budget alerts appear beside performance, with their own opt-in and refresh controls.

@@ -1,3 +1,11 @@
+import { decisionPeriods } from "./settings";
+import {
+  applySignalLifecycle,
+  decisionAlertKey,
+  actionableSignals,
+} from "./decision";
+import { fetchMetaCampaignValueInsights } from "../meta-api";
+import { purchasePeriodMap, type PurchaseEvidence } from "./purchase-values";
 import { prisma } from "../prisma";
 import { ServiceError } from "../service-error";
 import { getSubscriptionStatus } from "../subscription";
@@ -10,14 +18,10 @@ import { fetchMetaReportCsv } from "../nre/meta-api-sync";
 import { parseCsvText } from "../nre/parse-csv";
 import {
   buildPerformanceFacts,
-  performanceWindow,
   readPerformanceSnapshot,
   type PerformanceSnapshot,
 } from "./facts";
 import { queueEmail, deliverQueuedEmail } from "../email-delivery";
-export function performanceAlertKey(clientId: string, endIso: string) {
-  return `performance-alert:${clientId}:${endIso}`;
-}
 export async function checkClientPerformance(
   id: string,
   userId: string,
@@ -80,6 +84,10 @@ export async function checkClientPerformance(
       300,
     );
   const config = {
+    performanceWindowDays: client.performanceWindowDays ?? 7,
+    performanceCustomStart: client.performanceCustomStart ?? null,
+    performanceCustomEnd: client.performanceCustomEnd ?? null,
+    performanceTargetRules: client.performanceTargetRules ?? null,
     metaAdAccountId: client.metaAdAccountId,
     currency: client.currency,
     timezone: client.timezone,
@@ -118,7 +126,7 @@ export async function checkClientPerformance(
       throw new ServiceError(
         "Match this client's currency and timezone to its Meta account in Client settings.",
       );
-    const window = performanceWindow(client.timezone, now);
+    const window = decisionPeriods(client.timezone, config, now);
     const source = await fetchMetaReportCsv({
       accessToken: token.accessToken,
       adAccountId: client.metaAdAccountId,
@@ -130,21 +138,65 @@ export async function checkClientPerformance(
       now,
     });
     const parsed = parseCsvText(source.csvText);
+    let purchases: PurchaseEvidence | undefined,
+      valueWarning = false;
+    if (parsed.rows.some((r) => /purchase/i.test(String(r.result_type)))) {
+      const values = await Promise.allSettled([
+        fetchMetaCampaignValueInsights({
+          accessToken: token.accessToken,
+          adAccountId: client.metaAdAccountId,
+          sinceIso: window.periodA.startIso,
+          untilIso: window.periodA.endIso,
+        }),
+        fetchMetaCampaignValueInsights({
+          accessToken: token.accessToken,
+          adAccountId: client.metaAdAccountId,
+          sinceIso: window.periodB.startIso,
+          untilIso: window.periodB.endIso,
+        }),
+      ]);
+      try {
+        const a =
+            values[0].status === "fulfilled"
+              ? purchasePeriodMap(values[0].value)
+              : {},
+          b =
+            values[1].status === "fulfilled"
+              ? purchasePeriodMap(values[1].value)
+              : {};
+        purchases = Object.fromEntries(
+          [...new Set([...Object.keys(a), ...Object.keys(b)])].map((id) => [
+            id,
+            { current: a[id], previous: b[id] },
+          ]),
+        );
+        valueWarning = values.some((v) => v.status === "rejected");
+      } catch {
+        valueWarning = true;
+      }
+    }
     const facts = buildPerformanceFacts(
       parsed.rows,
       parsed.headers,
       config,
       now,
+      purchases,
+    );
+    facts.valueWarning = valueWarning;
+    applySignalLifecycle(
+      facts,
+      readPerformanceSnapshot(client.performanceMonitorSnapshot, config, now),
+      now,
     );
     if (
-      performanceWindow(client.timezone).periodA.endIso !==
+      decisionPeriods(client.timezone, config).periodA.endIso !==
       window.periodA.endIso
     )
       throw new ServiceError(
         "The account calendar changed during this check. Retry for the new day.",
       );
     snapshot = {
-      version: 1,
+      version: 2,
       config,
       checkedAt: new Date().toISOString(),
       facts,
@@ -165,7 +217,7 @@ export async function checkClientPerformance(
       now,
     );
     snapshot = {
-      version: 1,
+      version: 2,
       config,
       checkedAt: previous?.checkedAt ?? now.toISOString(),
       facts: previous?.facts,
@@ -184,23 +236,32 @@ export async function checkClientPerformance(
     return snapshot;
   }
   try {
-    const warnings = snapshot.facts!.campaigns.flatMap((c) =>
-      c.signals
-        .filter((s) => s.tone === "warning")
-        .map(
-          (s) =>
-            `${c.name} · ${c.objective} · ${s.metric}: ${s.change > 0 ? "+" : ""}${Math.round(s.change)}%. ${s.message}`,
-        ),
+    const newSignals = snapshot.facts!.campaigns.flatMap((c) =>
+      actionableSignals(c)
+        .filter((s) => s.state !== "continuing")
+        .map((s) => ({ campaign: c, signal: s })),
+    );
+    const warnings = newSignals.map(
+      ({ campaign: c, signal: s }) =>
+        `${s.tone === "critical" ? "CRITICAL" : "REVIEW"} · ${c.name} · ${c.objective} · ${s.metric}${s.change === null ? "" : `: ${s.change > 0 ? "+" : ""}${Math.round(s.change)}%`}. ${s.message}`,
     );
     if (
+      !config.performanceCustomStart &&
       client.performanceMonitorEmailEnabled &&
       warnings.length &&
       (await prisma.client.findFirst({
         where: { ...where, performanceMonitorEmailEnabled: true },
       }))
     ) {
-      const key = performanceAlertKey(id, snapshot.facts!.periodA.endIso);
-      const text = `${client.accountName} — performance signals to review\nLast 7 completed days: ${snapshot.facts!.periodA.startIso}–${snapshot.facts!.periodA.endIso}\nCompared with: ${snapshot.facts!.periodB.startIso}–${snapshot.facts!.periodB.endIso}\n${warnings.slice(0, 10).join("\n")}\n${warnings.length > 10 ? `${warnings.length - 10} more signals in NextReport.\n` : ""}Review: https://nextreport.in/overview?client=${encodeURIComponent(id)}\nLast checked: ${snapshot.checkedAt}. Meta conversions may be delayed. These are observed changes, not diagnoses or instructions to pause campaigns.`;
+      const key = decisionAlertKey(
+        id,
+        snapshot.facts!.periodA.endIso,
+        snapshot.facts!.periodA.startIso,
+        newSignals.some((s) => s.signal.tone === "critical")
+          ? "critical"
+          : "review",
+      );
+      const text = `${client.accountName} — performance signals to review\nCurrent completed period: ${snapshot.facts!.periodA.startIso}–${snapshot.facts!.periodA.endIso}\nCompared with: ${snapshot.facts!.periodB.startIso}–${snapshot.facts!.periodB.endIso}\n${warnings.slice(0, 10).join("\n")}\n${warnings.length > 10 ? `${warnings.length - 10} more signals in NextReport.\n` : ""}Review: https://nextreport.in/overview?client=${encodeURIComponent(id)}\nLast checked: ${snapshot.checkedAt}. Meta conversions may be delayed. These are observed changes, not diagnoses or instructions to pause campaigns.`;
       await queueEmail({
         key,
         kind: "PERFORMANCE_ALERT",

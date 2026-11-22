@@ -8,6 +8,13 @@ import {
   isPerformanceFresh,
   type PerformanceConfig,
 } from "./performance-monitor/facts";
+import {
+  actionableSignals,
+  campaignVerdict,
+  type Verdict,
+} from "./performance-monitor/decision";
+import { readCampaignTargets } from "./performance-monitor/settings";
+import { budgetWindow } from "./budget-monitor-facts";
 export interface OverviewClient extends BudgetConfig, PerformanceConfig {
   id: string;
   accountName: string;
@@ -33,7 +40,7 @@ export function overviewRow(client: OverviewClient, now = new Date()) {
     client.performanceMonitorEnabled && isPerformanceFresh(performance, now);
   const warnings = performanceFresh
     ? performance!.facts!.campaigns.reduce(
-        (n, c) => n + c.signals.filter((s) => s.tone === "warning").length,
+        (n, c) => n + actionableSignals(c).length,
         0,
       )
     : 0;
@@ -42,7 +49,54 @@ export function overviewRow(client: OverviewClient, now = new Date()) {
     !!client.metaAdAccountId &&
     ((client.budgetMonitorEnabled && !budgetFresh) ||
       (client.performanceMonitorEnabled && !performanceFresh));
+  const counts = { critical: 0, review: 0, improving: 0, neutral: 0 };
+  if (performanceFresh)
+    for (const c of performance!.facts!.campaigns) counts[campaignVerdict(c)]++;
+  const bw = budgetWindow(client.timezone, now),
+    bf = budgetFresh ? budget?.facts : undefined;
+  const budgetCritical =
+    !!bf &&
+    (bf.over > bf.tolerance + 1e-8 ||
+      (bw.days - bw.completedDays <= 7 &&
+        bf.alertable &&
+        (bf.projectedOver! > bf.tolerance ||
+          bf.projectedShortfall! > bf.tolerance)));
+  const verdict: Verdict =
+    counts.critical || budgetCritical
+      ? "critical"
+      : counts.review || budgetAttention
+        ? "review"
+        : counts.improving
+          ? "improving"
+          : "neutral";
   return {
+    verdict,
+    counts,
+    budgetCritical,
+    priorityReason: performanceFresh
+      ? (performance!
+          .facts!.campaigns.flatMap((c) =>
+            actionableSignals(c).map((s) => ({
+              tone: s.tone,
+              text: `${c.name}: ${s.message}`,
+            })),
+          )
+          .sort(
+            (a, b) =>
+              Number(b.tone === "critical") - Number(a.tone === "critical"),
+          )[0]?.text ?? null)
+      : null,
+    dailyAllowance: bf ? bf.remaining / (bw.days - bw.completedDays) : null,
+    comparison: {
+      days: client.performanceWindowDays ?? 7,
+      customStart: client.performanceCustomStart ?? "",
+      customEnd: client.performanceCustomEnd ?? "",
+    },
+    targets: readCampaignTargets(
+      client.performanceTargetRules,
+      client.metaAdAccountId,
+      client.currency,
+    ),
     id: client.id,
     name: client.accountName,
     currency: client.currency,
