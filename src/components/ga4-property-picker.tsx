@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
@@ -31,12 +31,14 @@ export function Ga4PropertyPicker({
   const [propertyName, setPropertyName] = useState(initialPropertyName ?? "");
   const [properties, setProperties] = useState<Ga4PropertyOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!ga4Connected) return;
     setLoading(true);
+    setAttempted(true);
     setError(null);
     try {
       const res = await fetch(`/api/clients/${clientId}/ga4-property`);
@@ -48,15 +50,13 @@ export function Ga4PropertyPicker({
         setPropertyName(data.linkedPropertyName ?? "");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load properties");
+      setError(
+        err instanceof Error ? err.message : "Could not load properties",
+      );
     } finally {
       setLoading(false);
     }
   }, [clientId, ga4Connected]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function handleSave() {
     if (!propertyId) {
@@ -88,19 +88,31 @@ export function Ga4PropertyPicker({
   async function handleClear() {
     setSaving(true);
     setError(null);
-    await fetch(`/api/clients/${clientId}/ga4-property`, { method: "DELETE" }).catch(() => {});
-    setPropertyId("");
-    setPropertyName("");
-    setSaving(false);
-    showToast("GA4 property unlinked");
-    router.refresh();
+    try {
+      const response = await fetch(`/api/clients/${clientId}/ga4-property`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (!response.ok) throw Error(data.error ?? "Could not unlink property.");
+      setPropertyId("");
+      setPropertyName("");
+      showToast("GA4 property unlinked");
+      router.refresh();
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not unlink property.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!ga4Connected) {
     return (
       <div className="space-y-3">
         <p className="text-[15px] text-dash-ink-secondary">
-          Connect Google Analytics in Account Settings, then link a property here.
+          Connect Google Analytics in Account Settings, then link a property
+          here.
         </p>
         <Link
           href="/account#ga4"
@@ -114,19 +126,34 @@ export function Ga4PropertyPicker({
 
   return (
     <div className="space-y-3">
-      <p className="text-[15px] text-dash-ink-secondary">One GA4 property per client for Google Analytics reports.</p>
+      <p className="text-[15px] text-dash-ink-secondary">
+        Link the website property that belongs to this client.
+      </p>
       {initialPropertyId && initialPropertyName ? (
         <p className="text-[13px] text-dash-ink">
           Linked: <span className="font-medium">{initialPropertyName}</span>
           <span className="text-dash-ink-muted"> · ID {initialPropertyId}</span>
         </p>
       ) : null}
+      <button
+        type="button"
+        disabled={loading || saving}
+        onClick={() => void load()}
+        className="rounded-md border border-dash-border px-3 py-2 text-sm disabled:opacity-50"
+      >
+        {loading ? "Loading…" : "Load GA4 properties"}
+      </button>
       {loading ? (
-        <p className="text-[13px] text-dash-ink-secondary">Loading GA4 properties…</p>
-      ) : properties.length === 0 ? (
-        <p className="text-[13px] text-amber-200">No GA4 properties found. Check your Google Analytics connection.</p>
-      ) : (
+        <p className="text-[13px] text-dash-ink-secondary">
+          Loading GA4 properties…
+        </p>
+      ) : attempted && properties.length === 0 ? (
+        <p className="text-[13px] text-amber-200">
+          No GA4 properties found. Check your Google Analytics connection.
+        </p>
+      ) : properties.length > 0 ? (
         <select
+          aria-label="GA4 property"
           value={propertyId}
           onChange={(e) => setPropertyId(e.target.value)}
           className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
@@ -139,13 +166,17 @@ export function Ga4PropertyPicker({
             </option>
           ))}
         </select>
-      )}
+      ) : null}
       {error ? <p className="text-[13px] text-red-300">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => void handleSave()}
-          disabled={saving || !propertyId}
+          disabled={
+            saving ||
+            !propertyId ||
+            !properties.some((p) => p.propertyId === propertyId)
+          }
           className="rounded-md nre-account-primary bg-dash-accent px-4 py-2 text-[13px] font-semibold hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save property"}
@@ -160,7 +191,10 @@ export function Ga4PropertyPicker({
             Unlink
           </button>
         ) : null}
-        <Link href="/account#ga4" className="self-center text-[12px] text-dash-ink-secondary underline">
+        <Link
+          href="/account#ga4"
+          className="self-center text-[12px] text-dash-ink-secondary underline"
+        >
           Manage GA4 connection
         </Link>
       </div>

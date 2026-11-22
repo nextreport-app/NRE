@@ -125,6 +125,7 @@ export function AgencyOverview({
       <p className="mt-2 text-sm text-dash-ink-secondary">
         Meta performance and approved budget pacing, across your clients.
       </p>
+      <nav aria-label="Overview type" className="mt-4 flex flex-wrap gap-2"><span className={`${button} border-dash-accent text-dash-accent`} aria-current="page">Meta Ads</span><Link href="/websites" className={button}>Website traffic (GA4)</Link></nav>
       {clients && (
         <div className="mt-5 grid grid-cols-3 gap-3">
           {[

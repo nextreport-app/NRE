@@ -139,7 +139,7 @@ export default async function ClientDetailPage({
     displayName: r.displayName ?? defaultReportDisplayName(r.reportType, r.weekStart, r.weekEnd),
   }));
 
-  const ga4Connected = !!owner?.ga4RefreshToken || !!owner?.ga4Enabled;
+  const ga4Connected = !!owner?.ga4RefreshToken && !!owner?.ga4Enabled;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -218,9 +218,10 @@ export default async function ClientDetailPage({
 
         {isClientPlatformConnectionVisible("ga4") ? (
           <Card id="website-analytics">
-            <CardHeading hint="Link a GA4 property now. Website reporting will be enabled after testing.">
+            <CardHeading hint="Link this client’s website property for the GA4 dashboard (Beta).">
               Google Analytics property
             </CardHeading>
+            <a href={`/websites?client=${client.id}`} className="mb-3 inline-block text-sm text-dash-accent hover:underline">View website performance →</a>
             <Ga4PropertyPicker
               clientId={client.id}
               initialPropertyId={client.ga4PropertyId}

@@ -12,7 +12,7 @@ import {
 } from "../meta-launch-scope";
 
 describe("meta launch scope", () => {
-  it("keeps the report wizard Meta-only and client setup Meta-only", () => {
+  it("keeps ads reports Meta-only while allowing GA4 dashboard setup", () => {
     expect(LAUNCH_ENABLED_PLATFORMS).toEqual(["META"]);
     expect(isLaunchPlatformEnabled("META")).toBe(true);
     expect(isLaunchPlatformEnabled("GOOGLE")).toBe(false);
@@ -20,7 +20,7 @@ describe("meta launch scope", () => {
     expect(isLaunchPlatformEnabled("GA4")).toBe(false);
     expect(isClientPlatformConnectionVisible("googleAds")).toBe(false);
     expect(isClientPlatformConnectionVisible("tiktok")).toBe(false);
-    expect(isClientPlatformConnectionVisible("ga4")).toBe(false);
+    expect(isClientPlatformConnectionVisible("ga4")).toBe(true);
     expect(isWizardPlatformSwitchEnabled()).toBe(false);
   });
 

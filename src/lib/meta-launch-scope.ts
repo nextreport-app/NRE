@@ -38,8 +38,8 @@ export function isWizardPlatformSwitchEnabled(): boolean {
 }
 
 export function isClientPlatformConnectionVisible(key: ClientPlatformConnectionKey): boolean {
-  // Keep client setup aligned with the currently released report sources.
-  return key === "meta";
+  // GA4 setup is available for the website dashboard; GA4 report generation remains gated.
+  return key === "meta" || key === "ga4";
 }
 
 export function isLaunchReportTypeEnabled(reportType: string): reportType is LaunchEnabledReportType {

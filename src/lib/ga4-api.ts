@@ -91,6 +91,7 @@ export async function refreshGa4AccessToken(refreshToken: string): Promise<Ga4To
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
+    signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
     throw new Error(`Failed to refresh GA4 access token (${res.status}): ${await res.text()}`);
@@ -152,7 +153,10 @@ export interface Ga4DateRange {
   endIso: string;
 }
 
-interface RunReportResponse {
+export interface RunReportResponse {
+  dimensionHeaders?: Array<{name?:string}>;
+  rowCount?: number;
+  metadata?: {timeZone?:string;currencyCode?:string;subjectToThresholding?:boolean;dataLossFromOtherRow?:boolean;samplingMetadatas?:Array<{samplesReadCount?:string;samplingSpaceSize?:string}>;schemaRestrictionResponse?:{activeMetricRestrictions?:unknown[]}};
   rows?: Array<{
     dimensionValues?: Array<{ value?: string }>;
     metricValues?: Array<{ value?: string }>;
@@ -175,6 +179,7 @@ export async function runGa4Report(
     dimensions?: Array<{ name: string }>;
     metrics: Array<{ name: string }>;
     limit?: number;
+    offset?: number;
     orderBys?: Array<{ metric?: { metricName: string }; dimension?: { dimensionName: string }; desc?: boolean }>;
   },
 ): Promise<RunReportResponse> {
@@ -185,6 +190,7 @@ export async function runGa4Report(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
     throw new Error(`GA4 Data API runReport failed (${res.status}): ${await res.text()}`);
@@ -225,4 +231,15 @@ export function parseGa4Rows(
 /** ISO YYYY-MM-DD → GA4 date string (same format). */
 export function toGa4Date(iso: string): string {
   return iso.slice(0, 10);
+}
+
+/** Property-local calendar; deliberately separate from a client's Meta account timezone. */
+export async function fetchGa4PropertyMetadata(accessToken:string,propertyId:string):Promise<{propertyId:string;displayName:string;timezone:string;currency:string}>{
+ if(!/^\d+$/.test(propertyId))throw Error("Invalid GA4 property ID");
+ const response=await fetch(`${GA4_ADMIN_BASE}/properties/${propertyId}`,{headers:{Authorization:`Bearer ${accessToken}`},signal:AbortSignal.timeout(30000)});
+ if(!response.ok)throw Error(`GA4 property metadata failed (${response.status})`);
+ const data=await response.json() as {name?:string;displayName?:string;timeZone?:string;currencyCode?:string};
+ if(data.name!==`properties/${propertyId}`||!data.timeZone||!data.currencyCode)throw Error("GA4 property metadata is incomplete");
+ new Intl.DateTimeFormat("en",{timeZone:data.timeZone});
+ return {propertyId,displayName:data.displayName??propertyId,timezone:data.timeZone,currency:data.currencyCode};
 }

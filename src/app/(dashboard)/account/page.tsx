@@ -138,7 +138,18 @@ export default async function AccountSettingsPage({
         />
       </section>
 
-      <details open={!!(google_ads_connected || google_ads_error || ga4_connected || ga4_error || tiktok_ads_connected || tiktok_ads_error)} className="mb-10 rounded-lg border border-dash-border bg-dash-card/30 p-4">
+          <section className="mb-10 scroll-mt-6">
+            <SectionHeading>Google Analytics (GA4)</SectionHeading>
+            <Ga4Settings
+              initialConnectedEmail={user.ga4ConnectedEmail}
+              initialConnected={user.ga4Enabled}
+              justConnected={ga4_connected === "1"}
+              connectError={ga4_error ?? null}
+              ga4Configured={ga4Configured}
+            />
+          </section>
+
+      <details open={!!(google_ads_connected || google_ads_error || tiktok_ads_connected || tiktok_ads_error)} className="mb-10 rounded-lg border border-dash-border bg-dash-card/30 p-4">
         <summary className="cursor-pointer text-sm font-semibold text-dash-ink">Other platform connections</summary>
         <p className="mt-2 text-[13px] text-dash-ink-secondary">For testing only. These platforms are not included in the current Meta Ads reporting launch.</p>
         <div className="mt-6">
@@ -153,16 +164,7 @@ export default async function AccountSettingsPage({
             />
           </section>
 
-          <section className="mb-10 scroll-mt-6">
-            <SectionHeading>Google Analytics (GA4)</SectionHeading>
-            <Ga4Settings
-              initialConnectedEmail={user.ga4ConnectedEmail}
-              initialConnected={user.ga4Enabled}
-              justConnected={ga4_connected === "1"}
-              connectError={ga4_error ?? null}
-              ga4Configured={ga4Configured}
-            />
-          </section>
+
 
           <section className="mb-10 scroll-mt-6">
             <SectionHeading>TikTok Ads</SectionHeading>
