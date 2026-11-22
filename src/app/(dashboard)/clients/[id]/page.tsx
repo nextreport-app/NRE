@@ -1,3 +1,4 @@
+import { ClientReportDesign } from "@/components/client-report-design";
 import { ScheduledReportsCard } from "@/components/scheduled-reports-card";
 import { BudgetMonitorCard } from "@/components/budget-monitor-card";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
@@ -198,6 +199,8 @@ export default async function ClientDetailPage({
 
         <a href={`/overview?client=${client.id}`} className="block rounded-xl border border-dash-border p-4 text-sm text-dash-accent hover:underline">View Meta performance & signals →</a>
 
+        <ClientReportDesign clientId={client.id}/>
+
         <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId,client.budgetMonitorTolerance])} clientId={client.id} />
 
         <ScheduledReportsCard clientId={client.id} />
@@ -233,6 +236,7 @@ export default async function ClientDetailPage({
 
         <SettingsDisclosure id="client-settings" title="Client settings" hint="This brand’s currency, timezone, template, budget, logo and notes.">
           <ClientForm
+            showTemplatePicker={false}
             clientId={client.id}
             initial={{
               accountName: client.accountName,

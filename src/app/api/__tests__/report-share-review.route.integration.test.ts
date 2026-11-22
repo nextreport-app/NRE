@@ -1,3 +1,6 @@
+vi.mock("@/lib/agency-templates/load",()=>({loadReportTemplate:vi.fn().mockResolvedValue(Buffer.from("saved custom template"))}));
+import {loadReportTemplate} from "@/lib/agency-templates/load";
+import {loadTemplateBufferForPlatform} from "@/lib/pptx/templates";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
@@ -169,4 +172,60 @@ describe("report review boundary", () => {
       }),
     );
   });
+});
+
+it("uses the report's saved agency design and palette when publishing edits", async () => {
+  vi.mocked(prisma.report.findUnique).mockResolvedValue({
+    ...report,
+    platform: "META",
+    agencyTemplateId: "original-design",
+    renderTemplateVariant: "LIGHT",
+    client: { ...report.client, template: "DARK" },
+  } as never);
+  const response = await PATCH(
+    new Request("http://localhost/review", {
+      method: "PATCH",
+      body: JSON.stringify({
+        shareReview: {
+          publish: true,
+          target: "all",
+          visibility:share.visibility,
+          campaigns: [],
+          adSets: [],
+        },
+      }),
+    }),
+    params,
+  );
+  expect(response.status).toBe(200);
+  expect(loadReportTemplate).toHaveBeenCalledWith(
+    "META",
+    "LIGHT",
+    "owner",
+    "original-design",
+  );
+});
+it("uses a legacy archive's palette instead of the client's newer choice", async () => {
+  vi.mocked(prisma.report.findUnique).mockResolvedValue({
+    ...report,
+    platform: "META",
+    client: { ...report.client, template: "LIGHT" },
+  } as never);
+  const response = await PATCH(
+    new Request("http://localhost/review", {
+      method: "PATCH",
+      body: JSON.stringify({
+        shareReview: {
+          publish: true,
+          target: "all",
+          visibility:share.visibility,
+          campaigns: [],
+          adSets: [],
+        },
+      }),
+    }),
+    params,
+  );
+  expect(response.status).toBe(200);
+  expect(loadTemplateBufferForPlatform).toHaveBeenCalledWith("META", "DARK");
 });

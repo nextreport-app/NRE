@@ -58,6 +58,7 @@ model User {
   // normalized to PNG server-side) as the small footer logo on every slide.
   // Both optional; either/both absent means those elements are simply
   // skipped at render time, never shown empty.
+  agencyTemplates AgencyTemplate[]
   agencyName    String?
   // Legacy cover preference; reportBrandingMode controls current report credits.
   showAgencyNameOnCover Boolean @default(false)
@@ -307,6 +308,8 @@ model Client {
   // Off by default — budgets change mid-month and wrong values embarrass agencies on client-facing decks.
   showBudgetPacingOnCover Boolean @default(false)
   template      ReportTemplate @default(DARK)
+  agencyTemplateId String?
+  agencyTemplate AgencyTemplate? @relation("ClientAgencyTemplate",fields:[agencyTemplateId],references:[id],onDelete:SetNull)
 
   // Client logo (Vercel Blob, private access, always normalized to PNG
   // server-side) — shown bottom-right on every report's cover slide for
@@ -484,7 +487,28 @@ model WebsiteDashboardSnapshot {
   @@unique([clientId,days])
 }
 
+model AgencyTemplate {
+  id String @id @default(cuid())
+  userId String
+  name String
+  baseVariant ReportTemplate
+  status String @default("UPLOADING")
+  filePath String
+  previewPath String
+  digest String?
+  approvedAt DateTime?
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  clients Client[] @relation("ClientAgencyTemplate")
+  reports Report[] @relation("ReportAgencyTemplate")
+  @@index([userId])
+}
+
 model Report {
+  renderTemplateVariant ReportTemplate?
+  agencyTemplateId String?
+  agencyTemplate AgencyTemplate? @relation("ReportAgencyTemplate",fields:[agencyTemplateId],references:[id],onDelete:Restrict)
   requiresApproval Boolean @default(false)
   approvedAt DateTime?
   scheduleRunId String? @unique

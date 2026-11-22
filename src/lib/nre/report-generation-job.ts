@@ -1,3 +1,4 @@
+import { loadReportTemplate } from "@/lib/agency-templates/load";
 import { recordQualityIncident } from "@/lib/quality-agents/incidents";
 import { completeReportGeneration } from "@/lib/report-generation-events";
 import { claimReportGeneration, failReportGeneration } from "@/lib/report-capacity";
@@ -27,7 +28,7 @@ import { generateInsights, revalidateCachedInsights } from "@/lib/ai/generate-in
 import { renderComparisonPptx, renderDayBreakdownPptx, renderHistoricalPptx, renderPptx } from "@/lib/pptx/render";
 import { buildHistoricalAiCopyMap } from "@/lib/nre/historical-report-data";
 import type { ImageAsset } from "@/lib/pptx/embed-image";
-import { isLightReportTemplate, loadTemplateBufferForPlatform } from "@/lib/pptx/templates";
+import { isLightReportTemplate } from "@/lib/pptx/templates";
 import { buildShareComparisonReportData } from "@/lib/nre/share-comparison-report";
 import { saveReportFile, readLogoFile } from "@/lib/storage";
 import { contentTypeForLogoFormat, detectLogoFormat, extensionForLogoFormat, readLogoDimensions } from "@/lib/logo-processing";
@@ -118,6 +119,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
   if (job.userId !== report.client.userId || job.clientId !== report.clientId) { await markReportFailed(reportId, "Report ownership could not be verified."); return; }
   const client = report.client;
+  const renderVariant=report.renderTemplateVariant??client.template;
   const userIntegrations = report.requiresApproval ? null : await prisma.user.findUnique({
     where: { id: job.userId },
     select: { slackWebhookUrl: true, automationWebhookUrl: true },
@@ -131,7 +133,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         loadLogoAsset(client.logoUrl),
       ]);
 
-      const templateBuffer = await loadTemplateBufferForPlatform(job.platform, client.template);
+      const templateBuffer = await loadReportTemplate(job.platform, renderVariant,job.userId,report.agencyTemplateId);
       const pptxBuffer = await renderPptx({
         templateBuffer,
         data: job.summaryData,
@@ -139,7 +141,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         reportTitle: "PREVIOUS MONTH PERFORMANCE SUMMARY",
         agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
-        isLightTemplate: isLightReportTemplate(client.template),
+        isLightTemplate: isLightReportTemplate(renderVariant),
       });
 
       const filePath = await saveReportFile(reportId, pptxBuffer);
@@ -175,14 +177,14 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
     if (job.kind === "COMPARISON") {
       const [user, clientLogo] = await Promise.all([prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }), loadLogoAsset(client.logoUrl)]);
-      const templateBuffer = await loadTemplateBufferForPlatform(job.platform, client.template);
+      const templateBuffer = await loadReportTemplate(job.platform, renderVariant,job.userId,report.agencyTemplateId);
       const pptxBuffer = await renderComparisonPptx({
         templateBuffer,
         data: job.comparisonData,
         clientLogo,
         reportTitle: job.reportTitle,
         agencyName: agencyNameForCoverSlide(user ?? {}),
-        isLightTemplate: isLightReportTemplate(client.template),
+        isLightTemplate: isLightReportTemplate(renderVariant),
       });
 
       const filePath = await saveReportFile(reportId, pptxBuffer);
@@ -223,10 +225,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         loadLogoAsset(client.logoUrl),
       ]);
 
-      const templateBuffer = await loadTemplateBufferForPlatform(
-        job.platform === "TIKTOK" ? "TIKTOK" : "META",
-        client.template,
-      );
+      const templateBuffer = await loadReportTemplate(job.platform === "TIKTOK" ? "TIKTOK" : "META",renderVariant,job.userId,report.agencyTemplateId);
       const aiCopyMap = buildHistoricalAiCopyMap(job.historicalData.slides, job.historicalData.adSetSlides);
       const pptxBuffer = await renderHistoricalPptx({
         templateBuffer,
@@ -234,7 +233,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         reportTitle: job.reportTitle,
         agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
-        isLightTemplate: isLightReportTemplate(client.template),
+        isLightTemplate: isLightReportTemplate(renderVariant),
         aiCopyBySlideKey: aiCopyMap,
       });
 
@@ -252,7 +251,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
           aiCopy: Object.fromEntries(aiCopyMap),
           reportTitle: job.reportTitle,
           agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
-          isLightTemplate: isLightReportTemplate(client.template),
+          isLightTemplate: isLightReportTemplate(renderVariant),
         },
       };
 
@@ -283,14 +282,14 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         loadLogoAsset(client.logoUrl),
       ]);
 
-      const templateBuffer = await loadTemplateBufferForPlatform("META", client.template);
+      const templateBuffer = await loadReportTemplate("META", renderVariant,job.userId,report.agencyTemplateId);
       const pptxBuffer = await renderDayBreakdownPptx({
         templateBuffer,
         data: job.dayBreakdownData,
         reportTitle: job.reportTitle,
         agencyName: agencyNameForCoverSlide(user ?? {}),
         clientLogo,
-        isLightTemplate: isLightReportTemplate(client.template),
+        isLightTemplate: isLightReportTemplate(renderVariant),
       });
 
       const filePath = await saveReportFile(reportId, pptxBuffer);
@@ -305,7 +304,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
           dayBreakdownData: job.dayBreakdownData,
           reportTitle: job.reportTitle,
           agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
-          isLightTemplate: isLightReportTemplate(client.template),
+          isLightTemplate: isLightReportTemplate(renderVariant),
         },
       };
 
@@ -345,7 +344,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       loadLogoAsset(client.logoUrl),
     ]);
 
-    const templateBuffer = await loadTemplateBufferForPlatform(platform, client.template);
+    const templateBuffer = await loadReportTemplate(platform, renderVariant,job.userId,report.agencyTemplateId);
     const pptxBuffer = await renderPptx({
       templateBuffer,
       data: reportData,
@@ -354,7 +353,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       reportTitle,
       agencyName: agencyNameForCoverSlide(user ?? {}),
       clientLogo,
-      isLightTemplate: isLightReportTemplate(client.template),
+      isLightTemplate: isLightReportTemplate(renderVariant),
     });
 
     const filePath = await saveReportFile(reportId, pptxBuffer);
@@ -373,7 +372,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         reportData,
         aiCopy: Object.fromEntries(aiCopyBySlideKey),
         currencySymbol,
-        isLightTemplate: isLightReportTemplate(client.template),
+        isLightTemplate: isLightReportTemplate(renderVariant),
         reportTitle,
         agencyName: agencyNameForCoverSlide(user ?? {}) ?? null,
       },
