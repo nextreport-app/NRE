@@ -51,6 +51,7 @@ export const websiteSnapshotSchema = z.object({
   current: metrics,
   previous: metrics,
   channels: z.array(channel),
+  previousChannels: z.array(channel).optional(),
   pages: z.array(
     z.object({
       name: z.string(),

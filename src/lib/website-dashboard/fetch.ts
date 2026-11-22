@@ -125,11 +125,11 @@ export async function fetchWebsiteSnapshot(
     "keyEvents",
     "sessionKeyEventRate",
   ] as const;
-  async function channels() {
+  async function channels(range: typeof periods.currentPeriod) {
     const out: WebsiteSnapshot["channels"] = [];
     for (let offset = 0; offset < 1000; offset += 100) {
       const response = await request(
-          periods.currentPeriod,
+          range,
           channelMetrics,
           ["sessionDefaultChannelGroup"],
           100,
@@ -158,7 +158,7 @@ export async function fetchWebsiteSnapshot(
     await Promise.all([
       overview(periods.currentPeriod),
       overview(periods.previousPeriod),
-      channels(),
+      channels(periods.currentPeriod),
       request(
         periods.currentPeriod,
         ["sessions", "engagementRate", "keyEvents"],
@@ -167,6 +167,8 @@ export async function fetchWebsiteSnapshot(
       ),
       request(periods.currentPeriod, ["sessions", "keyEvents"], ["date"], 100),
     ]);
+  // Keep each snapshot at the existing five concurrent GA4 requests; the two window caches may refresh together.
+  const previousChannels = await channels(periods.previousPeriod);
   const pages = ga4DashboardRows(
     pageResponse,
     ["sessions", "engagementRate", "keyEvents"],
@@ -188,8 +190,9 @@ export async function fetchWebsiteSnapshot(
     trendResponse.rowCount > trend.length
   )
     throw Error("GA4 daily trend is incomplete.");
-  if (new Set(channelRows.map((c) => c.name)).size !== channelRows.length)
-    throw Error("GA4 returned duplicate channel rows.");
+  for (const list of [channelRows, previousChannels])
+    if (new Set(list.map((c) => c.name)).size !== list.length)
+      throw Error("GA4 returned duplicate channel rows.");
   if (new Set(trend.map((d) => d.date)).size !== trend.length)
     throw Error("GA4 returned duplicate daily rows.");
   for (const row of trend) {
@@ -211,6 +214,7 @@ export async function fetchWebsiteSnapshot(
     current: current.metrics,
     previous: previous.metrics,
     channels: channelRows,
+    previousChannels,
     pages,
     trend,
     warnings: [...warnings],

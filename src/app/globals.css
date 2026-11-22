@@ -1156,3 +1156,9 @@ html[data-site-theme="light"] .nre-report-inbox .text-amber-400 { color: #92400e
 html[data-site-theme="light"] .nre-report-inbox .border-amber-400 { border-color: #b45309; }
 html[data-site-theme="light"] .nre-report-inbox .text-emerald-400 { color: #047857; }
 html[data-site-theme="light"] .nre-report-inbox .border-emerald-400 { border-color: #047857; }
+
+/* Website comparison labels retain contrast on light dashboard surfaces. */
+html[data-site-theme="light"] .nre-website-changes .text-amber-400 { color: #92400e; }
+html[data-site-theme="light"] .nre-website-changes .border-amber-400 { border-color: #b45309; }
+html[data-site-theme="light"] .nre-website-changes .text-emerald-400 { color: #047857; }
+html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-color: #047857; }

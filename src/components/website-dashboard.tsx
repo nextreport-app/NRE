@@ -1,4 +1,5 @@
 "use client";
+import { WebsiteChanges, WebsiteChannelComparison } from "./website-changes";
 import { WebsiteSessionsTrend } from "./website-sessions-trend";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -53,6 +54,9 @@ export function WebsiteDashboard({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const version = useRef(0);
+  const invalidate = useCallback(() => {
+    version.current++;
+  }, []);
   const load = useCallback(async () => {
     const request = ++version.current;
     const response = await fetch(
@@ -68,17 +72,26 @@ export function WebsiteDashboard({
     }
   }, [clientId]);
   useEffect(() => {
-    const refresh = () => void load().catch((e) => setError(e.message));
+    let active = true;
+    const refresh = () =>
+      void load().catch((e) => {
+        if (active) setError(e.message);
+      });
     refresh();
     window.addEventListener("focus", refresh);
     return () => {
+      active = false;
+      invalidate();
       window.removeEventListener("focus", refresh);
     };
-  }, [load]);
+  }, [load, invalidate]);
   const selected = view?.clients.find(
       (c) => c.id === (clientId || view.selectedClientId),
     ),
-    entry = view?.snapshots.find((s) => s.days === days),
+    entry =
+      view?.selectedClientId === (clientId || view?.selectedClientId)
+        ? view?.snapshots.find((s) => s.days === days)
+        : undefined,
     data = entry?.data;
   async function refresh() {
     if (!selected || busy) return;
@@ -302,6 +315,7 @@ export function WebsiteDashboard({
                   remain unavailable.
                 </p>
               )}
+              <WebsiteChanges data={data} fresh={!!entry?.fresh} />
               <section className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
                 {(Object.keys(labels) as WebsiteMetric[]).map((key) => (
                   <div
@@ -321,8 +335,10 @@ export function WebsiteDashboard({
                 ))}
               </section>
               <WebsiteSessionsTrend data={data} />
-              <section className="mt-5 rounded-xl border border-dash-border bg-dash-card p-4">
-                <h2 className="font-semibold">Performance summary</h2>
+              <details className="mt-5 rounded-xl border border-dash-border bg-dash-card p-4">
+                <summary className="cursor-pointer font-semibold">
+                  All reported changes
+                </summary>
                 {websiteInsights(data).map((line) => (
                   <p
                     key={line}
@@ -335,69 +351,13 @@ export function WebsiteDashboard({
                   Changes describe reported data; they do not establish a cause.
                   Rates are compared in percentage points.
                 </p>
-              </section>
-              <section className="mt-5 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4">
-                <h2 className="font-semibold">Traffic by channel</h2>
-                <p className="mt-1 text-xs text-dash-ink-secondary">
-                  GA4 session channel groups, including paid, organic, direct,
-                  referral and unassigned. Sessions can differ from user counts.
-                </p>
-                <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
-                  Swipe to see all metrics →
-                </p>
-                <div className="mt-3 max-w-full overflow-x-auto">
-                  <table
-                    className="w-full text-left text-sm"
-                    style={{ minWidth: 540 }}
-                  >
-                    <thead>
-                      <tr>
-                        {[
-                          "Channel",
-                          "Sessions",
-                          "Engagement rate",
-                          "Key events",
-                          "Session key-event rate",
-                        ].map((x) => (
-                          <th
-                            key={x}
-                            className="pb-2 pr-3 text-xs font-medium text-dash-ink-secondary"
-                          >
-                            {x}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.channels.map((c) => (
-                        <tr
-                          key={c.name}
-                          className="border-t border-dash-border"
-                        >
-                          <th className="py-2 pr-3 font-normal">{c.name}</th>
-                          <td className="py-2 pr-3">{num(c.sessions)}</td>
-                          <td className="py-2 pr-3">
-                            {c.engagementRate === null
-                              ? "—"
-                              : `${num(c.engagementRate * 100)}%`}
-                          </td>
-                          <td className="py-2 pr-3">{num(c.keyEvents)}</td>
-                          <td className="py-2">
-                            {c.sessionKeyEventRate === null
-                              ? "—"
-                              : `${num(c.sessionKeyEventRate * 100)}%`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {!data.channels.length && (
-                  <p className="mt-3 text-sm">
-                    No channel rows returned by GA4.
-                  </p>
-                )}
-              </section>
+              </details>
+              <WebsiteChannelComparison
+                key={`${selected.id}:${days}:${data.property.propertyId}`}
+                data={data}
+                fresh={!!entry?.fresh}
+              />
+
               <details className="mt-5 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4">
                 <summary className="cursor-pointer font-semibold">
                   Daily data
