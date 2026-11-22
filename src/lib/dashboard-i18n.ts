@@ -4,6 +4,7 @@ import type { OnboardingStepId } from "./onboarding";
 export type DashboardCopy = {
   navHome: string;
   navClients: string;
+  navOverview: string;
   navAccount: string;
   navBilling: string;
   navSupport: string;
@@ -59,6 +60,7 @@ export type DashboardCopy = {
 const EN: DashboardCopy = {
   navHome: "Home",
   navClients: "My Clients",
+  navOverview: "Overview",
   navAccount: "Account",
   navBilling: "Billing",
   navSupport: "Support",

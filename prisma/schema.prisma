@@ -401,6 +401,12 @@ model Client {
   // limit enforced by the form/validator, not the column itself.
   notes String? @db.Text
 
+  performanceMonitorEnabled Boolean @default(false)
+  performanceMonitorEmailEnabled Boolean @default(true)
+  performanceMonitorSnapshot String? @db.Text
+  performanceMonitorLastAttemptAt DateTime?
+  performanceMonitorLeaseUntil DateTime?
+
   // GA4 property linked to this client for Website Traffic reports —
   // numeric property ID (e.g. "123456789"), not the full resource name.
   ga4PropertyId   String?
@@ -415,6 +421,7 @@ model Client {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([performanceMonitorEnabled, performanceMonitorLastAttemptAt], map: "Client_performance_scan_idx")
 }
 
 model ReportSchedule {

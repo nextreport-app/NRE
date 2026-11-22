@@ -196,6 +196,8 @@ export default async function ClientDetailPage({
           </Card>
         ) : null}
 
+        <a href={`/overview?client=${client.id}`} className="block rounded-xl border border-dash-border p-4 text-sm text-dash-accent hover:underline">View Meta performance & signals →</a>
+
         <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId,client.budgetMonitorTolerance])} clientId={client.id} />
 
         <ScheduledReportsCard clientId={client.id} />

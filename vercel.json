@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/budget-monitor",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/performance-monitor",
+      "schedule": "45 3 * * *"
     }
   ]
 }
