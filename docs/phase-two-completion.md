@@ -19,10 +19,12 @@ Creative reporting remains Beta/on hold by the owner's instruction. Other ad-pla
 
 The existing Vercel daily cron configuration cannot provide five-minute draft preparation. `.github/workflows/report-scheduler.yml` supplies an optional runner without requiring a frequent Hobby cron. It remains disabled unless explicitly opted in.
 
-1. On the app host, keep a private high-entropy `CRON_SECRET` and set `REPORT_SCHEDULER_ENABLED=true` only when ready to test activation.
-2. In this repository's Actions secrets, set `REPORT_SCHEDULER_CRON_SECRET` to the same value. Do not put the secret in chat, a URL, a workflow file or a repository variable.
+1. On the app host, create a new private high-entropy `REPORT_SCHEDULER_CRON_SECRET` and set `REPORT_SCHEDULER_ENABLED=true` only when ready to test activation. Leave the existing `CRON_SECRET` used by other automations unchanged. Redeploy the Production application after adding the variables.
+2. In this repository's Actions secrets, set `REPORT_SCHEDULER_CRON_SECRET` to the same new value. Do not put the secret in chat, a URL, a workflow file or a repository variable.
 3. In repository Actions variables, set `NEXTREPORT_SCHEDULER_RUNNER_ENABLED=true`. Run **Report draft scheduler** manually and confirm success, then observe scheduled ticks. Disable that variable to stop this runner. The checked-out code always comes from the default branch; the endpoint destination is fixed HTTPS and redirects are rejected.
 4. Confirm a fresh heartbeat on the client schedule screen before enabling one paused test schedule. Preparation starts at a worker tick; email still requires review, approval and an explicit send. A successful heartbeat indicates a reachable worker, not that every report/email succeeded. Check remaining backlog and failed email counters.
+
+The dedicated app key takes priority for this endpoint. If it is blank, legacy setups continue using the existing global `CRON_SECRET`. Never replace the global key just to activate report scheduling. A separate manual walkthrough is in [scheduler activation](scheduler-activation.md).
 
 GitHub scheduled workflows are best-effort and can be delayed. A five-minute schedule creates approximately 8,640 runs per 30-day month; private-repository runner usage may exceed included minutes. Check the repository plan and budgets before opting in. A suitable external scheduler or hosting plan can call the same protected endpoint instead; if choosing another timer, leave this GitHub runner disabled. Never run overlapping timer providers intentionally.
 

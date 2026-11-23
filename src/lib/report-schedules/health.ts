@@ -1,3 +1,4 @@
+import { reportSchedulerSecret } from "./secret";
 import { prisma } from "../prisma";
 export async function schedulerHealth(now = new Date()) {
   const state = await prisma.reportSchedulerState.findUnique({
@@ -5,7 +6,7 @@ export async function schedulerHealth(now = new Date()) {
   });
   const configured =
     process.env.REPORT_SCHEDULER_ENABLED === "true" &&
-    !!process.env.CRON_SECRET?.trim();
+    !!reportSchedulerSecret();
   const age = state ? now.getTime() - state.checkedAt.getTime() : null;
   return {
     configured,

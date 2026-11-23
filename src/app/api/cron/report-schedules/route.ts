@@ -1,3 +1,4 @@
+import { reportSchedulerSecret } from "@/lib/report-schedules/secret";
 import { retryPendingEmails } from "@/lib/email-delivery";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -9,10 +10,10 @@ import {
 } from "@/lib/report-schedules/service";
 export const maxDuration = 300;
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
+  const secret = reportSchedulerSecret();
   if (!secret)
     return NextResponse.json(
-      { error: "CRON_SECRET is not configured" },
+      { error: "Report scheduler authentication is not configured" },
       { status: 503 },
     );
   if (req.headers.get("authorization") !== `Bearer ${secret}`)
