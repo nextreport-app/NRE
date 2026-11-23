@@ -1,0 +1,32 @@
+name: Report draft scheduler
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-report-scheduler
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    # Opt-in: merging this workflow does not start production work or consume runner minutes.
+    if: vars.NEXTREPORT_SCHEDULER_RUNNER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Resume private draft preparation and existing delivery intents
+        env:
+          REPORT_SCHEDULER_CRON_SECRET: ${{ secrets.REPORT_SCHEDULER_CRON_SECRET }}
+        run: node scripts/run-report-scheduler.mjs

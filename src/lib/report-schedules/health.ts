@@ -3,13 +3,13 @@ export async function schedulerHealth(now = new Date()) {
   const state = await prisma.reportSchedulerState.findUnique({
     where: { id: "main" },
   });
-  const configured = process.env.REPORT_SCHEDULER_ENABLED === "true";
+  const configured =
+    process.env.REPORT_SCHEDULER_ENABLED === "true" &&
+    !!process.env.CRON_SECRET?.trim();
+  const age = state ? now.getTime() - state.checkedAt.getTime() : null;
   return {
     configured,
     lastTickAt: state?.checkedAt.toISOString() ?? null,
-    healthy:
-      configured &&
-      !!state &&
-      now.getTime() - state.checkedAt.getTime() < 20 * 60000,
+    healthy: configured && age !== null && age >= 0 && age < 20 * 60000,
   };
 }
