@@ -2,7 +2,7 @@
 export const PRICING_FAQS = [
   {
     q: "Which platforms are live today?",
-    a: "Meta Ads reporting is live through CSV upload or read-only Meta API sync, included in every plan. Generate weekly, monthly, comparison and daily reports.",
+    a: "Meta Ads reporting is live through CSV upload or read-only Meta API sync, included in every plan. Generate weekly, monthly, compare, daily and age, placement, location or platform breakdown reports. Connect GA4 separately for a website performance dashboard; GA4 report generation is not part of this dashboard. Creative reporting remains Beta.",
   },
   {
     q: "Is there really no credit card required for the free trial?",
@@ -10,7 +10,7 @@ export const PRICING_FAQS = [
   },
   {
     q: "What's the difference between Freelancer, Agency and Agency Plus?",
-    a: "All three plans include unlimited report generation subject to fair use and generation concurrency safeguards, Meta CSV upload and API sync, white-label options, Slack/Zapier webhooks, and client sharing tools. Freelancer supports up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100. All three are available through self-service checkout. Priority email support is included on Agency and Agency Plus. Contact us for more than 100 clients.",
+    a: "All three plans include unlimited report generation subject to fair use and generation concurrency safeguards, Meta CSV upload and API sync, white-label options, Meta performance comparisons and budget warnings, a GA4 website dashboard, scheduled Meta drafts with a review inbox, Slack/Zapier webhooks, and client sharing tools. Freelancer supports up to 10 client workspaces, Agency up to 50, and Agency Plus up to 100. All three are available through self-service checkout. Priority email support is included on Agency and Agency Plus. Contact us for more than 100 clients.",
   },
   {
     q: "Do you charge my card automatically each month?",
@@ -39,6 +39,22 @@ export const PRICING_FAQS = [
   {
     q: "Are reports unlimited, and how long are they stored?",
     a: "Paid plans have no monthly report quota. One report generates at a time per account, and shared capacity may temporarily ask you to retry. Each report supports up to 50 campaign/ad-set detail slides and day-wise CSVs up to 32 MB when lossless compression fits the 4 MB request limit; otherwise export a shorter range. Technical upload/sync limits are 20 per day during trial and 100 per day on paid plans; contact us for bulk needs. The trial includes 10 reports. Report storage defaults to 7 days; download reports you need to keep. Automated bulk generation, account resale and sharing one workspace across unrelated agencies are not included. Contact us for high-volume use.",
+  },
+  {
+    q: "Will scheduled reports be sent without my review?",
+    a: "No. Scheduling uses a connected Meta account to prepare daily, weekly, fortnightly or monthly drafts. Review and approve the exact content in your Report inbox, then explicitly send it. Preparation uses your normal report allowance and capacity limits; saving a schedule does not bypass them. Scheduled preparation times can vary with provider and worker availability.",
+  },
+  {
+    q: "Do budget warnings stop my campaigns from overspending?",
+    a: "No. Monitoring compares Meta spend with the monthly budget you enter, excluding tax, and flags projected over- or underspend. Refresh due accounts or use the daily background checks, and opt in to warning emails. This is not a real-time spend cap: make any campaign or budget changes in Ads Manager.",
+  },
+  {
+    q: "Can I use my agency’s existing PowerPoint template?",
+    a: "Compatible agency design upload is in Beta. Restyle the supplied Dark or Light starter, upload it, review a sample, approve it and assign it to a client. Arbitrary decks may need adaptation to the supported structure; automatic conversion of every existing PowerPoint layout is not supported.",
+  },
+  {
+    q: "What does the GA4 dashboard show?",
+    a: "Connect your Google Analytics account and link the correct property to each client. Refresh 7- or 30-day comparisons for users, sessions, engagement, key events, traffic channels and landing pages. It covers paid and organic website traffic separately from Meta campaign attribution. GA4 refresh is manual; this does not add automated GA4 reports or alert emails.",
   },
   {
     q: "Is my data secure?",

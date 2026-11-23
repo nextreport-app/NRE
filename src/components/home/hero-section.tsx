@@ -71,7 +71,7 @@ export function HeroSection({ loggedIn }: { loggedIn: boolean }) {
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
             {loggedIn ? (
               <Link
-                href="/clients"
+                href="/overview"
                 className="nre-hero-cta-primary inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold sm:w-auto"
               >
                 {marketing.heroGoDashboard}

@@ -23,6 +23,10 @@ export function PricingComparisonTable() {
       ...Array(3).fill("Unlimited, with fair-use safeguards"),
     ],
     [copy.metaReporting, ...Array(3).fill(copy.included)],
+    ["Meta performance overview & budget warnings", ...Array(3).fill(copy.included)],
+    ["GA4 website dashboard (separate connection)", ...Array(3).fill(copy.included)],
+    ["Scheduled Meta drafts & review inbox", ...Array(3).fill(copy.included)],
+    ["Compatible agency template upload", ...Array(3).fill("Beta")],
     [copy.whiteLabel, ...Array(3).fill(copy.included)],
     [
       copy.support,

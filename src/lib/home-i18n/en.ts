@@ -35,36 +35,32 @@ export const HOME_EN: HomeCopy = {
   painWithLabel: "With NextReport",
   painWithCalc: "10 clients × 2 minutes",
   painWithResult: "= 20 minutes/week",
-  featuresTitle: "Everything you need to send better Meta reports",
-  featuresSubtitle: "Meta Ads reporting — API sync or CSV upload, client-ready decks.",
+  featuresTitle: "Reporting and performance checks in one place",
+  featuresSubtitle: "Client-ready Meta reports, account priorities and a simpler view of website traffic.",
   features: [
     {
-      title: "Meta API sync + CSV upload",
-      description:
-        "Connect your ad account for read-only Meta API sync, or upload an Ads Manager CSV. Both use the same reporting engine.",
+      title: "Meta reports, your way",
+      description: "Read-only Meta API sync or CSV upload. Weekly, monthly, compare, daily, and age, placement, location or platform breakdowns — with objective-based metrics and editable summaries.",
     },
     {
-      title: "Previous-month totals",
-      description:
-        "Add previous-month totals on Review & generate. Reuse a CSV covering that month, or fetch the totals with Meta API sync.",
+      title: "Know which accounts need attention",
+      description: "Compare periods across connected Meta accounts. See improving results, issues to review and critical changes, with campaign-specific cost-per-result and purchase ROAS where available.",
     },
     {
-      title: "Auto-detects campaign objectives",
-      description:
-        "Identifies leads, purchases, traffic, reach and more — picks the right metrics for each Meta campaign.",
+      title: "Catch budget over- and underspend",
+      description: "Monitor your approved monthly ad budget, excluding tax. See projected overspend or underspend and opt in to warning emails. Monitoring is read-only; you stay in control of campaign changes.",
     },
     {
-      title: "AI-written summaries",
-      description: "Every slide gets an AI-written summary and key insights — no manual writing.",
+      title: "Understand website traffic with GA4",
+      description: "Connect a GA4 property for a separate website dashboard. Compare users, sessions, engagement, key events, channels and landing pages across paid, organic, direct and referral traffic. Refresh when needed.",
     },
     {
-      title: "Comparison reports",
-      description:
-        "Compare any two periods side by side, campaign by campaign — the last 7 days vs the previous 7 days, or a custom range.",
+      title: "Schedule drafts, keep the final say",
+      description: "Prepare daily, weekly, fortnightly or monthly Meta reports through API sync. Review drafts across clients in one inbox, approve the content, then explicitly send. Scheduling never skips your approval.",
     },
     {
-      title: "Share a browser link",
-      description: "Clients open the report on any device, in any browser — no PowerPoint app needed.",
+      title: "Deliver reports under your brand",
+      description: "Editable PowerPoint, Google Slides via Drive and browser links, with agency branding and Dark or Light designs. Compatible agency template uploads are in Beta; existing decks may need adaptation. Creative reporting remains Beta.",
     },
   ],
   trustStrip: "All metrics come from your Meta account or CSV — we never modify campaign data.",
@@ -191,6 +187,9 @@ export const HOME_EN: HomeCopy = {
           "PowerPoint, Google Slides & live browser share",
           "Save to Google Drive",
           WHITE_LABEL_FEATURE,
+          "Meta performance overview & budget warnings",
+          "GA4 website dashboard",
+          "Scheduled Meta drafts & review inbox",
           "Slack & Zapier webhooks",
           "Email support",
         ],
@@ -200,7 +199,7 @@ export const HOME_EN: HomeCopy = {
         features: [
           PROFESSIONAL_CLIENT_LIMIT_FEATURE,
           "Everything in Freelancer",
-          "Weekly, monthly, comparison & daily Meta reports",
+          "Weekly, monthly, compare, daily & breakdown reports",
           "Priority email support",
           "Early access to new features",
         ],

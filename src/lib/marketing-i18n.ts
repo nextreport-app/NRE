@@ -45,7 +45,7 @@ const EN: MarketingCopy = {
   heroHeadlineAccent: "client reporting",
   heroHeadlineAfter: " for agencies in minutes.",
   heroSubtext:
-    "Connect Meta Ads for read-only API sync or upload a CSV. Generate accurate, client-branded reports with AI insights — without rebuilding slides by hand.",
+    "Turn read-only Meta API sync or a CSV into branded reports. Spot account performance changes, track budget pacing, see GA4 website traffic and schedule drafts for your review.",
   heroStartTrial: "Start free trial",
   heroGoDashboard: "Go to Dashboard",
   heroRequestDemo: "Request a demo",

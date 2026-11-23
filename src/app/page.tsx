@@ -30,9 +30,9 @@ import { SpecialistTimeSavingsSection } from "@/components/home/specialist-time-
 import { getSocialProofStats } from "@/lib/social-proof-stats";
 
 export const metadata = pageMetadata({
-  title: "Meta Ads Weekly Report Automation for Agencies",
+  title: "Meta Ads Reporting, Budget Alerts & GA4 Overview",
   description:
-    "Meta ads weekly report template automation — connect Meta Ads or upload an Ads Manager CSV, get agency client reporting PowerPoint, live link, or Slides in minutes. Save specialist time. Free trial.",
+    "Branded Meta Ads reports from API sync or CSV, campaign performance comparisons, budget pacing alerts, scheduled drafts and a separate GA4 website dashboard. 7-day free trial.",
   path: "/",
   keywords: [
     "meta ads weekly report template automation",
