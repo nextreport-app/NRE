@@ -127,7 +127,7 @@ export const ROOT_METADATA: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Create branded Meta Ads reports with API sync or CSV upload. PowerPoint, live links and Google Slides with AI insights. Start a 7-day free trial.",
+    "Branded Meta Ads reports, performance comparisons, budget pacing alerts, scheduled drafts and a GA4 website dashboard. Start a 7-day free trial.",
   keywords: [...DEFAULT_KEYWORDS],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -144,7 +144,7 @@ export const ROOT_METADATA: Metadata = {
     locale: "en_IN",
     title: `Automated Meta Ads Reports in 2 Minutes — ${SITE_NAME}`,
     description:
-      "Create branded Meta Ads reports with API sync or CSV upload. PowerPoint, live links and Google Slides with AI insights. Start a 7-day free trial.",
+      "Branded Meta Ads reports, performance comparisons, budget pacing alerts, scheduled drafts and a GA4 website dashboard. Start a 7-day free trial.",
     images: ogImages(),
   },
   twitter: {
@@ -251,6 +251,12 @@ export const HOME_JSON_LD = {
         "CSV to PowerPoint (.pptx)",
         "Live browser share link",
         "AI campaign summaries",
+        "Age, placement, location and platform breakdown reports",
+        "Objective-aware Meta performance comparisons",
+        "Monthly budget over- and underspend warnings",
+        "GA4 website dashboard with manual refresh",
+        "Scheduled Meta drafts with review, approval and explicit send",
+        "Compatible agency design upload (Beta)",
       ],
     },
   ],

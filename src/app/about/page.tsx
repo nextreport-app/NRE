@@ -28,10 +28,17 @@ const STORY_SECTIONS: { heading: string; paragraphs: string[] }[] = [
   {
     heading: "Why NextReport exists",
     paragraphs: [
-      "We looked for tooling that matched how agencies actually ship work: the export you already pull from Ads Manager, the template your team already uses, and a finished deck in minutes — not a generic dashboard.",
+      "We looked for tooling that matched how agencies actually ship work: the export you already pull from Ads Manager, a compatible agency design, and a finished deck in minutes — not a generic dashboard.",
       PRODUCT_DIFFERENTIATOR_LINE,
       "NextReport reads Meta Ads Manager CSV exports, detects campaign objectives, selects the right metrics, and generates PowerPoint, a live browser link, or Google Slides with AI-written insights — often in under two minutes.",
       "Meta Ads reporting is live with CSV upload and read-only API sync, using the same report workflow and calculation engine.",
+    ],
+  },
+  {
+    heading: "From reporting to the daily account check",
+    paragraphs: [
+      "The Meta overview compares periods across connected client accounts, showing campaign-specific improvements and issues worth reviewing. Budget pacing flags projected over- and underspend against the approved monthly amount, excluding tax. These are observations from the data, not claims about what caused a change.",
+      "A separate GA4 dashboard simplifies website traffic across paid, organic, direct and referral channels. Scheduled Meta drafts and a central review inbox reduce recurring preparation work while keeping approval and sending in your hands. Compatible agency design uploads are in Beta.",
     ],
   },
   {

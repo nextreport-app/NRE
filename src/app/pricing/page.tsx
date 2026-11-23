@@ -13,7 +13,7 @@ import { PRICING_FAQS } from "@/lib/pricing-faq";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing — Agency Reporting Software",
   description:
-    "Simple pricing for Meta Ads reporting. Freelancer: $5/₹399 for 10 clients, Agency: $12/₹999 for 50, Agency Plus: $20/₹1,699 for 100. 7-day free trial.",
+    "Meta Ads reports, performance comparisons, budget warnings, scheduled drafts and a GA4 dashboard. Freelancer: $5/₹399 for 10 clients, Agency: $12/₹999 for 50, Agency Plus: $20/₹1,699 for 100. 7-day free trial.",
   path: "/pricing",
 });
 
@@ -45,6 +45,12 @@ export default async function PricingPage() {
 
         <p className="mt-4 text-center text-sm leading-relaxed text-ink-muted">
           7-day free trial · 3 clients, 10 reports · No credit card required
+        </p>
+
+        <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-ink-secondary">
+          Every paid plan includes Meta CSV and API reporting, performance comparisons,
+          budget warnings, a GA4 website dashboard and scheduled Meta drafts with review before sending.
+          Choose your plan by client count. Compatible agency templates and creative reporting remain Beta.
         </p>
 
         <PricingCurrencyBanner />

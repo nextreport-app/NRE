@@ -14,14 +14,12 @@ import {
   pageMetadata,
 } from "@/lib/seo";
 import { MARKETING_TRY_CTA_HEADLINE } from "@/lib/product-positioning";
-import { WIZARD_REPORT_TYPE_COPY } from "@/lib/nre/wizard-report-type-copy";
-import { LAUNCH_ENABLED_REPORT_TYPES, META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
-import type { LaunchEnabledReportType } from "@/lib/meta-launch-scope";
+import { META_LAUNCH_HERO_BADGE } from "@/lib/meta-launch-scope";
 
 export const metadata: Metadata = pageMetadata({
   title: "How It Works — Meta Ads Report Wizard",
   description:
-    "Add a Meta client, upload a day-wise CSV from Ads Manager Reporting, and generate a branded .pptx or live share link — usually under 2 minutes.",
+    "Connect Meta or upload a CSV for branded reports. Compare account performance, monitor budgets, view GA4 website traffic and schedule drafts for review.",
   path: "/how-it-works",
 });
 
@@ -43,7 +41,14 @@ const QUICK_LINKS_LOGGED_IN = [
   { href: "/clients", label: "My Clients", hint: "Open a report wizard" },
 ] as const;
 
-const REPORT_TYPE_ORDER = LAUNCH_ENABLED_REPORT_TYPES;
+const REPORT_TYPES = [
+  { title: "Weekly", body: "A weekly overview with month-to-date totals and a 30-day chart." },
+  { title: "Monthly", body: "Performance for your selected calendar month." },
+  { title: "Compare", body: "Compare the last 7 days with the previous 7 days, or choose two custom ranges." },
+  { title: "Daily", body: "Day-by-day performance across your selected dates." },
+  { title: "Breakdown", body: "Campaign performance by age, placement, location or platform, from the matching CSV or Meta API." },
+  { title: "Creative · Beta", body: "Creative performance reporting is in Beta while we refine the workflow." },
+];
 
 interface Step {
   title: string;
@@ -54,7 +59,7 @@ interface Step {
 const WIZARD_STEPS: Step[] = [
   {
     title: "Import",
-    body: "Choose the report type, export the matching day-wise CSV from Meta Ads Reporting, and upload it. Optional Previous Month CSV adds the prior-month row on weekly decks.",
+    body: "Choose your report type, then sync Meta through read-only API access or upload the matching day-wise CSV. The wizard shows the required dates and breakdown columns.",
     detail: "Wizard step: Import",
   },
   {
@@ -78,7 +83,7 @@ const OUTPUTS = [
   {
     icon: "📥",
     title: "Download as PowerPoint (.pptx)",
-    description: "The format clients expect — your branding and AI-written insights on every slide.",
+    description: "Editable slides with your branding, objective-based metrics and report summaries.",
   },
   {
     icon: "🔗",
@@ -97,12 +102,11 @@ const OUTPUTS = [
   },
 ] as const;
 
-function ReportTypeRow({ reportType }: { reportType: LaunchEnabledReportType }) {
-  const copy = WIZARD_REPORT_TYPE_COPY[reportType];
+function ReportTypeRow({ title, body }: { title: string; body: string }) {
   return (
     <li className="rounded-lg border border-navy-border bg-navy p-4 sm:p-5">
-      <p className="text-sm font-semibold text-white">{copy.cardHeading}</p>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{copy.cardYouGet}</p>
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
     </li>
   );
 }
@@ -141,7 +145,7 @@ export default async function HowItWorksPage() {
             ]),
             howToJsonLd(
               "How to generate a Meta Ads client report with NextReport",
-              "Generate a branded Meta Ads client report in under 2 minutes via day-wise CSV from Meta Ads Reporting.",
+              "Generate a branded Meta Ads client report through read-only API sync or a day-wise CSV from Meta Ads Reporting.",
               HOW_IT_WORKS_STEPS_SCHEMA,
             ),
           ],
@@ -158,8 +162,8 @@ export default async function HowItWorksPage() {
             </p>
             <h1 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">How NextReport works</h1>
             <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
-              One-time client setup, then a branded Meta deck in under 2 minutes — pick a report type and upload a
-              day-wise CSV from Ads Manager Reporting.
+              Set up a client, connect Meta or upload a CSV, then review and share a branded report.
+              Between reports, check account priorities, budget pacing and GA4 website traffic.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -253,12 +257,12 @@ export default async function HowItWorksPage() {
           </section>
 
           <section className="rounded-xl border border-navy-border bg-navy-panel p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold text-white">Getting data in (Meta CSV)</h2>
+            <h2 className="text-2xl font-semibold text-white">Getting data in (Meta API or CSV)</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-secondary">
               On <strong className="font-medium text-ink-muted">Import</strong>, choose your report type first. Each type
-              needs a specific date range with <strong className="font-medium text-ink-muted">day-wise</strong> breakdown
-              from <strong className="font-medium text-ink-muted">Meta Ads Reporting</strong> — not the Campaigns screen
-              export. Hover a report-type card in the wizard for the exact CSV range.
+              shows the required dates and columns. API sync fetches the data; CSV imports need a <strong className="font-medium text-ink-muted">day-wise</strong> breakdown
+              from <strong className="font-medium text-ink-muted">Meta Ads Manager</strong>. For breakdown reports,
+              export at Campaign level with Day and the matching segment columns. Follow the wizard’s CSV instructions for your report type.
             </p>
             <p className="mt-4 text-sm text-ink-muted">
               Step-by-step export:{" "}
@@ -279,23 +283,34 @@ export default async function HowItWorksPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white">Report types in the wizard</h2>
             <p className="mt-3 max-w-3xl text-sm text-ink-secondary">
-              Choose a weekly overview, one month, one day, or month-by-month performance. Comparison and daily tables are available for more detailed reporting.
+              Choose the format that matches your client’s question. Creative reporting remains Beta.
             </p>
             <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-              {REPORT_TYPE_ORDER.map((type) => (
-                <ReportTypeRow key={type} reportType={type} />
+              {REPORT_TYPES.map((type) => (
+                <ReportTypeRow key={type.title} {...type} />
               ))}
             </ul>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white">The 4 wizard steps</h2>
-            <p className="mt-3 max-w-3xl text-sm text-ink-secondary">Same order and labels as the app.</p>
+            <h2 className="text-2xl font-semibold text-white">The reporting workflow</h2>
+            <p className="mt-3 max-w-3xl text-sm text-ink-secondary">Select campaigns, check the relevant metrics and review before generating. Breakdown and creative flows use fewer steps.</p>
             <div className="mt-6 space-y-3">
               {WIZARD_STEPS.map((step, i) => (
                 <StepRow key={step.title} number={i + 1} step={step} />
               ))}
             </div>
+          </section>
+
+          <section className="rounded-xl border border-navy-border bg-navy-panel p-6 sm:p-8">
+            <h2 className="text-2xl font-semibold text-white">Between reports: know where to look next</h2>
+            <ul className="mt-4 space-y-3 text-sm leading-relaxed text-ink-secondary">
+              <li><strong className="text-white">Meta overview:</strong> connect client accounts, enable monitoring and compare campaign outcomes. See critical changes, issues to review and improvements with freshness and data coverage shown.</li>
+              <li><strong className="text-white">Budget pacing:</strong> enter the approved monthly ad spend, excluding tax. Check projected over- or underspend and opt in to owner warning emails. Make campaign changes in Ads Manager.</li>
+              <li><strong className="text-white">Website overview:</strong> connect GA4, link each client’s property and manually refresh 7- or 30-day website comparisons. Meta attribution and website channel metrics stay separate.</li>
+              <li><strong className="text-white">Scheduled drafts:</strong> choose a daily, weekly, fortnightly or monthly Meta schedule and recipients. Review the private draft in Reports, approve the content, then explicitly send it.</li>
+              <li><strong className="text-white">Agency designs · Beta:</strong> restyle a compatible starter, upload it, review a sample and approve it before assigning it to a client. Existing decks may need adaptation.</li>
+            </ul>
           </section>
 
           <section>

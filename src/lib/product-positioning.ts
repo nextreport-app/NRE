@@ -14,7 +14,7 @@ export const SPECIALIST_TIME_SAVINGS_LINE =
   "Every automated report saves about 15–25 minutes of specialist time. At typical agency billing rates, that adds up to meaningful capacity each month — not just a shorter Friday.";
 
 export const PRODUCT_ELEVATOR_PITCH =
-  "NextReport turns Meta API data or your Ads Manager CSV into the branded weekly deck you’d normally build in PowerPoint — with AI summaries — in about two minutes. Built for agencies, not client dashboards.";
+  "NextReport brings branded Meta reports, account performance comparisons, budget pacing, a separate GA4 website dashboard and scheduled drafts into one agency workflow. Review the numbers and summaries, then share PowerPoint, Slides or a browser link.";
 
 export const PRODUCT_DIFFERENTIATOR_LINE =
   "Connect Meta Ads or upload the export you already pull from Ads Manager; get the deck you would have built by hand — with AI summary — in minutes.";
@@ -22,8 +22,8 @@ export const PRODUCT_DIFFERENTIATOR_LINE =
 export const META_V1_PROMISE_HEADLINE = "What’s live today (Meta Ads)";
 
 export const META_V1_PROMISE_BULLETS = [
-  "Live now: Meta Ads — weekly, monthly, comparison and daily reports from read-only API sync or a day-wise CSV.",
-  "CSV option: Meta Ads Manager → Reports → Export table data → CSV (Day breakdown — not the Campaigns-screen export).",
+  "Live now: Meta Ads — weekly, monthly, compare, daily and audience breakdown reports from read-only API sync or a day-wise CSV.",
+  "CSV option: export day-wise data from Meta Ads Manager with the columns and export level shown for your report type.",
   "API sync fetches the dates your report needs. CSV exports should cover your selected period with Day breakdown.",
   "Objectives auto-detected from your imported data; confirm in the wizard when needed.",
   "Both import methods use the same calculation engine; totals should match Ads Manager for the same dates and export level.",
