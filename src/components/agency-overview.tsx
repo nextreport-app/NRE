@@ -1,13 +1,11 @@
 "use client";
 import Link from "next/link";
+import { MetaPerformanceDashboard } from "./meta-performance-dashboard";
 import { MetaMonitoringSetup } from "./meta-monitoring-setup";
 import { OverviewNavigation } from "./overview-navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { OverviewRow } from "@/lib/agency-overview";
-import {
-  DecisionSettingsPanel,
-  CampaignTargetForm,
-} from "./performance-decision-controls";
+import { DecisionSettingsPanel } from "./performance-decision-controls";
 import {
   PortfolioBoard,
   PortfolioBadge,
@@ -15,12 +13,7 @@ import {
   matchesPortfolio,
 } from "./portfolio-board";
 import { PortfolioRefresh } from "./portfolio-refresh";
-import {
-  campaignBrief,
-  campaignRank,
-  portfolioRank,
-} from "@/lib/performance-monitor/portfolio";
-import type { PeriodMetrics } from "@/lib/performance-monitor/facts";
+import { portfolioRank } from "@/lib/performance-monitor/portfolio";
 const button =
   "rounded-lg border border-dash-border px-3 py-2 text-sm disabled:opacity-50";
 export function AgencyOverview({
@@ -104,7 +97,8 @@ export function AgencyOverview({
         body: JSON.stringify(body),
       });
       const result = await r.json();
-      if (!r.ok || result.snapshot?.error) throw Error(result.error ?? result.snapshot?.error ?? "Check failed.");
+      if (!r.ok || result.snapshot?.error)
+        throw Error(result.error ?? result.snapshot?.error ?? "Check failed.");
       await load();
       return true;
     } catch (e) {
@@ -118,9 +112,17 @@ export function AgencyOverview({
   async function enableAndLoad(client: OverviewRow, emailEnabled: boolean) {
     setActivationBusy(client.id);
     try {
-      if (await action(client.id, "performance-monitor", { action: "settings", enabled: true, emailEnabled }))
+      if (
+        await action(client.id, "performance-monitor", {
+          action: "settings",
+          enabled: true,
+          emailEnabled,
+        })
+      )
         await action(client.id, "performance-monitor", { action: "check" });
-    } finally { setActivationBusy(null); }
+    } finally {
+      setActivationBusy(null);
+    }
   }
   const visible = clients?.filter(
     (c) =>
@@ -142,117 +144,151 @@ export function AgencyOverview({
           currency: c.currency,
           maximumFractionDigits: 2,
         }).format(n);
-  const value = (n: number | null | undefined, digits = 0) =>
-    n === null || n === undefined
-      ? "—"
-      : new Intl.NumberFormat("en-US", {
-          maximumFractionDigits: digits,
-        }).format(n);
   const date = (s: string, c: OverviewRow) =>
     new Intl.DateTimeFormat("en", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: c.timezone,
     }).format(new Date(s));
-  function metrics(m: PeriodMetrics, c: OverviewRow) {
-    return (
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        {[
-          ["Ad spend", money(m.spend, c)],
-          ["Impressions", value(m.impressions)],
-          ["CTR (all)", m.ctr === null ? "—" : `${value(m.ctr, 2)}%`],
-          ["CPC (all)", money(m.cpc, c)],
-        ].map(([label, text]) => (
-          <div key={label} className="rounded-xl border border-dash-border bg-dash-bg p-4">
-            <dt className="text-xs text-dash-ink-secondary">{label}</dt>
-            <dd className="mt-2 text-xl font-semibold">{text}</dd>
-          </div>
-        ))}
-      </dl>
-    );
-  }
+
   return (
     <div className="nre-meta-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Meta Ads performance</h1><Link className={button} href="/reports">Report inbox →</Link></div>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        Meta Ads performance
+      </h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        See campaign performance, account priorities and monthly budget pacing.
+        Know what changed, what needs attention and where your ad budget is
+        going.
       </p>
       <OverviewNavigation current="meta" />
-      {clients?.length && !expanded && !clients.some(c=>c.performanceEnabled || c.budgetEnabled) ? (
+      {clients?.length &&
+      !expanded &&
+      !clients.some((c) => c.performanceEnabled || c.budgetEnabled) ? (
         <section className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-5">
-          <h2 className="text-lg font-semibold">Load your client accounts to get started</h2>
-          <p className="mt-2 text-sm text-dash-ink-secondary">{clients.filter(c=>c.linked).length} of {clients.length} clients have a linked Meta account. Choose a linked client below, then enable and load its performance.</p>
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">{["1 · Link a Meta account", "2 · Enable & load performance", "3 · Review campaigns and budgets"].map(step=><p key={step} className="rounded-xl border border-dash-border bg-dash-bg p-3">{step}</p>)}</div>
+          <h2 className="text-lg font-semibold">
+            Load your client accounts to get started
+          </h2>
+          <p className="mt-2 text-sm text-dash-ink-secondary">
+            {clients.filter((c) => c.linked).length} of {clients.length} clients
+            have a linked Meta account. Choose a linked client below, then
+            enable and load its performance.
+          </p>
+          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+            {[
+              "1 · Link a Meta account",
+              "2 · Enable & load performance",
+              "3 · Review campaigns and budgets",
+            ].map((step) => (
+              <p
+                key={step}
+                className="rounded-xl border border-dash-border bg-dash-bg p-3"
+              >
+                {step}
+              </p>
+            ))}
+          </div>
         </section>
       ) : null}
-      {clients?.some(c=>c.performanceEnabled || c.budgetEnabled) && (
-        <nav
-          aria-label="Account status"
-          className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
-        >
-          {PORTFOLIO_FILTERS.filter((f) => f.key !== "all").map((f) => (
-            <button
-              key={f.key}
-              aria-pressed={filter === f.key}
-              className={`rounded-xl border bg-dash-card p-3 text-left ${filter === f.key ? "border-dash-accent" : "border-dash-border"}`}
-              onClick={() => {
-                setFilter(f.key);
-                setExpanded("");
-              }}
+      {!expanded &&
+        clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
+          <section
+            className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-5"
+            aria-label="Agency priorities"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-dash-ink-secondary">
+              Across your accounts
+            </p>
+            <h2 className="mt-2 text-xl font-semibold">
+              {clients.filter((c) => matchesPortfolio(c, "critical")).length}{" "}
+              critical ·{" "}
+              {clients.filter((c) => matchesPortfolio(c, "review")).length} need
+              review
+            </h2>
+            <p className="mt-2 text-sm text-dash-ink-secondary">
+              Review priority accounts first. Each account uses its own
+              comparison period and currency.
+            </p>
+            <nav
+              aria-label="Account status"
+              className="mt-4 flex flex-wrap gap-2"
             >
-              <span className="text-xs text-dash-ink-secondary">{f.label}</span>
-              <span className="mt-1 block text-2xl font-semibold">
-                {clients.filter((c) => matchesPortfolio(c, f.key)).length}
-              </span>
-            </button>
-          ))}
-        </nav>
+              {PORTFOLIO_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  aria-pressed={filter === f.key}
+                  onClick={() => {
+                    setFilter(f.key);
+                    setExpanded("");
+                  }}
+                  className={`rounded-full border px-3 py-2 text-sm ${filter === f.key ? "border-dash-accent bg-dash-accent text-[#102033]" : "border-dash-border text-dash-ink-secondary"}`}
+                >
+                  {f.label}{" "}
+                  <span className="ml-1 font-semibold">
+                    {f.key === "all"
+                      ? clients.length
+                      : clients.filter((c) => matchesPortfolio(c, f.key))
+                          .length}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </section>
+        )}
+      {!expanded ? (
+        <div className="mt-5 flex flex-wrap gap-3">
+          <input
+            aria-label="Search clients"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setExpanded("");
+            }}
+            placeholder="Find a client"
+            className="w-full min-w-0 rounded-lg border border-dash-border bg-dash-bg px-3 py-2 sm:w-auto sm:flex-1"
+          />
+          <button
+            disabled={!!busy}
+            className={button}
+            onClick={() => void load().catch((e) => setError(e.message))}
+          >
+            Reload overview
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5">
+          <label
+            className="text-xs font-medium text-dash-ink-secondary"
+            htmlFor="meta-client-switch"
+          >
+            Client account
+          </label>
+          <select
+            id="meta-client-switch"
+            value={expanded}
+            className="mt-2 block w-full rounded-xl border border-dash-border bg-dash-card px-4 py-3 text-sm sm:max-w-md"
+            onChange={(e) => {
+              setFilter("all");
+              setSearch("");
+              setExpanded(e.target.value);
+            }}
+          >
+            {clients?.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
-      <div className="mt-5 flex flex-wrap gap-3">
-        <input
-          aria-label="Search clients"
-          value={search}
-          onChange={(e) => {setSearch(e.target.value);setExpanded("");}}
-          placeholder="Find a client"
-          className="w-full min-w-0 rounded-lg border border-dash-border bg-dash-bg px-3 py-2 sm:w-auto sm:flex-1"
-        />
-        <select
-          aria-label="Filter accounts"
-          value={filter}
-          onChange={(e) => {
-            setFilter(e.target.value);
-            setExpanded("");
-          }}
-          className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2"
-        >
-          {PORTFOLIO_FILTERS.map((f) => (
-            <option key={f.key} value={f.key}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-        <button
-          disabled={!!busy}
-          className={button}
-          onClick={() => void load().catch((e) => setError(e.message))}
-        >
-          Reload overview
-        </button>
-      </div>
-      <details className="mt-3 text-xs text-dash-ink-secondary">
-        <summary className="cursor-pointer">About these statuses</summary>
-        <p className="mt-2">
-          Accounts are ordered by priority. Setup and missing-data states do not indicate good or bad performance. Check the last refresh before acting.
-        </p>
-      </details>
-      {clients?.some(c=>c.performanceEnabled || c.budgetEnabled) && (
-        <PortfolioRefresh
-          clients={clients}
-          disabled={!!singleBusy || !!activationBusy}
-          onActivity={setBulkRunning}
-          onComplete={load}
-        />
-      )}
+      {!expanded &&
+        clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
+          <PortfolioRefresh
+            clients={clients}
+            disabled={!!singleBusy || !!activationBusy}
+            onActivity={setBulkRunning}
+            onComplete={load}
+          />
+        )}
       {error && (
         <p role="alert" className="mt-3 text-sm text-amber-400">
           {error}
@@ -292,80 +328,14 @@ export function AgencyOverview({
               </div>
               <PortfolioBadge state={c.portfolio.state} />
             </div>
-            {(!c.linked || !c.performanceEnabled) && <MetaMonitoringSetup key={c.id} client={c} busy={!!busy} onEnable={(emails)=>void enableAndLoad(c, emails)} />}
-            {(c.performanceEnabled || c.budgetEnabled) && <div className={`mt-4 grid gap-4 ${c.budgetEnabled && c.performanceEnabled ? "md:grid-cols-2" : ""}`}>
-              {c.budgetEnabled && <div className="rounded-xl border border-dash-border bg-dash-bg p-4">
-                <p className="text-sm font-medium">{c.budgetLabel}</p>
-                {c.budget?.facts && (
-                  <p
-                    className={`mt-1 text-sm ${c.budgetFresh ? "" : "text-dash-ink-secondary"}`}
-                  >
-                    {money(c.budget.facts.spent, c)} spent of{" "}
-                    {money(c.budget.config.monthlyBudget, c)} · Projected{" "}
-                    {money(c.budget.facts.projected, c)}
-                    {c.budgetFresh && (
-                      <span className="mt-1 block text-xs">
-                        {(c.budget.facts.projectedOver ?? 0) >
-                        c.budget.facts.tolerance ? (
-                          <>
-                            Projected over budget by{" "}
-                            {money(c.budget.facts.projectedOver, c)}.{" "}
-                          </>
-                        ) : (c.budget.facts.projectedShortfall ?? 0) >
-                          c.budget.facts.tolerance ? (
-                          <>
-                            Projected underspend of{" "}
-                            {money(c.budget.facts.projectedShortfall, c)}.{" "}
-                          </>
-                        ) : null}
-                        Remaining daily allowance: {money(c.dailyAllowance, c)}{" "}
-                        through month end, including today. Planning guide;
-                        adjust budgets in Ads Manager.
-                      </span>
-                    )}
-                  </p>
-                )}
-                {c.budget?.checkedAt && (
-                  <p className="mt-1 text-xs text-dash-ink-secondary">
-                    {c.budgetFresh ? "Checked" : "Prior snapshot"}:{" "}
-                    {date(c.budget.checkedAt, c)}
-                  </p>
-                )}
-                {c.budget?.error && (
-                  <p className="mt-1 text-xs text-amber-400">
-                    {c.budget.error}
-                  </p>
-                )}
-              </div>}
-              {c.performanceEnabled && <div className="rounded-xl border border-dash-border bg-dash-bg p-4">
-                <p className="text-sm font-medium">
-                  {c.performanceFresh
-                    ? `${c.warnings} performance signal${c.warnings === 1 ? "" : "s"} to review`
-                    : c.performanceEnabled
-                      ? "Performance check needed"
-                      : "Performance monitoring off"}
-                </p>
-                {c.performance?.facts && (
-                  <p className="mt-1 text-xs text-dash-ink-secondary">
-                    {c.performance.facts.periodA.startIso} –{" "}
-                    {c.performance.facts.periodA.endIso} vs{" "}
-                    {c.performance.facts.periodB.startIso} –{" "}
-                    {c.performance.facts.periodB.endIso}
-                  </p>
-                )}
-                {c.performance?.checkedAt && (
-                  <p className="mt-1 text-xs text-dash-ink-secondary">
-                    {c.performanceFresh ? "Checked" : "Prior snapshot"}:{" "}
-                    {date(c.performance.checkedAt, c)}
-                  </p>
-                )}
-                {c.performance?.error && (
-                  <p className="mt-1 text-xs text-amber-400">
-                    {c.performance.error}
-                  </p>
-                )}
-              </div>}
-            </div>}
+            {(!c.linked || !c.performanceEnabled) && (
+              <MetaMonitoringSetup
+                key={c.id}
+                client={c}
+                busy={!!busy}
+                onEnable={(emails) => void enableAndLoad(c, emails)}
+              />
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 className={button}
@@ -374,23 +344,39 @@ export function AgencyOverview({
               >
                 {expanded === c.id ? "← All accounts" : "View performance"}
               </button>
-              <a className={button} href={`/clients/${c.id}`}>
-                Client settings
-              </a>
-              {c.adsManagerUrl && (
-                <a
-                  className={button}
-                  href={c.adsManagerUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Ads Manager
-                </a>
-              )}
+              <details className="relative">
+                <summary className={`${button} cursor-pointer`}>
+                  More options
+                </summary>
+                <div className="absolute left-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-dash-border bg-dash-card p-2 shadow-xl">
+                  <a
+                    className="rounded-lg p-2 text-sm hover:bg-dash-bg"
+                    href={`/clients/${c.id}`}
+                  >
+                    Client settings
+                  </a>
+                  <a
+                    className="rounded-lg p-2 text-sm hover:bg-dash-bg"
+                    href={`/clients/${c.id}#budget-monitor`}
+                  >
+                    Budget &amp; alerts
+                  </a>
+                  {c.adsManagerUrl && (
+                    <a
+                      className="rounded-lg p-2 text-sm hover:bg-dash-bg"
+                      href={c.adsManagerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open Ads Manager ↗
+                    </a>
+                  )}
+                </div>
+              </details>
               {c.performanceEnabled && (
                 <button
                   disabled={!!busy}
-                  className={button}
+                  className="rounded-xl bg-dash-accent px-4 py-2 text-sm font-semibold text-[#102033] disabled:opacity-50"
                   onClick={() =>
                     void action(c.id, "performance-monitor", {
                       action: "check",
@@ -412,235 +398,162 @@ export function AgencyOverview({
                 </button>
               )}
             </div>
-            {expanded === c.id && c.linked && (
-              <div className="mt-5 border-t border-dash-border pt-4">
+            {c.performance?.checkedAt && (
+              <p className="mt-3 text-xs text-dash-ink-secondary">
+                {c.performanceFresh ? "Last refreshed" : "Saved snapshot"}:{" "}
+                {date(c.performance.checkedAt, c)}
+              </p>
+            )}
+            {c.performance?.error && (
+              <p role="alert" className="mt-3 text-sm text-amber-400">
+                {c.performance.error}
+              </p>
+            )}
+            {c.linked && (
+              <div className="mt-4">
                 <DecisionSettingsPanel
                   client={c}
                   busy={!!busy}
                   save={async (body) => {
                     setActivationBusy(c.id);
                     try {
-                      const saved = await action(c.id, "performance-monitor", body);
-                      return saved && c.performanceEnabled ? await action(c.id, "performance-monitor", {action:"check"}) : saved;
-                    } finally { setActivationBusy(null); }
+                      const saved = await action(
+                        c.id,
+                        "performance-monitor",
+                        body,
+                      );
+                      return saved && c.performanceEnabled
+                        ? await action(c.id, "performance-monitor", {
+                            action: "check",
+                          })
+                        : saved;
+                    } finally {
+                      setActivationBusy(null);
+                    }
                   }}
                 />
-                {c.performanceEnabled && <details className="mt-4 rounded-xl border border-dash-border p-4">
-                  <summary className="cursor-pointer text-sm font-medium">Monitoring &amp; email preferences</summary>
-                  <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-                    <label className="flex items-start gap-2"><input type="checkbox" className="mt-1 h-4 w-4 accent-dash-accent" checked={c.performanceEnabled} disabled={!!busy} onChange={e=>void action(c.id,"performance-monitor",{action:"settings",enabled:e.target.checked,emailEnabled:c.emailEnabled})} />Keep performance updated</label>
-                    <label className="flex items-start gap-2"><input type="checkbox" className="mt-1 h-4 w-4 accent-dash-accent" checked={c.emailEnabled} disabled={!!busy} onChange={e=>void action(c.id,"performance-monitor",{action:"settings",enabled:c.performanceEnabled,emailEnabled:e.target.checked})} />Email me about new issues</label>
+              </div>
+            )}
+            <MetaPerformanceDashboard
+              client={c}
+              busy={!!busy}
+              save={(body) => action(c.id, "performance-monitor", body)}
+            />
+            {c.budgetEnabled && (
+              <div
+                id={`meta-budget-${c.id}`}
+                className="mt-4 grid scroll-mt-6 gap-4"
+              >
+                {c.budgetEnabled && (
+                  <div className="rounded-xl border border-dash-border bg-dash-bg p-4">
+                    <h3 className="text-lg font-semibold">
+                      Monthly budget pacing
+                    </h3>
+                    <p className="mt-1 text-sm font-medium">{c.budgetLabel}</p>
+                    {c.budget?.facts && (
+                      <p
+                        className={`mt-1 text-sm ${c.budgetFresh ? "" : "text-dash-ink-secondary"}`}
+                      >
+                        {money(c.budget.facts.spent, c)} spent of{" "}
+                        {money(c.budget.config.monthlyBudget, c)} · Projected{" "}
+                        {money(c.budget.facts.projected, c)}
+                        {c.budgetFresh && (
+                          <span className="mt-1 block text-xs">
+                            {(c.budget.facts.projectedOver ?? 0) >
+                            c.budget.facts.tolerance ? (
+                              <>
+                                Projected over budget by{" "}
+                                {money(c.budget.facts.projectedOver, c)}.{" "}
+                              </>
+                            ) : (c.budget.facts.projectedShortfall ?? 0) >
+                              c.budget.facts.tolerance ? (
+                              <>
+                                Projected underspend of{" "}
+                                {money(c.budget.facts.projectedShortfall, c)}
+                                .{" "}
+                              </>
+                            ) : null}
+                            Remaining daily allowance:{" "}
+                            {money(c.dailyAllowance, c)} through month end,
+                            including today. Planning guide; adjust budgets in
+                            Ads Manager.
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {c.budget?.checkedAt && (
+                      <p className="mt-1 text-xs text-dash-ink-secondary">
+                        {c.budgetFresh ? "Checked" : "Prior snapshot"}:{" "}
+                        {date(c.budget.checkedAt, c)}
+                      </p>
+                    )}
+                    {c.budget?.error && (
+                      <p className="mt-1 text-xs text-amber-400">
+                        {c.budget.error}
+                      </p>
+                    )}
                   </div>
-                  <p className="mt-3 text-xs text-dash-ink-secondary">Rolling comparisons update daily. Custom dates refresh manually. Budget alerts are managed in client settings.</p>
-                </details>}
+                )}
+              </div>
+            )}
+
+            {expanded === c.id && c.linked && (
+              <div className="mt-5 border-t border-dash-border pt-4">
+                {c.performanceEnabled && (
+                  <details className="mt-4 rounded-xl border border-dash-border p-4">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Monitoring &amp; email preferences
+                    </summary>
+                    <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 accent-dash-accent"
+                          checked={c.performanceEnabled}
+                          disabled={!!busy}
+                          onChange={(e) =>
+                            void action(c.id, "performance-monitor", {
+                              action: "settings",
+                              enabled: e.target.checked,
+                              emailEnabled: c.emailEnabled,
+                            })
+                          }
+                        />
+                        Keep performance updated
+                      </label>
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 accent-dash-accent"
+                          checked={c.emailEnabled}
+                          disabled={!!busy}
+                          onChange={(e) =>
+                            void action(c.id, "performance-monitor", {
+                              action: "settings",
+                              enabled: c.performanceEnabled,
+                              emailEnabled: e.target.checked,
+                            })
+                          }
+                        />
+                        Email me about new issues
+                      </label>
+                    </div>
+                    <p className="mt-3 text-xs text-dash-ink-secondary">
+                      Rolling comparisons update daily. Custom dates refresh
+                      manually. Budget alerts are managed in client settings.
+                    </p>
+                  </details>
+                )}
                 {c.performance?.emailError && (
                   <p className="mt-3 text-xs text-amber-400">
                     {c.performance.emailError}
                   </p>
                 )}
-                {c.performance?.facts && (
-                  <div className="mt-5">
-                    <p className="mb-3 text-sm font-medium">
-                      Current completed period
-                      {!c.performanceFresh
-                        ? " · Older snapshot, check Meta before acting"
-                        : ""}
-                    </p>
-                    <p className="mb-4 text-xs text-dash-ink-secondary">{c.performance.facts.periodA.startIso} – {c.performance.facts.periodA.endIso} compared with {c.performance.facts.periodB.startIso} – {c.performance.facts.periodB.endIso} · {c.timezone}</p>
-                    {c.performance.facts.valueWarning && (
-                      <p className="mb-3 text-sm text-amber-400">
-                        Purchase value lookup was incomplete. Available delivery
-                        metrics remain visible; refresh before assessing ROAS.
-                      </p>
-                    )}
-                    {c.performance.facts.empty ? (
-                      <p className="text-sm">
-                        Meta returned no delivery for either period.
-                      </p>
-                    ) : (
-                      metrics(c.performance.facts.current, c)
-                    )}
-                    {[...c.performance.facts.campaigns]
-                      .sort((a, b) => {
-                        return campaignRank(a) - campaignRank(b);
-                      })
-                      .map((campaign) => (
-                        <details
-                          key={campaign.name}
-                          className="mt-4 min-w-0 rounded-lg border border-dash-border p-3"
-                        >
-                          <summary className="cursor-pointer break-words text-sm font-medium">
-                            {campaign.name}{" "}
-                            <span className="text-xs text-dash-ink-secondary">
-                              {" "}
-                              · {campaign.objective} ·{" "}
-                            </span>
-                            <PortfolioBadge
-                              state={
-                                c.performanceFresh
-                                  ? campaignBrief(campaign).state
-                                  : "check"
-                              }
-                            />
-                          </summary>
-                          <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
-                            Swipe the table to compare both periods →
-                          </p>
-                          <div className="mt-3 max-w-full overflow-x-auto">
-                            <table className="w-full min-w-[480px] text-left text-sm">
-                              <thead>
-                                <tr className="text-xs text-dash-ink-secondary">
-                                  <th className="pb-2 font-medium">Metric</th>
-                                  <th className="pb-2 font-medium">
-                                    Current period
-                                  </th>
-                                  <th className="pb-2 font-medium">
-                                    Previous period
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {[
-                                  [
-                                    "Ad spend",
-                                    money(campaign.current.spend, c),
-                                    money(campaign.previous.spend, c),
-                                  ],
-                                  [
-                                    "Impressions",
-                                    value(campaign.current.impressions),
-                                    value(campaign.previous.impressions),
-                                  ],
-                                  [
-                                    "CTR (all)",
-                                    campaign.current.ctr === null
-                                      ? "—"
-                                      : `${value(campaign.current.ctr, 2)}%`,
-                                    campaign.previous.ctr === null
-                                      ? "—"
-                                      : `${value(campaign.previous.ctr, 2)}%`,
-                                  ],
-                                  [
-                                    "CPC (all)",
-                                    money(campaign.current.cpc, c),
-                                    money(campaign.previous.cpc, c),
-                                  ],
-                                  [
-                                    campaign.objective,
-                                    value(campaign.current.results, 2),
-                                    value(campaign.previous.results, 2),
-                                  ],
-                                  [
-                                    campaign.costLabel,
-                                    money(campaign.current.cpr, c),
-                                    money(campaign.previous.cpr, c),
-                                  ],
-                                  ...(/purchase/i.test(campaign.objective)
-                                    ? [
-                                        [
-                                          "Purchase ROAS",
-                                          campaign.current.roas == null
-                                            ? "—"
-                                            : `${value(campaign.current.roas, 2)}×`,
-                                          campaign.previous.roas == null
-                                            ? "—"
-                                            : `${value(campaign.previous.roas, 2)}×`,
-                                        ],
-                                        [
-                                          "Purchase value",
-                                          money(
-                                            campaign.current.purchaseValue,
-                                            c,
-                                          ),
-                                          money(
-                                            campaign.previous.purchaseValue,
-                                            c,
-                                          ),
-                                        ],
-                                        [
-                                          "ROAS spend basis (campaign)",
-                                          money(campaign.current.roasSpend, c),
-                                          money(campaign.previous.roasSpend, c),
-                                        ],
-                                      ]
-                                    : []),
-                                ].map(([label, a, b]) => (
-                                  <tr
-                                    key={label}
-                                    className="border-t border-dash-border"
-                                  >
-                                    <th className="py-2 pr-3 font-normal">
-                                      {label}
-                                    </th>
-                                    <td className="py-2 pr-3">{a}</td>
-                                    <td className="py-2">{b}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          {!campaign.comparableResults && (
-                            <p className="mt-2 text-xs text-dash-ink-secondary">
-                              Result trends need comparable goals and reported
-                              results in both periods.
-                            </p>
-                          )}
-                          {campaign.signals.map((signal) => (
-                            <p
-                              key={signal.key}
-                              className={`mt-3 text-sm ${!c.performanceFresh ? "text-dash-ink-secondary" : signal.tone === "critical" ? "text-red-400" : signal.tone === "warning" ? "text-amber-400" : "text-emerald-400"}`}
-                            >
-                              <strong>
-                                {signal.metric}
-                                {signal.change === null
-                                  ? ""
-                                  : `: ${signal.change > 0 ? "+" : ""}${Math.round(signal.change)}%`}
-                                .{" "}
-                                {signal.state === "continuing"
-                                  ? "Continuing"
-                                  : signal.state === "recovered"
-                                    ? "Recovered"
-                                    : "New"}
-                                {signal.role === "supporting"
-                                  ? " · Supporting metric"
-                                  : ""}
-                                .
-                              </strong>{" "}
-                              {signal.message}
-                            </p>
-                          ))}
-                          {/purchase/i.test(campaign.objective) && (
-                            <p className="mt-2 text-xs text-dash-ink-secondary">
-                              ROAS uses matching purchase values and
-                              campaign-level period spend. Other metrics use the
-                              ad-set delivery source. Attribution can revise
-                              recent results.
-                            </p>
-                          )}
-                          <CampaignTargetForm
-                            client={c}
-                            campaign={campaign}
-                            busy={!!busy}
-                            save={(body) =>
-                              action(c.id, "performance-monitor", body)
-                            }
-                          />
-                          {!campaign.signals.length && (
-                            <p className="mt-2 text-xs text-dash-ink-secondary">
-                              {c.performanceFresh
-                                ? campaignBrief(campaign).reason
-                                : "Prior snapshot only. Refresh before assessing current performance."}
-                            </p>
-                          )}
-                        </details>
-                      ))}
-                  </div>
-                )}
               </div>
             )}
           </section>
         ))}
-      {visible && !visible.some(c=>c.id === expanded) && (
+      {visible && !visible.some((c) => c.id === expanded) && (
         <PortfolioBoard
           rows={visible}
           selected={expanded}

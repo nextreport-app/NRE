@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { metricChange } from "@/lib/performance-monitor/metric-change";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
   PORTFOLIO_LABELS,
@@ -50,6 +51,11 @@ export function ObservationLine({
   observation: Observation;
   currency: string;
 }) {
+  const delta = metricChange(
+    o.current,
+    o.previous,
+    /cost|cpc|cpl|cpr/i.test(o.metric) ? "lower" : "higher",
+  );
   return (
     <p className="mt-1 text-sm">
       <strong>
@@ -58,9 +64,14 @@ export function ObservationLine({
       {" · "}
       {o.reference === "target" ? "Target" : "Previous"}{" "}
       {format(o.previous, o.unit, currency)}
-      {o.change === null
-        ? ""
-        : ` · ${o.change > 0 ? "+" : ""}${Math.round(o.change)}%${o.reference === "target" ? " vs target" : ""}`}
+      {o.change !== null && (
+        <span
+          className={`ml-2 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 text-red-400" : "border-dash-border text-dash-ink-secondary"}`}
+        >
+          {delta.label}
+          {o.reference === "target" ? " vs target" : ""}
+        </span>
+      )}
     </p>
   );
 }
@@ -74,7 +85,10 @@ export function PortfolioBoard({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div className="mt-4 grid gap-3 md:grid-cols-2" aria-label="Account performance list">
+    <div
+      className="mt-4 grid gap-3 md:grid-cols-2"
+      aria-label="Account performance list"
+    >
       {rows.map((c) => (
         <article
           key={c.id}
@@ -168,16 +182,30 @@ export function PortfolioBoard({
               )}
             </p>
           )}
-          {!c.linked ? <Link id={`open-account-${c.id}`} href={`/clients/${c.id}/reports/new`} className="mt-3 inline-flex rounded-xl border border-dash-border px-3 py-2 text-sm font-medium text-dash-accent">Link Meta account<span className="sr-only"> for {c.name}</span></Link> : <button
-            id={`open-account-${c.id}`}
-            aria-expanded={selected === c.id}
-            aria-controls={`account-${c.id}`}
-            className="mt-3 rounded-lg border border-dash-border px-3 py-2 text-sm"
-            onClick={() => onOpen(c.id)}
-          >
-            {selected === c.id ? "Close account" : c.performanceEnabled ? "View performance" : "Set up monitoring"}
-            <span className="sr-only"> {c.name}</span>
-          </button>}
+          {!c.linked ? (
+            <Link
+              id={`open-account-${c.id}`}
+              href={`/clients/${c.id}/reports/new`}
+              className="mt-3 inline-flex rounded-xl border border-dash-border px-3 py-2 text-sm font-medium text-dash-accent"
+            >
+              Link Meta account<span className="sr-only"> for {c.name}</span>
+            </Link>
+          ) : (
+            <button
+              id={`open-account-${c.id}`}
+              aria-expanded={selected === c.id}
+              aria-controls={`account-${c.id}`}
+              className="mt-3 rounded-lg border border-dash-border px-3 py-2 text-sm"
+              onClick={() => onOpen(c.id)}
+            >
+              {selected === c.id
+                ? "Close account"
+                : c.performanceEnabled
+                  ? "View performance"
+                  : "Set up monitoring"}
+              <span className="sr-only"> {c.name}</span>
+            </button>
+          )}
         </article>
       ))}
     </div>
