@@ -1,3 +1,5 @@
+import { ga4RequestError } from "./ga4-request-error";
+
 /**
  * Google Analytics 4 — OAuth + Admin API (list properties) + Data API (runReport).
  *
@@ -94,7 +96,7 @@ export async function refreshGa4AccessToken(refreshToken: string): Promise<Ga4To
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
-    throw new Error(`Failed to refresh GA4 access token (${res.status}): ${await res.text()}`);
+    throw await ga4RequestError(res, "authorization");
   }
   return res.json();
 }
@@ -118,7 +120,7 @@ export async function listGa4Properties(accessToken: string): Promise<Ga4Propert
 
     const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) {
-      throw new Error(`GA4 Admin API accountSummaries failed (${res.status}): ${await res.text()}`);
+      throw await ga4RequestError(res, "properties");
     }
 
     const data = (await res.json()) as {
@@ -193,7 +195,7 @@ export async function runGa4Report(
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
-    throw new Error(`GA4 Data API runReport failed (${res.status}): ${await res.text()}`);
+    throw await ga4RequestError(res, "report");
   }
   return res.json();
 }
@@ -237,7 +239,7 @@ export function toGa4Date(iso: string): string {
 export async function fetchGa4PropertyMetadata(accessToken:string,propertyId:string):Promise<{propertyId:string;displayName:string;timezone:string;currency:string}>{
  if(!/^\d+$/.test(propertyId))throw Error("Invalid GA4 property ID");
  const response=await fetch(`${GA4_ADMIN_BASE}/properties/${propertyId}`,{headers:{Authorization:`Bearer ${accessToken}`},signal:AbortSignal.timeout(30000)});
- if(!response.ok)throw Error(`GA4 property metadata failed (${response.status})`);
+ if(!response.ok)throw await ga4RequestError(response, "property");
  const data=await response.json() as {name?:string;displayName?:string;timeZone?:string;currencyCode?:string};
  if(data.name!==`properties/${propertyId}`||!data.timeZone||!data.currencyCode)throw Error("GA4 property metadata is incomplete");
  new Intl.DateTimeFormat("en",{timeZone:data.timeZone});

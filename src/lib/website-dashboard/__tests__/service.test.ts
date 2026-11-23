@@ -198,3 +198,14 @@ it("invalidates prior cache when the connected GA4 account changes", async () =>
     }),
   );
 });
+
+it("preserves the safe provider recovery message without marking old data fresh", async () => {
+  const { ga4RequestError } = await import("../../ga4-request-error");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = await ga4RequestError(new Response(JSON.stringify({ error: { details: [{ reason: "SERVICE_DISABLED" }], message: "private provider detail" } }), { status: 403 }), "report");
+  m.fetch.mockRejectedValue(error);
+  await expect(refreshWebsiteDashboard("own-website", "owner", 7, now)).rejects.toThrow("GA4_REPORT_API_DISABLED_403");
+  expect(m.update).toHaveBeenLastCalledWith(expect.objectContaining({ data: { error: error.message, leaseUntil: null } }));
+  expect(error.message).not.toContain("private provider detail");
+  vi.restoreAllMocks();
+});
