@@ -167,7 +167,7 @@ async function notifyOwner(runId: string) {
   });
   if (!run || !["READY", "FAILED"].includes(run.status)) return;
   const client = run.schedule.client;
-  const text = `${client.accountName}: ${run.status === "READY" ? "your scheduled report draft is ready for review" : "your scheduled report draft needs attention"}.\n${run.error ?? "Nothing has been sent to the client. Review and approve the report before delivery."}\nhttps://nextreport.in/clients/${client.id}#scheduled-reports`;
+  const text = `${client.accountName}: ${run.status === "READY" ? "your scheduled report draft is ready for review" : "your scheduled report draft needs attention"}.\n${run.error ?? "Nothing has been sent to the client. Review and approve the report before delivery."}\nhttps://nextreport.in/clients/${client.id}/schedules`;
   const key = `schedule-notice:${run.id}:${run.status}`;
   await queueEmail({
     key,

@@ -87,7 +87,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
     );
     return () => clearInterval(timer);
   }, [load, pending]);
-  async function action(body: object) {
+  async function action(body: Record<string, unknown>) {
     setBusy(true);
     setError("");
     setNotice("");
@@ -99,8 +99,13 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
       });
       const data = await r.json();
       if (!r.ok) throw Error(data.error ?? "Schedule update failed.");
-      if (data.pending)
-        setNotice("Delivery is queued. Its status will update here.");
+      if (data.pending) setNotice("Delivery is queued. Its status will update here.");
+      else if (body.action === "save" || body.action === "toggle")
+        setNotice(body.enabled
+          ? "Automatic draft preparation is active. Review and approve each draft, then click Send approved report to email recipients."
+          : "Saved paused. Nothing will run at the saved time. Use Prepare now to create a test draft.");
+      else if (body.action === "prepare")
+        setNotice("Draft preparation requested. Review it here or in Report inbox when ready. No recipient email has been sent.");
       await load();
       return true;
     } catch (e) {
@@ -139,11 +144,11 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
     setEnabled(schedule?.enabled ?? false);
     setEditing(true);
   }
-  const date = (value: string) =>
+  const date = (value: string, timezone = view?.timezone ?? "UTC") =>
     new Intl.DateTimeFormat("en", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: view?.timezone ?? "UTC",
+      weekday: "short", year: "numeric", month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit",
+      timeZone: timezone,
     }).format(new Date(value));
   async function slides(run: Run) {
     const folderId = extractDriveFolderIdFromLink(
@@ -183,7 +188,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
             <span className="text-xs text-dash-ink-secondary">Beta</span>
           </h2>
           <p className="mt-1 text-sm text-dash-ink-secondary">
-            Prepare → review → approve → send. You control client delivery.
+            Scheduled time creates a draft, not a client email. Review → approve → send.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -214,6 +219,9 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
           {view.health.lastTickAt && <span className="block mt-1">Last scheduler check: {date(view.health.lastTickAt)} ({view.timezone}).</span>}
         </p>
       )}
+      {view && <p className="mt-3 text-xs text-dash-ink-secondary">
+        Reporting timezone: <strong>{view.timezone}</strong>. Meta reports follow the ad account’s calendar, not your device’s location.
+      </p>}
       {editing && view && (
         <form
           className="mt-5 grid gap-4 border-t border-dash-border pt-4 sm:grid-cols-2"
@@ -319,7 +327,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
             </label>
           )}
           <label className="text-sm">
-            Start preparing at ({view.timezone})
+            Draft preparation time ({view.timezone})
             <input
               required
               className={input}
@@ -329,7 +337,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
             />
           </label>
           <label className="text-sm">
-            Client emails (up to 5)
+            Report recipients (up to 5)
             <input
               required
               className={input}
@@ -337,6 +345,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               onChange={(e) => setRecipients(e.target.value)}
               placeholder="client@example.com, colleague@example.com"
             />
+            <span className="mt-1 block text-xs text-dash-ink-secondary">Emailed only after approval and Send approved report. Draft-ready notices go to your account email.</span>
           </label>
           <details className="sm:col-span-2">
             <summary className="cursor-pointer text-sm">
@@ -390,7 +399,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               });
               return (
                 <p className="text-xs text-dash-ink-secondary sm:col-span-2">
-                  Next occurrence if enabled: {date(next.toISOString())} (
+                  Next draft preparation if enabled: {date(next.toISOString())} (
                   {view.timezone})
                 </p>
               );
@@ -405,19 +414,19 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               disabled={!view.health.healthy && !enabled}
               onChange={(e) => setEnabled(e.target.checked)}
             />
-            Enable automatic preparation
+            Enable automatic draft preparation
           </label>
           <p className="text-xs text-dash-ink-secondary sm:col-span-2">
             Saving replaces this client&apos;s {cadence.toLowerCase()} schedule.
             Existing drafts keep their recipients and settings. Preparation may
-            take a few minutes; you receive a review notification when ready.
+            take a few minutes after the worker starts; your account email receives a review notification when ready. Client emails wait for your explicit send.
           </p>
           <div className="flex gap-2 sm:col-span-2">
             <button
               disabled={busy}
               className={`${button} bg-dash-accent text-black`}
             >
-              Save schedule
+              {enabled ? "Save active schedule" : "Save paused schedule"}
             </button>
             <button
               type="button"
@@ -439,9 +448,12 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
               </h3>
               <p className="text-xs text-dash-ink-secondary">
                 {s.enabled
-                  ? `Next preparation: ${date(s.nextRunAt)} (${view.timezone})`
-                  : `Saved time: ${s.settings.time} (${view.timezone})`}
+                  ? `Next draft: ${date(s.nextRunAt, s.settings.timezone)} (${s.settings.timezone})`
+                  : `If enabled, next draft: ${date(nextScheduledAt(s.settings).toISOString(), s.settings.timezone)} (${s.settings.timezone})`}
               </p>
+              {!s.enabled && <p className="mt-2 text-sm text-dash-ink-secondary">Paused — nothing runs automatically. Use Prepare now to test.</p>}
+              {s.enabled && !view.health.healthy && <p className="mt-2 text-sm text-amber-400">Active schedule, but the worker check is overdue. Automatic preparation is not confirmed.</p>}
+              {s.settings.timezone !== view.timezone && <p className="mt-2 text-sm text-amber-400">Client timezone changed. Edit and save this schedule again before preparing.</p>}
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -452,7 +464,8 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
                 Edit
               </button>
               <button
-                disabled={busy || (!s.enabled && !view.health.healthy)}
+                disabled={busy || (!s.enabled && (!view.health.healthy || s.settings.timezone !== view.timezone))}
+                title={!s.enabled && !view.health.healthy ? "Automatic preparation is unavailable until the scheduler check is healthy. Prepare now still works." : undefined}
                 className={button}
                 onClick={() =>
                   void action({
@@ -462,7 +475,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
                   })
                 }
               >
-                {s.enabled ? "Pause" : "Resume"}
+                {s.enabled ? "Pause" : "Enable schedule"}
               </button>
               <button
                 disabled={
@@ -494,7 +507,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
                   : r.status.toLowerCase().replaceAll("_", " ")}
               </p>
               <p className="mt-1 break-words text-xs text-dash-ink-secondary">
-                {date(r.dueAt)} · To: {r.settings.recipients.join(", ")}
+                {date(r.dueAt, r.settings.timezone)} ({r.settings.timezone}) · To: {r.settings.recipients.join(", ")}
               </p>
               {r.error && (
                 <p className="mt-2 text-sm text-amber-400">{r.error}</p>

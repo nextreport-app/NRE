@@ -152,3 +152,20 @@ it("supports daily and fortnightly DST gaps/folds with one occurrence per local 
     nextScheduledAt(fold, new Date("2026-11-01T05:30Z")).toISOString(),
   ).toBe("2026-11-02T06:30:00.000Z");
 });
+
+
+it("does not confuse a Sunday-night Chicago clock with Monday's weekly occurrence", () => {
+  const chicago = { ...settings, timezone: "America/Chicago", weekday: 1, time: "23:05" };
+  // Sunday Nov 22, 23:02 Chicago. A Monday schedule is a day away, not three minutes.
+  const now = new Date("2026-11-23T05:02:00Z");
+  expect(nextScheduledAt(chicago, now).toISOString()).toBe("2026-11-24T05:05:00.000Z");
+  expect(nextScheduledAt({ ...chicago, weekday: 0 }, now).toISOString()).toBe("2026-11-23T05:05:00.000Z");
+});
+it.each([
+  ["Asia/Kolkata", "2026-11-23T03:30:00.000Z"],
+  ["America/Chicago", "2026-11-23T15:00:00.000Z"],
+  ["Europe/London", "2026-11-23T09:00:00.000Z"],
+  ["Australia/Sydney", "2026-11-23T22:00:00.000Z"],
+])("uses the actual account timezone %s for the same 09:00 daily setting", (timezone, expected) => {
+  expect(nextScheduledAt({ ...settings, cadence: "DAILY", timezone }, new Date("2026-11-23T00:00:00Z")).toISOString()).toBe(expected);
+});
