@@ -1,3 +1,4 @@
+import { customWebsitePeriods, type WebsiteRange } from "./range";
 import {
   runGa4Report,
   type RunReportResponse,
@@ -52,11 +53,12 @@ export function ga4DashboardRows(
 export async function fetchWebsiteSnapshot(
   accessToken: string,
   propertyId: string,
-  days: 7 | 30,
+  selection: WebsiteRange,
   now = new Date(),
 ): Promise<WebsiteSnapshot> {
   const property = await fetchGa4PropertyMetadata(accessToken, propertyId),
-    periods = websitePeriods(days, property.timezone, now);
+    periods = typeof selection === "number" ? websitePeriods(selection, property.timezone, now) : customWebsitePeriods(selection, property.timezone, now);
+  const days = typeof selection === "number" ? selection : customWebsitePeriods(selection, property.timezone, now).days;
   const warnings = new Set<string>();
   async function request(
     range: typeof periods.currentPeriod,
@@ -121,13 +123,7 @@ export async function fetchWebsiteSnapshot(
         throw Error("Invalid GA4 rate.");
     return { metrics: result, empty: parsed.length === 0 };
   }
-  const channelMetrics = [
-    "sessions",
-    "engagedSessions",
-    "engagementRate",
-    "keyEvents",
-    "sessionKeyEventRate",
-  ] as const;
+  const channelMetrics = WEBSITE_METRICS;
   async function channels(range: typeof periods.currentPeriod) {
     const out: WebsiteSnapshot["channels"] = [];
     for (let offset = 0; offset < 1000; offset += 100) {
@@ -164,17 +160,17 @@ export async function fetchWebsiteSnapshot(
       channels(periods.currentPeriod),
       request(
         periods.currentPeriod,
-        ["sessions", "engagementRate", "keyEvents"],
+        WEBSITE_METRICS,
         ["landingPage"],
         10,
       ),
-      request(periods.currentPeriod, ["sessions", "keyEvents"], ["date"], 100),
+      request(periods.currentPeriod, WEBSITE_METRICS, ["date"], 100),
     ]);
   // Keep each snapshot at the existing five concurrent GA4 requests; the two window caches may refresh together.
   const previousChannels = await channels(periods.previousPeriod);
   const pages = ga4DashboardRows(
     pageResponse,
-    ["sessions", "engagementRate", "keyEvents"],
+    WEBSITE_METRICS,
     ["landingPage"],
   ).map((r) => ({
     name: r.dimensions.landingPage,
@@ -182,7 +178,7 @@ export async function fetchWebsiteSnapshot(
   })) as WebsiteSnapshot["pages"];
   const trend = ga4DashboardRows(
     trendResponse,
-    ["sessions", "keyEvents"],
+    WEBSITE_METRICS,
     ["date"],
   ).map((r) => ({
     date: r.dimensions.date,
@@ -211,6 +207,7 @@ export async function fetchWebsiteSnapshot(
   return {
     version: 1,
     days,
+    ...(typeof selection === "object" ? { rangeMode: "custom" as const } : {}),
     property,
     checkedAt: new Date().toISOString(),
     ...periods,

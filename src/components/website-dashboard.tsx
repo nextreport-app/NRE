@@ -1,5 +1,8 @@
 "use client";
-import { WebsiteChanges, WebsiteChannelComparison } from "./website-changes";
+import { WebsiteMetricChange } from "./website-metric-change";
+import { WebsiteDetailTable, formatWebsiteMetric } from "./website-detail-table";
+import { customWebsiteRangeSchema } from "@/lib/website-dashboard/range";
+import { WebsiteChannelComparison } from "./website-changes";
 import { WebsiteSessionsTrend } from "./website-sessions-trend";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,7 +22,7 @@ interface View {
   connected: boolean;
   connectedEmail: string | null;
   snapshots: Array<{
-    days: 7 | 30;
+    days: 0 | 7 | 30;
     data: WebsiteSnapshot | null;
     error: string | null;
     fresh: boolean;
@@ -40,7 +43,7 @@ const labels: Record<WebsiteMetric, string> = {
   sessionKeyEventRate: "Key event rate",
   averageSessionDuration: "Avg. session duration",
 };
-const primaryMetrics: WebsiteMetric[] = ["sessions", "totalUsers", "engagementRate", "keyEvents", "sessionKeyEventRate"];
+const primaryMetrics: WebsiteMetric[] = ["sessions", "totalUsers", "engagementRate", "bounceRate", "keyEvents", "sessionKeyEventRate"];
 const rates = new Set(["engagementRate", "bounceRate", "sessionKeyEventRate"]);
 export function WebsiteDashboard({
   initialClientId = "",
@@ -49,7 +52,9 @@ export function WebsiteDashboard({
 }) {
   const [view, setView] = useState<View | null>(null),
     [clientId, setClientId] = useState(initialClientId),
-    [days, setDays] = useState<7 | 30>(7),
+    [days, setDays] = useState<7 | 30 | "custom">(7),
+    [customStart, setCustomStart] = useState(""),
+    [customEnd, setCustomEnd] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
@@ -90,11 +95,12 @@ export function WebsiteDashboard({
     ),
     entry =
       view?.selectedClientId === (clientId || view?.selectedClientId)
-        ? view?.snapshots.find((s) => s.days === days)
+        ? view?.snapshots.find((s) => days !== "custom" ? s.days === days : s.days === 0 && s.data?.currentPeriod.startIso === customStart && s.data?.currentPeriod.endIso === customEnd)
         : undefined,
     data = entry?.data;
   async function refresh() {
     if (!selected || busy) return;
+    if (days === "custom" && !customWebsiteRangeSchema.safeParse({startIso:customStart,endIso:customEnd}).success) { setError("Choose a valid custom range of 1–90 completed days."); return; }
     setBusy(true);
     setError("");
     setNotice("");
@@ -104,7 +110,7 @@ export function WebsiteDashboard({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ days }),
+          body: JSON.stringify(days === "custom" ? { customRange: {startIso:customStart,endIso:customEnd} } : { days }),
         },
       );
       const result = await response.json();
@@ -128,10 +134,10 @@ export function WebsiteDashboard({
       : rates.has(key)
         ? `${num(value * 100)}%`
         : key === "averageSessionDuration"
-          ? `${num(value)} sec`
+          ? formatWebsiteMetric(key, value)
           : num(value);
   return (
-    <div className="mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
+    <div className="nre-website-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
       <h1 className="text-2xl font-bold">
         Website performance{" "}
         <span className="text-xs font-normal text-dash-ink-secondary">
@@ -194,6 +200,7 @@ export function WebsiteDashboard({
                 Last {n} days
               </button>
             ))}
+            <button className={`${button} ${days === "custom" ? "border-dash-accent bg-dash-accent text-black" : ""}`} aria-pressed={days === "custom"} disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");if(!customStart) {setCustomStart(data?.currentPeriod.startIso ?? "");setCustomEnd(data?.currentPeriod.endIso ?? "");}}}>Custom dates</button>
           </div>
           <button
             className={button}
@@ -202,6 +209,11 @@ export function WebsiteDashboard({
           >
             {busy ? "Refreshing GA4…" : "Refresh GA4"}
           </button>
+          {days === "custom" && <div className="flex w-full flex-wrap items-end gap-3 rounded-xl border border-dash-border bg-dash-card p-4">
+            <label className="text-sm">From<input aria-label="Website start date" type="date" disabled={busy} value={customStart} onChange={e=>{setCustomStart(e.target.value);setError("");}} className="mt-1 block rounded-lg border border-dash-border bg-dash-bg px-3 py-2" /></label>
+            <label className="text-sm">To<input aria-label="Website end date" type="date" disabled={busy} value={customEnd} onChange={e=>{setCustomEnd(e.target.value);setError("");}} className="mt-1 block rounded-lg border border-dash-border bg-dash-bg px-3 py-2" /></label>
+            <p className="text-xs text-dash-ink-secondary">Up to 90 completed days · compared with the preceding equal-length period.</p>
+          </div>}
         </div>
       )}
       {!view && !error && (
@@ -268,8 +280,7 @@ export function WebsiteDashboard({
           </p>
           {!data && (
             <p className="mt-5 text-sm">
-              Click Refresh GA4 to load the last {days} completed days and
-              compare with the previous {days} days.
+              Click Refresh GA4 to load {days === "custom" ? "your selected dates" : `the last ${days} completed days`} and compare with the previous equal-length period.
             </p>
           )}
           {entry?.refreshing && !busy && (
@@ -281,7 +292,7 @@ export function WebsiteDashboard({
           {data && (
             <>
               <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                <p>{new Date(data.currentPeriod.startIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", timeZone:"UTC"})} – {new Date(data.currentPeriod.endIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})} <span className="text-dash-ink-secondary">· compared with previous {days} days</span></p>
+                <p>{new Date(data.currentPeriod.startIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", timeZone:"UTC"})} – {new Date(data.currentPeriod.endIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})} <span className="text-dash-ink-secondary">· compared with previous {data.days} days</span></p>
                 <details className="text-xs text-dash-ink-secondary">
                   <summary className="cursor-pointer">Dates &amp; data details</summary>
                   <p className="mt-2">Current: {data.currentPeriod.startIso} – {data.currentPeriod.endIso}</p>
@@ -300,29 +311,29 @@ export function WebsiteDashboard({
               {data.empty ? (
                 <section className="mt-5 rounded-xl border border-dash-border bg-dash-card p-5">
                   <h2 className="font-semibold">No website data reported for these dates</h2>
-                  <p className="mt-2 text-sm text-dash-ink-secondary">GA4 returned no rows for the last {days} completed days. Check the selected property and its collection setup in Analytics. This does not confirm whether the tag is working.</p>
+                  <p className="mt-2 text-sm text-dash-ink-secondary">GA4 returned no rows for these {data.days} completed days. Check the selected property and its collection setup in Analytics. This does not confirm whether the tag is working.</p>
                   <div className="mt-4 flex flex-wrap gap-3 text-sm text-dash-accent">
                     {days === 7 && <button onClick={() => { setDays(30); setError(""); }}>View last 30 days</button>}
                     <a href={`https://analytics.google.com/analytics/web/#/p${data.property.propertyId}/reports/intelligenthome`} target="_blank" rel="noreferrer">Open GA4</a>
                   </div>
                 </section>
               ) : <>
-              <WebsiteChanges data={data} fresh={!!entry?.fresh} />
-              <section aria-label="Website summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+              <section aria-label="Website summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
                 {primaryMetrics.map((key) => (
                   <div
                     key={key}
-                    className="rounded-xl border border-dash-border bg-dash-card p-3"
+                    className="rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm"
                   >
                     <p className="text-xs text-dash-ink-secondary">
                       {labels[key]}
                     </p>
-                    <p className="mt-2 text-xl font-semibold">
+                    <p className="mt-3 text-3xl font-semibold tracking-tight">
                       {metric(key, data.current[key])}
                     </p>
                     <p className="mt-1 text-xs text-dash-ink-secondary">
                       Previous: {metric(key, data.previous[key])}
                     </p>
+                    <div className="mt-3"><WebsiteMetricChange metric={key} current={data.current[key]} previous={data.previous[key]} comparable={!!entry?.fresh && !data.warnings.length} /></div>
                   </div>
                 ))}
               </section>
@@ -333,7 +344,7 @@ export function WebsiteDashboard({
                   {(Object.keys(labels) as WebsiteMetric[]).filter(key => !primaryMetrics.includes(key)).map(key => <div key={key} className="rounded-lg border border-dash-border p-3">
                     <p className="text-xs text-dash-ink-secondary">{labels[key]}</p>
                     <p className="mt-2 text-lg font-semibold">{metric(key, data.current[key])}</p>
-                    <p className="mt-1 text-xs text-dash-ink-secondary">Previous: {metric(key, data.previous[key])}</p>
+                    <p className="mt-1 text-xs text-dash-ink-secondary">Previous: {metric(key, data.previous[key])}</p><div className="mt-2"><WebsiteMetricChange metric={key} current={data.current[key]} previous={data.previous[key]} comparable={!!entry?.fresh && !data.warnings.length} /></div>
                   </div>)}
                 </div>
                 <p className="mt-3 text-xs text-dash-ink-secondary">Key events are actions marked as important in GA4. They are not automatically leads or purchases. Key event rate is the percentage of sessions with a key event.</p>
@@ -349,75 +360,17 @@ export function WebsiteDashboard({
                   Daily data
                 </summary>
                 <p className="mt-2 text-xs text-dash-ink-secondary">
-                  Dates without a GA4 row are omitted. Users are counted uniquely across the whole period.
+                  Daily users are unique per day; adding them does not give unique period users.
                 </p>
-                <div className="mt-3 max-w-full overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr>
-                        <th className="pb-2">Date</th>
-                        <th className="pb-2">Sessions</th>
-                        <th className="pb-2">Key events</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.trend.map((d) => (
-                        <tr
-                          key={d.date}
-                          className="border-t border-dash-border"
-                        >
-                          <td className="py-2">
-                            {d.date.replace(
-                              /^(\d{4})(\d{2})(\d{2})$/,
-                              "$1-$2-$3",
-                            )}
-                          </td>
-                          <td>{num(d.sessions)}</td>
-                          <td>{num(d.keyEvents)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                {data.trend.some(row => row.bounceRate === undefined) && <p className="mt-2 text-xs text-dash-ink-secondary">Refresh GA4 to load the additional daily metrics.</p>}
+                <WebsiteDetailTable rows={data.trend} kind="date" />
               </details>
               <details className="mt-5 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4">
                 <summary className="cursor-pointer font-semibold">
                   Top 10 landing pages
                 </summary>
-                <div className="mt-3 max-w-full overflow-x-auto">
-                  <table
-                    className="w-full text-left text-sm"
-                    style={{ minWidth: 400 }}
-                  >
-                    <thead>
-                      <tr>
-                        <th className="pb-2">Landing page</th>
-                        <th>Sessions</th>
-                        <th>Engagement</th>
-                        <th>Key events</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.pages.map((p) => (
-                        <tr
-                          key={p.name}
-                          className="border-t border-dash-border"
-                        >
-                          <td className="max-w-xs break-all py-2 pr-3">
-                            {p.name}
-                          </td>
-                          <td>{num(p.sessions)}</td>
-                          <td>
-                            {p.engagementRate === null
-                              ? "—"
-                              : `${num(p.engagementRate * 100)}%`}
-                          </td>
-                          <td>{num(p.keyEvents)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                {data.pages.some(row => row.bounceRate === undefined) && <p className="mt-2 text-xs text-dash-ink-secondary">Refresh GA4 to load the additional page metrics.</p>}
+                <WebsiteDetailTable rows={data.pages} kind="page" />
               </details>
               </>}
             </>

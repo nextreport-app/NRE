@@ -84,3 +84,12 @@ it("rejects unsupported dates and delegates the owned-client refresh", async () 
   expect((await POST(request(30), params)).status).toBe(200);
   expect(refreshWebsiteDashboard).toHaveBeenCalledWith("website", "owner", 30);
 });
+
+it("validates and passes custom dates without accepting an arbitrary cache key", async () => {
+  const customRange={startIso:"2026-11-01",endIso:"2026-11-10"};
+  const customRequest=(range:unknown)=>new Request("http://localhost/api/clients/website/website-overview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customRange:range})});
+  expect((await POST(customRequest(customRange),params)).status).toBe(200);
+  expect(refreshWebsiteDashboard).toHaveBeenCalledWith("website","owner",customRange);
+  expect((await POST(customRequest({...customRange,startIso:"2026-02-30"}),params)).status).toBe(400);
+  expect((await POST(request(0),params)).status).toBe(400);
+});

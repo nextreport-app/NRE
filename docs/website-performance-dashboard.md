@@ -29,3 +29,16 @@ Migration `20261122000500_website_dashboard` creates at most one snapshot record
 Refreshes require a verified active account, use a per-window five-minute cooldown and six-minute lease, and are triggered manually in this first release. No scheduled GA4 emails or automatic background refresh is enabled. No report credits are consumed. OAuth needs existing GA4 or Google Ads fallback client configuration plus Admin/Data API access; a grant needs permission for the actual property. The new dashboard refresh path requires a successful grant refresh rather than falling back to an old access token.
 
 Apply the migration through the normal build. After deployment, connect/link the NextReport website test client, refresh both windows, and compare the exact dates, timezone, totals, channels and rates against GA4 before wider rollout. Live GA4 credentials were unavailable in the development workspace, so provider acceptance and production parity remain owner acceptance checks. Automated tests and isolated responsive previews use fixtures/mocked APIs and do not change production data.
+
+
+## Comparison and custom-date update
+
+The overview now puts signed, metric-aware changes directly on six primary cards, including bounce rate. Falling bounce rate is green with its real negative numerical sign; rates use percentage points, counts use relative percent. Zero baseline is From zero rather than infinity. Stale/limited snapshots have neutral change colors. The former review badge, threshold explanation and duplicate narrative were removed from the screen.
+
+Custom dates select 1–90 completed property-local days and compare with the immediately preceding equal-length period. Today/future/invalid/reversed dates are rejected. One bounded custom cache uses the existing Int days key 0; its snapshot carries the actual day count and custom mode. Presets remain keys 7/30. Date identity is checked before cache reuse; changing dates hides mismatching figures. The same five-minute custom refresh cooldown, owner checks, connection/property binding and publish CAS apply. No new database migration is needed.
+
+Daily rows, landing pages and channel details request all ten core metrics, within the ten-metric API limit. Older snapshots parse with optional added detail fields; missing values remain — until refreshed. Detail tables default to key metrics and offer Show all metrics. The cached trend can switch among sessions, users, views, engagement, bounce and key events without a provider request. Daily users remain unique per day; they are not summed into period users.
+
+Paid Social, Paid Search and other recognized GA4 paid-channel rows are highlighted when returned. No absent row becomes zero, and no Meta delivery metric is substituted for website traffic. Expected paid visits need correct campaign UTMs and, where applicable, Google Ads auto-tagging/property linking. An agency's connection to an ad account does not itself create paid GA4 sessions or identify every Paid Social visitor as Meta.
+
+This core traffic/engagement/key-event overview does not infer revenue, purchases or business outcomes from key events. Ecommerce revenue reporting requires actual ecommerce instrumentation and is not manufactured from the available figures.

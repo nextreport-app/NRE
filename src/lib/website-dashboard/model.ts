@@ -1,3 +1,4 @@
+import { type WebsiteRange, customWebsiteRangeSchema } from "./range";
 import { z } from "zod";
 import { reportCalendarYesterday } from "../nre/report-period-selection";
 export const WEBSITE_METRICS = [
@@ -28,7 +29,7 @@ const metrics = z.object({
 });
 export type WebsiteMetrics = z.infer<typeof metrics>;
 const period = z.object({ startIso: z.string(), endIso: z.string() });
-const channel = z.object({
+const channel = metrics.partial().extend({
   name: z.string(),
   sessions: number,
   engagedSessions: number,
@@ -38,7 +39,8 @@ const channel = z.object({
 });
 export const websiteSnapshotSchema = z.object({
   version: z.literal(1),
-  days: z.union([z.literal(7), z.literal(30)]),
+  days: z.number().int().min(1).max(90),
+  rangeMode: z.literal("custom").optional(),
   property: z.object({
     propertyId: z.string(),
     displayName: z.string(),
@@ -53,7 +55,7 @@ export const websiteSnapshotSchema = z.object({
   channels: z.array(channel),
   previousChannels: z.array(channel).optional(),
   pages: z.array(
-    z.object({
+    metrics.partial().extend({
       name: z.string(),
       sessions: number,
       engagementRate: number,
@@ -61,14 +63,14 @@ export const websiteSnapshotSchema = z.object({
     }),
   ),
   trend: z.array(
-    z.object({ date: z.string(), sessions: number, keyEvents: number }),
+    metrics.partial().extend({ date: z.string(), sessions: number, keyEvents: number }),
   ),
   warnings: z.array(z.string()),
   empty: z.boolean(),
 });
 export type WebsiteSnapshot = z.infer<typeof websiteSnapshotSchema>;
 export function websitePeriods(
-  days: 7 | 30,
+  days: number,
   timezone: string,
   now = new Date(),
 ) {
@@ -85,14 +87,16 @@ export function websitePeriods(
 export function parseWebsiteSnapshot(
   raw: string | null,
   propertyId: string,
-  days: 7 | 30,
+  days: WebsiteRange | 0,
 ): WebsiteSnapshot | null {
   try {
     if (!raw) return null;
     const result = websiteSnapshotSchema.safeParse(JSON.parse(raw));
     return result.success &&
       result.data.property.propertyId === propertyId &&
-      result.data.days === days
+      (typeof days === "object"
+        ? customWebsiteRangeSchema.safeParse(days).success && result.data.rangeMode === "custom" && result.data.currentPeriod.startIso === days.startIso && result.data.currentPeriod.endIso === days.endIso
+        : days === 0 ? result.data.rangeMode === "custom" : result.data.days === days && !result.data.rangeMode)
       ? result.data
       : null;
   } catch {
@@ -108,8 +112,8 @@ export function websiteSnapshotFresh(
   return (
     age >= 0 &&
     age < 26 * 3600000 &&
-    websitePeriods(snapshot.days, snapshot.property.timezone, now).currentPeriod
-      .endIso === snapshot.currentPeriod.endIso
+    (snapshot.rangeMode === "custom" ? snapshot.currentPeriod.endIso <= reportCalendarYesterday(now, snapshot.property.timezone) : websitePeriods(snapshot.days, snapshot.property.timezone, now).currentPeriod
+      .endIso === snapshot.currentPeriod.endIso)
   );
 }
 export function websiteInsights(snapshot: WebsiteSnapshot): string[] {

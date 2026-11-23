@@ -1,3 +1,4 @@
+import { customWebsiteRangeSchema } from "@/lib/website-dashboard/range";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -12,11 +13,11 @@ export async function POST(
   if (!session?.user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const input = z
-    .object({ days: z.union([z.literal(7), z.literal(30)]) })
+    .union([z.object({ days: z.union([z.literal(7), z.literal(30)]) }).strict(), z.object({ customRange: customWebsiteRangeSchema }).strict()])
     .safeParse(await req.json().catch(() => null));
   if (!input.success)
     return NextResponse.json(
-      { error: "Choose last 7 or 30 days." },
+      { error: "Choose last 7, last 30 days, or a valid custom range of up to 90 completed days." },
       { status: 400 },
     );
   try {
@@ -27,7 +28,7 @@ export async function POST(
         ...(await refreshWebsiteDashboard(
           id,
           session.user.id,
-          input.data.days,
+          "customRange" in input.data ? input.data.customRange : input.data.days,
         )),
       },
       { headers: { "Cache-Control": "private, no-store" } },
