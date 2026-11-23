@@ -19,6 +19,9 @@ export function ga4DashboardRows(
   metricNames: readonly string[],
   dimensionNames: string[] = [],
 ) {
+  // A successful GA4 empty report may omit headers. Require explicit zero rows;
+  // a malformed response without rowCount must still fail closed.
+  if (response.rowCount === 0 && !response.rows?.length) return [];
   const metrics = response.metricHeaders?.map((h) => h.name ?? "") ?? [],
     dimensions = response.dimensionHeaders?.map((h) => h.name ?? "") ?? [];
   if (
