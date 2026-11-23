@@ -46,7 +46,7 @@ export default auth((req) => {
   // route handler. Let it return JSON 401/503 instead of a browser login redirect.
   if (["/api/internal/quality-incidents", "/api/internal/quality-recovery"].includes(pathname)) return NextResponse.next();
 
-  // Vercel cron + internal report worker — Bearer CRON_SECRET, not a session cookie.
+  // Internal workers use their endpoint-scoped bearer credential, not a session cookie.
   // Must pass through before the login redirect or workers receive HTML and never run.
   if (isInternalWorkerPath(pathname)) {
     if (isCronBearerAuthorized(req)) return NextResponse.next();
