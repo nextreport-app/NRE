@@ -1,14 +1,19 @@
 "use client";
 import { useState } from "react";
 
-/** Agency-only source controls. Kept out of the published client report. */
-export function ApiSourceDownload({
-  clientId,
-  uploadSessionId,
-}: {
-  clientId: string;
-  uploadSessionId: string;
-}) {
+// Temporarily hide testing diagnostics across the wizard, schedules and inbox.
+// Re-enable for creative-report acceptance when source exports are needed again.
+// This controls presentation only; the source endpoint keeps its existing auth.
+const SHOW_API_SOURCE_DIAGNOSTICS = false;
+
+type ApiSourceDownloadProps = { clientId: string; uploadSessionId: string };
+
+export function ApiSourceDownload(props: ApiSourceDownloadProps) {
+  return SHOW_API_SOURCE_DIAGNOSTICS ? <ApiSourceDownloadControls {...props} /> : null;
+}
+
+/** Retained source controls; not mounted while diagnostics are hidden. */
+function ApiSourceDownloadControls({ clientId, uploadSessionId }: ApiSourceDownloadProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function download(format: "csv" | "details") {
