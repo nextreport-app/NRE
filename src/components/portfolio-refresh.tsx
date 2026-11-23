@@ -108,12 +108,11 @@ export function PortfolioRefresh({
         <span className="text-xs text-dash-ink-secondary">
           {running
             ? "Up to two checks at a time. You can keep browsing this overview."
-            : `${jobs.length} checks due · Enabled rolling comparisons and budget checks only.`}
+            : jobs.length ? `${jobs.length} account checks ready to refresh.` : "Enabled accounts are up to date."}
         </span>
       </div>
       <p className="mt-2 text-xs text-dash-ink-secondary">
-        Uses your saved monitoring and owner-email preferences. Custom
-        comparisons stay manual.
+        Refreshes enabled accounts using your saved email preferences. Custom dates are refreshed from the account view.
       </p>
       {result && (
         <p role="status" className="mt-2">

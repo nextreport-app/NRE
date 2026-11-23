@@ -1171,3 +1171,8 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
 @media (max-width: 639px) {
   .nre-website-performance [role="dialog"] { max-width: calc(100vw - 3rem); }
 }
+
+/* Keep Meta account status colors readable in the light dashboard. */
+[data-site-theme="light"] .nre-meta-performance .text-red-400 { color: #b91c1c; }
+[data-site-theme="light"] .nre-meta-performance .text-emerald-400 { color: #047857; }
+[data-site-theme="light"] .nre-meta-performance .text-amber-400 { color: #92400e; }

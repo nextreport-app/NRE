@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { MetaMonitoringSetup } from "./meta-monitoring-setup";
 import { OverviewNavigation } from "./overview-navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { OverviewRow } from "@/lib/agency-overview";
@@ -30,11 +31,12 @@ export function AgencyOverview({
   const [clients, setClients] = useState<OverviewRow[] | null>(null),
     [error, setError] = useState(""),
     [singleBusy, setBusy] = useState<string | null>(null),
+    [activationBusy, setActivationBusy] = useState<string | null>(null),
     [bulkRunning, setBulkRunning] = useState(false),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
     [expanded, setExpanded] = useState(initialClientId);
-  const busy = singleBusy ?? (bulkRunning ? "bulk" : null);
+  const busy = activationBusy ?? singleBusy ?? (bulkRunning ? "bulk" : null);
   const loaded = clients !== null;
   useEffect(() => {
     const panel =
@@ -102,7 +104,7 @@ export function AgencyOverview({
         body: JSON.stringify(body),
       });
       const result = await r.json();
-      if (!r.ok) throw Error(result.error ?? "Check failed.");
+      if (!r.ok || result.snapshot?.error) throw Error(result.error ?? result.snapshot?.error ?? "Check failed.");
       await load();
       return true;
     } catch (e) {
@@ -113,6 +115,13 @@ export function AgencyOverview({
       setBusy(null);
     }
   }
+  async function enableAndLoad(client: OverviewRow, emailEnabled: boolean) {
+    setActivationBusy(client.id);
+    try {
+      if (await action(client.id, "performance-monitor", { action: "settings", enabled: true, emailEnabled }))
+        await action(client.id, "performance-monitor", { action: "check" });
+    } finally { setActivationBusy(null); }
+  }
   const visible = clients?.filter(
     (c) =>
       (!search || c.name.toLowerCase().includes(search.toLowerCase())) &&
@@ -122,6 +131,7 @@ export function AgencyOverview({
     (a, b) =>
       Number(b.id === initialClientId) - Number(a.id === initialClientId) ||
       portfolioRank[a.portfolio.state] - portfolioRank[b.portfolio.state] ||
+      Number(b.linked) - Number(a.linked) ||
       a.name.localeCompare(b.name),
   );
   const money = (n: number | null | undefined, c: OverviewRow) =>
@@ -153,25 +163,32 @@ export function AgencyOverview({
           ["CTR (all)", m.ctr === null ? "—" : `${value(m.ctr, 2)}%`],
           ["CPC (all)", money(m.cpc, c)],
         ].map(([label, text]) => (
-          <div key={label}>
+          <div key={label} className="rounded-xl border border-dash-border bg-dash-bg p-4">
             <dt className="text-xs text-dash-ink-secondary">{label}</dt>
-            <dd className="mt-1 font-semibold">{text}</dd>
+            <dd className="mt-2 text-xl font-semibold">{text}</dd>
           </div>
         ))}
       </dl>
     );
   }
   return (
-    <div className="mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Agency overview</h1><Link className={button} href="/reports">Report inbox →</Link></div>
+    <div className="nre-meta-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Meta Ads performance</h1><Link className={button} href="/reports">Report inbox →</Link></div>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        Meta performance and approved budget pacing, across your clients.
+        See campaign performance, account priorities and monthly budget pacing.
       </p>
       <OverviewNavigation current="meta" />
-      {clients && (
+      {clients?.length && !expanded && !clients.some(c=>c.performanceEnabled || c.budgetEnabled) ? (
+        <section className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-5">
+          <h2 className="text-lg font-semibold">Load your client accounts to get started</h2>
+          <p className="mt-2 text-sm text-dash-ink-secondary">{clients.filter(c=>c.linked).length} of {clients.length} clients have a linked Meta account. Choose a linked client below, then enable and load its performance.</p>
+          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">{["1 · Link a Meta account", "2 · Enable & load performance", "3 · Review campaigns and budgets"].map(step=><p key={step} className="rounded-xl border border-dash-border bg-dash-bg p-3">{step}</p>)}</div>
+        </section>
+      ) : null}
+      {clients?.some(c=>c.performanceEnabled || c.budgetEnabled) && (
         <nav
           aria-label="Account status"
-          className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3"
+          className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
         >
           {PORTFOLIO_FILTERS.filter((f) => f.key !== "all").map((f) => (
             <button
@@ -195,7 +212,7 @@ export function AgencyOverview({
         <input
           aria-label="Search clients"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {setSearch(e.target.value);setExpanded("");}}
           placeholder="Find a client"
           className="w-full min-w-0 rounded-lg border border-dash-border bg-dash-bg px-3 py-2 sm:w-auto sm:flex-1"
         />
@@ -223,19 +240,15 @@ export function AgencyOverview({
         </button>
       </div>
       <details className="mt-3 text-xs text-dash-ink-secondary">
-        <summary className="cursor-pointer">How statuses work</summary>
+        <summary className="cursor-pointer">About these statuses</summary>
         <p className="mt-2">
-          Sorted by urgency using saved snapshots. Positive means an observed
-          improvement or a saved target met. Neutral requires sufficient
-          comparable outcomes. Needs data includes stale, low-volume and
-          no-delivery accounts. Check timestamps before acting. Each account
-          uses its own currency and timezone; budgets exclude tax.
+          Accounts are ordered by priority. Setup and missing-data states do not indicate good or bad performance. Check the last refresh before acting.
         </p>
       </details>
-      {clients && (
+      {clients?.some(c=>c.performanceEnabled || c.budgetEnabled) && (
         <PortfolioRefresh
           clients={clients}
-          disabled={!!singleBusy}
+          disabled={!!singleBusy || !!activationBusy}
           onActivity={setBulkRunning}
           onComplete={load}
         />
@@ -260,13 +273,6 @@ export function AgencyOverview({
       {clients && clients.length > 0 && visible?.length === 0 && (
         <p className="mt-5 text-sm">No clients match this view.</p>
       )}
-      {visible && (
-        <PortfolioBoard
-          rows={visible}
-          selected={expanded}
-          onOpen={selectAccount}
-        />
-      )}
       {visible
         ?.filter((c) => c.id === expanded)
         .map((c) => (
@@ -286,8 +292,9 @@ export function AgencyOverview({
               </div>
               <PortfolioBadge state={c.portfolio.state} />
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div>
+            {(!c.linked || !c.performanceEnabled) && <MetaMonitoringSetup key={c.id} client={c} busy={!!busy} onEnable={(emails)=>void enableAndLoad(c, emails)} />}
+            {(c.performanceEnabled || c.budgetEnabled) && <div className={`mt-4 grid gap-4 ${c.budgetEnabled && c.performanceEnabled ? "md:grid-cols-2" : ""}`}>
+              {c.budgetEnabled && <div className="rounded-xl border border-dash-border bg-dash-bg p-4">
                 <p className="text-sm font-medium">{c.budgetLabel}</p>
                 {c.budget?.facts && (
                   <p
@@ -329,8 +336,8 @@ export function AgencyOverview({
                     {c.budget.error}
                   </p>
                 )}
-              </div>
-              <div>
+              </div>}
+              {c.performanceEnabled && <div className="rounded-xl border border-dash-border bg-dash-bg p-4">
                 <p className="text-sm font-medium">
                   {c.performanceFresh
                     ? `${c.warnings} performance signal${c.warnings === 1 ? "" : "s"} to review`
@@ -357,18 +364,18 @@ export function AgencyOverview({
                     {c.performance.error}
                   </p>
                 )}
-              </div>
-            </div>
+              </div>}
+            </div>}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 className={button}
                 aria-expanded={expanded === c.id}
                 onClick={() => selectAccount(c.id)}
               >
-                {expanded === c.id ? "Hide details" : "Performance & settings"}
+                {expanded === c.id ? "← All accounts" : "View performance"}
               </button>
               <a className={button} href={`/clients/${c.id}`}>
-                Manage client
+                Client settings
               </a>
               {c.adsManagerUrl && (
                 <a
@@ -390,7 +397,7 @@ export function AgencyOverview({
                     })
                   }
                 >
-                  {busy === c.id ? "Checking…" : "Check Meta"}
+                  {busy === c.id ? "Refreshing…" : "Refresh performance"}
                 </button>
               )}
               {c.budgetEnabled && (
@@ -405,58 +412,27 @@ export function AgencyOverview({
                 </button>
               )}
             </div>
-            {expanded === c.id && (
+            {expanded === c.id && c.linked && (
               <div className="mt-5 border-t border-dash-border pt-4">
                 <DecisionSettingsPanel
                   client={c}
                   busy={!!busy}
-                  save={(body) => action(c.id, "performance-monitor", body)}
+                  save={async (body) => {
+                    setActivationBusy(c.id);
+                    try {
+                      const saved = await action(c.id, "performance-monitor", body);
+                      return saved && c.performanceEnabled ? await action(c.id, "performance-monitor", {action:"check"}) : saved;
+                    } finally { setActivationBusy(null); }
+                  }}
                 />
-                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-sm">
-                  <label className="flex gap-2">
-                    <input
-                      type="checkbox"
-                      checked={c.performanceEnabled}
-                      disabled={!!busy || !c.linked}
-                      onChange={(e) =>
-                        void action(c.id, "performance-monitor", {
-                          action: "settings",
-                          enabled: e.target.checked,
-                          emailEnabled: c.emailEnabled,
-                        })
-                      }
-                    />
-                    Monitor Meta performance
-                  </label>
-                  <label className="flex gap-2">
-                    <input
-                      type="checkbox"
-                      checked={c.emailEnabled}
-                      disabled={!!busy || !c.performanceEnabled}
-                      onChange={(e) =>
-                        void action(c.id, "performance-monitor", {
-                          action: "settings",
-                          enabled: c.performanceEnabled,
-                          emailEnabled: e.target.checked,
-                        })
-                      }
-                    />
-                    Email agency owner about warning signals
-                  </label>
-                </div>
-                <p className="mt-2 text-xs text-dash-ink-secondary">
-                  Daily background sweep for rolling periods plus Check Meta.
-                  New issues only: at most one review and one critical email per
-                  account/comparison/ending date. Continuing issues stay here.
-                  Minimum delivery and result thresholds reduce small-sample
-                  noise. Budget notifications are managed on the client page.
-                </p>
-                {!c.linked && (
-                  <p className="mt-3 text-sm">
-                    Link a Meta account in Client settings first. CSV reporting
-                    remains available.
-                  </p>
-                )}
+                {c.performanceEnabled && <details className="mt-4 rounded-xl border border-dash-border p-4">
+                  <summary className="cursor-pointer text-sm font-medium">Monitoring &amp; email preferences</summary>
+                  <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                    <label className="flex items-start gap-2"><input type="checkbox" className="mt-1 h-4 w-4 accent-dash-accent" checked={c.performanceEnabled} disabled={!!busy} onChange={e=>void action(c.id,"performance-monitor",{action:"settings",enabled:e.target.checked,emailEnabled:c.emailEnabled})} />Keep performance updated</label>
+                    <label className="flex items-start gap-2"><input type="checkbox" className="mt-1 h-4 w-4 accent-dash-accent" checked={c.emailEnabled} disabled={!!busy} onChange={e=>void action(c.id,"performance-monitor",{action:"settings",enabled:c.performanceEnabled,emailEnabled:e.target.checked})} />Email me about new issues</label>
+                  </div>
+                  <p className="mt-3 text-xs text-dash-ink-secondary">Rolling comparisons update daily. Custom dates refresh manually. Budget alerts are managed in client settings.</p>
+                </details>}
                 {c.performance?.emailError && (
                   <p className="mt-3 text-xs text-amber-400">
                     {c.performance.emailError}
@@ -470,6 +446,7 @@ export function AgencyOverview({
                         ? " · Older snapshot, check Meta before acting"
                         : ""}
                     </p>
+                    <p className="mb-4 text-xs text-dash-ink-secondary">{c.performance.facts.periodA.startIso} – {c.performance.facts.periodA.endIso} compared with {c.performance.facts.periodB.startIso} – {c.performance.facts.periodB.endIso} · {c.timezone}</p>
                     {c.performance.facts.valueWarning && (
                       <p className="mb-3 text-sm text-amber-400">
                         Purchase value lookup was incomplete. Available delivery
@@ -663,6 +640,13 @@ export function AgencyOverview({
             )}
           </section>
         ))}
+      {visible && !visible.some(c=>c.id === expanded) && (
+        <PortfolioBoard
+          rows={visible}
+          selected={expanded}
+          onOpen={selectAccount}
+        />
+      )}
     </div>
   );
 }

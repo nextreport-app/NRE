@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
   PORTFOLIO_LABELS,
@@ -12,7 +13,7 @@ export const PORTFOLIO_FILTERS = [
   { key: "positive", label: "Positive" },
   { key: "neutral", label: "Neutral" },
   { key: "data", label: "Needs data" },
-  { key: "setup", label: "Set up" },
+  { key: "setup", label: "Needs setup" },
 ] as const;
 export function matchesPortfolio(row: OverviewRow, filter: string) {
   return (
@@ -73,7 +74,7 @@ export function PortfolioBoard({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div className="mt-4 space-y-3" aria-label="Account performance list">
+    <div className="mt-4 grid gap-3 md:grid-cols-2" aria-label="Account performance list">
       {rows.map((c) => (
         <article
           key={c.id}
@@ -114,8 +115,8 @@ export function PortfolioBoard({
           {c.portfolio.state === "setup" && (
             <p className="mt-2 text-sm">
               {c.linked
-                ? "Enable performance monitoring to compare campaign outcomes."
-                : "Link this client's Meta account to begin."}
+                ? "Ready to load campaign performance."
+                : "No Meta ad account linked yet."}
             </p>
           )}
           {c.unavailable && (
@@ -167,16 +168,16 @@ export function PortfolioBoard({
               )}
             </p>
           )}
-          <button
+          {!c.linked ? <Link id={`open-account-${c.id}`} href={`/clients/${c.id}/reports/new`} className="mt-3 inline-flex rounded-xl border border-dash-border px-3 py-2 text-sm font-medium text-dash-accent">Link Meta account<span className="sr-only"> for {c.name}</span></Link> : <button
             id={`open-account-${c.id}`}
             aria-expanded={selected === c.id}
             aria-controls={`account-${c.id}`}
             className="mt-3 rounded-lg border border-dash-border px-3 py-2 text-sm"
             onClick={() => onOpen(c.id)}
           >
-            {selected === c.id ? "Close account" : "Open account"}
+            {selected === c.id ? "Close account" : c.performanceEnabled ? "View performance" : "Set up monitoring"}
             <span className="sr-only"> {c.name}</span>
-          </button>
+          </button>}
         </article>
       ))}
     </div>
