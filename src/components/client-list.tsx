@@ -161,7 +161,7 @@ function StatusChip({
   );
 }
 
-function ClientCard({ client }: { client: ClientListItem }) {
+function ClientCard({ client, scheduling = false }: { client: ClientListItem; scheduling?: boolean }) {
   const prevMonth = getPreviousMonthListStatus(
     client.hasPreviousMonthData,
     client.previousMonthDataUpdatedAt,
@@ -186,15 +186,16 @@ function ClientCard({ client }: { client: ClientListItem }) {
           <StatusChip tone={prevMonth.status === "current" ? "good" : "warn"} label={prevMonth.status === "current" ? "Previous-month totals ready" : "Previous-month file needs refresh"} title={prevMonth.title} />
         )}
       </div>
-      <div className="nre-client-card__divider mt-auto flex items-center gap-2 border-t border-dash-border px-4 py-3 sm:px-5">
-        <Link href={`/clients/${client.id}/reports/new`} aria-label={`Generate report for ${client.accountName}`} className="flex-1 rounded-lg bg-dash-accent px-3 py-2.5 text-center text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover">Generate report <span aria-hidden="true">→</span></Link>
+      <div className="nre-client-card__divider mt-auto grid grid-cols-2 gap-2 border-t border-dash-border px-4 py-3 sm:px-5">
+        <Link href={scheduling ? `/clients/${client.id}/schedules` : `/clients/${client.id}/reports/new`} aria-label={`${scheduling ? "Schedule reports" : "Generate report"} for ${client.accountName}`} className="col-span-2 rounded-lg bg-dash-accent px-3 py-2.5 text-center text-[13px] font-semibold text-dash-ink hover:bg-dash-accent-hover">{scheduling ? "Schedule reports" : "Generate report"} <span aria-hidden="true">→</span></Link>
+        <Link href={scheduling ? `/clients/${client.id}/reports/new` : `/clients/${client.id}/schedules`} aria-label={`${scheduling ? "Generate report" : "Schedule reports"} for ${client.accountName}`} className="rounded-lg border border-dash-border px-3 py-2.5 text-center text-[13px] font-medium text-dash-ink-secondary hover:bg-dash-bg hover:text-dash-ink">{scheduling ? "Generate report" : "Schedule reports"}</Link>
         <Link href={`/clients/${client.id}`} aria-label={`Manage ${client.accountName}`} className="rounded-lg border border-dash-border px-4 py-2.5 text-center text-[13px] font-medium text-dash-ink-secondary hover:bg-dash-bg hover:text-dash-ink">Manage</Link>
       </div>
     </article>
   );
 }
 
-export function ClientList({ clients, totalCount }: { clients: ClientListItem[]; totalCount: number }) {
+export function ClientList({ clients, totalCount, scheduling = false }: { clients: ClientListItem[]; totalCount: number; scheduling?: boolean }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("recent");
@@ -270,7 +271,7 @@ export function ClientList({ clients, totalCount }: { clients: ClientListItem[];
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {paginated.map((client) => (
-              <ClientCard key={client.id} client={client} />
+              <ClientCard key={client.id} client={client} scheduling={scheduling} />
             ))}
           </div>
           {totalPages > 1 ? (
