@@ -48,3 +48,13 @@ The final hardening release includes an optional opt-in GitHub runner, successfu
 - Recurring settings are independent of one-off report inputs. They use fresh Meta API data; uploading a CSV or selecting an audience breakdown does not silently configure a recurring report. Available cadences remain Daily, Weekly, Fortnightly and Monthly.
 - For a client without a linked Meta ad account, connect Meta in Account and complete one API sync on Import. This links the account; generating a report is not required. The persistent Schedule reports shortcut returns to the scheduling screen. Client settings do not contain an account-link field.
 - Schedule status can be refreshed explicitly and stale health displays the last completed tick. A green manually dispatched GitHub run does not prove recurring scheduled events have started. Paused schedules and manual Prepare now remain available while recurring-worker health is stale.
+
+## Preparation time, recipient delivery and timezone
+
+A saved paused schedule does not execute at its saved time. It can be tested with Prepare now. An active schedule requires a healthy recurring worker; a manually successful tick is not evidence that recurring ticks have started. Draft preparation is queued at the selected cadence/day/time and may finish later. This time is not a promised recipient email arrival time.
+
+Draft-ready/failure notices go to the account owner's email. The form's report recipients are used only after exact-content review, approval and explicit Send approved report. Saving, preparing and approving must not automatically send a client email.
+
+The reporting calendar uses the linked Meta ad account's `timezone_name`, not IP country, browser location, agency location or the recipient's address. Successful API sync persists that timezone on the client; preparation fetches account metadata again and rejects a mismatching timezone/currency. Manual CSV client calendars remain explicitly configured. Do not silently change an existing schedule when the account/calendar changes: edit and save it again. GA4 separately uses its property's timezone.
+
+The UI shows a weekday and full next-preparation date. For example, on Sunday Nov 22 at 23:02 Chicago, a Monday 23:05 weekly schedule is due Monday evening, not three minutes later. Paused schedules display a fresh hypothetical next occurrence, not a stale stored date. Historical run timestamps use their saved timezone.
