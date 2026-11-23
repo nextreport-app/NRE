@@ -4,7 +4,6 @@ import { WebsiteSessionsTrend } from "./website-sessions-trend";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  websiteInsights,
   type WebsiteSnapshot,
   type WebsiteMetric,
 } from "@/lib/website-dashboard/model";
@@ -38,9 +37,10 @@ const labels: Record<WebsiteMetric, string> = {
   bounceRate: "Bounce rate",
   screenPageViews: "Page views",
   keyEvents: "Key events",
-  sessionKeyEventRate: "Sessions with key event",
+  sessionKeyEventRate: "Key event rate",
   averageSessionDuration: "Avg. session duration",
 };
+const primaryMetrics: WebsiteMetric[] = ["sessions", "totalUsers", "engagementRate", "keyEvents", "sessionKeyEventRate"];
 const rates = new Set(["engagementRate", "bounceRate", "sessionKeyEventRate"]);
 export function WebsiteDashboard({
   initialClientId = "",
@@ -163,6 +163,8 @@ export function WebsiteDashboard({
               value={selected?.id ?? ""}
               onChange={(e) => {
                 setView(null);
+                setError("");
+                setNotice("");
                 setClientId(e.target.value);
               }}
             >
@@ -185,6 +187,7 @@ export function WebsiteDashboard({
                 disabled={busy}
                 onClick={() => {
                   setNotice("");
+                  setError("");
                   setDays(n);
                 }}
               >
@@ -209,9 +212,9 @@ export function WebsiteDashboard({
           {notice}
         </p>
       )}
-      {error && (
+      {(error || entry?.error) && (
         <p role="alert" className="mt-4 text-sm text-amber-400">
-          {error}
+          {error || entry?.error}
         </p>
       )}
       {view && !view.connected && (
@@ -269,11 +272,6 @@ export function WebsiteDashboard({
               compare with the previous {days} days.
             </p>
           )}
-          {entry?.error && (
-            <p role="alert" className="mt-4 text-sm text-amber-400">
-              {entry.error}
-            </p>
-          )}
           {entry?.refreshing && !busy && (
             <p className="mt-3 text-sm">
               A refresh is in progress. Reload this page shortly to see the
@@ -282,42 +280,36 @@ export function WebsiteDashboard({
           )}
           {data && (
             <>
-              <p className="mt-3 text-xs text-dash-ink-secondary">
-                {data.currentPeriod.startIso} – {data.currentPeriod.endIso} vs{" "}
-                {data.previousPeriod.startIso} – {data.previousPeriod.endIso} ·{" "}
-                {data.property.timezone}
-              </p>
-              <p
-                className={`mt-1 text-xs ${entry?.fresh ? "text-dash-ink-secondary" : "text-amber-400"}`}
-              >
-                {entry?.fresh
-                  ? "Last refreshed"
-                  : "Older or failed snapshot — refresh before acting"}
-                :{" "}
-                {new Intl.DateTimeFormat("en", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                  timeZone: data.property.timezone,
-                }).format(new Date(data.checkedAt))}
-              </p>
-              <p className="mt-2 text-xs text-dash-ink-secondary">
-                GA4 data can take 24–48 hours to settle. Key events depend on
-                your GA4 setup; website attribution and Meta results can differ.
-              </p>
+              <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                <p>{new Date(data.currentPeriod.startIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", timeZone:"UTC"})} – {new Date(data.currentPeriod.endIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})} <span className="text-dash-ink-secondary">· compared with previous {days} days</span></p>
+                <details className="text-xs text-dash-ink-secondary">
+                  <summary className="cursor-pointer">Dates &amp; data details</summary>
+                  <p className="mt-2">Current: {data.currentPeriod.startIso} – {data.currentPeriod.endIso}</p>
+                  <p>Previous: {data.previousPeriod.startIso} – {data.previousPeriod.endIso}</p>
+                  <p>Timezone: {data.property.timezone}</p>
+                  <p>Updated: {new Intl.DateTimeFormat("en", {dateStyle:"medium", timeStyle:"short",timeZone:data.property.timezone}).format(new Date(data.checkedAt))}</p>
+                  <p className="mt-2">GA4 can take 24–48 hours to settle. Website attribution differs from Meta ad results.</p>
+                </details>
+              </div>
+              {!entry?.fresh && <p className="mt-2 text-xs text-amber-400">Saved data is older or the last refresh failed. Refresh before acting.</p>}
               {data.warnings.map((w) => (
                 <p key={w} className="mt-2 text-sm text-amber-400">
                   {w}
                 </p>
               ))}
-              {data.empty && (
-                <p className="mt-4 text-sm">
-                  GA4 returned no overview rows for this period. Missing values
-                  remain unavailable.
-                </p>
-              )}
+              {data.empty ? (
+                <section className="mt-5 rounded-xl border border-dash-border bg-dash-card p-5">
+                  <h2 className="font-semibold">No website data reported for these dates</h2>
+                  <p className="mt-2 text-sm text-dash-ink-secondary">GA4 returned no rows for the last {days} completed days. Check the selected property and its collection setup in Analytics. This does not confirm whether the tag is working.</p>
+                  <div className="mt-4 flex flex-wrap gap-3 text-sm text-dash-accent">
+                    {days === 7 && <button onClick={() => { setDays(30); setError(""); }}>View last 30 days</button>}
+                    <a href={`https://analytics.google.com/analytics/web/#/p${data.property.propertyId}/reports/intelligenthome`} target="_blank" rel="noreferrer">Open GA4</a>
+                  </div>
+                </section>
+              ) : <>
               <WebsiteChanges data={data} fresh={!!entry?.fresh} />
-              <section className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
-                {(Object.keys(labels) as WebsiteMetric[]).map((key) => (
+              <section aria-label="Website summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+                {primaryMetrics.map((key) => (
                   <div
                     key={key}
                     className="rounded-xl border border-dash-border bg-dash-card p-3"
@@ -336,21 +328,15 @@ export function WebsiteDashboard({
               </section>
               <WebsiteSessionsTrend data={data} />
               <details className="mt-5 rounded-xl border border-dash-border bg-dash-card p-4">
-                <summary className="cursor-pointer font-semibold">
-                  All reported changes
-                </summary>
-                {websiteInsights(data).map((line) => (
-                  <p
-                    key={line}
-                    className="mt-2 text-sm text-dash-ink-secondary"
-                  >
-                    {line}
-                  </p>
-                ))}
-                <p className="mt-2 text-xs text-dash-ink-secondary">
-                  Changes describe reported data; they do not establish a cause.
-                  Rates are compared in percentage points.
-                </p>
+                <summary className="cursor-pointer font-semibold">More metrics</summary>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {(Object.keys(labels) as WebsiteMetric[]).filter(key => !primaryMetrics.includes(key)).map(key => <div key={key} className="rounded-lg border border-dash-border p-3">
+                    <p className="text-xs text-dash-ink-secondary">{labels[key]}</p>
+                    <p className="mt-2 text-lg font-semibold">{metric(key, data.current[key])}</p>
+                    <p className="mt-1 text-xs text-dash-ink-secondary">Previous: {metric(key, data.previous[key])}</p>
+                  </div>)}
+                </div>
+                <p className="mt-3 text-xs text-dash-ink-secondary">Key events are actions marked as important in GA4. They are not automatically leads or purchases. Key event rate is the percentage of sessions with a key event.</p>
               </details>
               <WebsiteChannelComparison
                 key={`${selected.id}:${days}:${data.property.propertyId}`}
@@ -363,8 +349,7 @@ export function WebsiteDashboard({
                   Daily data
                 </summary>
                 <p className="mt-2 text-xs text-dash-ink-secondary">
-                  Missing dates are not filled with invented zeros. Total users
-                  above are unique users for the whole period.
+                  Dates without a GA4 row are omitted. Users are counted uniquely across the whole period.
                 </p>
                 <div className="mt-3 max-w-full overflow-x-auto">
                   <table className="w-full text-left text-sm">
@@ -418,7 +403,7 @@ export function WebsiteDashboard({
                           key={p.name}
                           className="border-t border-dash-border"
                         >
-                          <td className="max-w-xs break-words py-2 pr-3">
+                          <td className="max-w-xs break-all py-2 pr-3">
                             {p.name}
                           </td>
                           <td>{num(p.sessions)}</td>
@@ -434,6 +419,7 @@ export function WebsiteDashboard({
                   </table>
                 </div>
               </details>
+              </>}
             </>
           )}
         </>

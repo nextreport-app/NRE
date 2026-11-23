@@ -52,8 +52,7 @@ export function WebsiteSessionsTrend({ data }: { data: WebsiteSnapshot }) {
         <span>{data.currentPeriod.endIso}</span>
       </div>
       <p className="mt-2 text-xs text-dash-ink-secondary">
-        Only dates returned by GA4 are plotted. Hover a bar for its value;
-        missing dates are not filled with zero.
+        Hover a bar for its value. Gaps mean GA4 returned no daily row.
       </p>
     </section>
   );

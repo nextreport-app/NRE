@@ -307,3 +307,14 @@ it("keeps per-snapshot GA4 concurrency at five after adding prior channels", asy
       ),
   ).toHaveLength(2);
 });
+
+it("accepts an explicit zero-row GA4 response without headers as an empty period", async () => {
+  vi.mocked(runGa4Report).mockResolvedValue({ rowCount: 0 });
+  const snapshot = await fetchWebsiteSnapshot("token", "552954256", 7, now);
+  expect(snapshot.empty).toBe(true);
+  expect(snapshot.current.sessions).toBeNull();
+  expect(snapshot.previous.totalUsers).toBeNull();
+  expect(snapshot.trend).toEqual([]);
+  expect(snapshot.channels).toEqual([]);
+  expect(parseWebsiteSnapshot(JSON.stringify(snapshot), "552954256", 7)).not.toBeNull();
+});

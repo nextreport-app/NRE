@@ -45,3 +45,19 @@ Billing currency and CSV/report currency are separate: a customer may pay in USD
 ## Search Console hand-off
 
 Prefer a Domain property for `nextreport.in` where DNS ownership is available; otherwise use the exact HTTPS URL-prefix property. Optional `GOOGLE_SITE_VERIFICATION` metadata is supported, but a configured token is not confirmation. After deployment, submit `https://nextreport.in/sitemap.xml`, inspect the primary landing pages, and review indexing/crawl/security/manual-action/CWV reports. Google determines indexing, rankings and sitelinks; none can be certified from a passing local test.
+
+
+## 23 November 2026 follow-up: tracking and empty dashboards
+
+The last activity shown in the owner's screenshots is November 4, matching the direct-GA-to-GTM migration date. This is a configuration clue, not proof of the published container's contents. The current live homepage was checked in a clean browser: no vendor request before opt-in; Allow analytics queues `nre_public_page_view` and loads `gtm.js?id=GTM-PZPXTRPH`. This environment's proxy blocks the Google script, so event ingestion and the container's published tag configuration could not be verified. The GA4 stream's "tag installed" test alone does not prove events reach the property.
+
+Owner-side container check:
+1. Open Google Tag Manager, select container **GTM-PZPXTRPH**, and inspect its published version.
+2. Configure one Google tag with tag ID **G-QT4TRK105V** and `send_page_view=false`.
+3. Create a Custom Event trigger named **nre_public_page_view** (event name must match exactly).
+4. Fire one GA4 Event tag named **page_view** for that trigger, using the Google tag as its setup tag, once per page. Pass data-layer values for `page_location`, `page_title`, and `page_referrer`. Require analytics consent. Disable automatic/history/form collection that could duplicate page views or capture private app URLs.
+5. Preview a public page, accept analytics, confirm one page_view, then publish and verify GA4 Realtime/DebugView. Confirm no page views on private app routes or before consent. Do not paste a second standalone tracker into NextReport.
+
+`gtm.js?id=G-...` is invalid: gtm.js expects the GTM container ID. A direct Google tag uses a different loader/configuration and is not the current implementation. Stream ID 15727315748, property ID 552954256, measurement ID G-QT4TRK105V and GTM container ID GTM-PZPXTRPH have different roles.
+
+The dashboard now accepts an explicit zero-row response without headers as an empty period; an unstructured empty response still fails closed. Empty rows remain unavailable rather than invented numeric zeros. Dashboard refresh reads historical property data and does not itself install visitor tracking. Missing past collection cannot be backfilled by refreshing.

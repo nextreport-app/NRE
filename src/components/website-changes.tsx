@@ -149,13 +149,14 @@ export function WebsiteChannelComparison({
                 <tr className="border-t border-dash-border">
                   <th className="py-3 pr-3 font-normal">
                     <button
+                      aria-label={`Compare ${row.name}`}
                       aria-expanded={expanded === row.name}
                       className="text-left underline"
                       onClick={() =>
                         setExpanded(expanded === row.name ? "" : row.name)
                       }
                     >
-                      Compare {row.name}
+                      {row.name} <span aria-hidden="true">{expanded === row.name ? "▴" : "▾"}</span>
                     </button>
                     {row.availability && (
                       <span className="mt-1 block text-xs text-dash-ink-secondary">
