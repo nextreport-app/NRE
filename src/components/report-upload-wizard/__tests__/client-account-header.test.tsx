@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ComponentProps, ReactNode } from "react";
 import { ReportUploadWizard } from "../report-upload-wizard";
-const { state } = vi.hoisted(() => ({ state: { step: 1, wizardKind: "ads", platform: "META", linkedMetaAdAccountId: "act_2022399724077" as string | null, selectedApiAdAccountId: null as string | null, dataSourceMode: "api", clientName: "FULL GORILLA APPAREL", visitedSteps: new Set([1]), requestWizardLeave: vi.fn(), reportType: "WEEKLY" } }));
+const { state } = vi.hoisted(() => ({ state: { clientId: "client-1", reportTypeLabel: () => "Weekly", step: 1, wizardKind: "ads", platform: "META", linkedMetaAdAccountId: "act_2022399724077" as string | null, selectedApiAdAccountId: null as string | null, dataSourceMode: "api", clientName: "FULL GORILLA APPAREL", visitedSteps: new Set([1]), requestWizardLeave: vi.fn(), reportType: "WEEKLY" } }));
 vi.mock("../wizard-context", () => ({ WizardProvider: ({ children }: { children: ReactNode }) => children, useWizardContext: () => state }));
 vi.mock("@/components/site-theme-provider", () => ({ useSiteTheme: () => ({ locale: "en" }) }));
 vi.mock("../steps/import-step", () => ({ WizardImportStep: () => null }));
@@ -12,6 +12,14 @@ vi.mock("../steps/generate-step", () => ({ WizardGenerateStep: () => null }));
 const render = () => renderToStaticMarkup(<ReportUploadWizard {...{} as ComponentProps<typeof ReportUploadWizard>} />);
 beforeEach(() => { state.step = 1; state.platform = "META"; state.linkedMetaAdAccountId = "act_2022399724077"; state.selectedApiAdAccountId = null; state.dataSourceMode = "api"; });
 describe("Import client account header", () => {
+ it.each([1, 2, 3, 4])("keeps scheduling discoverable at wizard step %s", (step) => {
+  state.step = step;
+  const html = render();
+  expect(html).toContain('href="/clients/client-1/schedules"');
+  expect(html).toContain("Schedule reports");
+  expect(html).toContain('href="/clients/client-1#client-settings"');
+ });
+
  it("displays the saved ID in brackets beside the client name", () => {
   const html = render();
   expect(html).toContain("FULL GORILLA APPAREL");

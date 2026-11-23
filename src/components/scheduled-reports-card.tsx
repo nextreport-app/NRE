@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   cadenceLabel,
   SCHEDULE_CADENCES,
@@ -185,17 +186,22 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
             Prepare → review → approve → send. You control client delivery.
           </p>
         </div>
-        {view?.linked && (
-          <button className={button} disabled={busy} onClick={() => edit()}>
-            Set up schedule
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <button className={button} disabled={busy} onClick={() => {
+            setError("");
+            void load().catch((e) => setError(e.message));
+          }}>Refresh status</button>
+          {view?.linked && (
+            <button className={button} disabled={busy} onClick={() => edit()}>
+              Set up schedule
+            </button>
+          )}
+        </div>
       </div>
       {!view && !error && <p className="mt-3 text-sm">Loading schedules…</p>}
       {view && !view.linked && (
         <p className="mt-3 text-sm">
-          Link this client&apos;s Meta ad account in Client settings to prepare
-          scheduled drafts.
+          <Link href="/account#meta-ads" className="text-dash-accent underline">Connect Meta</Link>, then <Link href={`/clients/${clientId}/reports/new`} className="text-dash-accent underline">open Import</Link>, choose Meta API and complete a sync to link this client&apos;s ad account. Return here using Schedule reports; generating a report is not required.
         </p>
       )}
       {view?.linked && !view.health.healthy && (
@@ -205,6 +211,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
             ? "temporarily unavailable"
             : "not connected yet"}
           . Save paused schedules and use Prepare now.
+          {view.health.lastTickAt && <span className="block mt-1">Last scheduler check: {date(view.health.lastTickAt)} ({view.timezone}).</span>}
         </p>
       )}
       {editing && view && (

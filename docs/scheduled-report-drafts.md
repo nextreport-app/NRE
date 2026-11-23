@@ -39,3 +39,12 @@ Latest-due recovery now searches the calendar directly instead of iterating a ca
 Before enabling either new cadence in production: prepare one Daily and one Fortnightly draft, verify account-local dates, source/PPTX/browser parity, recipients and branding, then test owner-controlled delivery. The external five-minute timer and provider acceptance gates above still apply.
 
 The final hardening release includes an optional opt-in GitHub runner, successful-tick heartbeat validation and bounded retry of existing email intents. See [Phase 2 completion and activation](phase-two-completion.md) for exact private settings, Actions usage considerations, activation steps and the consolidated owner acceptance pass. Existing Vercel daily crons are not a substitute for that frequent scheduler.
+
+## Scheduling navigation
+
+- **Reports → Manage schedules** opens `/clients?task=schedule`, a client chooser whose primary action is **Schedule reports** rather than Generate report.
+- Every client card also exposes **Schedule reports** directly. The destination is the owner-scoped `/clients/[id]/schedules` page with links back to the inbox, one-off generation and client settings.
+- The Meta report wizard exposes **Schedule reports** on Import, Campaigns, Metrics, Review & generate and the completed report screen. Its existing leave guard confirms navigation away from unfinished work. Client settings still open in a new tab, preserving wizard inputs. The completed report screen also links to the central draft inbox.
+- Recurring settings are independent of one-off report inputs. They use fresh Meta API data; uploading a CSV or selecting an audience breakdown does not silently configure a recurring report. Available cadences remain Daily, Weekly, Fortnightly and Monthly.
+- For a client without a linked Meta ad account, connect Meta in Account and complete one API sync on Import. This links the account; generating a report is not required. The persistent Schedule reports shortcut returns to the scheduling screen. Client settings do not contain an account-link field.
+- Schedule status can be refreshed explicitly and stale health displays the last completed tick. A green manually dispatched GitHub run does not prove recurring scheduled events have started. Paused schedules and manual Prepare now remain available while recurring-worker health is stale.

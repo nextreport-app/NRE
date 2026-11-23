@@ -151,7 +151,7 @@ export function ReportInbox() {
             send.
           </p>
         </div>
-        <Link className={button} href="/clients">
+        <Link className={button} href="/clients?task=schedule">
           Manage schedules
         </Link>
       </div>
@@ -220,7 +220,8 @@ export function ReportInbox() {
       {data && !data.health.healthy && (
         <p className="mt-3 rounded-lg border border-dash-border p-3 text-xs text-dash-ink-secondary">
           Automatic preparation is not active or its scheduler check is overdue.
-          Paused schedules and Prepare now on the client page still work.
+          Paused schedules and Prepare now on the schedule page still work.
+          {data.health.lastTickAt && <span className="block mt-1">Last scheduler check: {date(data.health.lastTickAt, "UTC")} UTC.</span>}
         </p>
       )}
       {error && (
@@ -240,15 +241,15 @@ export function ReportInbox() {
             {query ? "No matching drafts" : "Nothing in this view"}
           </h2>
           <p className="mt-2 text-sm text-dash-ink-secondary">
-            Save a schedule on a client page, then use Prepare now or enable
+            Choose a client and save a schedule, then use Prepare now or enable
             recurring preparation. Client emails always require approval and an
             explicit send.
           </p>
           <Link
-            href="/clients"
+            href="/clients?task=schedule"
             className="mt-3 inline-block text-sm text-dash-accent"
           >
-            Choose a client →
+            Choose a client to schedule →
           </Link>
         </div>
       )}
@@ -329,7 +330,7 @@ export function ReportInbox() {
                   Google Slides
                 </a>
               )}
-              <Link href={`/clients/${item.clientId}#scheduled-reports`}>
+              <Link href={`/clients/${item.clientId}/schedules`}>
                 Client schedule →
               </Link>
             </div>

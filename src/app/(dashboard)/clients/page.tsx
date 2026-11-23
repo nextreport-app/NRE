@@ -4,7 +4,8 @@ import { ClientList } from "@/components/client-list";
 import { ClientsGettingStarted } from "@/components/clients-getting-started";
 import { ClientsPageHeader, ClientsPageSupportLine } from "@/components/clients-page-chrome";
 
-export default async function ClientsPage() {
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ task?: string }> }) {
+  const scheduling = (await searchParams).task === "schedule";
   const session = await auth();
   const userId = session?.user?.id;
   const owner = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { emailVerified: true } }) : null;
@@ -40,9 +41,9 @@ export default async function ClientsPage() {
 
   return (
     <div className="nre-clients-page mx-auto max-w-5xl">
-      <ClientsPageHeader isEmpty={isEmpty} clientCount={clientCards.length} />
+      <ClientsPageHeader isEmpty={isEmpty} clientCount={clientCards.length} scheduling={scheduling} />
 
-      {isEmpty ? <ClientsGettingStarted emailVerified={!!owner?.emailVerified} /> : <ClientList clients={clientCards} totalCount={clientCards.length} />}
+      {isEmpty ? <ClientsGettingStarted emailVerified={!!owner?.emailVerified} /> : <ClientList clients={clientCards} totalCount={clientCards.length} scheduling={scheduling} />}
 
       <ClientsPageSupportLine />
     </div>

@@ -173,6 +173,12 @@ function ReportUploadWizardBody() {
     <div className="nre-report-wizard space-y-6">
       <div ref={wizardTopRef}>
         {clientLine}
+        {w.platform === "META" && (
+          <nav aria-label="Client report tools" className="mb-4 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium text-dash-accent">
+            <Link href={`/clients/${w.clientId}/schedules`} className="hover:underline">Schedule reports</Link>
+            <Link href={`/clients/${w.clientId}#client-settings`} target="_blank" rel="noopener noreferrer" className="hover:underline">Client settings <span className="sr-only">(opens in a new tab)</span></Link>
+          </nav>
+        )}
         {!generateSuccessScreen ? (
           <>
             <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
