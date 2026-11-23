@@ -1,4 +1,7 @@
 "use client";
+import { OverviewNavigation } from "./overview-navigation";
+import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
+import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
 import { WebsiteMetricChange } from "./website-metric-change";
 import { WebsiteDetailTable, formatWebsiteMetric } from "./website-detail-table";
 import { customWebsiteRangeSchema } from "@/lib/website-dashboard/range";
@@ -29,8 +32,7 @@ interface View {
     refreshing: boolean;
   }>;
 }
-const button =
-  "rounded-lg border border-dash-border px-3 py-2 text-sm disabled:opacity-50";
+const periodButton = "min-h-10 whitespace-nowrap rounded-lg px-2 py-2 text-xs font-medium sm:px-3 sm:text-sm transition-colors focus-visible:outline-2 focus-visible:outline-dash-accent disabled:opacity-50";
 const labels: Record<WebsiteMetric, string> = {
   sessions: "Sessions",
   totalUsers: "Total users",
@@ -98,6 +100,8 @@ export function WebsiteDashboard({
         ? view?.snapshots.find((s) => days !== "custom" ? s.days === days : s.days === 0 && s.data?.currentPeriod.startIso === customStart && s.data?.currentPeriod.endIso === customEnd)
         : undefined,
     data = entry?.data;
+  const propertyTimezone = view?.snapshots.find(s => s.data?.property.propertyId === selected?.propertyId)?.data?.property.timezone;
+  const latestCompletedDate = propertyTimezone ? reportCalendarYesterday(new Date(), propertyTimezone) : undefined;
   async function refresh() {
     if (!selected || busy) return;
     if (days === "custom" && !customWebsiteRangeSchema.safeParse({startIso:customStart,endIso:customEnd}).success) { setError("Choose a valid custom range of 1–90 completed days."); return; }
@@ -147,25 +151,16 @@ export function WebsiteDashboard({
       <p className="mt-2 text-sm text-dash-ink-secondary">
         All website traffic reported by GA4, separate from Meta ad delivery.
       </p>
-      <nav aria-label="Overview type" className="mt-4 flex flex-wrap gap-2">
-        <Link href="/overview" className={button}>
-          Meta Ads
-        </Link>
-        <span
-          className={`${button} border-dash-accent text-dash-accent`}
-          aria-current="page"
-        >
-          Website traffic (GA4)
-        </span>
-      </nav>
+      <OverviewNavigation current="website" />
       {view && (
-        <div className="mt-5 flex flex-wrap items-end gap-3">
-          <label className="w-full text-sm sm:w-auto sm:flex-1">
-            Client
+        <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-wrap items-end gap-3">
+          <label className="w-full text-xs font-medium text-dash-ink-secondary lg:w-auto lg:flex-1">
+            Website / client
             <select
               aria-label="Website client"
               disabled={busy}
-              className="mt-1 block w-full rounded-lg border border-dash-border bg-dash-bg px-3 py-2"
+              className="mt-2 block min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm text-dash-ink focus-visible:outline-2 focus-visible:outline-dash-accent"
               value={selected?.id ?? ""}
               onChange={(e) => {
                 setView(null);
@@ -184,11 +179,11 @@ export function WebsiteDashboard({
               ))}
             </select>
           </label>
-          <div className="flex gap-2" role="group" aria-label="Website period">
+          <div className="flex max-w-full gap-1 rounded-xl border border-dash-border bg-dash-bg p-1" role="group" aria-label="Website period">
             {([7, 30] as const).map((n) => (
               <button
                 key={n}
-                className={`${button} ${days === n ? "border-dash-accent bg-dash-accent text-black" : ""}`}
+                className={`${periodButton} ${days === n ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:text-dash-ink"}`}
                 aria-pressed={days === n}
                 disabled={busy}
                 onClick={() => {
@@ -200,21 +195,29 @@ export function WebsiteDashboard({
                 Last {n} days
               </button>
             ))}
-            <button className={`${button} ${days === "custom" ? "border-dash-accent bg-dash-accent text-black" : ""}`} aria-pressed={days === "custom"} disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");if(!customStart) {setCustomStart(data?.currentPeriod.startIso ?? "");setCustomEnd(data?.currentPeriod.endIso ?? "");}}}>Custom dates</button>
+            <button className={`${periodButton} ${days === "custom" ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:text-dash-ink"}`} aria-pressed={days === "custom"} disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");if(!customStart) {setCustomStart(data?.currentPeriod.startIso ?? "");setCustomEnd(data?.currentPeriod.endIso ?? "");}}}>Custom dates</button>
           </div>
           <button
-            className={button}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm font-semibold text-dash-ink transition-colors hover:border-dash-accent disabled:opacity-50"
             disabled={busy || !view.connected || !selected?.propertyId}
             onClick={() => void refresh()}
           >
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={busy ? "animate-spin" : ""}><path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/></svg>
             {busy ? "Refreshing GA4…" : "Refresh GA4"}
           </button>
-          {days === "custom" && <div className="flex w-full flex-wrap items-end gap-3 rounded-xl border border-dash-border bg-dash-card p-4">
-            <label className="text-sm">From<input aria-label="Website start date" type="date" disabled={busy} value={customStart} onChange={e=>{setCustomStart(e.target.value);setError("");}} className="mt-1 block rounded-lg border border-dash-border bg-dash-bg px-3 py-2" /></label>
-            <label className="text-sm">To<input aria-label="Website end date" type="date" disabled={busy} value={customEnd} onChange={e=>{setCustomEnd(e.target.value);setError("");}} className="mt-1 block rounded-lg border border-dash-border bg-dash-bg px-3 py-2" /></label>
-            <p className="text-xs text-dash-ink-secondary">Up to 90 completed days · compared with the preceding equal-length period.</p>
+          </div>
+          {days === "custom" && <div role="group" aria-label="Custom website dates" className="mt-4 border-t border-dash-border pt-4">
+            <div className="grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+              <WizardDatePicker showYear label="From" placeholder="Select start date" disabled={busy} value={customStart} maxIso={latestCompletedDate} onChange={value=>{setCustomStart(value);setError("");}} />
+              <WizardDatePicker showYear label="To" placeholder="Select end date" disabled={busy} value={customEnd} maxIso={latestCompletedDate} onChange={value=>{setCustomEnd(value);setError("");}} />
+            </div>
+            <p className="mt-3 text-xs text-dash-ink-secondary">Up to 90 completed days · compared with the preceding equal-length period.</p>
           </div>}
-        </div>
+          {selected?.propertyId && view.connected && <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dash-border pt-3 text-xs text-dash-ink-secondary">
+            <span>{data?.property.displayName ?? selected.propertyName ?? "GA4 property"} · {selected.propertyId}</span>
+            <Link className="font-medium text-dash-accent hover:underline" href={`/clients/${selected.id}#website-analytics`}>Change property</Link>
+          </div>}
+        </section>
       )}
       {!view && !error && (
         <p className="mt-5 text-sm">Loading website dashboard…</p>
@@ -266,18 +269,6 @@ export function WebsiteDashboard({
       )}
       {selected?.propertyId && view?.connected && (
         <>
-          <p className="mt-3 text-xs text-dash-ink-secondary">
-            {data?.property.displayName ??
-              selected.propertyName ??
-              "GA4 property"}{" "}
-            · Property {selected.propertyId} ·{" "}
-            <Link
-              className="underline"
-              href={`/clients/${selected.id}#website-analytics`}
-            >
-              Change property
-            </Link>
-          </p>
           {!data && (
             <p className="mt-5 text-sm">
               Click Refresh GA4 to load {days === "custom" ? "your selected dates" : `the last ${days} completed days`} and compare with the previous equal-length period.

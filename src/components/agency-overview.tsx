@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { OverviewNavigation } from "./overview-navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
@@ -166,17 +167,7 @@ export function AgencyOverview({
       <p className="mt-2 text-sm text-dash-ink-secondary">
         Meta performance and approved budget pacing, across your clients.
       </p>
-      <nav aria-label="Overview type" className="mt-4 flex flex-wrap gap-2">
-        <span
-          className={`${button} border-dash-accent text-dash-accent`}
-          aria-current="page"
-        >
-          Meta Ads
-        </span>
-        <Link href="/websites" className={button}>
-          Website traffic (GA4)
-        </Link>
-      </nav>
+      <OverviewNavigation current="meta" />
       {clients && (
         <nav
           aria-label="Account status"
