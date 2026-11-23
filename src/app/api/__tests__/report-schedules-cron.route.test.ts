@@ -25,6 +25,7 @@ const request = (secret = "test-secret") =>
   });
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("REPORT_SCHEDULER_CRON_SECRET", "");
   vi.stubEnv("CRON_SECRET", "test-secret");
   vi.stubEnv("REPORT_SCHEDULER_ENABLED", "true");
   vi.mocked(prisma.scheduledReportRun.findMany).mockResolvedValue([]);
@@ -75,4 +76,17 @@ it("retries only existing delivery intents after processing", async () => {
   ).toBeLessThan(
     vi.mocked(prisma.reportSchedulerState.upsert).mock.invocationCallOrder[0],
   );
+});
+
+it("accepts a dedicated scheduler key without changing the existing global cron key", async () => {
+  vi.stubEnv("REPORT_SCHEDULER_CRON_SECRET", "scheduler-only-key");
+  expect((await GET(request("test-secret"))).status).toBe(401);
+  expect(service.enqueueDueSchedules).not.toHaveBeenCalled();
+  expect((await GET(request("scheduler-only-key"))).status).toBe(200);
+  expect(process.env.CRON_SECRET).toBe("test-secret");
+});
+it("supports activation with a dedicated key even when the global key is unavailable", async () => {
+  vi.stubEnv("CRON_SECRET", "");
+  vi.stubEnv("REPORT_SCHEDULER_CRON_SECRET", "scheduler-only-key");
+  expect((await GET(request("scheduler-only-key"))).status).toBe(200);
 });

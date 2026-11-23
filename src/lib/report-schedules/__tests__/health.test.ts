@@ -7,6 +7,7 @@ import { schedulerHealth } from "../health";
 const now = new Date("2026-11-23T12:00Z");
 beforeEach(() => {
   vi.stubEnv("REPORT_SCHEDULER_ENABLED", "true");
+  vi.stubEnv("REPORT_SCHEDULER_CRON_SECRET", "");
   vi.stubEnv("CRON_SECRET", "private-test-secret");
   vi.mocked(prisma.reportSchedulerState.findUnique).mockResolvedValue({
     id: "main",
@@ -32,3 +33,14 @@ it.each(["2026-11-23T12:01Z", "2026-11-23T11:39Z"])(
     expect((await schedulerHealth(now)).healthy).toBe(false);
   },
 );
+
+it("recognizes dedicated scheduler configuration independently of other automations", async () => {
+  vi.stubEnv("CRON_SECRET", "");
+  vi.stubEnv("REPORT_SCHEDULER_CRON_SECRET", "scheduler-only-key");
+  expect(await schedulerHealth(now)).toMatchObject({
+    healthy: true,
+    configured: true,
+  });
+  vi.stubEnv("REPORT_SCHEDULER_ENABLED", "false");
+  expect((await schedulerHealth(now)).healthy).toBe(false);
+});
