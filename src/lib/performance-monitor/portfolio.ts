@@ -30,7 +30,7 @@ export const PORTFOLIO_LABELS: Record<PortfolioState, string> = {
   insufficient: "More data needed",
   "no-delivery": "No delivery",
   check: "Refresh needed",
-  setup: "Set up",
+  setup: "Needs setup",
 };
 export function campaignState(c: CampaignPerformance): CampaignState {
   const verdict = campaignVerdict(c);

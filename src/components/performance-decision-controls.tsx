@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
+import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
 import type { OverviewRow } from "@/lib/agency-overview";
 import type { CampaignPerformance } from "@/lib/performance-monitor/facts";
 import type { Verdict } from "@/lib/performance-monitor/decision";
@@ -68,8 +70,8 @@ export function DecisionSettingsPanel({
           });
           setNotice(
             saved
-              ? "Comparison saved. Check Meta to load fresh evidence."
-              : "Could not save. See the error above.",
+              ? c.performanceEnabled ? "Comparison refreshed." : "Comparison saved. Enable performance to load data."
+              : "Could not complete. See the error above.",
           );
         }}
       >
@@ -80,7 +82,7 @@ export function DecisionSettingsPanel({
               type="button"
               disabled={busy}
               aria-pressed={mode === v}
-              className={`${button} ${mode === v ? "border-dash-accent text-dash-accent" : ""}`}
+              className={`${button} ${mode === v ? "border-dash-accent bg-dash-accent text-[#102033]" : ""}`}
               onClick={() => {
                 setMode(v);
                 setNotice("");
@@ -92,35 +94,15 @@ export function DecisionSettingsPanel({
         </div>
         {mode === "custom" && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-xs">
-              From
-              <input
-                required
-                type="date"
-                className={input}
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-              />
-            </label>
-            <label className="text-xs">
-              To
-              <input
-                required
-                type="date"
-                className={input}
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-              />
-            </label>
+            <WizardDatePicker showYear label="From" value={start} disabled={busy} maxIso={reportCalendarYesterday(new Date(),c.timezone)} onChange={setStart}/>
+            <WizardDatePicker showYear label="To" value={end} disabled={busy} maxIso={reportCalendarYesterday(new Date(),c.timezone)} onChange={setEnd}/>
           </div>
         )}
         <p className="mt-2 text-xs text-dash-ink-secondary">
-          Compared with the immediately preceding equal-length period. Custom:
-          up to 31 completed days, manual checks only; no recurring performance
-          email.
+          Compared with the previous equal-length period. Custom dates: up to 31 completed days, refreshed manually.
         </p>
         <button disabled={busy || !c.linked} className={`${button} mt-3`}>
-          Save comparison
+          {c.performanceEnabled ? "Save & refresh" : "Save comparison"}
         </button>
         {notice && (
           <p role="status" className="mt-2 text-xs">
@@ -169,7 +151,7 @@ export function CampaignTargetForm({
           setNotice(
             saved
               ? "Targets saved. Check Meta to assess them."
-              : "Could not save. See the error above.",
+              : "Could not complete. See the error above.",
           );
         }}
       >

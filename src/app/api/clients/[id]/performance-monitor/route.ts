@@ -88,7 +88,7 @@ export async function POST(
     if (input.data.action === "settings") {
       if (input.data.enabled && !client.metaAdAccountId)
         throw new ServiceError(
-          "Link this client's Meta ad account in Client settings first.",
+          "Open this client's report Import and complete a Meta API sync to link its ad account.",
         );
       await prisma.client.update({
         where: { id },
