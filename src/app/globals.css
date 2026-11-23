@@ -1162,3 +1162,7 @@ html[data-site-theme="light"] .nre-website-changes .text-amber-400 { color: #924
 html[data-site-theme="light"] .nre-website-changes .border-amber-400 { border-color: #b45309; }
 html[data-site-theme="light"] .nre-website-changes .text-emerald-400 { color: #047857; }
 html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-color: #047857; }
+
+/* Keep website comparison badges readable in the light app theme. */
+[data-site-theme="light"] .nre-website-performance .text-emerald-400 { color: #047857; }
+[data-site-theme="light"] .nre-website-performance .text-red-400 { color: #b91c1c; }

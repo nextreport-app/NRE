@@ -1,3 +1,4 @@
+import { type WebsiteRange, websiteRangeKey } from "./range";
 import { createHash } from "node:crypto";
 import { prisma } from "../prisma";
 import { ServiceError } from "../service-error";
@@ -14,9 +15,10 @@ export const websiteConnectionKey = (token: string) =>
 export async function refreshWebsiteDashboard(
   clientId: string,
   userId: string,
-  days: 7 | 30,
+  selection: WebsiteRange,
   now = new Date(),
 ) {
+  const days = websiteRangeKey(selection);
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     include: { user: true },
@@ -48,7 +50,7 @@ export async function refreshWebsiteDashboard(
   const same =
     record.propertyId === propertyId && record.connectionKey === connectionKey;
   const previous = same
-    ? parseWebsiteSnapshot(record.dataJson, propertyId, days)
+    ? parseWebsiteSnapshot(record.dataJson, propertyId, selection)
     : null;
   if (
     same &&
@@ -89,7 +91,7 @@ export async function refreshWebsiteDashboard(
       lastAttemptAt: now,
       leaseUntil: new Date(now.getTime() + 6 * 60000),
       error: null,
-      ...(!same ? { dataJson: null, checkedAt: null } : {}),
+      ...(!same || (typeof selection === "object" && !previous) ? { dataJson: null, checkedAt: null } : {}),
     },
   });
   if (!claim.count)
@@ -123,17 +125,17 @@ export async function refreshWebsiteDashboard(
     const snapshot = await fetchWebsiteSnapshot(
       fresh.access_token,
       propertyId,
-      days,
+      selection,
       now,
     );
     const dataJson = JSON.stringify(snapshot);
-    if (!parseWebsiteSnapshot(dataJson, propertyId, days))
+    if (!parseWebsiteSnapshot(dataJson, propertyId, selection))
       throw new ServiceError(
         "GA4 returned incomplete dashboard data. Refresh again or check the property configuration.",
         502,
       );
     if (
-      websitePeriods(days, snapshot.property.timezone).currentPeriod.endIso !==
+      typeof selection === "number" && websitePeriods(selection, snapshot.property.timezone).currentPeriod.endIso !==
       snapshot.currentPeriod.endIso
     )
       throw new ServiceError(

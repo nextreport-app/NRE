@@ -50,12 +50,12 @@ export async function GET(req: Request) {
           })
         : [];
     const snapshots = records
-      .filter((r) => r.days === 7 || r.days === 30)
+      .filter((r) => r.days === 0 || r.days === 7 || r.days === 30)
       .map((r) => {
         const data = parseWebsiteSnapshot(
           r.dataJson,
           r.propertyId,
-          r.days as 7 | 30,
+          r.days as 0 | 7 | 30,
         );
         return {
           days: r.days,

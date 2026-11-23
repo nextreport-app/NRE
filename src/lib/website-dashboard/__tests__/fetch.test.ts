@@ -318,3 +318,15 @@ it("accepts an explicit zero-row GA4 response without headers as an empty period
   expect(snapshot.channels).toEqual([]);
   expect(parseWebsiteSnapshot(JSON.stringify(snapshot), "552954256", 7)).not.toBeNull();
 });
+
+it("fetches custom periods and all core daily/page metrics without exceeding API limits", async () => {
+  const selection = {startIso:"2026-11-10",endIso:"2026-11-19"};
+  const s = await fetchWebsiteSnapshot("token","552954256",selection,now);
+  expect(s.rangeMode).toBe("custom");expect(s.days).toBe(10);
+  expect(s.previousPeriod).toEqual({startIso:"2026-10-31",endIso:"2026-11-09"});
+  expect(s.trend[0].bounceRate).toBe(.3);expect(s.pages[0].totalUsers).toBe(80);
+  expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",selection)).not.toBeNull();
+  expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",{...selection,startIso:"2026-11-11"})).toBeNull();
+  expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",7)).toBeNull();
+  for (const call of vi.mocked(runGa4Report).mock.calls) expect(call[2].metrics.length).toBeLessThanOrEqual(10);
+});

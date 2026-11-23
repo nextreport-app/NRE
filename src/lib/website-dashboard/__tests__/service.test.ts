@@ -209,3 +209,20 @@ it("preserves the safe provider recovery message without marking old data fresh"
   expect(error.message).not.toContain("private provider detail");
   vi.restoreAllMocks();
 });
+
+it("uses one bounded custom cache and delegates the exact dates", async () => {
+  const selection={startIso:"2026-11-01",endIso:"2026-11-10"};
+  const custom={...snapshot,days:10,rangeMode:"custom",currentPeriod:selection,previousPeriod:{startIso:"2026-10-22",endIso:"2026-10-31"}};
+  m.fetch.mockResolvedValue(custom);
+  await refreshWebsiteDashboard("own-website","owner",selection,now);
+  expect(m.upsert).toHaveBeenCalledWith(expect.objectContaining({where:{clientId_days:{clientId:"own-website",days:0}}}));
+  expect(m.fetch).toHaveBeenCalledWith("fresh","552954256",selection,now);
+});
+it("does not reuse a recent custom result for another date range or bypass its cooldown", async () => {
+  const selection={startIso:"2026-11-01",endIso:"2026-11-10"};
+  const custom={...snapshot,days:10,rangeMode:"custom",currentPeriod:selection,previousPeriod:{startIso:"2026-10-22",endIso:"2026-10-31"}};
+  m.upsert.mockResolvedValue({...record,dataJson:JSON.stringify(custom),lastAttemptAt:now});
+  expect(await refreshWebsiteDashboard("own-website","owner",selection,now)).toEqual({cached:true});
+  await expect(refreshWebsiteDashboard("own-website","owner",{...selection,endIso:"2026-11-11"},now)).rejects.toMatchObject({status:429});
+  expect(m.fetch).not.toHaveBeenCalled();
+});
