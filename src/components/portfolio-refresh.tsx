@@ -84,16 +84,21 @@ export function PortfolioRefresh({
     }
   }
   return (
-    <div className="mt-4 rounded-lg border border-dash-border p-3 text-sm">
+    <div className="mt-4 text-sm">
       <div className="flex flex-wrap items-center gap-3">
         <button
           className="rounded-lg border border-dash-border px-3 py-2 disabled:opacity-50"
+          title={
+            !jobs.length
+              ? "Enabled accounts are up to date"
+              : "Refresh accounts due for a check"
+          }
           disabled={disabled || running || !jobs.length}
           onClick={() => void refresh()}
         >
           {running
             ? `Checking ${progress} of ${total}…`
-            : "Refresh due accounts"}
+            : "Refresh ad accounts"}
         </button>
         {running && (
           <button
@@ -105,15 +110,7 @@ export function PortfolioRefresh({
             Stop after current checks
           </button>
         )}
-        <span className="text-xs text-dash-ink-secondary">
-          {running
-            ? "Up to two checks at a time. You can keep browsing this overview."
-            : jobs.length ? `${jobs.length} account checks ready to refresh.` : "Enabled accounts are up to date."}
-        </span>
       </div>
-      <p className="mt-2 text-xs text-dash-ink-secondary">
-        Refreshes enabled accounts using your saved email preferences. Custom dates are refreshed from the account view.
-      </p>
       {result && (
         <p role="status" className="mt-2">
           {result.finished - result.failed.length} succeeded ·{" "}

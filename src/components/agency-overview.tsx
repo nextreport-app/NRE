@@ -434,11 +434,7 @@ export function AgencyOverview({
                 />
               </div>
             )}
-            <MetaPerformanceDashboard
-              client={c}
-              busy={!!busy}
-              save={(body) => action(c.id, "performance-monitor", body)}
-            />
+            <MetaPerformanceDashboard client={c} />
             {c.budgetEnabled && (
               <div
                 id={`meta-budget-${c.id}`}

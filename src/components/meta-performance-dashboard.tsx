@@ -14,7 +14,7 @@ import {
   type MetricDirection,
 } from "@/lib/performance-monitor/metric-change";
 import { PortfolioBadge } from "./portfolio-board";
-import { CampaignTargetForm } from "./performance-decision-controls";
+import { formatMetaPeriod } from "@/lib/performance-monitor/format-period";
 
 type Metric = {
   label: string;
@@ -52,7 +52,7 @@ function Change({ metric, fresh }: { metric: Metric; fresh: boolean }) {
   );
   return (
     <span
-      className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 bg-red-400/10 text-red-400" : "border-dash-border text-dash-ink-secondary"}`}
+      className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 bg-red-400/10 text-red-400" : "border-amber-400/30 bg-amber-400/10 text-amber-400"}`}
     >
       {delta.label}
     </span>
@@ -91,40 +91,40 @@ function delivery(a: PeriodMetrics, b: PeriodMetrics): Metric[] {
       current: a.spend,
       previous: b.spend,
       unit: "money",
-      direction: "neutral",
+      direction: "signed",
     },
     {
       label: "Impressions",
       current: a.impressions,
       previous: b.impressions,
-      direction: "neutral",
+      direction: "signed",
     },
     {
       label: "Clicks (all)",
       current: a.clicks,
       previous: b.clicks,
-      direction: "neutral",
+      direction: "signed",
     },
     {
       label: "CTR (all)",
       current: a.ctr,
       previous: b.ctr,
       unit: "percent",
-      direction: "higher",
+      direction: "signed",
     },
     {
       label: "CPC (all)",
       current: a.cpc,
       previous: b.cpc,
       unit: "money",
-      direction: "lower",
+      direction: "signed",
     },
     {
       label: "CPM",
       current: a.impressions > 0 ? (a.spend / a.impressions) * 1000 : null,
       previous: b.impressions > 0 ? (b.spend / b.impressions) * 1000 : null,
       unit: "money",
-      direction: "neutral",
+      direction: "signed",
     },
   ];
 }
@@ -135,14 +135,14 @@ function outcomes(c: CampaignPerformance): Metric[] {
       label: words(c.objective),
       current: c.current.results,
       previous: c.previous.results,
-      direction: direction ? "higher" : "neutral",
+      direction: direction ? "signed" : "neutral",
     },
     {
       label: words(c.costLabel),
       current: c.current.cpr,
       previous: c.previous.cpr,
       unit: "money",
-      direction: direction ? "lower" : "neutral",
+      direction: direction ? "signed" : "neutral",
     },
     ...(/purchase/i.test(c.objective)
       ? [
@@ -151,14 +151,14 @@ function outcomes(c: CampaignPerformance): Metric[] {
             current: c.current.roas,
             previous: c.previous.roas,
             unit: "multiple" as const,
-            direction: direction ? ("higher" as const) : ("neutral" as const),
+            direction: direction ? ("signed" as const) : ("neutral" as const),
           },
           {
             label: "Purchase value",
             current: c.current.purchaseValue,
             previous: c.previous.purchaseValue,
             unit: "money" as const,
-            direction: direction ? ("higher" as const) : ("neutral" as const),
+            direction: direction ? ("signed" as const) : ("neutral" as const),
           },
         ]
       : []),
@@ -166,12 +166,8 @@ function outcomes(c: CampaignPerformance): Metric[] {
 }
 export function MetaPerformanceDashboard({
   client: c,
-  busy,
-  save,
 }: {
   client: OverviewRow;
-  busy: boolean;
-  save: (body: object) => Promise<boolean>;
 }) {
   const [showAll, setShowAll] = useState(false);
   const facts = c.performance?.facts;
@@ -239,9 +235,17 @@ export function MetaPerformanceDashboard({
                     className={`text-sm font-semibold ${!c.performanceFresh ? "text-dash-ink-secondary" : signal.tone === "critical" ? "text-red-400" : signal.tone === "warning" ? "text-amber-400" : "text-emerald-400"}`}
                   >
                     {signal.metric}
-                    {signal.change == null
-                      ? ""
-                      : ` ${signal.change > 0 ? "+" : "−"}${Math.abs(signal.change).toFixed(1)}%`}{" "}
+                    {signal.change != null && (
+                      <span
+                        className={
+                          !c.performanceFresh || signal.change === 0
+                            ? "text-amber-400"
+                            : signal.change > 0
+                              ? "text-emerald-400"
+                              : "text-red-400"
+                        }
+                      >{` ${signal.change > 0 ? "+" : signal.change < 0 ? "−" : ""}${Math.abs(signal.change).toFixed(1)}%`}</span>
+                    )}{" "}
                     ·{" "}
                     {signal.state === "continuing"
                       ? "Continuing"
@@ -284,10 +288,24 @@ export function MetaPerformanceDashboard({
       <section aria-label="Account metrics">
         <div className="mb-4">
           <h3 className="text-lg font-semibold">Account performance</h3>
-          <p className="mt-1 text-xs text-dash-ink-secondary">
-            {facts.periodA.startIso} – {facts.periodA.endIso} vs{" "}
-            {facts.periodB.startIso} – {facts.periodB.endIso} · {c.timezone}
-          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-dash-border bg-dash-bg px-4 py-3">
+              <p className="text-xs font-medium text-dash-ink-secondary">
+                Selected period
+              </p>
+              <p className="mt-1 text-sm font-semibold">
+                {formatMetaPeriod(facts.periodA.startIso, facts.periodA.endIso)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-dash-border bg-dash-bg px-4 py-3">
+              <p className="text-xs font-medium text-dash-ink-secondary">
+                Compared with previous period
+              </p>
+              <p className="mt-1 text-sm font-semibold">
+                {formatMetaPeriod(facts.periodB.startIso, facts.periodB.endIso)}
+              </p>
+            </div>
+          </div>
         </div>
         <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {delivery(facts.current, facts.previous).map((metric) => (
@@ -299,11 +317,6 @@ export function MetaPerformanceDashboard({
             />
           ))}
         </dl>
-        <p className="mt-3 text-xs text-dash-ink-secondary">
-          Green shows favorable efficiency or outcome changes; red shows
-          unfavorable changes. Spend and delivery volume stay neutral. Alerts
-          also account for data volume.
-        </p>
       </section>
       <section aria-label="Campaign results">
         <h3 className="text-lg font-semibold">Campaign results</h3>
@@ -407,12 +420,6 @@ export function MetaPerformanceDashboard({
                   previous. Attribution can revise recent results.
                 </p>
               )}
-              <CampaignTargetForm
-                client={c}
-                campaign={campaign}
-                busy={busy}
-                save={save}
-              />
             </details>
           </article>
         ))}

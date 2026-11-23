@@ -27,7 +27,7 @@ export function matchesPortfolio(row: OverviewRow, filter: string) {
 export function PortfolioBadge({ state }: { state: PortfolioState }) {
   return (
     <span
-      className={`inline-block rounded-full border px-2 py-1 text-xs ${state === "critical" ? "border-red-400 text-red-400" : state === "review" ? "border-amber-400 text-amber-400" : state === "positive" ? "border-emerald-400 text-emerald-400" : "border-dash-border text-dash-ink-secondary"}`}
+      className={`inline-block rounded-full border px-2 py-1 text-xs ${state === "critical" ? "border-red-400 text-red-400" : state === "review" ? "border-amber-400 text-amber-400" : state === "positive" ? "border-emerald-400 text-emerald-400" : state === "neutral" ? "border-amber-400/30 text-amber-400" : "border-dash-border text-dash-ink-secondary"}`}
     >
       {PORTFOLIO_LABELS[state]}
     </span>
@@ -51,11 +51,7 @@ export function ObservationLine({
   observation: Observation;
   currency: string;
 }) {
-  const delta = metricChange(
-    o.current,
-    o.previous,
-    /cost|cpc|cpl|cpr/i.test(o.metric) ? "lower" : "higher",
-  );
+  const delta = metricChange(o.current, o.previous, "signed");
   return (
     <p className="mt-1 text-sm">
       <strong>
@@ -66,7 +62,7 @@ export function ObservationLine({
       {format(o.previous, o.unit, currency)}
       {o.change !== null && (
         <span
-          className={`ml-2 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 text-red-400" : "border-dash-border text-dash-ink-secondary"}`}
+          className={`ml-2 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 text-red-400" : "border-amber-400/30 text-amber-400"}`}
         >
           {delta.label}
           {o.reference === "target" ? " vs target" : ""}
@@ -144,42 +140,9 @@ export function PortfolioBoard({
               Prior data does not establish current performance.
             </p>
           )}
-          {c.performanceFresh && (
-            <p className="mt-2 text-xs text-dash-ink-secondary">
-              {c.portfolio.coverage.assessed} of {c.portfolio.coverage.total}{" "}
-              campaigns assessed · {c.portfolio.positiveCampaigns} positive ·{" "}
-              {c.portfolio.reviewCampaigns} to review
-              {c.portfolio.coverage.insufficient
-                ? ` · ${c.portfolio.coverage.insufficient} need more data`
-                : ""}
-              {c.portfolio.coverage.inactive
-                ? ` · ${c.portfolio.coverage.inactive} with no delivery`
-                : ""}
-            </p>
-          )}
-          {c.performanceFresh && c.performance?.facts && (
-            <p className="mt-1 text-xs text-dash-ink-secondary">
-              {c.performance.facts.periodA.startIso}–
-              {c.performance.facts.periodA.endIso} vs{" "}
-              {c.performance.facts.periodB.startIso}–
-              {c.performance.facts.periodB.endIso} · {c.timezone}
-            </p>
-          )}
           {c.performanceFresh && !c.portfolio.coverage.total && (
             <p className="mt-2 text-sm">
               No delivery was returned for either period.
-            </p>
-          )}
-          {(c.performance?.checkedAt || c.budget?.checkedAt) && (
-            <p className="mt-1 text-xs text-dash-ink-secondary">
-              {c.performance?.checkedAt ? "Performance" : "Budget"} checked{" "}
-              {new Intl.DateTimeFormat("en", {
-                dateStyle: "medium",
-                timeStyle: "short",
-                timeZone: c.timezone,
-              }).format(
-                new Date(c.performance?.checkedAt ?? c.budget!.checkedAt),
-              )}
             </p>
           )}
           {!c.linked ? (

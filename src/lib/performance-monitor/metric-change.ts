@@ -1,5 +1,5 @@
-export type MetricDirection = "higher" | "lower" | "neutral";
-/** Display direction is independent of the evidence thresholds used for alerts. */
+export type MetricDirection = "signed" | "neutral";
+/** Badge colors indicate arithmetic direction; warning severity is assessed separately. */
 export function metricChange(
   current: number | null | undefined,
   previous: number | null | undefined,
@@ -26,7 +26,7 @@ export function metricChange(
     tone:
       !fresh || direction === "neutral"
         ? neutral
-        : change > 0 === (direction === "higher")
+        : change > 0
           ? ("positive" as const)
           : ("negative" as const),
   };
