@@ -1,5 +1,12 @@
 "use client";
-import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import Link from "next/link";
 export function WizardClientActions({
   clientId,
@@ -15,9 +22,32 @@ export function WizardClientActions({
   onChangeClientClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [sideOffset, setSideOffset] = useState<number | null>(null);
   const root = useRef<HTMLDivElement>(null),
-    trigger = useRef<HTMLButtonElement>(null);
+    trigger = useRef<HTMLButtonElement>(null),
+    menu = useRef<HTMLElement>(null);
   const id = useId();
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      if (!trigger.current || !menu.current || !root.current) return;
+      const buttonEdge = trigger.current.getBoundingClientRect().right;
+      // Put the flyout past the form content so it does not cover wizard text.
+      const formEdge =
+        trigger.current.closest(".nre-report-wizard")?.getBoundingClientRect()
+          .right ?? buttonEdge;
+      const left = Math.max(buttonEdge, formEdge) + 12;
+      const width = menu.current.getBoundingClientRect().width;
+      setSideOffset(
+        left + width <= document.documentElement.clientWidth - 16
+          ? left - root.current.getBoundingClientRect().left
+          : null,
+      );
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const outside = (e: PointerEvent) => {
@@ -85,9 +115,11 @@ export function WizardClientActions({
       </button>
       {open && (
         <nav
+          ref={menu}
           id={id}
           aria-label="Client actions"
-          className="absolute right-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-6rem)] rounded-xl border border-dash-border bg-dash-card p-1.5 shadow-xl"
+          style={sideOffset !== null ? { left: sideOffset } : undefined}
+          className={`absolute z-40 w-72 max-w-[calc(100vw-6rem)] rounded-xl border border-dash-border bg-dash-card p-1.5 shadow-xl ${sideOffset !== null ? "top-0" : "right-0 top-full mt-2"}`}
         >
           {tools.map((tool) => (
             <Link
