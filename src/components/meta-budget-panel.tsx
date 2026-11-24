@@ -20,10 +20,14 @@ const button =
   "rounded-xl border border-dash-border px-4 py-2 text-sm font-medium disabled:opacity-50";
 export function MetaBudgetPanel({
   clientId,
+  revision,
+  onActivity,
   disabled,
   onUpdated,
 }: {
   clientId: string;
+  revision?: string;
+  onActivity?: (busy: boolean) => void;
   disabled: boolean;
   onUpdated: () => Promise<void>;
 }) {
@@ -33,6 +37,10 @@ export function MetaBudgetPanel({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  useEffect(() => {
+    onActivity?.(busy);
+    return () => onActivity?.(false);
+  }, [busy, onActivity]);
   const url = `/api/clients/${encodeURIComponent(clientId)}/budget-monitor`;
   const load = useCallback(async () => {
     const r = await fetch(url, { cache: "no-store" });
@@ -59,7 +67,7 @@ export function MetaBudgetPanel({
       mounted = false;
       window.removeEventListener("focus", refresh);
     };
-  }, [load]);
+  }, [load, revision]);
   async function save(body: object, method: "POST" | "PATCH" = "POST") {
     const previousView = view;
     const settingsChange = "enabled" in body && "emailEnabled" in body;
@@ -141,9 +149,9 @@ export function MetaBudgetPanel({
       id={`meta-budget-${clientId}`}
       tabIndex={-1}
       aria-label="Budget alerts"
-      className="mt-6 scroll-mt-6 rounded-2xl border border-blue-400/25 bg-blue-400/5 p-4 sm:p-5"
+      className="mt-6 scroll-mt-6 rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
     >
-      <h3 className="text-lg font-semibold text-blue-400">
+      <h3 className="text-lg font-semibold text-emerald-400">
         Monthly budget &amp; alerts
       </h3>
       <p className="mt-1 text-sm text-dash-ink-secondary">
@@ -305,7 +313,7 @@ export function MetaBudgetPanel({
           {view.enabled && (
             <div
               role={critical || warning ? "alert" : undefined}
-              className={`mt-4 rounded-xl border p-4 ${critical ? "border-red-400/50 bg-red-400/10" : warning ? "border-amber-400/50 bg-amber-400/10" : "border-dash-border bg-dash-bg"}`}
+              className={`mt-4 rounded-xl border p-4 ${critical ? "border-red-400/30 border-l-4 border-l-red-400 bg-dash-card" : warning ? "border-amber-400/30 border-l-4 border-l-amber-400 bg-dash-card" : "border-dash-border bg-dash-bg"}`}
             >
               {(critical || warning) && (
                 <p

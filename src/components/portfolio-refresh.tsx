@@ -2,16 +2,18 @@
 import { useEffect, useRef, useState } from "react";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
-  dueChecks,
+  refreshableChecks,
   runDueChecks,
 } from "@/lib/performance-monitor/refresh-queue";
 export function PortfolioRefresh({
   clients,
+  scopeId,
   disabled,
   onActivity,
   onComplete,
 }: {
   clients: OverviewRow[];
+  scopeId: string;
   disabled: boolean;
   onActivity: (busy: boolean) => void;
   onComplete: () => Promise<void>;
@@ -33,9 +35,47 @@ export function PortfolioRefresh({
       cancelled.current = true;
     };
   }, []);
-  const jobs = dueChecks(clients);
-  async function refresh() {
-    if (active.current || disabled || !jobs.length) return;
+  const attempts = useRef(new Map<string, number>());
+  const latest = useRef({ clients, disabled, scopeId, onComplete, onActivity });
+  useEffect(() => {
+    latest.current = { clients, disabled, scopeId, onComplete, onActivity };
+  });
+  const refreshRef = useRef<(manual?: boolean) => Promise<void>>(
+    async () => {},
+  );
+  useEffect(() => {
+    refreshRef.current = refresh;
+  });
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") void refreshRef.current();
+    };
+    tick();
+    const timer = window.setInterval(tick, 30_000);
+    window.addEventListener("focus", tick);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", tick);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
+  // The initial API load may finish after the scheduler mounts.
+  useEffect(() => {
+    if (document.visibilityState === "visible") void refreshRef.current();
+  }, [clients, disabled, scopeId]);
+  async function refresh(manual = false) {
+    const { clients, disabled, scopeId, onComplete, onActivity } =
+      latest.current;
+    if (active.current || disabled) return;
+    const jobs = refreshableChecks(
+      clients,
+      Date.now(),
+      attempts.current,
+      scopeId,
+      manual,
+    );
+    if (!jobs.length && !manual) return;
     active.current = true;
     cancelled.current = false;
     setRunning(true);
@@ -48,6 +88,7 @@ export function PortfolioRefresh({
       const outcome = await runDueChecks(
         jobs,
         async (job) => {
+          attempts.current.set(`${job.id}:${job.kind}`, Date.now());
           const response = await fetch(
             `/api/clients/${encodeURIComponent(job.id)}/${job.kind}`,
             {
@@ -87,19 +128,18 @@ export function PortfolioRefresh({
     <div className="mt-4 text-sm">
       <div className="flex flex-wrap items-center gap-3">
         <button
-          className="rounded-lg border border-dash-border px-3 py-2 disabled:opacity-50"
-          title={
-            !jobs.length
-              ? "Enabled accounts are up to date"
-              : "Refresh accounts due for a check"
-          }
-          disabled={disabled || running || !jobs.length}
-          onClick={() => void refresh()}
+          className="rounded-xl bg-dash-accent px-5 py-3 font-semibold text-[#102033] shadow-sm disabled:opacity-50"
+          title="Fetch updated Meta data. Checks are limited to once every five minutes."
+          disabled={disabled || running}
+          onClick={() => void refresh(true)}
         >
-          {running
-            ? `Checking ${progress} of ${total}…`
-            : "Refresh ad accounts"}
+          {running ? `Checking ${progress} of ${total}…` : "Refresh data"}
         </button>
+        {!running && (
+          <span className="text-xs text-dash-ink-secondary">
+            Auto-refresh every 5 minutes · custom dates refresh manually
+          </span>
+        )}
         {running && (
           <button
             className="underline"
@@ -113,8 +153,9 @@ export function PortfolioRefresh({
       </div>
       {result && (
         <p role="status" className="mt-2">
-          {result.finished - result.failed.length} succeeded ·{" "}
-          {result.failed.length} need attention
+          {result.finished === 0
+            ? "Showing saved data. Meta checks are available every five minutes"
+            : `${result.finished - result.failed.length} checks updated · ${result.failed.length} failed`}
           {result.unstarted ? ` · ${result.unstarted} not started` : ""}.
         </p>
       )}

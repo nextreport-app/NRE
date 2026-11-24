@@ -173,8 +173,11 @@ function Issue({
           <span className="text-xs text-dash-ink-secondary">Ongoing</span>
         )}
       </div>
-      <p className="mt-2 break-words text-sm font-semibold text-violet-400">
-        [Campaign] {campaign.name}
+      <p className="mt-2 break-words text-sm font-semibold text-blue-400">
+        {campaign.name}{" "}
+        <span className="text-xs font-normal text-dash-ink-secondary">
+          [Campaign]
+        </span>
       </p>
       <p className="mt-1 text-sm text-dash-ink-secondary">
         {signalSummaryLine(campaign, signal)}
@@ -274,7 +277,7 @@ export function MetaPerformanceDashboard({
       </div>
       <section
         aria-label="Performance summary"
-        className={`rounded-2xl border p-4 sm:p-5 ${budgetCritical || (urgent && c.performanceFresh) ? "border-red-400/40 bg-red-400/5" : (issues.length && c.performanceFresh) || budgetAlert?.tone === "warning" ? "border-amber-400/30 bg-amber-400/5" : "border-dash-border bg-dash-bg"}`}
+        className={`rounded-2xl border p-4 sm:p-5 ${budgetCritical || (urgent && c.performanceFresh) ? "border-dash-border border-l-4 border-l-red-400 bg-dash-bg" : (issues.length && c.performanceFresh) || budgetAlert?.tone === "warning" ? "border-dash-border border-l-4 border-l-amber-400 bg-dash-bg" : "border-dash-border bg-dash-bg"}`}
       >
         <p className="text-xs font-semibold uppercase tracking-wider text-dash-ink-secondary">
           Comparison summary
@@ -305,7 +308,7 @@ export function MetaPerformanceDashboard({
           <a
             href={`#meta-budget-${c.id}`}
             role="alert"
-            className={`mt-4 block rounded-xl border p-4 ${budgetCritical ? "border-red-400/50 bg-red-400/10" : "border-amber-400/50 bg-amber-400/10"}`}
+            className={`mt-4 block rounded-xl border p-4 ${budgetCritical ? "border-red-400/30 border-l-4 border-l-red-400 bg-dash-bg" : "border-amber-400/30 border-l-4 border-l-amber-400 bg-dash-bg"}`}
           >
             <p
               className={`font-semibold ${budgetCritical ? "text-red-400" : "text-amber-400"}`}
@@ -353,7 +356,7 @@ export function MetaPerformanceDashboard({
       </section>
       <section
         aria-label="Account metrics"
-        className="rounded-2xl border border-blue-400/25 bg-blue-400/5 p-4 sm:p-5"
+        className="rounded-2xl border border-blue-400/25 bg-dash-bg p-4 sm:p-5"
       >
         <div className="mb-3">
           <h3 className="text-lg font-semibold text-blue-400">
@@ -393,9 +396,9 @@ export function MetaPerformanceDashboard({
       </section>
       <section
         aria-label="Campaign results"
-        className="rounded-2xl border border-violet-400/25 bg-violet-400/5 p-4 sm:p-5"
+        className="rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
       >
-        <h3 className="text-lg font-semibold text-violet-400">
+        <h3 className="text-lg font-semibold text-blue-400">
           Campaign comparisons
         </h3>
         {(facts.valueWarning || facts.metricsWarning) && (
@@ -414,8 +417,11 @@ export function MetaPerformanceDashboard({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h4 className="break-words text-base font-semibold text-violet-400">
-                    [Campaign] {campaign.name}
+                  <h4 className="break-words text-base font-semibold text-blue-400">
+                    {campaign.name}{" "}
+                    <span className="text-xs font-normal text-dash-ink-secondary">
+                      [Campaign]
+                    </span>
                   </h4>
                   <p className="mt-1 text-xs text-dash-ink-secondary">
                     Goal: {campaign.objective.toLowerCase()}
