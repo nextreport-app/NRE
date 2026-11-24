@@ -20,8 +20,9 @@ export function dueChecks(clients: OverviewRow[]): DueCheck[] {
         ],
   );
 }
-export const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-/** Share the server cooldown; failed attempts also wait before retrying. */
+export const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+export const MANUAL_REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
+/** Automatic checks wait an hour; manual refresh retains the server’s shorter cooldown. */
 export function refreshableChecks(
   clients: OverviewRow[],
   now: number,
@@ -44,7 +45,10 @@ export function refreshableChecks(
         Number.isFinite(checked) ? checked : 0,
         attempts.get(`${c.id}:${kind}`) ?? 0,
       );
-      if (now - latest >= REFRESH_INTERVAL_MS)
+      if (
+        now - latest >=
+        (manual ? MANUAL_REFRESH_COOLDOWN_MS : REFRESH_INTERVAL_MS)
+      )
         jobs.push({ id: c.id, name: c.name, kind });
     }
     return jobs;

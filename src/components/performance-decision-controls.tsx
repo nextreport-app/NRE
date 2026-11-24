@@ -129,11 +129,15 @@ export function DecisionSettingsPanel({
         <p className="mt-2 text-xs text-dash-ink-secondary">
           Each period is compared with the preceding equal-length period.
         </p>
-        <button disabled={busy || !c.linked} className={`${button} mt-3`}>
+        <button
+          type="submit"
+          disabled={busy || !c.linked}
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-dash-accent px-5 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+        >
           {busy
-            ? "Updating…"
+            ? "Analyzing…"
             : c.performanceEnabled
-              ? "Compare periods"
+              ? "Analyze performance"
               : "Save comparison"}
         </button>
         {notice && (

@@ -105,9 +105,7 @@ export function PortfolioRefresh({
         try {
           await onComplete();
         } catch {
-          setReloadError(
-            "Couldn’t reload data. Please try again.",
-          );
+          setReloadError("Couldn’t reload data. Please try again.");
         }
       }
     } finally {
@@ -129,11 +127,6 @@ export function PortfolioRefresh({
         >
           {running ? "Refreshing…" : "Refresh data"}
         </button>
-        {!running && (
-          <span className="text-xs text-dash-ink-secondary">
-            Auto-refresh every 5 minutes · custom dates refresh manually
-          </span>
-        )}
         {running && (
           <button
             className="underline"
