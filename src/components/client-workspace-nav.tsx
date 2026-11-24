@@ -20,11 +20,6 @@ export function clientWorkspaceLinks(
       href: `/clients/${clientId}/schedules`,
     },
     {
-      key: "reports",
-      label: "Report history",
-      href: `/clients/${clientId}/reports`,
-    },
-    {
       key: "settings",
       label: "Client settings",
       href: `/clients/${clientId}#client-settings`,

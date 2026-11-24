@@ -123,7 +123,6 @@ describe("Reports workflow and client navigation", () => {
       "/overview?client=client",
       "/clients/client/reports/new",
       "/clients/client/schedules",
-      "/clients/client/reports",
       "/clients/client#client-settings",
     ]);
     const html = renderToStaticMarkup(
