@@ -1176,3 +1176,6 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
 [data-site-theme="light"] .nre-meta-performance .text-red-400 { color: #b91c1c; }
 [data-site-theme="light"] .nre-meta-performance .text-emerald-400 { color: #047857; }
 [data-site-theme="light"] .nre-meta-performance .text-amber-400 { color: #92400e; }
+
+[data-site-theme="light"] .nre-meta-performance .text-blue-400 { color: #1d4ed8; }
+[data-site-theme="light"] .nre-meta-performance .text-violet-400 { color: #6d28d9; }

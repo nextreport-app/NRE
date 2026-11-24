@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
+import { decisionPeriods } from "@/lib/performance-monitor/settings";
 import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
 import type { OverviewRow } from "@/lib/agency-overview";
 import type { CampaignPerformance } from "@/lib/performance-monitor/facts";
@@ -45,11 +46,22 @@ export function DecisionSettingsPanel({
   busy: boolean;
   save: (body: object) => Promise<boolean>;
 }) {
+  const legacyPeriod =
+    c.comparison.days === 15
+      ? (c.performance?.facts?.periodA ??
+        decisionPeriods(c.timezone, { performanceWindowDays: 15 }).periodA)
+      : null;
   const [mode, setMode] = useState(
-      c.comparison.customStart ? "custom" : String(c.comparison.days),
+      c.comparison.customStart || legacyPeriod
+        ? "custom"
+        : String(c.comparison.days),
     ),
-    [start, setStart] = useState(c.comparison.customStart),
-    [end, setEnd] = useState(c.comparison.customEnd),
+    [start, setStart] = useState(
+      c.comparison.customStart || legacyPeriod?.startIso || "",
+    ),
+    [end, setEnd] = useState(
+      c.comparison.customEnd || legacyPeriod?.endIso || "",
+    ),
     [notice, setNotice] = useState("");
   return (
     <section
@@ -78,7 +90,7 @@ export function DecisionSettingsPanel({
         }}
       >
         <div className="flex flex-wrap gap-2">
-          {["7", "15", "30", "custom"].map((v) => (
+          {["7", "30", "custom"].map((v) => (
             <button
               key={v}
               type="button"
