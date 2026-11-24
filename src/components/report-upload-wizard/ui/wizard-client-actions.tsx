@@ -33,7 +33,7 @@ export function WizardClientActions({
       ? [
           {
             href: `${performance === "website" ? "/websites" : "/overview"}?client=${encodeURIComponent(clientId)}`,
-            label: "View performance",
+            label: "Performance (Meta Ads & GA4)",
           },
         ]
       : []),
@@ -87,7 +87,7 @@ export function WizardClientActions({
         <nav
           id={id}
           aria-label="Client actions"
-          className="absolute right-0 top-full z-40 mt-2 w-56 max-w-[calc(100vw-3rem)] rounded-xl border border-dash-border bg-dash-card p-1.5 shadow-xl"
+          className="absolute right-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-6rem)] rounded-xl border border-dash-border bg-dash-card p-1.5 shadow-xl"
         >
           {tools.map((tool) => (
             <Link
