@@ -96,7 +96,7 @@ export function DecisionSettingsPanel({
               type="button"
               disabled={busy}
               aria-pressed={mode === v}
-              className={`${button} ${mode === v ? "border-dash-accent bg-dash-accent text-[#102033]" : ""}`}
+              className={`${button} ${mode === v ? "border-dash-ink-secondary bg-dash-card text-dash-ink ring-1 ring-inset ring-dash-ink-secondary" : ""}`}
               onClick={() => {
                 setMode(v);
                 setNotice("");
