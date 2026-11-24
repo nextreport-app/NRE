@@ -11,7 +11,6 @@ export const PORTFOLIO_FILTERS = [
   { key: "critical", label: "Critical" },
   { key: "review", label: "Review" },
   { key: "positive", label: "Positive" },
-  { key: "neutral", label: "Neutral" },
   { key: "setup", label: "Needs setup" },
 ] as const;
 export function matchesPortfolio(row: OverviewRow, filter: string) {
@@ -23,7 +22,7 @@ export function matchesPortfolio(row: OverviewRow, filter: string) {
   );
 }
 export function PortfolioBadge({ state }: { state: PortfolioState }) {
-  if (state === "insufficient") return null;
+  if (state === "insufficient" || state === "neutral") return null;
   return (
     <span
       className={`inline-block rounded-full border px-2 py-1 text-xs ${state === "critical" ? "border-red-400 text-red-400" : state === "review" ? "border-amber-400 text-amber-400" : state === "positive" ? "border-emerald-400 text-emerald-400" : "border-dash-border text-dash-ink-secondary"}`}
