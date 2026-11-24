@@ -93,3 +93,17 @@ it("validates and passes custom dates without accepting an arbitrary cache key",
   expect((await POST(customRequest({...customRange,startIso:"2026-02-30"}),params)).status).toBe(400);
   expect((await POST(request(0),params)).status).toBe(400);
 });
+
+it("opens the portfolio without implicitly selecting a linked client", async () => {
+  const json = await (await GET(new Request("http://localhost/api/website-overview"))).json();
+  expect(json.selectedClientId).toBeNull();
+  expect(json.clients).toEqual([expect.objectContaining({id: "website", propertyId: "552954256"})]);
+  expect(json.snapshots).toEqual([]);
+  expect(prisma.websiteDashboardSnapshot.findMany).not.toHaveBeenCalled();
+});
+it("loads cached snapshots only for an explicitly selected owned client", async () => {
+  const json = await (await GET(new Request("http://localhost/api/website-overview?clientId=website"))).json();
+  expect(json.selectedClientId).toBe("website");
+  expect(prisma.websiteDashboardSnapshot.findMany).toHaveBeenCalledWith({where: {clientId: "website", propertyId: "552954256", connectionKey: "key"}});
+  expect(refreshWebsiteDashboard).not.toHaveBeenCalled();
+});
