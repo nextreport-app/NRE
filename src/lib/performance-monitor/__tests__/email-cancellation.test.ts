@@ -27,7 +27,7 @@ import { deliverQueuedEmail } from "../../email-delivery";
 import { buildPerformanceFacts } from "../facts";
 import { parseCsvText } from "../../nre/parse-csv";
 const now = new Date("2026-11-20T12:00Z"),
-  key = "performance-alert:client:2026-11-19:2026-11-13:review",
+  key = "performance-alert:client:2026-11-19:2026-11-13:critical",
   config = { currency: "USD", timezone: "UTC", metaAdAccountId: "123" };
 function client() {
   const parsed = parseCsvText(

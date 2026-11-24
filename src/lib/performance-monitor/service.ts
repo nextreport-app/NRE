@@ -283,7 +283,7 @@ export async function checkClientPerformance(
         userId,
         payload: {
           to: [client.user.email],
-          subject: `NextReport performance review — ${client.accountName}`,
+          subject: `NextReport ${newSignals.some((s) => s.signal.tone === "critical") ? "critical performance alert" : "performance review"} — ${client.accountName}`,
           text,
           html: `<pre style="white-space:pre-wrap">${text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre>`,
         },

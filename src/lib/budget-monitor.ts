@@ -1,7 +1,7 @@
 import { budgetAlertKey } from "./budget-alert-key";
 import { prisma } from "./prisma";
 import { ServiceError } from "./service-error";
-import { budgetWindow, budgetFacts, effectiveBudgetTolerance, readBudgetSnapshot, BUDGET_LEVEL_LABELS, type BudgetSnapshot } from "./budget-monitor-facts";
+import { budgetWindow, budgetAlertPresentation, budgetFacts, effectiveBudgetTolerance, readBudgetSnapshot, type BudgetSnapshot } from "./budget-monitor-facts";
 import { fetchMetaAccountSpend, fetchMetaAdAccountMetadata, ensureFreshMetaAccessToken } from "./meta-api";
 import { decryptMetaToken, encryptMetaToken } from "./meta-token-storage";
 import { queueEmail, deliverQueuedEmail } from "./email-delivery";
@@ -54,9 +54,10 @@ export async function checkClientBudget(id: string, userId: string, now = new Da
       if (current) {
         const key=budgetAlertKey(id,window.month,config,snapshot.facts!.level);
         const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:client.currency}).format(n);
-        const title=BUDGET_LEVEL_LABELS[snapshot.facts!.level];
-        const text=`${client.accountName}: ${title}.\nApproved monthly ad spend (excluding tax): ${money(client.monthlyBudget)}.\nSpend this month through ${window.today}: ${money(snapshot.facts!.spent)}.\n${snapshot.facts!.projected===null?"Projection unavailable until three full days have elapsed.":`Projected month-end spend: ${money(snapshot.facts!.projected)} (estimate from completed days).`}\nAllowed variance: ${money(snapshot.facts!.tolerance)}.\n${snapshot.facts!.level === "underspend" ? `Projected month-end shortfall: ${money(snapshot.facts!.projectedShortfall!)}. Review delivery and budget pacing.` : ""}\nLast checked: ${snapshot.checkedAt}.\nReview: https://nextreport.in/overview?client=${encodeURIComponent(id)}#meta-budget-${encodeURIComponent(id)}\nRead-only monitoring cannot adjust spend; Meta data can be delayed. Adjust campaigns in Ads Manager.`;
-        await queueEmail({key,kind:"BUDGET_ALERT",userId,payload:{to:[client.user.email],subject:`NextReport budget alert — ${client.accountName}`,text,html:`<pre style="white-space:pre-wrap;font:14px Arial,sans-serif">${text.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}</pre>`}});
+        const alert=budgetAlertPresentation(snapshot.facts!,client.monthlyBudget,client.currency,window.days-window.completedDays);
+        const title=alert.title;
+        const text=`${alert.tone==="critical"?"CRITICAL":"BUDGET WARNING"} · ${client.accountName}: ${title}.\n${alert.description}\nApproved monthly ad spend (excluding tax): ${money(client.monthlyBudget)}.\nSpend this month through ${window.today}: ${money(snapshot.facts!.spent)}.\n${snapshot.facts!.projected===null?"Projection unavailable until three full days have elapsed.":`Projected month-end spend: ${money(snapshot.facts!.projected)} (estimate from completed days).`}\nAllowed variance: ${money(snapshot.facts!.tolerance)}.\n${snapshot.facts!.level === "underspend" ? `Projected month-end shortfall: ${money(snapshot.facts!.projectedShortfall!)}. Review delivery and budget pacing.` : ""}\nLast checked: ${snapshot.checkedAt}.\nReview: https://nextreport.in/overview?client=${encodeURIComponent(id)}#meta-budget-${encodeURIComponent(id)}\nRead-only monitoring cannot adjust spend; Meta data can be delayed. Adjust campaigns in Ads Manager.`;
+        await queueEmail({key,kind:"BUDGET_ALERT",userId,payload:{to:[client.user.email],subject:`NextReport ${alert.tone==="critical"?"critical budget alert":"budget warning"} — ${client.accountName}`,text,html:`<pre style="white-space:pre-wrap;font:14px Arial,sans-serif">${text.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}</pre>`}});
         const delivery=await deliverQueuedEmail(key);
         if (!delivery.accepted) snapshot.emailError="Email has not been confirmed sent. Check again later; the in-app alert remains available.";
       }

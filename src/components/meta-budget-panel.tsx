@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import {
-  BUDGET_LEVEL_LABELS,
+  budgetAlertPresentation,
+  budgetWindow,
   type BudgetSnapshot,
 } from "@/lib/budget-monitor-facts";
 interface BudgetView {
@@ -119,6 +120,22 @@ export function MetaBudgetPanel({
     !!snapshot &&
     ((view?.asOf ?? 0) - Date.parse(snapshot.checkedAt) >= 26 * 3600000 ||
       Date.parse(snapshot.checkedAt) > (view?.asOf ?? 0));
+  const windowNow = budgetWindow(
+    view?.timezone ?? "UTC",
+    new Date(view?.asOf ?? 0),
+  );
+  const alert =
+    facts && view?.budget
+      ? budgetAlertPresentation(
+          facts,
+          view.budget,
+          view.currency,
+          windowNow.days - windowNow.completedDays,
+        )
+      : null;
+  const fresh = !!snapshot && !snapshot.error && !stale;
+  const critical = fresh && alert?.tone === "critical";
+  const warning = fresh && alert?.tone === "warning";
   return (
     <section
       id={`meta-budget-${clientId}`}
@@ -286,16 +303,76 @@ export function MetaBudgetPanel({
             </details>
           )}
           {view.enabled && (
-            <div className="mt-4 rounded-xl border border-dash-border bg-dash-bg p-4">
-              <p className="text-sm font-semibold">
+            <div
+              role={critical || warning ? "alert" : undefined}
+              className={`mt-4 rounded-xl border p-4 ${critical ? "border-red-400/50 bg-red-400/10" : warning ? "border-amber-400/50 bg-amber-400/10" : "border-dash-border bg-dash-bg"}`}
+            >
+              {(critical || warning) && (
+                <p
+                  className={`mb-2 text-xs font-bold uppercase tracking-wider ${critical ? "text-red-400" : "text-amber-400"}`}
+                >
+                  {critical
+                    ? "Critical budget alert"
+                    : facts?.alertable
+                      ? "Budget warning"
+                      : "Budget notice"}
+                </p>
+              )}
+              <p
+                className={`text-base font-semibold ${critical ? "text-red-400" : warning ? "text-amber-400" : ""}`}
+              >
                 {snapshot?.error
                   ? "Spend check needs attention"
                   : stale
                     ? "Refresh to review current spend"
                     : facts
-                      ? BUDGET_LEVEL_LABELS[facts.level]
+                      ? alert?.title
                       : "Check spend to load the first budget comparison"}
               </p>
+              {alert && (
+                <p
+                  className={`mt-2 text-sm font-medium ${critical ? "text-red-400" : "text-dash-ink-secondary"}`}
+                >
+                  {fresh
+                    ? alert.description
+                    : `Last saved check: ${alert.description}`}
+                </p>
+              )}
+              {facts && (
+                <div className="mt-4">
+                  <div className="mb-2 flex justify-between text-xs">
+                    <span>Budget used</span>
+                    <span
+                      className={
+                        critical
+                          ? "font-semibold text-red-400"
+                          : "text-dash-ink-secondary"
+                      }
+                    >
+                      {facts.usedPercent.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-label="Approved budget used"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.min(
+                      100,
+                      Math.max(0, facts.usedPercent),
+                    )}
+                    aria-valuetext={`${facts.usedPercent.toFixed(1)}% of approved budget used`}
+                    className="h-2 overflow-hidden rounded-full bg-dash-card"
+                  >
+                    <div
+                      className={`h-full rounded-full ${critical ? "bg-red-400" : warning ? "bg-amber-400" : "bg-blue-400"}`}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, facts.usedPercent))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               {facts && (
                 <dl className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
                   {[
@@ -313,20 +390,14 @@ export function MetaBudgetPanel({
                       <dt className="text-xs text-dash-ink-secondary">
                         {label}
                       </dt>
-                      <dd className="mt-1 text-lg font-semibold">{value}</dd>
+                      <dd
+                        className={`mt-1 text-lg font-semibold ${critical && (label === "Spent this month" || label === "Projected month-end") ? "text-red-400" : ""}`}
+                      >
+                        {value}
+                      </dd>
                     </div>
                   ))}
                 </dl>
-              )}
-              {facts && facts.over > view.tolerance && (
-                <p className="mt-3 text-sm">
-                  Spend is {money(facts.over)} above the approved budget.
-                </p>
-              )}
-              {facts?.level === "underspend" && (
-                <p className="mt-3 text-sm">
-                  Projected shortfall: {money(facts.projectedShortfall ?? 0)}.
-                </p>
               )}
               {snapshot && (
                 <p className="mt-3 text-xs text-dash-ink-secondary">

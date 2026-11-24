@@ -85,7 +85,7 @@ describe("decision priorities", () => {
       { ...b, clicks: 200, ctr: 2, cpc: 0.5, results: 10, cpr: 10, roas: 1 },
       { ...b, roas: 2 },
     );
-    expect(campaignVerdict(c)).toBe("review");
+    expect(campaignVerdict(c)).toBe("critical");
     expect(c.signals.some((s) => s.key === "roas-down")).toBe(true);
   });
   it("keeps primary efficiency improvement green despite a supporting CTR warning", () => {
@@ -276,9 +276,8 @@ describe("purchase value evidence", () => {
 describe("budget decision urgency", () => {
   it("makes material actual overspend and final-week underspend critical, but respects tolerance", async () => {
     const { overviewRow } = await import("../../agency-overview");
-    const { budgetFacts, budgetWindow } = await import(
-      "../../budget-monitor-facts"
-    );
+    const { budgetFacts, budgetWindow } =
+      await import("../../budget-monitor-facts");
     const date = new Date("2026-11-27T12:00Z"),
       config = {
         monthlyBudget: 750,

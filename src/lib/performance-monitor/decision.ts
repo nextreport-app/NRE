@@ -114,6 +114,25 @@ export function decisionSignals(
       b.spend > 0 &&
       a.spend >= b.spend * 0.8 &&
       a.impressions >= 500;
+    // A material business collapse is urgent even when current conversions are below five.
+    // Keep a real prior baseline, absolute loss and sustained spend; this is not a significance test.
+    const severeCollapse =
+      a.results != null &&
+      b.results != null &&
+      b.results >= 5 &&
+      b.results - a.results >= 3 &&
+      a.results <= b.results * 0.4 &&
+      continued &&
+      b.impressions >= 500;
+    const severeCost =
+      continued &&
+      b.impressions >= 500 &&
+      (b.results ?? 0) >= 5 &&
+      (a.results ?? 0) >= 2 &&
+      a.cpr != null &&
+      b.cpr != null &&
+      b.cpr > 0 &&
+      a.cpr >= b.cpr * 2;
     if (a.results === 0 && (b.results ?? 0) >= 5 && continued)
       add(
         "results-stopped",
@@ -123,7 +142,13 @@ export function decisionSignals(
         `No ${String(ctx.objective ?? "results").toLowerCase()} were reported after ${b.results} previously, while spend continued. Check delivery, tracking and the conversion flow. Recent attribution may still arrive; verify before making changes.`,
         -100,
       );
-    else if (delivery && (b.results ?? 0) >= 10 && continued)
+    else if (
+      severeCollapse ||
+      (delivery &&
+        (b.results ?? 0) >= 5 &&
+        b.results! - (a.results ?? b.results!) >= 3 &&
+        continued)
+    )
       delta(
         "results-down",
         ctx.objective ?? "Results",
@@ -131,11 +156,15 @@ export function decisionSignals(
         b.results,
         30,
         false,
-        "warning",
+        severeCollapse ? "critical" : "warning",
         "primary",
         "Primary results declined despite broadly maintained spend. Inspect conversion tracking, delivery and the customer journey; allow for attribution delays.",
       );
-    if (delivery && (b.results ?? 0) >= 10 && (a.results ?? 0) >= 5) {
+    if (
+      (delivery && (b.results ?? 0) >= 5 && (a.results ?? 0) >= 2) ||
+      (severeCollapse && (a.results ?? 0) > 0) ||
+      severeCost
+    ) {
       delta(
         "cpr-up",
         "Cost per result",
@@ -143,10 +172,12 @@ export function decisionSignals(
         b.cpr,
         25,
         true,
-        "warning",
+        severeCollapse || severeCost ? "critical" : "warning",
         "primary",
         "Result cost increased. Inspect the campaign's conversion quality and delivery before adjusting budgets.",
       );
+    }
+    if (delivery && (b.results ?? 0) >= 10 && (a.results ?? 0) >= 5) {
       delta(
         "cpr-down",
         "Cost per result",
@@ -329,14 +360,14 @@ function recovered(old: PerformanceSignal, c: CampaignPerformance) {
     );
   if (old.key === "cpr-up")
     return (
-      (a.results ?? 0) >= 5 &&
-      (b.results ?? 0) >= 10 &&
+      (a.results ?? 0) >= 2 &&
+      (b.results ?? 0) >= 5 &&
       (ratio(a.cpr, b.cpr) ?? Infinity) <= 1.1
     );
   if (old.key === "results-down")
     return (
       a.spend >= b.spend * 0.8 &&
-      (b.results ?? 0) >= 10 &&
+      (b.results ?? 0) >= 5 &&
       (ratio(a.results, b.results) ?? 0) >= 0.85
     );
   if (old.key === "roas-down")
@@ -419,4 +450,46 @@ export function actionableSignals(c: CampaignPerformance) {
       (s.tone === "critical" || s.tone === "warning") &&
       !(verdict === "improving" && s.role === "supporting"),
   );
+}
+
+/** Reassess cached figures for display only. Never persist or mark an unsent warning as emailed. */
+export function evaluatePerformanceFacts(
+  facts: PerformanceFacts,
+): PerformanceFacts {
+  return {
+    ...facts,
+    campaigns: facts.campaigns.map((c) => {
+      const evaluated = decisionSignals(
+        c.current,
+        c.previous,
+        c.comparableResults,
+        {
+          objective: c.objective,
+          purchase: /purchase/i.test(c.objective),
+          target: c.target,
+          targetMismatch: c.targetMismatch,
+        },
+      );
+      const signals = evaluated.map((signal) => {
+        const old = c.signals.find(
+          (s) => s.key === signal.key && s.tone === signal.tone,
+        );
+        return old
+          ? {
+              ...signal,
+              state: old.state ?? signal.state,
+              firstSeenAt: old.firstSeenAt,
+            }
+          : signal;
+      });
+      const recovered = c.signals.filter(
+        (s) =>
+          s.state === "recovered" &&
+          !signals.some(
+            (current) => current.key === s.key.replace(/^recovered:/, ""),
+          ),
+      );
+      return { ...c, signals: [...signals, ...recovered] };
+    }),
+  };
 }

@@ -121,10 +121,10 @@ describe("signals with evidence thresholds", () => {
       ),
     ).toEqual([]);
     expect(
-      campaignSignals({ ...base, cpr: 20, results: 2 }, base, true).some(
+      campaignSignals({ ...base, cpr: 50, results: 2 }, base, true).find(
         (s) => s.key === "cpr-up",
-      ),
-    ).toBe(false);
+      )?.tone,
+    ).toBe("critical");
   });
   it("shows real zero results as a decline without infinite CPR", () => {
     const signals = campaignSignals(
