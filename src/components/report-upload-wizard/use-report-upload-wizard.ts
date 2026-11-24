@@ -141,6 +141,7 @@ export function useReportUploadWizard({
   accountDisplayName = null,
   userId,
 }: ReportUploadWizardProps) {
+  const [providerStatus,setProviderStatus]=useState({metaConnected,metaConnectedName,googleAdsConnected,tiktokConnected,ga4Connected});
   const [hasGoogleDriveConnected, setHasGoogleDriveConnected] = useState(initialHasGoogleDriveConnected);
   const [linkedMetaAdAccountId, setLinkedMetaAdAccountId] = useState(initialLinkedMetaAdAccountId);
   const [linkedMetaAdAccountName, setLinkedMetaAdAccountName] = useState(initialLinkedMetaAdAccountName);
@@ -525,6 +526,9 @@ export function useReportUploadWizard({
           if (!json?.client) return;
           const next = json.client.monthlyBudget;
           setClientMonthlyBudget(typeof next === "number" && next > 0 ? next : null);
+          setLinkedMetaAdAccountId(json.client.metaAdAccountId ?? null);
+          setLinkedMetaAdAccountName(json.client.metaAdAccountName ?? null);
+          setRememberedFolder(json.client.lastDriveFolderId ? {id:json.client.lastDriveFolderId,name:json.client.lastDriveFolderName || "Drive Folder"} : null);
         })
         .catch(() => {
           /* offline */
@@ -922,11 +926,12 @@ export function useReportUploadWizard({
 
   useEffect(() => {
     const refreshAccountBranding = () => {
-      void fetch("/api/account")
+      void fetch(`/api/account?clientId=${encodeURIComponent(clientId)}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => {
           if (!json) return;
           setHasGoogleDriveConnected(json.googleDriveEnabled === true);
+          if(json.providerStatus) setProviderStatus(json.providerStatus);
           const name = typeof json.agencyName === "string" ? json.agencyName.trim() : "";
           const mode = normalizeReportBrandingMode(json.reportBrandingMode);
           const snapshot = `${mode}|${name}`;
@@ -956,7 +961,7 @@ export function useReportUploadWizard({
       window.removeEventListener("focus", refreshAccountBranding);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [showToast]);
+  }, [showToast, clientId]);
 
   /** Populates campaigns/date state from a successful /analyze response — shared by handleAnalyze (natural detection) and handleMismatchContinueAnyway (forced platform). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2872,17 +2877,17 @@ export function useReportUploadWizard({
     currencySymbol,
     hasGoogleDriveConnected,
     clientTemplate,
-    metaConnected,
-    metaConnectedName,
+    metaConnected: providerStatus.metaConnected,
+    metaConnectedName: providerStatus.metaConnectedName,
     metaConfigured,
     apiSyncEnabled,
     metaConnectError: searchParams.get("meta_ads_error"),
     googleAdsConfigured,
-    googleAdsConnected,
+    googleAdsConnected: providerStatus.googleAdsConnected,
     tiktokConfigured,
-    tiktokConnected,
+    tiktokConnected: providerStatus.tiktokConnected,
     hasGa4Property,
-    ga4Connected,
+    ga4Connected: providerStatus.ga4Connected,
     showTikTokOption,
     clientMonthlyBudget,
     wizardKind,

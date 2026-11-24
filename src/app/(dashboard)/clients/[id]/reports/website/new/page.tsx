@@ -1,3 +1,4 @@
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLaunchPlatformEnabled } from "@/lib/meta-launch-scope";
@@ -11,7 +12,7 @@ export default async function NewWebsiteReportPage({ params }: { params: Promise
   const session = await auth();
   if (!session?.user) notFound();
 
-  const [client, user] = await Promise.all([
+  const [client, rawUser] = await Promise.all([
     prisma.client.findUnique({ where: { id } }),
     prisma.user.findUnique({
       where: { id: session.user.id },
@@ -19,6 +20,7 @@ export default async function NewWebsiteReportPage({ params }: { params: Promise
     }),
   ]);
   if (!client || client.userId !== session.user.id) notFound();
+  const user = await resolveClientUser(rawUser, client);
   if (!user) notFound();
 
   const ga4Connected = user.ga4Enabled && !!user.ga4RefreshToken;

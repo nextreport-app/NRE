@@ -120,6 +120,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const { data: websiteData } = await resolveWebsiteReportData({
+      clientId: client.id,
       userId: session.user.id,
       timezone: client.timezone,
       currencySymbol: CURRENCY_SYMBOLS[client.currency] ?? "$",

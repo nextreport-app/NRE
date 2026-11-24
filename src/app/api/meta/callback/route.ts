@@ -1,8 +1,8 @@
-import { META_OAUTH_RETURN_COOKIE, safeMetaOAuthReturnTo } from "@/lib/meta-oauth-return";
+import { persistOAuthProvider, providerScopeCookie, providerOAuthReturn, providerOAuthContext } from "@/lib/client-provider-oauth";
+import { META_OAUTH_RETURN_COOKIE } from "@/lib/meta-oauth-return";
 import { NextRequest, NextResponse } from "next/server";
 import { encryptMetaToken } from "@/lib/meta-token-storage";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
   exchangeForLongLivedToken,
   exchangeMetaAuthCode,
@@ -11,9 +11,7 @@ import {
 } from "@/lib/meta-api";
 
 function redirectToAccount(req: NextRequest, query: string) {
-  const target = safeMetaOAuthReturnTo(req.cookies.get(META_OAUTH_RETURN_COOKIE)?.value) ?? "/account";
-  const url = new URL(target + query, req.url);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(providerOAuthReturn(req, "meta", query));
 }
 
 /** Completes the "Connect Meta Ads" OAuth flow started by /api/meta/connect. */
@@ -27,6 +25,7 @@ export async function GET(req: NextRequest) {
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(META_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
     res.cookies.set(META_OAUTH_RETURN_COOKIE, "", { maxAge: 0, path: "/" });
+    res.cookies.set(providerScopeCookie("meta"), "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -46,6 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    providerOAuthContext(req, "meta", session.user.id);
     const redirectUri = new URL("/api/meta/callback", req.url).toString();
     const shortLived = await exchangeMetaAuthCode(code, redirectUri);
     const longLived = await exchangeForLongLivedToken(shortLived.access_token);
@@ -54,15 +54,12 @@ export async function GET(req: NextRequest) {
     const expiresIn = longLived.expires_in ?? 60 * 24 * 60 * 60;
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
+    await persistOAuthProvider(req, "meta", session.user.id, {
         metaAdsEnabled: true,
         metaAccessToken: encryptMetaToken(longLived.access_token),
         metaTokenExpiresAt: tokenExpiresAt,
         metaConnectedUserId: profile.id,
         metaConnectedName: profile.name ?? null,
-      },
     });
 
     return clearStateCookie(redirectToAccount(req, "?meta_ads_connected=1"));

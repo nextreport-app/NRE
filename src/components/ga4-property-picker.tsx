@@ -19,11 +19,13 @@ export function Ga4PropertyPicker({
   initialPropertyId,
   initialPropertyName,
   ga4Connected,
+  connectedEmail,
 }: {
   clientId: string;
   initialPropertyId: string | null;
   initialPropertyName: string | null;
   ga4Connected: boolean;
+  connectedEmail?: string | null;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -111,11 +113,10 @@ export function Ga4PropertyPicker({
     return (
       <div className="space-y-3">
         <p className="text-[15px] text-dash-ink-secondary">
-          Connect Google Analytics in Account Settings, then link a property
-          here.
+          Connect the Google login that can access this client’s GA4 property.
         </p>
         <Link
-          href="/account#ga4"
+          href={`/api/ga4/connect?clientId=${encodeURIComponent(clientId)}`}
           className="inline-flex rounded-md nre-account-primary bg-dash-accent px-4 py-2 text-[13px] font-semibold hover:bg-dash-accent-hover"
         >
           Connect Google Analytics
@@ -129,6 +130,7 @@ export function Ga4PropertyPicker({
       <p className="text-[15px] text-dash-ink-secondary">
         Link the website property that belongs to this client.
       </p>
+      {connectedEmail && <p className="text-xs text-dash-ink-secondary">Google login: {connectedEmail}</p>}
       {initialPropertyId && initialPropertyName ? (
         <p className="text-[13px] text-dash-ink">
           Linked: <span className="font-medium">{initialPropertyName}</span>
@@ -149,7 +151,7 @@ export function Ga4PropertyPicker({
         </p>
       ) : attempted && properties.length === 0 ? (
         <p className="text-[13px] text-amber-200">
-          No GA4 properties found. Check your Google Analytics connection.
+          No GA4 properties found under this login. Connect a different Google login below.
         </p>
       ) : properties.length > 0 ? (
         <select
@@ -192,10 +194,10 @@ export function Ga4PropertyPicker({
           </button>
         ) : null}
         <Link
-          href="/account#ga4"
+          href={`/api/ga4/connect?clientId=${encodeURIComponent(clientId)}`}
           className="self-center text-[12px] text-dash-ink-secondary underline"
         >
-          Manage GA4 connection
+          Connect a different Google login
         </Link>
       </div>
     </div>

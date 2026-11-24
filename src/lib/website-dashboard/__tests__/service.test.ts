@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
 const m = vi.hoisted(() => ({
   client: vi.fn(),
+  connections: vi.fn(),
   upsert: vi.fn(),
   update: vi.fn(),
   user: vi.fn(),
@@ -11,6 +12,7 @@ const m = vi.hoisted(() => ({
 vi.mock("../../prisma", () => ({
   prisma: {
     client: { findUnique: m.client },
+    clientProviderConnection: {findMany:m.connections},
     websiteDashboardSnapshot: { upsert: m.upsert, updateMany: m.update },
     user: { updateMany: m.user },
   },
@@ -225,4 +227,19 @@ it("does not reuse a recent custom result for another date range or bypass its c
   expect(await refreshWebsiteDashboard("own-website","owner",selection,now)).toEqual({cached:true});
   await expect(refreshWebsiteDashboard("own-website","owner",{...selection,endIso:"2026-11-11"},now)).rejects.toMatchObject({status:429});
   expect(m.fetch).not.toHaveBeenCalled();
+});
+
+it("refreshes with this client's Google login and guards the scoped grant without updating agency credentials",async()=>{
+ vi.stubEnv("AUTH_SECRET","scoped-ga4-test-encryption-key-123456789");
+ const {encryptMetaToken}=await import("../../meta-token-storage");
+ const credentials=encryptMetaToken(JSON.stringify({ga4Enabled:true,ga4RefreshToken:"client-specific-refresh"}));
+ m.client.mockResolvedValue({...client,hasProviderConnections:true});
+ m.connections.mockResolvedValue([{id:"grant",provider:"ga4",credentials}]);
+ await refreshWebsiteDashboard(client.id,"owner",7,now);
+ expect(m.token).toHaveBeenCalledWith("client-specific-refresh");
+ expect(m.user).not.toHaveBeenCalled();
+ const save=m.update.mock.calls.find((call)=>call[0].data.dataJson);
+ expect(save![0].where.client.providerConnections).toEqual({some:{id:"grant",credentials}});
+ expect(save![0].where.client.user).toBeUndefined();
+ expect(save![0].where.connectionKey).toBe(websiteConnectionKey("client-specific-refresh"));
 });

@@ -121,6 +121,7 @@ export default async function AccountSettingsPage({
         />
       </section>
 
+      <p className="mb-5 text-sm text-dash-ink-secondary">Connections below are agency defaults. For a client that uses another login, open <Link href="/clients" className="text-dash-accent underline">My Clients</Link> → Manage client → Connections for this client. Client-specific logins stay separate when you change an agency connection.</p>
       <section id="google-drive" className="mb-10 scroll-mt-6">
         <SectionHeading>Google Drive</SectionHeading>
         <GoogleDriveSettings

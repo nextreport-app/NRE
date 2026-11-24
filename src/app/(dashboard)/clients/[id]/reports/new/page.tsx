@@ -1,3 +1,4 @@
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 import { redirect } from "next/navigation";
 import { isLaunchReportTypeEnabled } from "@/lib/meta-launch-scope";
@@ -23,7 +24,7 @@ export default async function NewReportPage({ params, searchParams }: { params: 
   const session = await auth();
   if (!session?.user) notFound();
 
-  const [client, user] = await Promise.all([
+  const [client, rawUser] = await Promise.all([
     prisma.client.findUnique({ where: { id } }),
     prisma.user.findUnique({
       where: { id: session.user.id },
@@ -47,6 +48,7 @@ export default async function NewReportPage({ params, searchParams }: { params: 
     }),
   ]);
   if (!client || client.userId !== session.user.id) notFound();
+  const user = await resolveClientUser(rawUser, client);
   if (!user) notFound();
 
   // Existing decks keep their original type; never relabel a hidden type as Weekly.

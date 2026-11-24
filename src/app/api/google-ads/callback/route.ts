@@ -1,6 +1,6 @@
+import { persistOAuthProvider, providerScopeCookie, providerOAuthReturn, providerOAuthContext } from "@/lib/client-provider-oauth";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
   exchangeGoogleAdsAuthCode,
   fetchGoogleAdsAccountEmail,
@@ -8,7 +8,7 @@ import {
 } from "@/lib/google-ads-api";
 
 function redirectToAccount(req: NextRequest, query: string) {
-  return NextResponse.redirect(new URL(`/account${query}`, req.url));
+  return NextResponse.redirect(providerOAuthReturn(req, "google-ads", query));
 }
 
 /** Completes the "Connect Google Ads" OAuth flow started by /api/google-ads/connect. */
@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(GOOGLE_ADS_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
     res.cookies.set(`${GOOGLE_ADS_OAUTH_STATE_COOKIE}_pkce`, "", { maxAge: 0, path: "/" });
+    res.cookies.set(providerScopeCookie("google-ads"), "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    providerOAuthContext(req, "google-ads", session.user.id);
     const redirectUri = new URL("/api/google-ads/callback", req.url).toString();
     const tokens = await exchangeGoogleAdsAuthCode(code, redirectUri, verifier);
 
@@ -54,14 +56,11 @@ export async function GET(req: NextRequest) {
 
     const email = await fetchGoogleAdsAccountEmail(tokens.access_token);
 
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
+    await persistOAuthProvider(req, "google-ads", session.user.id, {
         googleAdsEnabled: true,
         googleAdsAccessToken: tokens.access_token,
         googleAdsRefreshToken: tokens.refresh_token,
         googleAdsConnectedEmail: email,
-      },
     });
 
     return clearStateCookie(redirectToAccount(req, "?google_ads_connected=1#google-ads"));

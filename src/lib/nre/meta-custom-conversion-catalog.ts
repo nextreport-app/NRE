@@ -1,3 +1,4 @@
+import { resolveClientUserById, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { decryptMetaToken, encryptMetaToken } from "@/lib/meta-token-storage";
 import { prisma } from "@/lib/prisma";
 import { ensureFreshMetaAccessToken, fetchMetaCustomConversions } from "@/lib/meta-api";
@@ -18,14 +19,15 @@ export async function fetchMetaCustomConversionResultTypeMap(params: {
 export async function tryFetchMetaCustomConversionResultTypesForUser(
   userId: string,
   adAccountId: string | undefined | null,
+  clientId?: string,
 ): Promise<MetaCustomConversionResultTypeMap | undefined> {
   const accountId = adAccountId?.trim();
   if (!accountId) return undefined;
 
-  const user = await prisma.user.findUnique({
+  const user = await resolveClientUserById(await prisma.user.findUnique({
     where: { id: userId },
     select: { metaAdsEnabled: true, metaAccessToken: true, metaTokenExpiresAt: true },
-  });
+  }), userId, clientId);
   if (!user?.metaAdsEnabled || !user.metaAccessToken) return undefined;
 
   const fresh = await ensureFreshMetaAccessToken({
@@ -34,10 +36,10 @@ export async function tryFetchMetaCustomConversionResultTypesForUser(
   });
 
   if (fresh.refreshed) {
-    await prisma.user.update({
+    await updateResolvedProviderUser({
       where: { id: userId },
       data: { metaAccessToken: encryptMetaToken(fresh.accessToken), metaTokenExpiresAt: fresh.tokenExpiresAt },
-    });
+    }, user);
   }
 
   try {

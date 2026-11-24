@@ -288,6 +288,9 @@ enum Platform {
 }
 
 model Client {
+  // Credentials live in encrypted, separately loaded rows, never in client form props.
+  hasProviderConnections Boolean @default(false)
+  providerConnections ClientProviderConnection[]
   // Confirmed Meta source; a one-report override never replaces this binding.
   metaAdAccountId   String?
   metaAdAccountName String?
@@ -770,4 +773,17 @@ model ReportRepairAttempt {
   incident ReportQualityIncident? @relation(fields: [incidentId], references: [id], onDelete: Cascade)
   issueNumber Int
   createdAt DateTime @default(now())
+}
+
+// Each client can override an agency-wide provider login independently.
+model ClientProviderConnection {
+  id String @id @default(cuid())
+  clientId String
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  provider String
+  externalId String?
+  credentials String @db.Text
+  updatedAt DateTime @updatedAt
+  @@unique([clientId, provider])
+  @@index([provider, externalId])
 }

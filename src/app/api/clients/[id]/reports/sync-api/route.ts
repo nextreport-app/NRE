@@ -1,3 +1,4 @@
+import { resolveClientUser, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import {metaReportSelectionSchema} from "@/lib/nre/meta-report-content/selection";
 import { metaClientAccountStatus, normalizeMetaAccountId } from "@/lib/meta-client-account";
@@ -132,7 +133,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await resolveClientUser(await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         metaAdsEnabled: true,
@@ -145,7 +146,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         tiktokRefreshToken: true,
         tiktokTokenExpiresAt: true,
       },
-    });
+    }), client);
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -164,10 +165,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
 
       if (fresh.refreshed || !isEncryptedMetaToken(user.metaAccessToken)) {
-        await prisma.user.update({
+        await updateResolvedProviderUser({
           where: { id: session.user.id },
           data: { metaAccessToken: encryptMetaToken(fresh.accessToken), metaTokenExpiresAt: fresh.tokenExpiresAt },
-        });
+        }, user);
       }
 
       const account = await fetchMetaAdAccountMetadata(fresh.accessToken, metaAdAccountId);
@@ -236,14 +237,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
 
       if (fresh.refreshed) {
-        await prisma.user.update({
+        await updateResolvedProviderUser({
           where: { id: session.user.id },
           data: {
             tiktokAccessToken: fresh.accessToken,
             tiktokRefreshToken: fresh.refreshToken,
             tiktokTokenExpiresAt: fresh.tokenExpiresAt,
           },
-        });
+        }, user);
       }
 
       const result = await fetchTikTokReportCsv({
@@ -288,10 +289,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     try {
       const refreshed = await refreshGoogleAdsAccessToken(user.googleAdsRefreshToken);
       accessToken = refreshed.access_token;
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: session.user.id },
         data: { googleAdsAccessToken: accessToken },
-      });
+      }, user);
     } catch {
       if (!accessToken) throw new Error("Could not obtain Google Ads access token");
     }

@@ -1,3 +1,4 @@
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import {buildMetaContentPresentation} from "../meta-report-content/data";
 import {metaContentRanges,standaloneMetaRange} from "../meta-report-content/range";
 import { metaApiSelectionCoverageError } from "../meta-api-selection-coverage";
@@ -183,10 +184,10 @@ export async function buildStandardReportForWizard(
     });
     const skipMetaLiveFetch = sessionMapsCoverReachRanges(metaCampaignPeriodReachFromSession, reachRanges);
     if (!skipMetaLiveFetch) {
-      const user = await prisma.user.findUnique({
+      const user = await resolveClientUser(await prisma.user.findUnique({
         where: { id: client.userId },
         select: { metaAccessToken: true, metaTokenExpiresAt: true, metaAdsEnabled: true },
-      });
+      }), client);
       if (user?.metaAdsEnabled && user.metaAccessToken) {
         const fresh = await ensureFreshMetaAccessToken({
           accessToken: decryptMetaToken(user.metaAccessToken),

@@ -159,7 +159,7 @@ export function WizardDataSourcePanel({
     setAccountsError(null);
     try {
       if (showMeta) {
-        const res = await fetch("/api/meta/adaccounts", { signal });
+        const res = await fetch(`/api/meta/adaccounts?clientId=${encodeURIComponent(clientId)}`, { signal });
         const data = await res.json();
         if (signal?.aborted) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load Meta ad accounts");
@@ -169,7 +169,7 @@ export function WizardDataSourcePanel({
         setSelectedMetaAccount(selection.id);
         setAccountSelectionNotice(selection.unavailable ? "Previous ad account unavailable. Choose another." : null);
       } else if (showGoogle) {
-        const res = await fetch("/api/google-ads/customers", { signal });
+        const res = await fetch(`/api/google-ads/customers?clientId=${encodeURIComponent(clientId)}`, { signal });
         const data = await res.json();
         if (signal?.aborted) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load Google Ads customers");
@@ -177,7 +177,7 @@ export function WizardDataSourcePanel({
         setGoogleCustomers(customers);
         if (customers.length === 1) setSelectedGoogleCustomer(customers[0].id);
       } else {
-        const res = await fetch("/api/tiktok/advertisers", { signal });
+        const res = await fetch(`/api/tiktok/advertisers?clientId=${encodeURIComponent(clientId)}`, { signal });
         const data = await res.json();
         if (signal?.aborted) return;
         if (!res.ok) throw new Error(data.error ?? "Failed to load TikTok advertisers");
@@ -195,10 +195,12 @@ export function WizardDataSourcePanel({
 
   useEffect(() => {
     const controller = new AbortController();
+    const reload=()=>void loadAccounts(controller.signal);
+    window.addEventListener("focus",reload);
     void Promise.resolve().then(() => {
       if (!controller.signal.aborted) return loadAccounts(controller.signal);
     });
-    return () => controller.abort();
+    return () => { window.removeEventListener("focus",reload); controller.abort(); };
   }, [loadAccounts]);
 
   async function handleSync() {
@@ -325,7 +327,7 @@ export function WizardDataSourcePanel({
             <>
               <p className="mt-3 text-[13px] text-dash-ink-secondary">Connect your Meta account to sync data directly.</p>
               <a
-                href={`/api/meta/connect?returnTo=${encodeURIComponent(`/clients/${clientId}/reports/new`)}`}
+                href={`/api/meta/connect?clientId=${encodeURIComponent(clientId)}&returnTo=${encodeURIComponent(`/clients/${clientId}/reports/new`)}`}
                 className="mt-3 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[13px] font-semibold text-[#0d1b2e] hover:bg-dash-accent-hover"
               >
                 Connect Meta Ads
@@ -371,7 +373,7 @@ export function WizardDataSourcePanel({
                 } : undefined}
               />}
               {accountSelectionNotice && !accountsLoading && !accountsError && <p className="text-[13px] text-dash-ink-secondary" role="status">{accountSelectionNotice}</p>}
-              <Link href="/account#meta-ads" className="inline-block text-[12px] text-dash-ink-secondary underline">
+              <Link href={`/clients/${clientId}#provider-connections`} className="inline-block text-[12px] text-dash-ink-secondary underline">
                 Manage Meta connection
               </Link>
             </div>

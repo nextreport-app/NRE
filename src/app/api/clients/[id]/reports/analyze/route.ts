@@ -117,7 +117,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       : undefined;
     const metaCustomConversionResultTypes =
       platform === "META"
-        ? await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountIdEarly)
+        ? await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountIdEarly, id)
         : undefined;
     const requestedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
     const validation = validateMtdDailyCsv(

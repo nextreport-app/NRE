@@ -1,3 +1,4 @@
+import { resolveClientUser, clientProviderGuard } from "@/lib/client-provider-connections";
 import { type WebsiteRange, websiteRangeKey } from "./range";
 import { createHash } from "node:crypto";
 import { prisma } from "../prisma";
@@ -25,6 +26,7 @@ export async function refreshWebsiteDashboard(
   });
   if (!client || client.userId !== userId)
     throw new ServiceError("Not found", 404);
+  client.user = await resolveClientUser(client.user, client);
   if (
     getSubscriptionStatus(client.user).isBlocked ||
     !client.user.emailVerified
@@ -39,7 +41,7 @@ export async function refreshWebsiteDashboard(
     throw new ServiceError("Link a GA4 property on the client page first.");
   if (!client.user.ga4Enabled || !token)
     throw new ServiceError(
-      "Connect Google Analytics in Account settings first.",
+      "Connect Google Analytics for this client in Client settings.",
     );
   const connectionKey = websiteConnectionKey(token);
   const record = await prisma.websiteDashboardSnapshot.upsert({
@@ -100,6 +102,7 @@ export async function refreshWebsiteDashboard(
       429,
       60,
     );
+  const scopedGuard = clientProviderGuard(client.user, "ga4");
   const where = {
     id: record.id,
     propertyId,
@@ -108,12 +111,12 @@ export async function refreshWebsiteDashboard(
     client: {
       ga4PropertyId: propertyId,
       userId,
-      user: { ga4RefreshToken: token, ga4Enabled: true },
+      ...(scopedGuard ? {providerConnections:{some:scopedGuard}} : {user: { ga4RefreshToken: token, ga4Enabled: true }}),
     },
   };
   try {
     const fresh = await refreshGa4AccessToken(token);
-    const current = await prisma.user.updateMany({
+    const current = scopedGuard ? { count: 1 } : await prisma.user.updateMany({
       where: { id: userId, ga4RefreshToken: token, ga4Enabled: true },
       data: { ga4AccessToken: fresh.access_token },
     });

@@ -1,6 +1,6 @@
+import { persistOAuthProvider, providerScopeCookie, providerOAuthReturn, providerOAuthContext } from "@/lib/client-provider-oauth";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
   exchangeGoogleAuthCode,
   fetchGoogleAccountEmail,
@@ -8,7 +8,7 @@ import {
 } from "@/lib/google-drive";
 
 function redirectToAccount(req: NextRequest, query: string) {
-  return NextResponse.redirect(new URL(`/account${query}`, req.url));
+  return NextResponse.redirect(providerOAuthReturn(req, "google-drive", query));
 }
 
 /** Completes the "Connect Google Drive" flow started by /api/google-drive/connect — see that route's comment for why this isn't NextAuth's own Google callback. */
@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(GOOGLE_DRIVE_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
     res.cookies.set(`${GOOGLE_DRIVE_OAUTH_STATE_COOKIE}_pkce`, "", { maxAge: 0, path: "/" });
+    res.cookies.set(providerScopeCookie("google-drive"), "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    providerOAuthContext(req, "google-drive", session.user.id);
     const redirectUri = new URL("/api/google-drive/callback", req.url).toString();
     const tokens = await exchangeGoogleAuthCode(code, redirectUri, verifier);
 
@@ -61,14 +63,11 @@ export async function GET(req: NextRequest) {
 
     const email = await fetchGoogleAccountEmail(tokens.access_token);
 
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
+    await persistOAuthProvider(req, "google-drive", session.user.id, {
         googleDriveEnabled: true,
         googleAccessToken: tokens.access_token,
         googleRefreshToken: tokens.refresh_token,
         googleConnectedEmail: email,
-      },
     });
 
     return clearStateCookie(redirectToAccount(req, "?google_drive_connected=1"));

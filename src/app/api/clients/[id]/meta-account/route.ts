@@ -1,3 +1,4 @@
+import { resolveClientUser, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -38,14 +39,14 @@ export async function POST(
         "This client already has a different ad account assigned. Refresh the page to view it.",
         409,
       );
-    const user = await prisma.user.findUnique({
+    const user = await resolveClientUser(await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         metaAdsEnabled: true,
         metaAccessToken: true,
         metaTokenExpiresAt: true,
       },
-    });
+    }), client);
     if (!user?.metaAdsEnabled || !user.metaAccessToken)
       throw new ServiceError("Connect Meta in Account settings first.", 400);
     const token = await ensureFreshMetaAccessToken({
@@ -53,13 +54,13 @@ export async function POST(
       tokenExpiresAt: user.metaTokenExpiresAt,
     });
     if (token.refreshed)
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: session.user.id },
         data: {
           metaAccessToken: encryptMetaToken(token.accessToken),
           metaTokenExpiresAt: token.tokenExpiresAt,
         },
-      });
+      }, user);
     let account;
     try {
       account = await fetchMetaAdAccountMetadata(token.accessToken, accountId);

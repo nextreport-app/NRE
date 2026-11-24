@@ -1,6 +1,6 @@
+import { persistOAuthProvider, providerScopeCookie, providerOAuthReturn, providerOAuthContext } from "@/lib/client-provider-oauth";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
   exchangeGa4AuthCode,
   fetchGa4AccountEmail,
@@ -8,7 +8,7 @@ import {
 } from "@/lib/ga4-api";
 
 function redirectToAccount(req: NextRequest, query: string) {
-  return NextResponse.redirect(new URL(`/account${query}`, req.url));
+  return NextResponse.redirect(providerOAuthReturn(req, "ga4", query));
 }
 
 export async function GET(req: NextRequest) {
@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(GA4_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
     res.cookies.set(`${GA4_OAUTH_STATE_COOKIE}_pkce`, "", { maxAge: 0, path: "/" });
+    res.cookies.set(providerScopeCookie("ga4"), "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    providerOAuthContext(req, "ga4", session.user.id);
     const redirectUri = new URL("/api/ga4/callback", req.url).toString();
     const tokens = await exchangeGa4AuthCode(code, redirectUri, verifier);
 
@@ -53,14 +55,11 @@ export async function GET(req: NextRequest) {
 
     const email = await fetchGa4AccountEmail(tokens.access_token);
 
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
+    await persistOAuthProvider(req, "ga4", session.user.id, {
         ga4Enabled: true,
         ga4AccessToken: tokens.access_token,
         ga4RefreshToken: tokens.refresh_token,
         ga4ConnectedEmail: email,
-      },
     });
 
     return clearStateCookie(redirectToAccount(req, "?ga4_connected=1#ga4"));

@@ -58,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let metaCustomConversionResultTypes = sessionCustomMap;
     if (platform === "META" && metaAdAccountId) {
-      const fromApi = await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountId);
+      const fromApi = await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountId, id);
       if (fromApi) {
         metaCustomConversionResultTypes = { ...sessionCustomMap, ...fromApi };
       }

@@ -1,3 +1,4 @@
+import { encryptMetaToken } from "@/lib/meta-token-storage";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createMetaDeletionConfirmationCode, parseMetaSignedRequest } from "@/lib/meta-api";
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest) {
       metaConnectedName: null,
     },
   });
+
+  await prisma.clientProviderConnection.updateMany({where:{provider:"meta",externalId:payload.user_id},data:{externalId:null,credentials:encryptMetaToken(JSON.stringify({metaAdsEnabled:false,metaAccessToken:null,metaTokenExpiresAt:null,metaConnectedUserId:null,metaConnectedName:null}))}});
 
   const baseUrl = process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "https://nextreport.in";
   const statusUrl = `${baseUrl}/data-deletion?code=${encodeURIComponent(confirmationCode)}`;

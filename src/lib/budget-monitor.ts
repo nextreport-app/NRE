@@ -1,3 +1,4 @@
+import { resolveClientUser, updateResolvedProviderUser, clientProviderGuard } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { budgetAlertKey } from "./budget-alert-key";
 import { prisma } from "./prisma";
@@ -12,6 +13,7 @@ import { getSubscriptionStatus } from "./subscription";
 export async function checkClientBudget(id: string, userId: string, now = new Date()) {
   const client=await prisma.client.findUnique({where:{id}, include:{user:true}});
   if (!client || client.userId !== userId) throw new ServiceError("Not found",404);
+  client.user = await resolveClientUser(client.user, client);
   if (getSubscriptionStatus(client.user).isBlocked) {
     await prisma.client.updateMany({where:{id,userId},data:{budgetMonitorLastAttemptAt:now}});
     throw new ServiceError("An active trial or subscription is required.",403);
@@ -28,9 +30,11 @@ export async function checkClientBudget(id: string, userId: string, now = new Da
   const where={id,budgetMonitorLastAttemptAt:now,budgetMonitorEnabled:true,...config};
   let snapshot: BudgetSnapshot;
   try {
-    if (!client.user.metaAccessToken) throw new ServiceError("Reconnect Meta Ads in Account settings.");
+    if (!client.user.metaAccessToken) throw new ServiceError("Reconnect Meta Ads for this client in Client settings.");
     const fresh=await ensureFreshMetaAccessToken({accessToken:decryptMetaToken(client.user.metaAccessToken),tokenExpiresAt:client.user.metaTokenExpiresAt});
-    if (fresh.refreshed) await prisma.user.update({where:{id:userId},data:{metaAccessToken:encryptMetaToken(fresh.accessToken),metaTokenExpiresAt:fresh.tokenExpiresAt}});
+    if (fresh.refreshed) await updateResolvedProviderUser({where:{id:userId},data:{metaAccessToken:encryptMetaToken(fresh.accessToken),metaTokenExpiresAt:fresh.tokenExpiresAt}}, client.user);
+    const credentialGuard=clientProviderGuard(client.user,"meta");
+    if(credentialGuard) Object.assign(where,{providerConnections:{some:credentialGuard}});
     const account=await fetchMetaAdAccountMetadata(fresh.accessToken,client.metaAdAccountId);
     if (account.currency !== client.currency || !timezonesEquivalent(account.timezone_name, client.timezone)) throw new ServiceError("Client currency/timezone must match the linked Meta account. Update Client settings before monitoring.");
     const [spent,completedSpend]=await Promise.all([

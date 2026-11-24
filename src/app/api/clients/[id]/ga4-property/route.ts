@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const accessToken = await getGa4AccessTokenForUser(session.user.id);
+  const accessToken = await getGa4AccessTokenForUser(session.user.id, id);
   if (!accessToken) {
     return NextResponse.json({
       linkedPropertyId: client.ga4PropertyId,
@@ -80,7 +80,7 @@ export async function PATCH(
     );
   }
 
-  const accessToken = await getGa4AccessTokenForUser(session.user.id);
+  const accessToken = await getGa4AccessTokenForUser(session.user.id, id);
   if (!accessToken)
     return NextResponse.json(
       { error: "Reconnect Google Analytics before linking a property." },

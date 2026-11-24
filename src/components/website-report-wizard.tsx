@@ -328,7 +328,7 @@ export function WebsiteReportWizard({
           Connect Google Analytics 4 in Account Settings to generate website performance reports for {clientName}.
         </p>
         <Link
-          href="/account#ga4"
+          href={`/clients/${clientId}#website-analytics`}
           className="mt-4 inline-flex rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
         >
           Connect Google Analytics
