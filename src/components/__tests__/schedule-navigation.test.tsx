@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { clientCardActions } from "../client-card-actions";
 import { ClientList } from "../client-list";
 import ClientSchedulesPage from "@/app/(dashboard)/clients/[id]/schedules/page";
 const mocks = vi.hoisted(() => ({
@@ -14,9 +15,9 @@ beforeEach(() => { vi.clearAllMocks(); mocks.auth.mockResolvedValue({ user: { id
 describe("Scheduling navigation and ownership", () => {
   it.each([false, true])("client chooser exposes a direct schedule destination (schedule mode %s)", (scheduling) => {
     const html = renderToStaticMarkup(<ClientList clients={[client]} totalCount={1} scheduling={scheduling} />);
-    expect(html).toContain('href="/clients/client-1/schedules"');
-    expect(html).toContain('aria-label="Schedule reports for Example"');
-    expect(html).toContain('href="/clients/client-1/reports/new"');
+    expect(html).toContain(`href="/clients/client-1/${scheduling ? "schedules" : "reports/new"}"`);
+    expect(html).toContain('aria-label="Client actions for Example"');
+    expect(clientCardActions(client.id, scheduling)).toContainEqual(expect.objectContaining({ href: scheduling ? "/clients/client-1/reports/new" : "/clients/client-1/schedules" }));
   });
   it("loads only the signed-in owner's client and includes the complete return paths", async () => {
     const html = renderToStaticMarkup(await ClientSchedulesPage({ params: Promise.resolve({ id: client.id }) }));

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ClientCardActions } from "./client-card-actions";
 import { clientActivityDate, type ClientConnectionState } from "@/lib/client-card-summary";
 import type { Currency } from "@/generated/prisma/enums";
 import { formatClientCurrency, formatClientTimezone, getClientInitial, getPreviousMonthListStatus } from "@/lib/client-display";
@@ -168,14 +169,7 @@ function StatusChip({
   );
 }
 
-function ClientActionIcon({ type }: { type: "performance" | "schedule" | "manage" | "report" }) {
-  return <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-    {type === "performance" ? <><path d="M4 5v14h16" /><path d="m7 14 4-4 4 2 5-7" /></> : type === "schedule" ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4m10-4v4M3 11h18m-12 4h3" /></> : type === "report" ? <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6M8 13h8m-8 4h5" /></> : <><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="3" /><circle cx="15" cy="17" r="3" /></>}
-  </svg>;
-}
-const clientSecondaryAction = "inline-flex min-w-0 min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-2 py-2.5 text-center text-xs font-semibold text-dash-ink shadow-sm transition hover:border-dash-accent/60 hover:bg-dash-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:text-[13px]";
-
-function ClientCard({ client, scheduling = false }: { client: ClientListItem; scheduling?: boolean }) {
+function ClientCard({ client, scheduling = false, actionsOpen, onActionsToggle, onActionsClose }: { client: ClientListItem; scheduling?: boolean; actionsOpen: boolean; onActionsToggle: () => void; onActionsClose: () => void }) {
   const prevMonth = getPreviousMonthListStatus(
     client.hasPreviousMonthData,
     client.previousMonthDataUpdatedAt,
@@ -185,7 +179,7 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
   return (
     <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-sky-500/40">
       <div className="space-y-2.5 px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-lg font-semibold text-sky-400" aria-hidden="true">{getClientInitial(client.accountName)}</span>
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-[16px] font-semibold leading-snug text-dash-ink">
@@ -193,6 +187,7 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
             </h3>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-dash-ink-secondary"><span>{formatClientCurrency(client.currency)}</span><span aria-hidden="true">·</span><span title={client.timezone}>{formatClientTimezone(client.timezone)}</span></p>
           </div>
+          <ClientCardActions clientId={client.id} clientName={client.accountName} scheduling={scheduling} open={actionsOpen} onToggle={onActionsToggle} onClose={onActionsClose} />
         </div>
         <div className="flex flex-wrap gap-1.5" aria-label="Platform connections">
           {([ ["Meta", client.metaConnection, client.metaAccountName], ["GA4", client.ga4Connection, client.ga4PropertyName] ] as const).map(([platform, status, name]) => status ? (
@@ -207,9 +202,7 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
       </div>
       <div className="nre-client-card__divider mt-auto grid grid-cols-2 gap-2 border-t border-dash-border px-4 py-2.5 sm:px-5">
         <Link href={scheduling ? `/clients/${client.id}/schedules` : `/clients/${client.id}/reports/new`} aria-label={`${scheduling ? "Schedule reports" : "Generate report"} for ${client.accountName}`} className="col-span-2 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-center text-[13px] font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent">{scheduling ? "Schedule reports" : "Generate report"} <span aria-hidden="true">→</span></Link>
-        <Link href={`/overview?client=${encodeURIComponent(client.id)}`} aria-label={`View performance for ${client.accountName}`} title="Meta Ads & GA4 performance" className={`${clientSecondaryAction} col-span-2`}><ClientActionIcon type="performance" /><span className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 leading-snug"><span>Performance</span><span className="text-xs font-normal text-dash-ink-secondary">Meta Ads &amp; GA4</span></span></Link>
-        <Link href={scheduling ? `/clients/${client.id}/reports/new` : `/clients/${client.id}/schedules`} aria-label={`${scheduling ? "Generate report" : "Schedule reports"} for ${client.accountName}`} title={scheduling ? "Generate report" : "Schedule reports"} className={clientSecondaryAction}><ClientActionIcon type={scheduling ? "report" : "schedule"} /><span className="min-w-0 leading-snug">{scheduling ? "Generate report" : "Schedule reports"}</span></Link>
-        <Link href={`/clients/${client.id}`} aria-label={`Manage ${client.accountName}`} title="Manage client" className={clientSecondaryAction}><ClientActionIcon type="manage" /><span className="min-w-0 leading-snug">Manage client</span></Link>
+
       </div>
     </article>
   );
@@ -217,6 +210,7 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
 
 export function ClientList({ clients, totalCount, scheduling = false }: { clients: ClientListItem[]; totalCount: number; scheduling?: boolean }) {
   const [search, setSearch] = useState("");
+  const [openClientId, setOpenClientId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("recent");
 
@@ -252,7 +246,7 @@ export function ClientList({ clients, totalCount, scheduling = false }: { client
         <input
           type="search"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setOpenClientId(null); }}
           placeholder="Search clients…"
           aria-label="Search clients"
           className="nre-dash-surface w-full rounded-lg border border-dash-border bg-dash-bg py-2.5 pl-10 pr-10 text-[14px] text-dash-ink placeholder:text-dash-ink-secondary [&::-webkit-search-cancel-button]:appearance-none outline-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/30"
@@ -260,7 +254,7 @@ export function ClientList({ clients, totalCount, scheduling = false }: { client
         {search ? (
           <button
             type="button"
-            onClick={() => setSearch("")}
+            onClick={() => { setSearch(""); setOpenClientId(null); }}
             aria-label="Clear search"
             className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-dash-ink-secondary hover:bg-dash-border hover:text-dash-ink"
           >
@@ -268,7 +262,7 @@ export function ClientList({ clients, totalCount, scheduling = false }: { client
           </button>
         ) : null}
       </div>
-      <label className="flex items-center gap-2 text-[12px] text-dash-ink-secondary"><span>Sort</span><select aria-label="Sort clients" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }} className="min-w-0 flex-1 rounded-lg border border-dash-border bg-dash-bg px-3 py-2.5 text-[13px] text-dash-ink outline-none focus:border-dash-accent sm:w-44"><option value="recent">Recently added</option><option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option></select></label>
+      <label className="flex items-center gap-2 text-[12px] text-dash-ink-secondary"><span>Sort</span><select aria-label="Sort clients" value={sort} onChange={e => { setSort(e.target.value); setPage(1); setOpenClientId(null); }} className="min-w-0 flex-1 rounded-lg border border-dash-border bg-dash-bg px-3 py-2.5 text-[13px] text-dash-ink outline-none focus:border-dash-accent sm:w-44"><option value="recent">Recently added</option><option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option></select></label>
       </div>
       {search.trim() ? (
         <p className="mb-4 text-[14px] text-dash-ink-secondary">
@@ -281,7 +275,7 @@ export function ClientList({ clients, totalCount, scheduling = false }: { client
           <p className="text-[16px] text-dash-ink-secondary">No clients match your search.</p>
           <button
             type="button"
-            onClick={() => setSearch("")}
+            onClick={() => { setSearch(""); setOpenClientId(null); }}
             className="mt-3 text-[15px] font-medium text-dash-accent underline hover:no-underline"
           >
             Clear search
@@ -291,11 +285,11 @@ export function ClientList({ clients, totalCount, scheduling = false }: { client
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {paginated.map((client) => (
-              <ClientCard key={client.id} client={client} scheduling={scheduling} />
+              <ClientCard key={client.id} client={client} scheduling={scheduling} actionsOpen={openClientId === client.id} onActionsToggle={() => setOpenClientId(id => id === client.id ? null : client.id)} onActionsClose={() => setOpenClientId(null)} />
             ))}
           </div>
           {totalPages > 1 ? (
-            <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={setPage} />
+            <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={page => { setPage(page); setOpenClientId(null); }} />
           ) : null}
         </>
       )}
