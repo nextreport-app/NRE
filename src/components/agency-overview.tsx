@@ -156,18 +156,13 @@ export function AgencyOverview({
   return (
     <div className="nre-meta-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-        Meta Ads comparisons
+        Meta Ads Performance Comparisons
       </h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        Compare campaign results with the previous period. Spot rising costs,
-        falling results and changes that need attention.
-      </p>
-      <OverviewNavigation current="meta" />
-      <p className="mt-4 rounded-xl border border-dash-border bg-dash-card px-4 py-3 text-sm leading-relaxed text-dash-ink-secondary">
-        <span className="font-medium text-dash-ink">About this view:</span>{" "}
         See what’s improving, what’s declining, and what needs attention
         compared with the previous period.
       </p>
+      <OverviewNavigation current="meta" />
       {clients?.length &&
       !expanded &&
       !clients.some((c) => c.performanceEnabled || c.budgetEnabled) ? (

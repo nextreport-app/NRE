@@ -19,11 +19,6 @@ export function PortfolioRefresh({
   onComplete: () => Promise<void>;
 }) {
   const [running, setRunning] = useState(false),
-    [progress, setProgress] = useState(0),
-    [total, setTotal] = useState(0),
-    [result, setResult] = useState<Awaited<
-      ReturnType<typeof runDueChecks>
-    > | null>(null),
     [reloadError, setReloadError] = useState("");
   const cancelled = useRef(false),
     mounted = useRef(true),
@@ -79,9 +74,6 @@ export function PortfolioRefresh({
     active.current = true;
     cancelled.current = false;
     setRunning(true);
-    setProgress(0);
-    setTotal(jobs.length);
-    setResult(null);
     setReloadError("");
     onActivity(true);
     try {
@@ -97,22 +89,24 @@ export function PortfolioRefresh({
               body: JSON.stringify({ action: "check" }),
             },
           );
+          // The server may already be refreshing this account in another tab or scheduled job.
+          // Its cooldown is routine, not a failed data refresh.
+          if (response.status === 429) return;
           const data = await response.json();
           if (!response.ok || data.snapshot?.error)
             throw Error(data.error ?? data.snapshot?.error ?? "Check failed.");
         },
         () => cancelled.current,
-        (n) => {
-          if (mounted.current) setProgress(n);
-        },
+        () => {},
       );
       if (mounted.current) {
-        setResult(outcome);
+        if (outcome.failed.length)
+          setReloadError("Some data couldn’t refresh. Showing saved data.");
         try {
           await onComplete();
         } catch {
           setReloadError(
-            "Checks finished, but the overview could not reload. Reload before acting.",
+            "Couldn’t reload data. Please try again.",
           );
         }
       }
@@ -133,7 +127,7 @@ export function PortfolioRefresh({
           disabled={disabled || running}
           onClick={() => void refresh(true)}
         >
-          {running ? `Checking ${progress} of ${total}…` : "Refresh data"}
+          {running ? "Refreshing…" : "Refresh data"}
         </button>
         {!running && (
           <span className="text-xs text-dash-ink-secondary">
@@ -147,32 +141,10 @@ export function PortfolioRefresh({
               cancelled.current = true;
             }}
           >
-            Stop after current checks
+            Cancel refresh
           </button>
         )}
       </div>
-      {result && (
-        <p role="status" className="mt-2">
-          {result.finished === 0
-            ? "Showing saved data. Meta checks are available every five minutes"
-            : `${result.finished - result.failed.length} checks updated · ${result.failed.length} failed`}
-          {result.unstarted ? ` · ${result.unstarted} not started` : ""}.
-        </p>
-      )}
-      {!!result?.failed.length && (
-        <details className="mt-2">
-          <summary className="cursor-pointer">Checks needing attention</summary>
-          <ul className="mt-2 space-y-2">
-            {result.failed.map(({ job, error }) => (
-              <li key={`${job.id}:${job.kind}`} className="break-words text-xs">
-                {job.name} ·{" "}
-                {job.kind === "budget-monitor" ? "Budget" : "Performance"}:{" "}
-                {error}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
       {reloadError && (
         <p role="alert" className="mt-2 text-amber-400">
           {reloadError}
