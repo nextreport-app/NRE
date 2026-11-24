@@ -177,7 +177,7 @@ export function PortfolioBoard({
               id={`open-account-${c.id}`}
               aria-expanded={selected === c.id}
               aria-controls={`account-${c.id}`}
-              className="mt-3 rounded-lg border border-dash-border px-3 py-2 text-sm"
+              className="mt-4 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
               onClick={() => onOpen(c.id)}
             >
               {selected === c.id
@@ -185,7 +185,7 @@ export function PortfolioBoard({
                 : c.performanceEnabled
                   ? "View performance"
                   : "Set up monitoring"}
-              <span className="sr-only"> {c.name}</span>
+              <span className="sr-only"> {c.name}</span><span aria-hidden="true">→</span>
             </button>
           )}
         </article>

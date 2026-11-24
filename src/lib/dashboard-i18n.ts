@@ -61,7 +61,7 @@ export type DashboardCopy = {
 const EN: DashboardCopy = {
   navHome: "Home",
   navClients: "My Clients",
-  navOverview: "Overview",
+  navOverview: "Performance",
   navReports: "Reports",
   navAccount: "Account",
   navBilling: "Billing",
