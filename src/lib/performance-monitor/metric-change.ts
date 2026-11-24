@@ -1,9 +1,10 @@
-export type MetricDirection = "signed" | "neutral";
-/** Badge colors indicate arithmetic direction; warning severity is assessed separately. */
+import { comparisonTone } from "../nre/comparison-presentation";
+/** Use the same metric semantics as comparison reports, independent of alert severity. */
 export function metricChange(
   current: number | null | undefined,
   previous: number | null | undefined,
-  direction: MetricDirection,
+  key: string,
+  label: string,
   fresh = true,
 ) {
   const neutral = "neutral" as const;
@@ -20,14 +21,9 @@ export function metricChange(
       tone: neutral,
     };
   const change = (current / previous - 1) * 100;
-  if (Math.abs(change) < 0.05) return { label: "No change", tone: neutral };
+  if (change === 0) return { label: "No change", tone: neutral };
   return {
-    label: `${change > 0 ? "+" : "−"}${Math.abs(change).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`,
-    tone:
-      !fresh || direction === "neutral"
-        ? neutral
-        : change > 0
-          ? ("positive" as const)
-          : ("negative" as const),
+    label: `${change > 0 ? "+" : "−"}${Math.abs(change) < 0.1 ? "<0.1" : Math.abs(change).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`,
+    tone: fresh ? comparisonTone(key, label, change) : neutral,
   };
 }

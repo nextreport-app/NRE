@@ -25,6 +25,19 @@ export interface PeriodMetrics {
   cpc: number | null;
   results: number | null;
   cpr: number | null;
+  reach?: number | null;
+  linkClicks?: number | null;
+  linkCpc?: number | null;
+  landingPageViews?: number | null;
+  landingPageCost?: number | null;
+  metaLeads?: number | null;
+  websiteLeads?: number | null;
+  metaLeadCost?: number | null;
+  websiteLeadCost?: number | null;
+  purchases?: number | null;
+  purchaseCost?: number | null;
+  addToCart?: number | null;
+  initiateCheckout?: number | null;
   roas?: number | null;
   purchaseValue?: number | null;
   roasSpend?: number | null;
@@ -59,6 +72,7 @@ export interface PerformanceFacts {
   campaigns: CampaignPerformance[];
   empty: boolean;
   valueWarning?: boolean;
+  metricsWarning?: boolean;
 }
 export interface PerformanceSnapshot {
   version: 2;
@@ -91,6 +105,19 @@ const metricSchema = z.object({
   cpc: z.number().finite().nonnegative().nullable(),
   results: z.number().finite().nonnegative().nullable(),
   cpr: z.number().finite().nonnegative().nullable(),
+  reach: z.number().finite().nonnegative().nullable().optional(),
+  linkClicks: z.number().finite().nonnegative().nullable().optional(),
+  linkCpc: z.number().finite().nonnegative().nullable().optional(),
+  landingPageViews: z.number().finite().nonnegative().nullable().optional(),
+  landingPageCost: z.number().finite().nonnegative().nullable().optional(),
+  metaLeads: z.number().finite().nonnegative().nullable().optional(),
+  websiteLeads: z.number().finite().nonnegative().nullable().optional(),
+  metaLeadCost: z.number().finite().nonnegative().nullable().optional(),
+  websiteLeadCost: z.number().finite().nonnegative().nullable().optional(),
+  purchases: z.number().finite().nonnegative().nullable().optional(),
+  purchaseCost: z.number().finite().nonnegative().nullable().optional(),
+  addToCart: z.number().finite().nonnegative().nullable().optional(),
+  initiateCheckout: z.number().finite().nonnegative().nullable().optional(),
   roas: z.number().finite().nonnegative().nullable().optional(),
   purchaseValue: z.number().finite().nonnegative().nullable().optional(),
   roasSpend: z.number().finite().nonnegative().nullable().optional(),
@@ -121,6 +148,7 @@ const snapshotSchema = z.object({
       previous: metricSchema,
       empty: z.boolean(),
       valueWarning: z.boolean().optional(),
+      metricsWarning: z.boolean().optional(),
       campaigns: z.array(
         z.object({
           id: z.string().nullable().optional(),
@@ -212,9 +240,22 @@ function metrics(rows: NreRow[], results: number | null): PeriodMetrics {
     }
     clicks += parseCellNum(raw);
   }
+  let linkClicks: number | null = 0;
+  for (const row of rows) {
+    const raw = Object.entries(row._raw ?? {}).find(
+      ([key]) => key.trim().toLowerCase() === "link clicks",
+    )?.[1];
+    if (!observed(raw)) {
+      linkClicks = null;
+      break;
+    }
+    linkClicks += parseCellNum(raw);
+  }
   return {
     spend,
     impressions,
+    linkClicks,
+    linkCpc: linkClicks !== null && linkClicks > 0 ? spend / linkClicks : null,
     clicks,
     ctr:
       clicks !== null && impressions > 0 ? (clicks / impressions) * 100 : null,

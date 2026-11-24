@@ -76,11 +76,20 @@ export function decisionSignals(
       "supporting",
       "Click response improved. Confirm that the campaign's primary results and result quality also improved.",
     );
+  }
+  const linkEvidence =
+    a.linkClicks != null &&
+    b.linkClicks != null &&
+    a.linkCpc != null &&
+    b.linkCpc != null;
+  const clicksA = linkEvidence ? a.linkClicks : a.clicks,
+    clicksB = linkEvidence ? b.linkClicks : b.clicks;
+  if (delivery && (clicksA ?? 0) >= 30 && (clicksB ?? 0) >= 30) {
     delta(
-      "cpc-up",
-      "CPC (all)",
-      a.cpc,
-      b.cpc,
+      linkEvidence ? "link-cpc-up" : "cpc-up",
+      linkEvidence ? "CPC (link click)" : "CPC (all)",
+      linkEvidence ? a.linkCpc : a.cpc,
+      linkEvidence ? b.linkCpc : b.cpc,
       25,
       true,
       "warning",
@@ -88,10 +97,10 @@ export function decisionSignals(
       "Clicks became more expensive. Compare CTR, placements and auction delivery; increased competition is only one possible explanation.",
     );
     delta(
-      "cpc-down",
-      "CPC (all)",
-      a.cpc,
-      b.cpc,
+      linkEvidence ? "link-cpc-down" : "cpc-down",
+      linkEvidence ? "CPC (link click)" : "CPC (all)",
+      linkEvidence ? a.linkCpc : a.cpc,
+      linkEvidence ? b.linkCpc : b.cpc,
       20,
       false,
       "positive",
@@ -311,6 +320,12 @@ function recovered(old: PerformanceSignal, c: CampaignPerformance) {
       (a.clicks ?? 0) >= 30 &&
       (b.clicks ?? 0) >= 30 &&
       (ratio(a.cpc, b.cpc) ?? Infinity) <= 1.1
+    );
+  if (old.key === "link-cpc-up")
+    return (
+      (a.linkClicks ?? 0) >= 30 &&
+      (b.linkClicks ?? 0) >= 30 &&
+      (ratio(a.linkCpc, b.linkCpc) ?? Infinity) <= 1.1
     );
   if (old.key === "cpr-up")
     return (

@@ -27,7 +27,7 @@ export function matchesPortfolio(row: OverviewRow, filter: string) {
 export function PortfolioBadge({ state }: { state: PortfolioState }) {
   return (
     <span
-      className={`inline-block rounded-full border px-2 py-1 text-xs ${state === "critical" ? "border-red-400 text-red-400" : state === "review" ? "border-amber-400 text-amber-400" : state === "positive" ? "border-emerald-400 text-emerald-400" : state === "neutral" ? "border-amber-400/30 text-amber-400" : "border-dash-border text-dash-ink-secondary"}`}
+      className={`inline-block rounded-full border px-2 py-1 text-xs ${state === "critical" ? "border-red-400 text-red-400" : state === "review" ? "border-amber-400 text-amber-400" : state === "positive" ? "border-emerald-400 text-emerald-400" : "border-dash-border text-dash-ink-secondary"}`}
     >
       {PORTFOLIO_LABELS[state]}
     </span>
@@ -51,7 +51,18 @@ export function ObservationLine({
   observation: Observation;
   currency: string;
 }) {
-  const delta = metricChange(o.current, o.previous, "signed");
+  const delta = metricChange(
+    o.current,
+    o.previous,
+    /cost|cpc|cpl|cpr/i.test(o.metric)
+      ? "cpr"
+      : /ctr/i.test(o.metric)
+        ? "ctr"
+        : /roas/i.test(o.metric)
+          ? "roas"
+          : "results",
+    o.metric,
+  );
   return (
     <p className="mt-1 text-sm">
       <strong>
@@ -62,7 +73,7 @@ export function ObservationLine({
       {format(o.previous, o.unit, currency)}
       {o.change !== null && (
         <span
-          className={`ml-2 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 text-red-400" : "border-amber-400/30 text-amber-400"}`}
+          className={`ml-2 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 text-red-400" : "border-dash-border text-dash-ink-secondary"}`}
         >
           {delta.label}
           {o.reference === "target" ? " vs target" : ""}

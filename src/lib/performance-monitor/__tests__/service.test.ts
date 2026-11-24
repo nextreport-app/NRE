@@ -18,7 +18,7 @@ vi.mock("../../meta-api", () => ({
     .fn()
     .mockResolvedValue({ accessToken: "fresh", refreshed: false }),
   fetchMetaAdAccountMetadata: m.metadata,
-  fetchMetaCampaignValueInsights: m.values,
+  fetchMetaPerformancePeriodInsights: m.values,
 }));
 vi.mock("../../meta-token-storage", () => ({
   decryptMetaToken: () => "token",
@@ -59,6 +59,7 @@ beforeEach(() => {
   m.client.updateMany.mockResolvedValue({ count: 1 });
   m.metadata.mockResolvedValue({ currency: "USD", timezone_name: "UTC" });
   m.fetch.mockResolvedValue({ csvText: csv });
+  m.values.mockResolvedValue([]);
   m.deliver.mockResolvedValue({ accepted: true });
 });
 afterEach(() => vi.useRealTimers());
@@ -157,6 +158,7 @@ it("does not invent warnings on a successful empty response", async () => {
   expect(s.error).toBeUndefined();
   expect(s.facts?.empty).toBe(true);
   expect(m.queue).not.toHaveBeenCalled();
+  expect(m.values).not.toHaveBeenCalled();
 });
 it("marks failed email separately without losing measured facts", async () => {
   m.deliver.mockResolvedValue({ accepted: false });
@@ -166,22 +168,92 @@ it("marks failed email separately without losing measured facts", async () => {
   expect(s.emailError).toContain("not been confirmed");
 });
 
-it("does not repeat continuing owner warnings", async()=>{
- const first=await checkClientPerformance("client","owner",now);
- m.queue.mockClear();m.deliver.mockClear();
- m.client.findUnique.mockResolvedValue({...client,performanceMonitorSnapshot:JSON.stringify(first)});
- const next=await checkClientPerformance("client","owner",now);
- expect(next.facts?.campaigns[0].signals.every(s=>s.state==="continuing")).toBe(true);
- expect(m.queue).not.toHaveBeenCalled();
+it("does not repeat continuing owner warnings", async () => {
+  const first = await checkClientPerformance("client", "owner", now);
+  m.queue.mockClear();
+  m.deliver.mockClear();
+  m.client.findUnique.mockResolvedValue({
+    ...client,
+    performanceMonitorSnapshot: JSON.stringify(first),
+  });
+  const next = await checkClientPerformance("client", "owner", now);
+  expect(
+    next.facts?.campaigns[0].signals.every((s) => s.state === "continuing"),
+  ).toBe(true);
+  expect(m.queue).not.toHaveBeenCalled();
 });
-it("fixed historical custom comparisons never email",async()=>{
- m.client.findUnique.mockResolvedValue({...client,performanceCustomStart:"2026-11-13",performanceCustomEnd:"2026-11-19",performanceWindowDays:7});
- const result=await checkClientPerformance("client","owner",now);
- expect(result.error).toBeUndefined();expect(result.facts?.campaigns[0].signals.length).toBeGreaterThan(0);expect(m.queue).not.toHaveBeenCalled();
+it("fixed historical custom comparisons never email", async () => {
+  m.client.findUnique.mockResolvedValue({
+    ...client,
+    performanceCustomStart: "2026-11-13",
+    performanceCustomEnd: "2026-11-19",
+    performanceWindowDays: 7,
+  });
+  const result = await checkClientPerformance("client", "owner", now);
+  expect(result.error).toBeUndefined();
+  expect(result.facts?.campaigns[0].signals.length).toBeGreaterThan(0);
+  expect(m.queue).not.toHaveBeenCalled();
 });
-it("purchase lookup failure preserves delivery data and marks ROAS unavailable",async()=>{
- m.fetch.mockResolvedValue({csvText:csv.replaceAll("On-Facebook leads","Website purchases")});
- m.values.mockRejectedValue(Error("Meta temporarily unavailable"));
- const result=await checkClientPerformance("client","owner",now);
- expect(result.error).toBeUndefined();expect(result.facts?.valueWarning).toBe(true);expect(result.facts?.current.spend).toBe(100);expect(result.facts?.campaigns[0].signals.some(s=>s.key==="roas-unavailable")).toBe(true);
+it("purchase lookup failure preserves delivery data and marks ROAS unavailable", async () => {
+  m.fetch.mockResolvedValue({
+    csvText: csv.replaceAll("On-Facebook leads", "Website purchases"),
+  });
+  m.values.mockRejectedValue(Error("Meta temporarily unavailable"));
+  const result = await checkClientPerformance("client", "owner", now);
+  expect(result.error).toBeUndefined();
+  expect(result.facts?.valueWarning).toBe(true);
+  expect(result.facts?.current.spend).toBe(100);
+  expect(
+    result.facts?.campaigns[0].signals.some(
+      (s) => s.key === "roas-unavailable",
+    ),
+  ).toBe(true);
+});
+it("enriches both exact periods at account and campaign scope without changing the primary result", async () => {
+  m.fetch.mockResolvedValue({
+    csvText:
+      "Campaign name,Campaign ID,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all),Link clicks\nLeads,456,2026-11-19,100,10,On-Facebook leads,10000,50,25\nLeads,456,2026-11-12,100,20,On-Facebook leads,10000,100,50",
+  });
+  m.values.mockImplementation(async (input) => [
+    {
+      ...(input.level === "campaign" ? { campaign_id: "456" } : {}),
+      date_start: input.sinceIso,
+      date_stop: input.untilIso,
+      spend: "100",
+      reach: input.level === "account" ? "900" : "600",
+      inline_link_clicks: "25",
+      actions: [{ action_type: "landing_page_view", value: "20" }],
+    },
+  ]);
+  const result = await checkClientPerformance("client", "owner", now);
+  expect(m.values).toHaveBeenCalledTimes(4);
+  expect(result.facts?.current).toMatchObject({
+    reach: 900,
+    linkCpc: 4,
+    landingPageViews: 20,
+  });
+  expect(result.facts?.campaigns[0].current).toMatchObject({
+    reach: 600,
+    results: 10,
+    cpr: 10,
+    linkClicks: 25,
+    linkCpc: 4,
+  });
+  expect(result.facts?.metricsWarning).toBe(false);
+  expect(m.values).toHaveBeenCalledWith(
+    expect.objectContaining({
+      level: "campaign",
+      sinceIso: "2026-11-06",
+      untilIso: "2026-11-12",
+    }),
+  );
+});
+it("retains primary delivery evidence when optional metric lookups fail", async () => {
+  m.values.mockRejectedValue(Error("private provider details"));
+  const result = await checkClientPerformance("client", "owner", now);
+  expect(result.error).toBeUndefined();
+  expect(result.facts?.metricsWarning).toBe(true);
+  expect(result.facts?.current.spend).toBe(100);
+  expect(result.facts?.current.reach).toBeUndefined();
+  expect(JSON.stringify(result)).not.toContain("private provider details");
 });

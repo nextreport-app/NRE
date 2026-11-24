@@ -79,6 +79,9 @@ export function signalObservation(
   if (name.startsWith("ctr-")) {
     key = "ctr";
     unit = "percent";
+  } else if (name.startsWith("link-cpc-")) {
+    key = "linkCpc";
+    unit = "money";
   } else if (name.startsWith("cpc-")) {
     key = "cpc";
     unit = "money";

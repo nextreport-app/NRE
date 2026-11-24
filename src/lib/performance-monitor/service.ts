@@ -4,7 +4,8 @@ import {
   decisionAlertKey,
   actionableSignals,
 } from "./decision";
-import { fetchMetaCampaignValueInsights } from "../meta-api";
+import { fetchMetaPerformancePeriodInsights } from "../meta-api";
+import { enrichPerformanceMetrics } from "./supplemental-metrics";
 import { purchasePeriodMap, type PurchaseEvidence } from "./purchase-values";
 import { prisma } from "../prisma";
 import { ServiceError } from "../service-error";
@@ -138,39 +139,44 @@ export async function checkClientPerformance(
       now,
     });
     const parsed = parseCsvText(source.csvText);
+    const lookup = async (
+      level: "campaign" | "account",
+      period: typeof window.periodA,
+    ) =>
+      parsed.rows.length
+        ? fetchMetaPerformancePeriodInsights({
+            accessToken: token.accessToken,
+            adAccountId: client.metaAdAccountId!,
+            sinceIso: period.startIso,
+            untilIso: period.endIso,
+            level,
+          })
+        : [];
+    const evidence = await Promise.allSettled([
+      lookup("campaign", window.periodA),
+      lookup("campaign", window.periodB),
+      lookup("account", window.periodA),
+      lookup("account", window.periodB),
+    ]);
+    const rows = (index: number) => {
+      const result = evidence[index];
+      return result.status === "fulfilled" ? result.value : undefined;
+    };
     let purchases: PurchaseEvidence | undefined,
       valueWarning = false;
     if (parsed.rows.some((r) => /purchase/i.test(String(r.result_type)))) {
-      const values = await Promise.allSettled([
-        fetchMetaCampaignValueInsights({
-          accessToken: token.accessToken,
-          adAccountId: client.metaAdAccountId,
-          sinceIso: window.periodA.startIso,
-          untilIso: window.periodA.endIso,
-        }),
-        fetchMetaCampaignValueInsights({
-          accessToken: token.accessToken,
-          adAccountId: client.metaAdAccountId,
-          sinceIso: window.periodB.startIso,
-          untilIso: window.periodB.endIso,
-        }),
-      ]);
       try {
-        const a =
-            values[0].status === "fulfilled"
-              ? purchasePeriodMap(values[0].value)
-              : {},
-          b =
-            values[1].status === "fulfilled"
-              ? purchasePeriodMap(values[1].value)
-              : {};
+        const a = purchasePeriodMap(rows(0) ?? []),
+          b = purchasePeriodMap(rows(1) ?? []);
         purchases = Object.fromEntries(
           [...new Set([...Object.keys(a), ...Object.keys(b)])].map((id) => [
             id,
             { current: a[id], previous: b[id] },
           ]),
         );
-        valueWarning = values.some((v) => v.status === "rejected");
+        valueWarning =
+          evidence[0].status === "rejected" ||
+          evidence[1].status === "rejected";
       } catch {
         valueWarning = true;
       }
@@ -183,6 +189,15 @@ export async function checkClientPerformance(
       purchases,
     );
     facts.valueWarning = valueWarning;
+    facts.metricsWarning = evidence.some(
+      (result) => result.status === "rejected",
+    );
+    enrichPerformanceMetrics(facts, {
+      currentCampaigns: rows(0),
+      previousCampaigns: rows(1),
+      currentAccount: rows(2),
+      previousAccount: rows(3),
+    });
     applySignalLifecycle(
       facts,
       readPerformanceSnapshot(client.performanceMonitorSnapshot, config, now),

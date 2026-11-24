@@ -52,11 +52,11 @@ export function DecisionSettingsPanel({
     [end, setEnd] = useState(c.comparison.customEnd),
     [notice, setNotice] = useState("");
   return (
-    <details className="rounded-lg border border-dash-border p-3">
-      <summary className="cursor-pointer text-sm font-medium">
-        Comparison period ·{" "}
-        {c.comparison.customStart ? "Custom" : `Last ${c.comparison.days} days`}
-      </summary>
+    <section
+      aria-label="Comparison controls"
+      className="rounded-xl border border-dash-border bg-dash-bg p-4"
+    >
+      <h3 className="text-sm font-semibold">Compare periods</h3>
       <form
         className="mt-3"
         onSubmit={async (e) => {
@@ -70,7 +70,9 @@ export function DecisionSettingsPanel({
           });
           setNotice(
             saved
-              ? c.performanceEnabled ? "Comparison refreshed." : "Comparison saved. Enable performance to load data."
+              ? c.performanceEnabled
+                ? "Comparison refreshed."
+                : "Comparison saved. Enable performance to load data."
               : "Could not complete. See the error above.",
           );
         }}
@@ -88,21 +90,39 @@ export function DecisionSettingsPanel({
                 setNotice("");
               }}
             >
-              {v === "custom" ? "Custom" : `Last ${v} days`}
+              {v === "custom" ? "Custom dates" : `Last ${v} days`}
             </button>
           ))}
         </div>
         {mode === "custom" && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <WizardDatePicker showYear label="From" value={start} disabled={busy} maxIso={reportCalendarYesterday(new Date(),c.timezone)} onChange={setStart}/>
-            <WizardDatePicker showYear label="To" value={end} disabled={busy} maxIso={reportCalendarYesterday(new Date(),c.timezone)} onChange={setEnd}/>
+            <WizardDatePicker
+              showYear
+              label="From"
+              value={start}
+              disabled={busy}
+              maxIso={reportCalendarYesterday(new Date(), c.timezone)}
+              onChange={setStart}
+            />
+            <WizardDatePicker
+              showYear
+              label="To"
+              value={end}
+              disabled={busy}
+              maxIso={reportCalendarYesterday(new Date(), c.timezone)}
+              onChange={setEnd}
+            />
           </div>
         )}
         <p className="mt-2 text-xs text-dash-ink-secondary">
-          Compared with the previous equal-length period. Custom dates: up to 31 completed days, refreshed manually.
+          Each period is compared with the preceding equal-length period.
         </p>
         <button disabled={busy || !c.linked} className={`${button} mt-3`}>
-          {c.performanceEnabled ? "Save & refresh" : "Save comparison"}
+          {busy
+            ? "Updating…"
+            : c.performanceEnabled
+              ? "Compare periods"
+              : "Save comparison"}
         </button>
         {notice && (
           <p role="status" className="mt-2 text-xs">
@@ -110,7 +130,7 @@ export function DecisionSettingsPanel({
           </p>
         )}
       </form>
-    </details>
+    </section>
   );
 }
 export function CampaignTargetForm({
