@@ -31,9 +31,14 @@ export function ClientsPageHeader({ isEmpty, clientCount, scheduling = false }: 
 export function ClientsPageSupportLine() {
   const { dashboard: d } = useSiteCopy();
   return (
-    <p className="mt-10 text-center text-[13px] leading-relaxed text-dash-ink-secondary sm:text-left">
-      {d.clientsSupportPrefix} <SupportTicketLink openInNewTab /> {d.clientsSupportOr}{" "}
-      <WhatsAppChatLink message="Hi — I need help with NextReport." />
-    </p>
+    <aside aria-label="Client help" className="mt-8 rounded-lg border border-dash-border bg-dash-bg/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-dash-ink">{d.clientsSupportPrefix}</h2>
+        <div className="flex flex-wrap gap-2">
+          <SupportTicketLink openInNewTab appearance="button" className="min-h-11 cursor-pointer">Support ticket</SupportTicketLink>
+          <WhatsAppChatLink message="Hi — I need help with NextReport." className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-dash-border px-3 py-2 text-sm font-medium text-dash-ink hover:bg-dash-card focus-visible:outline-2 focus-visible:outline-dash-accent">WhatsApp chat</WhatsAppChatLink>
+        </div>
+      </div>
+    </aside>
   );
 }
