@@ -111,7 +111,11 @@ it("uses fresh Meta data, exact closed periods, and owner email only", async () 
     expect.objectContaining({
       key: "performance-alert:client:2026-11-19:2026-11-13:critical",
       kind: "PERFORMANCE_ALERT",
-      payload: expect.objectContaining({ to: ["owner@example.com"] }),
+      payload: expect.objectContaining({
+        to: ["owner@example.com"],
+        html: expect.stringContaining("Review performance &rarr;"),
+        text: expect.stringContaining("Selected period:"),
+      }),
     }),
   );
 });

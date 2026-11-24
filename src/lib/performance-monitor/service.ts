@@ -1,3 +1,4 @@
+import { buildPerformanceAlertEmail } from "./alert-email";
 import { decisionPeriods } from "./settings";
 import {
   applySignalLifecycle,
@@ -256,14 +257,10 @@ export async function checkClientPerformance(
         .filter((s) => s.state !== "continuing")
         .map((s) => ({ campaign: c, signal: s })),
     );
-    const warnings = newSignals.map(
-      ({ campaign: c, signal: s }) =>
-        `${s.tone === "critical" ? "CRITICAL" : "REVIEW"} · ${c.name} · ${c.objective} · ${s.metric}${s.change === null ? "" : `: ${s.change > 0 ? "+" : ""}${Math.round(s.change)}%`}. ${s.message}`,
-    );
     if (
       !config.performanceCustomStart &&
       client.performanceMonitorEmailEnabled &&
-      warnings.length &&
+      newSignals.length &&
       (await prisma.client.findFirst({
         where: { ...where, performanceMonitorEmailEnabled: true },
       }))
@@ -276,7 +273,12 @@ export async function checkClientPerformance(
           ? "critical"
           : "review",
       );
-      const text = `${client.accountName} — performance signals to review\nCurrent completed period: ${snapshot.facts!.periodA.startIso}–${snapshot.facts!.periodA.endIso}\nCompared with: ${snapshot.facts!.periodB.startIso}–${snapshot.facts!.periodB.endIso}\n${warnings.slice(0, 10).join("\n")}\n${warnings.length > 10 ? `${warnings.length - 10} more signals in NextReport.\n` : ""}Review: https://nextreport.in/overview?client=${encodeURIComponent(id)}\nLast checked: ${snapshot.checkedAt}. Meta conversions may be delayed. These are observed changes, not diagnoses or instructions to pause campaigns.`;
+      const email = buildPerformanceAlertEmail({
+        accountName: client.accountName,
+        clientId: id,
+        snapshot,
+        alerts: newSignals,
+      });
       await queueEmail({
         key,
         kind: "PERFORMANCE_ALERT",
@@ -284,8 +286,7 @@ export async function checkClientPerformance(
         payload: {
           to: [client.user.email],
           subject: `NextReport ${newSignals.some((s) => s.signal.tone === "critical") ? "critical performance alert" : "performance review"} — ${client.accountName}`,
-          text,
-          html: `<pre style="white-space:pre-wrap">${text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre>`,
+          ...email,
         },
       });
       const delivery = await deliverQueuedEmail(key);
