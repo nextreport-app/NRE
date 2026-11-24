@@ -1,3 +1,4 @@
+import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import {metaReportSelectionSchema} from "@/lib/nre/meta-report-content/selection";
 import { metaClientAccountStatus, normalizeMetaAccountId } from "@/lib/meta-client-account";
 import { metaApiCsvTransport } from "@/lib/meta-api-csv-transport";
@@ -181,7 +182,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
       // Report generation reads the client timezone, so keep it aligned with
       // the account calendar used for this import (including relative presets).
-      if (client.timezone !== account.timezone_name) {
+      if (!timezonesEquivalent(client.timezone, account.timezone_name)) {
         await prisma.client.update({ where: { id: client.id }, data: { timezone: account.timezone_name } });
       }
       // Remember the first successful nonempty import as this client's baseline.

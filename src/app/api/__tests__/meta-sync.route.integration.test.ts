@@ -191,3 +191,12 @@ it("does not bind an empty API import", async () => {
  expect((await POST(request({...body,confirmedMetaAdAccountId:"123"}),params)).status).toBe(200);
  expect(prisma.client.updateMany).not.toHaveBeenCalled();
 });
+
+it("does not rewrite a client's timezone just because Meta uses an IANA alias", async () => {
+ vi.mocked(prisma.client.findUnique).mockResolvedValue({id:"client_1",userId:"owner",metaAdAccountId:"123",timezone:"America/Toronto",currency:"CAD",previousMonthDataUrl:null,previousMonthDataUpdatedAt:null,previousMonthSelectedCampaigns:null} as never);
+ vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValue({id:"act_123",currency:"CAD",timezone_name:"Canada/Eastern"});
+ const response=await POST(request(),params);
+ expect(response.status).toBe(200);
+ expect(prisma.client.update).not.toHaveBeenCalled();
+ expect(fetchMetaReportCsv).toHaveBeenCalledWith(expect.objectContaining({timezone:"Canada/Eastern",currency:"CAD"}));
+});

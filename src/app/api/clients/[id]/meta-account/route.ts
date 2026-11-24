@@ -1,3 +1,4 @@
+import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -75,10 +76,10 @@ export async function POST(
       );
     if (
       account.currency !== client.currency ||
-      account.timezone_name !== client.timezone
+      !timezonesEquivalent(account.timezone_name, client.timezone)
     )
       throw new ServiceError(
-        `This ad account uses ${account.currency} and ${account.timezone_name}. Match this client's currency and timezone in Client settings, then select the account again.`,
+        `The selected ad account uses ${account.currency} · ${account.timezone_name}; this client is set to ${client.currency} · ${client.timezone}. Update the differing setting in Client settings, then try again.`,
         409,
       );
     if (client.metaAdAccountId) return NextResponse.json({ ok: true });

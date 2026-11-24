@@ -1,3 +1,4 @@
+import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { budgetAlertKey } from "./budget-alert-key";
 import { prisma } from "./prisma";
 import { ServiceError } from "./service-error";
@@ -31,7 +32,7 @@ export async function checkClientBudget(id: string, userId: string, now = new Da
     const fresh=await ensureFreshMetaAccessToken({accessToken:decryptMetaToken(client.user.metaAccessToken),tokenExpiresAt:client.user.metaTokenExpiresAt});
     if (fresh.refreshed) await prisma.user.update({where:{id:userId},data:{metaAccessToken:encryptMetaToken(fresh.accessToken),metaTokenExpiresAt:fresh.tokenExpiresAt}});
     const account=await fetchMetaAdAccountMetadata(fresh.accessToken,client.metaAdAccountId);
-    if (account.currency !== client.currency || account.timezone_name !== client.timezone) throw new ServiceError("Client currency/timezone must match the linked Meta account. Update Client settings before monitoring.");
+    if (account.currency !== client.currency || !timezonesEquivalent(account.timezone_name, client.timezone)) throw new ServiceError("Client currency/timezone must match the linked Meta account. Update Client settings before monitoring.");
     const [spent,completedSpend]=await Promise.all([
       fetchMetaAccountSpend(fresh.accessToken,client.metaAdAccountId,window.start,window.today),
       window.completedDays>=3 && window.completedEnd ? fetchMetaAccountSpend(fresh.accessToken,client.metaAdAccountId,window.start,window.completedEnd) : Promise.resolve(null),

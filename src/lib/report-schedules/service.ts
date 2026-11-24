@@ -1,3 +1,4 @@
+import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { scheduledReportType, cadenceLabel } from "./cadence";
 import { buildScheduledTableDraft } from "./table-draft";
 import { prisma } from "../prisma";
@@ -54,7 +55,7 @@ export async function saveReportSchedule(
     throw new ServiceError("Not found", 404);
   if (!client.metaAdAccountId)
     throw new ServiceError("Link the client's Meta ad account first.");
-  if (settings.timezone !== client.timezone)
+  if (!timezonesEquivalent(settings.timezone, client.timezone))
     throw new ServiceError("Use the client account timezone.");
   if (getSubscriptionStatus(client.user).isBlocked)
     throw new ServiceError("An active trial or subscription is required.", 403);
@@ -278,7 +279,7 @@ export async function processScheduledRun(runId: string) {
     if (
       client.metaAdAccountId !== config.accountId ||
       client.currency !== config.currency ||
-      client.timezone !== config.timezone
+      !timezonesEquivalent(client.timezone, config.timezone)
     )
       throw new ServiceError(
         "The client's linked account, currency or timezone changed. Review and save the schedule again.",
@@ -305,7 +306,7 @@ export async function processScheduledRun(runId: string) {
     );
     if (
       account.currency !== config.currency ||
-      account.timezone_name !== config.timezone
+      !timezonesEquivalent(account.timezone_name, config.timezone)
     )
       throw new ServiceError(
         "Meta account currency/timezone no longer matches the schedule.",
@@ -426,7 +427,7 @@ export async function processScheduledRun(runId: string) {
       (!run.manual && !latest.enabled) ||
       latest.client.metaAdAccountId !== config.accountId ||
       latest.client.currency !== config.currency ||
-      latest.client.timezone !== config.timezone
+      !timezonesEquivalent(latest.client.timezone, config.timezone)
     )
       throw new ServiceError(
         "Schedule/account settings changed during preparation. Prepare a new draft after review.",

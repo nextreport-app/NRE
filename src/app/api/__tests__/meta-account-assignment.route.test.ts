@@ -132,3 +132,18 @@ describe("explicit client ad account assignment", () => {
     expect(m.save).not.toHaveBeenCalled();
   });
 });
+
+it("assigns CAD Canada/Eastern to a CAD America/Toronto client without changing client settings", async () => {
+  m.client.mockResolvedValue({ userId: "owner", metaAdAccountId: null, currency: "CAD", timezone: "America/Toronto" });
+  m.metadata.mockResolvedValue({ id: "act_123", name: "Nope", currency: "CAD", timezone_name: "Canada/Eastern" });
+  expect((await POST(request(), params)).status).toBe(200);
+  expect(m.save).toHaveBeenCalledWith({ where: { id: "client", userId: "owner", metaAdAccountId: null, currency: "CAD", timezone: "America/Toronto" }, data: { metaAdAccountId: "123", metaAdAccountName: "Nope" } });
+});
+it("still rejects a different currency when timezones are aliases", async () => {
+  m.client.mockResolvedValue({ userId: "owner", metaAdAccountId: null, currency: "USD", timezone: "America/Toronto" });
+  m.metadata.mockResolvedValue({ id: "act_123", currency: "CAD", timezone_name: "Canada/Eastern" });
+  const response = await POST(request(), params);
+  expect(response.status).toBe(409);
+  expect((await response.json()).error).toContain("this client is set to USD");
+  expect(m.save).not.toHaveBeenCalled();
+});

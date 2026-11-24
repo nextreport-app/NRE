@@ -1,3 +1,4 @@
+import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import {metaReportOptions} from "@/lib/nre/meta-report-content/selection";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -246,7 +247,7 @@ export async function POST(
         );
         if (
           account.currency !== currency ||
-          account.timezone_name !== client.timezone
+          !timezonesEquivalent(account.timezone_name, client.timezone)
         )
           throw Error(
             "The ad account currency or timezone changed. Return to Import and sync again.",

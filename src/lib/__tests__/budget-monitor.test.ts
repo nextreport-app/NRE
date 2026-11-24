@@ -124,3 +124,11 @@ it("queues the $357.99/$300 overspend as a critical owner alert and keeps approa
  mocks.queue.mockClear();mocks.spend.mockImplementation(async(_token,_account,_start,end)=>end==="2026-11-22"?240:210);
  const approaching=await checkClientBudget("c","owner",now);expect(approaching.facts?.level).toBe("approaching");expect(mocks.queue).toHaveBeenCalledWith(expect.objectContaining({payload:expect.objectContaining({subject:expect.stringContaining("budget warning")})}));
 });
+
+it("checks monthly budget when Meta and client use equivalent IANA names", async () => {
+ mocks.find.mockResolvedValue({...client,currency:"CAD",timezone:"America/Toronto",budgetMonitorEmailEnabled:false});
+ mocks.metadata.mockResolvedValue({currency:"CAD",timezone_name:"Canada/Eastern"});
+ const snapshot=await checkClientBudget("c","owner",now);
+ expect(snapshot.error).toBeUndefined();
+ expect(mocks.spend).toHaveBeenCalled();
+});

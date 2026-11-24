@@ -1,3 +1,4 @@
+import { fetchMetaAdAccountMetadata } from "../../meta-api";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   db: {
@@ -471,4 +472,11 @@ it("does not reserve a credit when a daily source contains out-of-period rows", 
       data: expect.objectContaining({ status: "FAILED" }),
     }),
   );
+});
+
+it("builds a scheduled draft when Meta returns an equivalent timezone alias", async () => {
+  vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValueOnce({ id: "act_account", currency: "USD", timezone_name: "Etc/UTC" });
+  await processScheduledRun("run");
+  expect(mocks.fetch).toHaveBeenCalled();
+  expect(mocks.capacity).toHaveBeenCalled();
 });
