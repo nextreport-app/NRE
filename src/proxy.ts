@@ -1,3 +1,4 @@
+import { safeAuthRedirect } from "@/lib/safe-auth-redirect";
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import authConfig from "@/lib/auth.config";
@@ -86,15 +87,15 @@ export default auth((req) => {
     pathname === "/api/meta/data-deletion";
 
   // Unknown document URLs must reach Next's genuine 404, not a login redirect.
-  const protectedPath = ["/clients", "/account", "/billing", "/support", "/admin", "/dashboard"].some(path => pathname === path || pathname.startsWith(`${path}/`)) || pathname.startsWith("/api/");
+  const protectedPath = ["/clients", "/overview", "/websites", "/reports", "/account", "/billing", "/support", "/admin", "/dashboard"].some(path => pathname === path || pathname.startsWith(`${path}/`)) || pathname.startsWith("/api/");
   if (!req.auth && !isPublic && protectedPath) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    loginUrl.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
   if (req.auth && (pathname === "/login" || pathname === "/signup")) {
-    return NextResponse.redirect(new URL("/clients", req.nextUrl.origin));
+    return NextResponse.redirect(new URL(safeAuthRedirect(req.nextUrl.searchParams.get("callbackUrl")), req.nextUrl.origin));
   }
 
   return NextResponse.next();

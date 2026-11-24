@@ -1,4 +1,6 @@
 "use client";
+import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
+
 import Link from "next/link";
 import { MetaBudgetPanel } from "./meta-budget-panel";
 import { MetaPerformanceDashboard } from "./meta-performance-dashboard";
@@ -322,6 +324,7 @@ export function AgencyOverview({
               </div>
               <PortfolioBadge state={c.portfolio.state} />
             </div>
+            <ClientWorkspaceNav clientId={c.id} current="performance" />
             {(!c.linked || !c.performanceEnabled) && (
               <MetaMonitoringSetup
                 key={c.id}
@@ -345,12 +348,6 @@ export function AgencyOverview({
                   More options
                 </summary>
                 <div className="absolute left-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-dash-border bg-dash-card p-2 shadow-xl">
-                  <a
-                    className="rounded-lg p-2 text-sm hover:bg-dash-bg"
-                    href={`/clients/${c.id}`}
-                  >
-                    Client settings
-                  </a>
                   <a
                     className="rounded-lg p-2 text-sm hover:bg-dash-bg"
                     href={`#meta-budget-${c.id}`}

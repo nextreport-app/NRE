@@ -23,7 +23,7 @@ describe("Scheduling navigation and ownership", () => {
     const html = renderToStaticMarkup(await ClientSchedulesPage({ params: Promise.resolve({ id: client.id }) }));
     expect(mocks.findFirst).toHaveBeenCalledWith({ where: { id: client.id, userId: "owner-1" }, select: { id: true, accountName: true } });
     expect(html).toContain('data-client="client-1"');
-    expect(html).toContain('href="/reports"');
+    expect(html).toContain('href="/reports?tab=scheduled"');
     expect(html).toContain('href="/clients?task=schedule"');
     expect(html).toContain('href="/clients/client-1/reports/new"');
   });

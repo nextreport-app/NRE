@@ -21,8 +21,9 @@ export default async function ReportCopyPage({
   if (!report || report.client.userId !== session.user.id || report.clientId !== id) notFound();
 
   const fromGenerate = from === "generate";
-  const backHref = fromGenerate ? `/clients/${id}/reports/new?resumeReport=${reportId}` : `/clients/${id}`;
-  const backLabel = fromGenerate ? "← Back to Generate screen" : "← Back to client";
+  const backHref = fromGenerate ? `/clients/${id}/reports/new?resumeReport=${reportId}` : from === "scheduled" ? "/reports?tab=scheduled" : from === "reports" ? "/reports" : `/clients/${id}/reports`;
+  const backLabel = fromGenerate ? "← Back to Generate screen" : from === "scheduled" ? "← Back to scheduled drafts" : from === "reports" ? "← Back to reports" : "← Back to client history";
+  const approvalNotice = report.requiresApproval && !report.approvedAt ? <p className="rounded-lg border border-dash-accent/40 p-3 text-sm text-dash-ink">This scheduled draft is private until approval. After reviewing, <Link href="/reports?tab=scheduled" className="font-semibold text-dash-accent underline">return to Scheduled drafts</Link> to approve delivery.</p> : null;
 
   let comparison: unknown = null;
   try { comparison = report.summaryJson ? JSON.parse(report.summaryJson) : null; } catch { /* Existing review handles unavailable payloads. */ }
@@ -31,7 +32,8 @@ export default async function ReportCopyPage({
       <Link href={backHref} className="text-sm text-dash-accent">{backLabel}</Link>
       <h1 className="text-xl font-semibold text-dash-ink">Review comparison report</h1>
       <p className="text-sm text-dash-ink-secondary">Review both periods below. To change campaigns, metrics or dates, return to the report setup and generate again.</p>
-      <ShareComparisonReportView clientCurrency={report.client.currency} clientTimezone={report.client.timezone} data={comparison} shareToken={report.shareToken ?? undefined} />
+      {approvalNotice}
+      <ShareComparisonReportView clientCurrency={report.client.currency} clientTimezone={report.client.timezone} data={comparison} shareToken={report.requiresApproval && !report.approvedAt ? undefined : report.shareToken ?? undefined} />
     </div>
   );
 
@@ -41,7 +43,7 @@ export default async function ReportCopyPage({
         {backLabel}
       </Link>
       <h1 className="text-[20px] font-semibold text-dash-ink">Edit browser report</h1>
-      {report.requiresApproval && !report.approvedAt && <p className="rounded-lg border border-dash-accent/40 p-3 text-sm text-dash-ink">Scheduled draft · private until approval. Save your edits here, then return to the client’s Scheduled reports section to approve delivery.</p>}
+      {approvalNotice}
       <ReportShareReview
         clientId={id}
         reportId={reportId}

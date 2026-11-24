@@ -1,3 +1,4 @@
+import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 import { ClientDateInput } from "@/components/client-date-input";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -82,14 +83,8 @@ export default async function ClientAllReportsPage({
 
   const requestedPage = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
-  const [total, reports, owner] = await Promise.all([
+  const [total, owner] = await Promise.all([
     prisma.report.count({ where }),
-    prisma.report.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (requestedPage - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { reportRetentionDays: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true, email: true },
@@ -102,6 +97,7 @@ export default async function ClientAllReportsPage({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
+  const reports = await prisma.report.findMany({ where, orderBy: { createdAt: "desc" }, skip: (currentPage - 1) * PAGE_SIZE, take: PAGE_SIZE });
   const monthFormatter = new Intl.DateTimeFormat("en-US", { timeZone: client.timezone, month: "long", year: "numeric" });
 
   const reportItems = reports.map((r) => ({
@@ -139,6 +135,7 @@ export default async function ClientAllReportsPage({
         </p>
       </div>
 
+      <ClientWorkspaceNav clientId={client.id} current="reports" />
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-dash-border bg-dash-card p-4">
         <div>
           <label className="mb-1 block text-[13px] text-dash-ink-secondary">Report type</label>

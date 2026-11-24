@@ -105,7 +105,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
           ? "Automatic draft preparation is active. Review and approve each draft, then click Send approved report to email recipients."
           : "Saved paused. Nothing will run at the saved time. Use Prepare now to create a test draft.");
       else if (body.action === "prepare")
-        setNotice("Draft preparation requested. Review it here or in Report inbox when ready. No recipient email has been sent.");
+        setNotice("Draft preparation requested. Review it here or in Reports → Scheduled drafts when ready. No recipient email has been sent.");
       await load();
       return true;
     } catch (e) {

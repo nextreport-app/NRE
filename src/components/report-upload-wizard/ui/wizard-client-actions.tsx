@@ -70,6 +70,7 @@ export function WizardClientActions({
     ...(showSchedule
       ? [{ href: `/clients/${clientId}/schedules`, label: "Schedule reports" }]
       : []),
+    { href: `/clients/${clientId}/reports`, label: "Report history" },
     { href: `/clients/${clientId}#client-settings`, label: "Client settings" },
   ];
   return (

@@ -1,4 +1,6 @@
 "use client";
+import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
+
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
 import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
@@ -152,6 +154,7 @@ export function WebsiteDashboard({
         All website traffic reported by GA4, separate from Meta ad delivery.
       </p>
       <OverviewNavigation current="website" clientId={selected?.id} />
+      {selected && <ClientWorkspaceNav clientId={selected.id} current="performance" performanceView="website" />}
       {view && (
         <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
