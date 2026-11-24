@@ -12,12 +12,12 @@ vi.mock("../steps/generate-step", () => ({ WizardGenerateStep: () => null }));
 const render = () => renderToStaticMarkup(<ReportUploadWizard {...{} as ComponentProps<typeof ReportUploadWizard>} />);
 beforeEach(() => { state.step = 1; state.platform = "META"; state.linkedMetaAdAccountId = "act_2022399724077"; state.selectedApiAdAccountId = null; state.dataSourceMode = "api"; });
 describe("Import client account header", () => {
- it.each([1, 2, 3, 4])("keeps scheduling discoverable at wizard step %s", (step) => {
+ it.each([1, 2, 3, 4])("keeps client actions available without loose toolbar links at wizard step %s", (step) => {
   state.step = step;
   const html = render();
-  expect(html).toContain('href="/clients/client-1/schedules"');
-  expect(html).toContain("Schedule reports");
-  expect(html).toContain('href="/clients/client-1#client-settings"');
+  expect(html).toContain("Client actions");
+  expect(html).toContain('aria-expanded="false"');
+  expect(html).not.toContain('aria-label="Client report tools"');
  });
 
  it("displays the saved ID in brackets beside the client name", () => {
