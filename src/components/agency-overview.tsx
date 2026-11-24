@@ -30,7 +30,8 @@ export function AgencyOverview({
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
     [expanded, setExpanded] = useState(initialClientId);
-  const busy = activationBusy ?? singleBusy ?? (bulkRunning ? "bulk" : null);
+  const [budgetBusy, setBudgetBusy] = useState(false);
+  const busy = activationBusy ?? singleBusy ?? (bulkRunning ? "bulk" : budgetBusy ? "budget" : null);
   const loaded = clients !== null;
   useEffect(() => {
     const panel =
@@ -203,8 +204,7 @@ export function AgencyOverview({
               review
             </h2>
             <p className="mt-2 text-sm text-dash-ink-secondary">
-              Review priority accounts first. Each account uses its own
-              comparison period and currency.
+              Start with the accounts that need your attention.
             </p>
             <nav
               aria-label="Account status"
@@ -244,13 +244,6 @@ export function AgencyOverview({
             placeholder="Find a client"
             className="w-full min-w-0 rounded-lg border border-dash-border bg-dash-bg px-3 py-2 sm:w-auto sm:flex-1"
           />
-          <button
-            disabled={!!busy}
-            className={button}
-            onClick={() => void load().catch((e) => setError(e.message))}
-          >
-            Reload overview
-          </button>
         </div>
       ) : (
         <div className="mt-5">
@@ -278,15 +271,15 @@ export function AgencyOverview({
           </select>
         </div>
       )}
-      {!expanded &&
-        clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
-          <PortfolioRefresh
-            clients={clients}
-            disabled={!!singleBusy || !!activationBusy}
-            onActivity={setBulkRunning}
-            onComplete={load}
-          />
-        )}
+      {clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
+        <PortfolioRefresh
+          clients={clients}
+          scopeId={expanded}
+          disabled={!!singleBusy || !!activationBusy || budgetBusy}
+          onActivity={setBulkRunning}
+          onComplete={load}
+        />
+      )}
       {error && (
         <p role="alert" className="mt-3 text-sm text-amber-400">
           {error}
@@ -371,19 +364,6 @@ export function AgencyOverview({
                   )}
                 </div>
               </details>
-              {c.performanceEnabled && (
-                <button
-                  disabled={!!busy}
-                  className="rounded-xl bg-dash-accent px-4 py-2 text-sm font-semibold text-[#102033] disabled:opacity-50"
-                  onClick={() =>
-                    void action(c.id, "performance-monitor", {
-                      action: "check",
-                    })
-                  }
-                >
-                  {busy === c.id ? "Refreshing…" : "Refresh performance"}
-                </button>
-              )}
             </div>
             {c.performance?.checkedAt && (
               <p className="mt-3 text-xs text-dash-ink-secondary">
@@ -423,6 +403,8 @@ export function AgencyOverview({
             )}
             <MetaPerformanceDashboard client={c} />
             <MetaBudgetPanel
+              onActivity={setBudgetBusy}
+              revision={`${c.budget?.checkedAt ?? ""}:${c.budget?.error ?? ""}`}
               key={c.id}
               clientId={c.id}
               disabled={!!busy}

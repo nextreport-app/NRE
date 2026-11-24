@@ -13,7 +13,6 @@ export const PORTFOLIO_FILTERS = [
   { key: "review", label: "Review" },
   { key: "positive", label: "Positive" },
   { key: "neutral", label: "Neutral" },
-  { key: "data", label: "Needs data" },
   { key: "setup", label: "Needs setup" },
 ] as const;
 export function matchesPortfolio(row: OverviewRow, filter: string) {
@@ -108,14 +107,15 @@ export function PortfolioBoard({
           </div>
           {c.budgetAttention && (
             <p className="mt-2 text-sm font-medium">
-              Monthly budget · {c.budgetLabel}.
+              <span
+                className={c.budgetCritical ? "text-red-400" : "text-amber-400"}
+              >
+                Budget needs attention
+              </span>
               {c.budget?.facts && (
                 <span className="mt-1 block font-normal">
                   Spent {format(c.budget.facts.spent, "money", c.currency)} of{" "}
                   {format(c.budget.config.monthlyBudget, "money", c.currency)}
-                  {c.budget.facts.projected === null
-                    ? ""
-                    : ` · Forecast ${format(c.budget.facts.projected, "money", c.currency)}`}
                 </span>
               )}
             </p>
@@ -123,10 +123,15 @@ export function PortfolioBoard({
           {c.performanceFresh && c.portfolio.lead && (
             <div className="mt-2 min-w-0">
               <p className="break-words text-sm">
-                <strong className="text-violet-400">
-                  [Campaign] {c.portfolio.lead.name}
+                <strong className="text-blue-400">
+                  {c.portfolio.lead.name}
                 </strong>{" "}
-                · {c.portfolio.lead.reason}
+                <span className="text-xs text-dash-ink-secondary">
+                  [Campaign]
+                </span>
+                {!c.portfolio.lead.observation && (
+                  <> · {c.portfolio.lead.reason}</>
+                )}
               </p>
               {c.portfolio.lead.observation && (
                 <ObservationLine
