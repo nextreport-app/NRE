@@ -1,3 +1,4 @@
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -50,10 +51,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Paste a Google Drive folder link first." }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await resolveClientUser(await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { googleRefreshToken: true },
-    });
+    }), report.client);
     if (!user?.googleRefreshToken) {
       return NextResponse.json({ error: "Google Drive is not connected." }, { status: 400 });
     }

@@ -1,3 +1,4 @@
+import { resolveClientUserById, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,15 +10,15 @@ import {
 import { googleOAuthReconnectMessage, isGoogleOAuthRefreshFailure } from "@/lib/google-oauth-refresh-error";
 
 /** Lists Google Ads customer IDs the connected user can access — verifies API access. */
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await resolveClientUserById(await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { googleAdsRefreshToken: true, googleAdsAccessToken: true },
-    });
+    }), session.user.id, new URL(req.url).searchParams.get("clientId"));
 
     if (!user?.googleAdsRefreshToken) {
       return NextResponse.json({ error: "Google Ads is not connected" }, { status: 400 });
@@ -27,10 +28,10 @@ export async function GET() {
     try {
       const refreshed = await refreshGoogleAdsAccessToken(user.googleAdsRefreshToken);
       accessToken = refreshed.access_token;
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: session.user.id },
         data: { googleAdsAccessToken: accessToken },
-      });
+      }, user);
     } catch (refreshErr) {
       console.error("[google-ads:customers] token refresh failed:", refreshErr);
       return NextResponse.json({ error: googleOAuthReconnectMessage("Google Ads") }, { status: 400 });

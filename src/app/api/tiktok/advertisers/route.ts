@@ -1,14 +1,17 @@
+import { apiErrorResponse } from "@/lib/api-error";
+import { resolveClientUserById, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureFreshTikTokAccessToken, fetchTikTokAdvertisers } from "@/lib/tiktok-api";
 
 /** Lists TikTok advertiser accounts the connected user can access. */
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
+  try {
+  const user = await resolveClientUserById(await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
       tiktokAdsEnabled: true,
@@ -17,13 +20,12 @@ export async function GET() {
       tiktokTokenExpiresAt: true,
       tiktokAdvertiserIds: true,
     },
-  });
+  }), session.user.id, new URL(req.url).searchParams.get("clientId"));
 
   if (!user?.tiktokAdsEnabled || !user.tiktokAccessToken) {
     return NextResponse.json({ error: "TikTok Ads is not connected" }, { status: 400 });
   }
 
-  try {
     const fresh = await ensureFreshTikTokAccessToken({
       accessToken: user.tiktokAccessToken,
       refreshToken: user.tiktokRefreshToken,
@@ -31,14 +33,14 @@ export async function GET() {
     });
 
     if (fresh.refreshed) {
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: session.user.id },
         data: {
           tiktokAccessToken: fresh.accessToken,
           tiktokRefreshToken: fresh.refreshToken,
           tiktokTokenExpiresAt: fresh.tokenExpiresAt,
         },
-      });
+      }, user);
     }
 
     const advertisers = await fetchTikTokAdvertisers(fresh.accessToken);
@@ -49,10 +51,6 @@ export async function GET() {
       })),
     });
   } catch (err) {
-    console.error("[api:tiktok:advertisers] failed:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Could not load TikTok advertisers" },
-      { status: 500 },
-    );
+    return apiErrorResponse(err,"tiktok:advertisers");
   }
 }

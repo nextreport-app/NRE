@@ -1,3 +1,4 @@
+import { resolveClientUser, updateResolvedProviderUser, clientProviderGuard } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { buildPerformanceAlertEmail } from "./alert-email";
 import { decisionPeriods } from "./settings";
@@ -36,6 +37,7 @@ export async function checkClientPerformance(
   });
   if (!client || client.userId !== userId)
     throw new ServiceError("Not found", 404);
+  client.user = await resolveClientUser(client.user, client);
   if (
     getSubscriptionStatus(client.user).isBlocked ||
     !client.user.emailVerified
@@ -105,19 +107,21 @@ export async function checkClientPerformance(
   let snapshot: PerformanceSnapshot;
   try {
     if (!client.user.metaAdsEnabled || !client.user.metaAccessToken)
-      throw new ServiceError("Reconnect Meta Ads in Account settings.");
+      throw new ServiceError("Reconnect Meta Ads for this client in Client settings.");
     const token = await ensureFreshMetaAccessToken({
       accessToken: decryptMetaToken(client.user.metaAccessToken),
       tokenExpiresAt: client.user.metaTokenExpiresAt,
     });
     if (token.refreshed)
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: userId },
         data: {
           metaAccessToken: encryptMetaToken(token.accessToken),
           metaTokenExpiresAt: token.tokenExpiresAt,
         },
-      });
+      }, client.user);
+    const credentialGuard=clientProviderGuard(client.user,"meta");
+    if(credentialGuard) Object.assign(where,{providerConnections:{some:credentialGuard}});
     const account = await fetchMetaAdAccountMetadata(
       token.accessToken,
       client.metaAdAccountId,

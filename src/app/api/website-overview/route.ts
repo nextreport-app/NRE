@@ -1,3 +1,4 @@
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -26,26 +27,30 @@ export async function GET(req: Request) {
         orderBy: { accountName: "asc" },
         select: {
           id: true,
+          userId: true,
+          hasProviderConnections: true,
           accountName: true,
           ga4PropertyId: true,
           ga4PropertyName: true,
         },
       }),
     ]);
-    const connected = !!user?.ga4Enabled && !!user.ga4RefreshToken;
+    const clientUsers = await Promise.all(clients.map(c => resolveClientUser(user, c)));
     const requested = new URL(req.url).searchParams.get("clientId"),
       selected = requested
         ? clients.find((c) => c.id === requested)
         : undefined;
     if (requested && !selected)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const effectiveUser = selected ? clientUsers[clients.indexOf(selected)] : user;
+    const connected = selected ? !!effectiveUser?.ga4Enabled && !!effectiveUser.ga4RefreshToken : clientUsers.some(u => !!u?.ga4Enabled && !!u.ga4RefreshToken) || !!user?.ga4RefreshToken;
     const records =
       connected && selected?.ga4PropertyId
         ? await prisma.websiteDashboardSnapshot.findMany({
             where: {
               clientId: selected.id,
               propertyId: selected.ga4PropertyId,
-              connectionKey: websiteConnectionKey(user!.ga4RefreshToken!),
+              connectionKey: websiteConnectionKey(effectiveUser!.ga4RefreshToken!),
             },
           })
         : [];
@@ -67,7 +72,8 @@ export async function GET(req: Request) {
       });
     return NextResponse.json(
       {
-        clients: clients.map((c) => ({
+        clients: clients.map((c, index) => ({
+          connected: !!clientUsers[index]?.ga4Enabled && !!clientUsers[index]?.ga4RefreshToken,
           id: c.id,
           name: c.accountName,
           propertyId: c.ga4PropertyId,
@@ -75,7 +81,7 @@ export async function GET(req: Request) {
         })),
         selectedClientId: selected?.id ?? null,
         connected,
-        connectedEmail: connected ? user?.ga4ConnectedEmail : null,
+        connectedEmail: connected ? effectiveUser?.ga4ConnectedEmail : null,
         snapshots,
       },
       { headers: { "Cache-Control": "private, no-store" } },

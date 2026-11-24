@@ -24,7 +24,7 @@ describe("GET /api/account", () => {
 
   it("returns 401 when unauthenticated", async () => {
     mockRouteAuth(auth).mockResolvedValue(null);
-    const res = await GET();
+    const res = await GET(new Request("https://nextreport.test/api/account"));
     expect(res.status).toBe(401);
   });
 
@@ -40,7 +40,7 @@ describe("GET /api/account", () => {
       email: "trial@example.com",
     } as never);
 
-    const res = await GET();
+    const res = await GET(new Request("https://nextreport.test/api/account"));
     expect(res.status).toBe(200);
     const body = await jsonBody<{ agencyName: string; reportRetentionDays: number; reportRetentionOptions: number[] }>(res);
     expect(body.agencyName).toBe("Acme Agency");

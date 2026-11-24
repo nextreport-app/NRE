@@ -1,3 +1,4 @@
+import { resolveClientUserById } from "@/lib/client-provider-connections";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,25 +11,27 @@ import {
 import { getSubscriptionStatus } from "@/lib/subscription";
 import { normalizeReportBrandingMode } from "@/lib/report-branding";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await resolveClientUserById(await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         agencyName: true,
         reportBrandingMode: true,
         showAgencyNameOnCover: true,
         googleDriveEnabled: true,
+        metaAdsEnabled:true, metaAccessToken:true, metaConnectedName:true,
+        googleAdsRefreshToken:true, tiktokAccessToken:true, ga4RefreshToken:true,
         googleConnectedEmail: true,
         reportRetentionDays: true,
         planId: true,
         trialEndsAt: true, paidThrough: true, emailVerified: true,
         email: true,
       },
-    });
+    }), session.user.id, req ? new URL(req.url).searchParams.get("clientId") : null);
     if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const status = getSubscriptionStatus(user);
@@ -39,6 +42,7 @@ export async function GET() {
       reportBrandingMode: normalizeReportBrandingMode(user.reportBrandingMode),
       showAgencyNameOnCover: user.showAgencyNameOnCover ?? true,
       googleDriveEnabled: user.googleDriveEnabled ?? false,
+      providerStatus: { metaConnected:!!user.metaAdsEnabled && !!user.metaAccessToken, metaConnectedName:user.metaConnectedName, googleAdsConnected:!!user.googleAdsRefreshToken, tiktokConnected:!!user.tiktokAccessToken, ga4Connected:!!user.ga4RefreshToken },
       googleConnectedEmail: user.googleConnectedEmail ?? null,
       reportRetentionDays: normalizeReportRetentionDays(user.reportRetentionDays, status.planId),
       reportRetentionOptions: retentionOptions,

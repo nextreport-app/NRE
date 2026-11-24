@@ -15,6 +15,7 @@ export type WebsiteDataSource = "api" | "csv";
 
 export async function resolveWebsiteReportData(input: {
   userId: string;
+  clientId?: string;
   timezone: string;
   currencySymbol: string;
   accountName?: string;
@@ -66,9 +67,9 @@ export async function resolveWebsiteReportData(input: {
     throw new Error("Link a GA4 property to this client first (Manage page → Website Analytics).");
   }
 
-  const accessToken = await getGa4AccessTokenForUser(input.userId);
+  const accessToken = await getGa4AccessTokenForUser(input.userId, input.clientId);
   if (!accessToken) {
-    throw new Error("Connect Google Analytics in Account Settings first.");
+    throw new Error("Connect Google Analytics for this client in Client settings.");
   }
 
   const ranges = resolveWebsiteReportRanges(input.config, input.timezone);

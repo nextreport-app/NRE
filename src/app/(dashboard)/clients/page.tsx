@@ -1,3 +1,4 @@
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import { clientConnectionState } from "@/lib/client-card-summary";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
+          userId: true, hasProviderConnections: true,
           accountName: true,
           currency: true,
           timezone: true,
@@ -31,22 +33,24 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       })
     : [];
 
-  const clientCards = clients.map((c) => ({
+  const clientCards = await Promise.all(clients.map(async (c) => {
+    const clientOwner=await resolveClientUser(owner,c);
+    return ({
     id: c.id,
     accountName: c.accountName,
     currency: c.currency,
     timezone: c.timezone,
     hasPreviousMonthData: !!c.previousMonthDataUrl,
     previousMonthDataUpdatedAt: c.previousMonthDataUpdatedAt?.toISOString() ?? null,
-    metaConnection: clientConnectionState(!!c.metaAdAccountId, !!(owner?.metaAdsEnabled && owner.metaAccessToken)),
-    ga4Connection: clientConnectionState(!!c.ga4PropertyId, !!(owner?.ga4Enabled && owner.ga4RefreshToken)),
+    metaConnection: clientConnectionState(!!c.metaAdAccountId, !!(clientOwner?.metaAdsEnabled && clientOwner.metaAccessToken)),
+    ga4Connection: clientConnectionState(!!c.ga4PropertyId, !!(clientOwner?.ga4Enabled && clientOwner.ga4RefreshToken)),
     metaAccountName: c.metaAdAccountName,
     lastReportAt: (c.reports[0]?.completedAt ?? c.reports[0]?.createdAt)?.toISOString() ?? null,
     nextScheduleAt: c.reportSchedules[0]?.nextRunAt.toISOString() ?? null,
     nextScheduleTimezone: c.reportSchedules[0]?.timezone ?? c.timezone,
     hasGa4Property: !!c.ga4PropertyId,
     ga4PropertyName: c.ga4PropertyName,
-  }));
+  });}));
 
   const isEmpty = clientCards.length === 0;
 

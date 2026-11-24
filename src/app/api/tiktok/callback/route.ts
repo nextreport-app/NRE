@@ -1,10 +1,10 @@
+import { persistOAuthProvider, providerScopeCookie, providerOAuthReturn, providerOAuthContext } from "@/lib/client-provider-oauth";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { exchangeTikTokAuthCode, fetchTikTokAdvertisers, TIKTOK_OAUTH_STATE_COOKIE } from "@/lib/tiktok-api";
 
 function redirectToAccount(req: NextRequest, query: string) {
-  return NextResponse.redirect(new URL(`/account${query}`, req.url));
+  return NextResponse.redirect(providerOAuthReturn(req, "tiktok", query));
 }
 
 /** Completes the "Connect TikTok Ads" OAuth flow started by /api/tiktok/connect. */
@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
 
   const clearStateCookie = (res: NextResponse) => {
     res.cookies.set(TIKTOK_OAUTH_STATE_COOKIE, "", { maxAge: 0, path: "/" });
+    res.cookies.set(providerScopeCookie("tiktok"), "", { maxAge: 0, path: "/" });
     return res;
   };
 
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    providerOAuthContext(req, "tiktok", session.user.id);
     const tokenData = await exchangeTikTokAuthCode(authCode);
     const expiresIn = tokenData.expires_in ?? 86400;
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
@@ -53,16 +55,13 @@ export async function GET(req: NextRequest) {
       // OAuth response advertiser_ids is enough for v1.
     }
 
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
+    await persistOAuthProvider(req, "tiktok", session.user.id, {
         tiktokAdsEnabled: true,
         tiktokAccessToken: tokenData.access_token,
         tiktokRefreshToken: tokenData.refresh_token ?? null,
         tiktokTokenExpiresAt: tokenExpiresAt,
         tiktokConnectedName: connectedName,
         tiktokAdvertiserIds: advertiserIds.length > 0 ? JSON.stringify(advertiserIds) : null,
-      },
     });
 
     return clearStateCookie(redirectToAccount(req, "?tiktok_ads_connected=1"));

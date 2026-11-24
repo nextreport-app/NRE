@@ -1,3 +1,6 @@
+import { ClientProviderSettings } from "@/components/client-provider-settings";
+import { clientProviderSummaries } from "@/lib/client-provider-connections";
+import { resolveClientUser } from "@/lib/client-provider-connections";
 import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 import { ClientReportDesign } from "@/components/client-report-design";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
@@ -11,7 +14,6 @@ import { DeleteClientButton } from "@/components/delete-client-button";
 import { DuplicateClientButton } from "@/components/duplicate-client-button";
 import { PreviousMonthDataUpload } from "@/components/previous-month-data-upload";
 import { Ga4PropertyPicker } from "@/components/ga4-property-picker";
-import { ClientPlatformConnections } from "@/components/client-platform-connections";
 import { ReportHistoryList } from "@/components/report-history-list";
 import { previousMonthDataFileName } from "@/lib/storage";
 import {
@@ -34,7 +36,6 @@ import {
   isTikTokApiConfigured,
 } from "@/lib/integrations-config";
 import { isClientPlatformConnectionVisible } from "@/lib/meta-launch-scope";
-import { isClientPlatformConnectionsSectionVisible } from "@/lib/ad-platform-api-sync";
 import { WizardReturnBanner } from "@/components/wizard-return-banner";
 
 const RECENT_REPORTS_LIMIT = 5;
@@ -67,10 +68,13 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ returnTo?: string }>;
+  searchParams: Promise<{ returnTo?: string; [key: string]: string | undefined }>;
 }) {
   const { id } = await params;
-  const { returnTo } = await searchParams;
+  const connectionParams = await searchParams;
+  const { returnTo } = connectionParams;
+  const connectionFailed = Object.keys(connectionParams).some(key => key.endsWith("_error") && !!connectionParams[key]);
+  const connectionSaved = Object.keys(connectionParams).some(key => key.endsWith("_connected") && connectionParams[key] === "1");
   const session = await auth();
   if (!session?.user) notFound();
   const tiktokRegionRestricted = isIndiaCountryCode(await getVisitorCountryCode());
@@ -80,7 +84,7 @@ export default async function ClientDetailPage({
 
   await purgeExpiredReportsForUser(session.user.id).catch(() => undefined);
 
-  const [reports, reportCount, owner] = await Promise.all([
+  const [reports, reportCount, rawOwner] = await Promise.all([
     prisma.report.findMany({
       where: { clientId: client.id },
       orderBy: { createdAt: "desc" },
@@ -90,6 +94,8 @@ export default async function ClientDetailPage({
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
+        googleRefreshToken: true, googleConnectedEmail: true,
+        metaAdsEnabled: true, metaAccessToken: true,
         metaConnectedUserId: true,
         metaConnectedName: true,
         googleAdsRefreshToken: true,
@@ -98,7 +104,7 @@ export default async function ClientDetailPage({
         ga4RefreshToken: true,
         ga4Enabled: true,
         ga4ConnectedEmail: true,
-        tiktokRefreshToken: true,
+        tiktokRefreshToken: true, tiktokAccessToken: true,
         reportRetentionDays: true,
         planId: true,
         trialEndsAt: true, paidThrough: true, emailVerified: true,
@@ -109,6 +115,8 @@ export default async function ClientDetailPage({
     }),
   ]);
 
+  const owner = await resolveClientUser(rawOwner, client);
+  const connectionSummaries = (await clientProviderSummaries(rawOwner ?? {}, client)).map(c => ({...c, configured: c.provider === "meta" ? isMetaApiConfigured() : c.provider === "ga4" ? isGa4ApiConfigured() : c.provider === "google-ads" ? isGoogleAdsApiConfigured() : c.provider === "tiktok" ? isTikTokApiConfigured() && !tiktokRegionRestricted : !!process.env.AUTH_GOOGLE_ID && !!process.env.AUTH_GOOGLE_SECRET}));
   const reportRetentionDays = owner
     ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
     : DEFAULT_REPORT_RETENTION_DAYS;
@@ -152,6 +160,8 @@ export default async function ClientDetailPage({
       </div>
 
       <ClientWorkspaceNav clientId={client.id} current="settings" />
+      {connectionFailed && <p role="alert" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">Connection was not completed. Try connecting again and choose the login that has access to this client.</p>}
+      {connectionSaved && <p role="status" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">Client connection saved. Choose its ad account, GA4 property or Drive folder before loading data or exporting.</p>}
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
@@ -166,36 +176,7 @@ export default async function ClientDetailPage({
             Generate Report
           </Link>
         </Card>
-        {isClientPlatformConnectionsSectionVisible() ? (
-          <Card id="platform-connections">
-            <CardHeading hint="Connect Meta Ads for read-only API reporting, or continue with manual CSV upload.">
-              Platform connections
-            </CardHeading>
-            <ClientPlatformConnections
-              tiktokRegionRestricted={tiktokRegionRestricted}
-              meta={{
-                connected: !!owner?.metaConnectedUserId,
-                detail: owner?.metaConnectedName ?? null,
-                configured: isMetaApiConfigured(),
-              }}
-              googleAds={{
-                connected: !!owner?.googleAdsRefreshToken || !!owner?.googleAdsEnabled,
-                detail: owner?.googleAdsConnectedEmail ?? null,
-                configured: isGoogleAdsApiConfigured(),
-              }}
-              tiktok={{
-                connected: !!owner?.tiktokRefreshToken || !!owner?.tiktokAdsEnabled,
-                detail: owner?.tiktokConnectedName ?? null,
-                configured: isTikTokApiConfigured(),
-              }}
-              ga4={{
-                connected: ga4Connected,
-                detail: owner?.ga4ConnectedEmail ?? null,
-                configured: isGa4ApiConfigured(),
-              }}
-            />
-          </Card>
-        ) : null}
+        <ClientProviderSettings clientId={client.id} connections={connectionSummaries} />
 
 
 
@@ -230,6 +211,7 @@ export default async function ClientDetailPage({
               initialPropertyId={client.ga4PropertyId}
               initialPropertyName={client.ga4PropertyName}
               ga4Connected={ga4Connected}
+              connectedEmail={owner?.ga4ConnectedEmail}
             />
           </Card>
         ) : null}

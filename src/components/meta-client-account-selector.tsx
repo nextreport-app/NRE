@@ -32,7 +32,7 @@ export function MetaClientAccountSelector({
       setError("");
       setNeedsConnection(false);
       try {
-        const r = await fetch("/api/meta/adaccounts", { cache: "no-store" });
+        const r = await fetch(`/api/meta/adaccounts?clientId=${encodeURIComponent(clientId)}`, { cache: "no-store" });
         const data = await r.json();
         if (!r.ok) {
           if (active) setNeedsConnection(true);
@@ -54,7 +54,7 @@ export function MetaClientAccountSelector({
     return () => {
       active = false;
     };
-  }, [retry]);
+  }, [retry, clientId]);
   async function save() {
     if (!selected || busy || saving) return;
     setSaving(true);
@@ -145,7 +145,7 @@ export function MetaClientAccountSelector({
           </button>
         )}
         {(needsConnection || (!loading && !accounts.length)) && (
-          <Link href="/account#meta-ads" className="underline">
+          <Link href={`/clients/${clientId}#provider-connections`} className="underline">
             Manage Meta connection
           </Link>
         )}

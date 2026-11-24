@@ -1,3 +1,4 @@
+import { bindProviderOAuth } from "@/lib/client-provider-oauth";
 import { createPkce } from "@/lib/oauth-pkce";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -26,5 +27,5 @@ export async function GET(req: NextRequest) {
     path: "/",
   });
   res.cookies.set(`${GA4_OAUTH_STATE_COOKIE}_pkce`, `${session.user.id}:${pkce.verifier}`, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 600, path: "/" });
-  return res;
+  return bindProviderOAuth(req, res, "ga4", session.user.id, state);
 }

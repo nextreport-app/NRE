@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { buildTikTokConnectUrl } from "@/lib/tiktok-api";
 import { GET } from "../tiktok/connect/route";
 
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(auth).mockResolvedValue({ user: { id: "test" } } as never); });
+beforeEach(() => { vi.stubEnv("AUTH_SECRET", "test-client-provider-encryption-key-123456789"); vi.clearAllMocks(); vi.mocked(auth).mockResolvedValue({ user: { id: "test" } } as never); });
 describe("TikTok connect regional availability", () => {
   it("redirects an unauthenticated visitor to login", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);

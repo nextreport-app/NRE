@@ -254,7 +254,7 @@ export function WizardGenerateSuccessPanel({
                 <GoogleDriveIcon />
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
-            ) : <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
+            ) : <Link href={`/clients/${clientId}#provider-connections`} target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
           </div>
           <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">Edit your downloaded PPTX in PowerPoint or your saved Google Slides copy in Slides.</p>
           {apiSourceSessionId && <ApiSourceDownload clientId={clientId} uploadSessionId={apiSourceSessionId} />}
@@ -418,7 +418,7 @@ export function WizardGenerateSuccessPanel({
             <div className="rounded-lg border border-dash-border bg-dash-bg/30 px-4 py-3">
               <h3 id="success-drive-heading" className="text-sm font-semibold text-dash-ink">Google Slides</h3>
               <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">Connect Google Drive to save an editable Google Slides copy and choose its destination folder.</p>
-              <Link href="/account#google-drive" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className="mt-3 inline-block text-sm font-medium text-dash-accent hover:underline">Connect Google Drive ↗</Link>
+              <Link href={`/clients/${clientId}#provider-connections`} target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className="mt-3 inline-block text-sm font-medium text-dash-accent hover:underline">Connect Google Drive ↗</Link>
             </div>
           )}
         </section>

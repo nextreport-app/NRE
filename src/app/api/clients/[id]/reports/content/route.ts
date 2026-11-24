@@ -1,3 +1,4 @@
+import { resolveClientUser, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import {metaReportOptions} from "@/lib/nre/meta-report-content/selection";
 import { NextResponse } from "next/server";
@@ -224,23 +225,23 @@ export async function POST(
           );
         const coverage=apiQueryCoverage(upload.rows)!;
         if(ranges.some(range=>range.startIso<coverage.startIso||range.endIso>coverage.endIso))throw Error("Your API import does not cover these dates. Return to Import and sync the selected period again.");
-        const user = await prisma.user.findUnique({
+        const user = await resolveClientUser(await prisma.user.findUnique({
           where: { id: session.user.id },
-        });
+        }), client);
         if (!user?.metaAccessToken)
-          throw Error("Reconnect Meta Ads in Account settings.");
+          throw Error("Reconnect Meta Ads for this client in Client settings.");
         const fresh = await ensureFreshMetaAccessToken({
           accessToken: decryptMetaToken(user.metaAccessToken),
           tokenExpiresAt: user.metaTokenExpiresAt,
         });
         if (fresh.refreshed)
-          await prisma.user.update({
+          await updateResolvedProviderUser({
             where: { id: user.id },
             data: {
               metaAccessToken: encryptMetaToken(fresh.accessToken),
               metaTokenExpiresAt: fresh.tokenExpiresAt,
             },
-          });
+          }, user);
         const account = await fetchMetaAdAccountMetadata(
           fresh.accessToken,
           upload.metaAdAccountId,

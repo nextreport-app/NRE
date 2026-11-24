@@ -1,3 +1,4 @@
+import { resolveClientUser, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { scheduledReportType, cadenceLabel } from "./cadence";
 import { buildScheduledTableDraft } from "./table-draft";
@@ -245,7 +246,7 @@ export async function processScheduledRun(runId: string) {
   if (!claimed.count) return;
   try {
     const client = run.schedule.client,
-      user = client.user;
+      user = await resolveClientUser(client.user, client);
     if (getSubscriptionStatus(user).isBlocked || !user.emailVerified)
       throw new ServiceError(
         "An active account with a verified email is required.",
@@ -293,13 +294,13 @@ export async function processScheduledRun(runId: string) {
       tokenExpiresAt: user.metaTokenExpiresAt,
     });
     if (fresh.refreshed)
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: user.id },
         data: {
           metaAccessToken: encryptMetaToken(fresh.accessToken),
           metaTokenExpiresAt: fresh.tokenExpiresAt,
         },
-      });
+      }, user);
     const account = await fetchMetaAdAccountMetadata(
       fresh.accessToken,
       config.accountId,

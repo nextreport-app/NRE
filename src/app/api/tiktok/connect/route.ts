@@ -1,3 +1,4 @@
+import { bindProviderOAuth } from "@/lib/client-provider-oauth";
 import { isIndiaCountryCode } from "@/lib/visitor-geo";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -31,5 +32,5 @@ export async function GET(req: NextRequest) {
     maxAge: STATE_COOKIE_MAX_AGE_SECONDS,
     path: "/",
   });
-  return res;
+  return bindProviderOAuth(req, res, "tiktok", session.user.id, state);
 }

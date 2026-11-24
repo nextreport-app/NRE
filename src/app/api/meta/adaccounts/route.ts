@@ -1,3 +1,4 @@
+import { resolveClientUserById, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { decryptMetaToken, encryptMetaToken, isEncryptedMetaToken } from "@/lib/meta-token-storage";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -9,12 +10,12 @@ import { ensureFreshMetaAccessToken, fetchMetaAdAccounts } from "@/lib/meta-api"
  * Lists Meta ad accounts the connected user can read — read-only Marketing
  * API call used to verify ads_read access (App Review + account settings).
  */
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await resolveClientUserById(await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         metaAdsEnabled: true,
@@ -23,7 +24,7 @@ export async function GET() {
         metaConnectedName: true,
         metaConnectedUserId: true,
       },
-    });
+    }), session.user.id, new URL(req.url).searchParams.get("clientId"));
 
     if (!user?.metaAdsEnabled || !user.metaAccessToken) {
       return NextResponse.json({ error: "Meta Ads not connected" }, { status: 400 });
@@ -35,13 +36,13 @@ export async function GET() {
     });
 
     if (fresh.refreshed || !isEncryptedMetaToken(user.metaAccessToken)) {
-      await prisma.user.update({
+      await updateResolvedProviderUser({
         where: { id: session.user.id },
         data: {
           metaAccessToken: encryptMetaToken(fresh.accessToken),
           metaTokenExpiresAt: fresh.tokenExpiresAt,
         },
-      });
+      }, user);
     }
 
     const accounts = await fetchMetaAdAccounts(fresh.accessToken);

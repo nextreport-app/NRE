@@ -1,0 +1,242 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest, NextResponse } from "next/server";
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    client: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+      update: vi.fn(),
+    },
+    clientProviderConnection: {
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    websiteDashboardSnapshot: { deleteMany: vi.fn() },
+    user: { update: vi.fn() },
+    $transaction: vi.fn(),
+  },
+}));
+import { prisma } from "@/lib/prisma";
+import { encryptMetaToken, decryptMetaToken } from "@/lib/meta-token-storage";
+import {
+  resolveClientUser,
+  resolveClientUserById,
+  updateResolvedProviderUser,
+  saveClientProvider,
+  clientProviderSummaries,
+  providerKeys,
+} from "../client-provider-connections";
+import {
+  bindProviderOAuth,
+  providerScopeCookie,
+  persistOAuthProvider,
+  providerOAuthReturn,
+} from "../client-provider-oauth";
+const owner = {
+  id: "owner",
+  ga4Enabled: true,
+  ga4RefreshToken: "agency-ga4",
+  googleRefreshToken: "agency-drive",
+  metaAdsEnabled: true,
+  metaAccessToken: "agency-meta",
+};
+const client = {
+  id: "client-a",
+  userId: "owner",
+  hasProviderConnections: true,
+};
+const credentials = {
+  ga4Enabled: true,
+  ga4RefreshToken: "private-ga4",
+  ga4ConnectedEmail: "client@example.test",
+};
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv("AUTH_SECRET", "client-provider-test-key-at-least-32-characters");
+  vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.client.findFirst).mockResolvedValue(client as never);
+  vi.mocked(prisma.client.findUnique).mockResolvedValue(client as never);
+  vi.mocked(prisma.client.updateMany).mockResolvedValue({ count: 1 });
+  vi.mocked(prisma.clientProviderConnection.updateMany).mockResolvedValue({
+    count: 1,
+  });
+  vi.mocked(prisma.$transaction).mockImplementation(
+    async (fn: unknown) =>
+      (fn as (tx: typeof prisma) => unknown)(prisma) as never,
+  );
+});
+const row = (provider: string, values: object) => ({
+  id: "row-" + provider,
+  clientId: client.id,
+  provider,
+  credentials: encryptMetaToken(JSON.stringify(values)),
+});
+describe("isolated provider credentials", () => {
+  it("keeps legacy clients on agency defaults without changing or querying grants", async () => {
+    expect(
+      await resolveClientUser(owner, {
+        ...client,
+        hasProviderConnections: false,
+      }),
+    ).toBe(owner);
+    expect(prisma.clientProviderConnection.findMany).not.toHaveBeenCalled();
+  });
+  it("overrides only this client's chosen provider and never mutates shared credentials", async () => {
+    vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValue([
+      row("ga4", credentials),
+    ] as never);
+    const effective = await resolveClientUser(owner, client);
+    expect(effective.ga4RefreshToken).toBe("private-ga4");
+    expect(effective.metaAccessToken).toBe("agency-meta");
+    expect(owner.ga4RefreshToken).toBe("agency-ga4");
+    expect(prisma.clientProviderConnection.findMany).toHaveBeenCalledWith({
+      where: { clientId: "client-a", client: { userId: "owner" } },
+    });
+    const publicStatus = JSON.stringify(
+      await clientProviderSummaries(owner, client),
+    );
+    expect(publicStatus).toContain("client@example.test");
+    expect(publicStatus).not.toContain("private-ga4");
+    expect(publicStatus).not.toContain("agency-ga4");
+  });
+  it("scopes fresh-token persistence and fails closed when a connection changes", async () => {
+    const record = row("ga4", credentials);
+    vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValue([
+      record,
+    ] as never);
+    const effective = await resolveClientUser(owner, client);
+    await updateResolvedProviderUser(
+      { where: { id: "owner" }, data: { ga4AccessToken: "fresh-private" } },
+      effective,
+    );
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    const saved = vi.mocked(prisma.clientProviderConnection.updateMany).mock
+      .calls[0][0];
+    expect(saved.where).toEqual({
+      id: "row-ga4",
+      credentials: record.credentials,
+      client: { userId: "owner" },
+    });
+    expect(decryptMetaToken(saved.data!.credentials as string)).toContain(
+      "fresh-private",
+    );
+    vi.mocked(prisma.clientProviderConnection.updateMany).mockResolvedValue({
+      count: 0,
+    });
+    await expect(
+      updateResolvedProviderUser(
+        { where: { id: "owner" }, data: { ga4AccessToken: "stale" } },
+        effective,
+      ),
+    ).rejects.toThrow("connection changed");
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+  it("rejects a client owned by another user before reading any credentials", async () => {
+    vi.mocked(prisma.client.findUnique).mockResolvedValue({
+      ...client,
+      userId: "other",
+    } as never);
+    await expect(
+      resolveClientUserById(owner, "owner", "client-a"),
+    ).rejects.toThrow("Not found");
+    expect(prisma.clientProviderConnection.findMany).not.toHaveBeenCalled();
+  });
+  it("will not fall back to the agency login when stored credentials are corrupt", async () => {
+    vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValue([
+      { ...row("ga4", credentials), credentials: "broken" },
+    ] as never);
+    expect((await resolveClientUser(owner, client)).ga4RefreshToken).toBeNull();
+  });
+  it("encrypts scoped grants and clears the affected saved asset inside one ownership-checked transaction", async () => {
+    await saveClientProvider("owner", "client-a", "ga4", credentials);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.client.updateMany).toHaveBeenCalledWith({
+      where: { id: "client-a", userId: "owner" },
+      data: { hasProviderConnections: true },
+    });
+    const input = vi.mocked(prisma.clientProviderConnection.upsert).mock
+      .calls[0][0];
+    expect(input.create.credentials).not.toContain("private-ga4");
+    expect(JSON.parse(decryptMetaToken(input.create.credentials))).toEqual(
+      credentials,
+    );
+    expect(prisma.websiteDashboardSnapshot.deleteMany).toHaveBeenCalledWith({
+      where: { clientId: "client-a" },
+    });
+  });
+});
+describe("provider OAuth scope", () => {
+  it.each(providerKeys)(
+    "binds %s to the initiating owner, client and OAuth state",
+    async (provider) => {
+      const start = new NextRequest(
+        `https://nextreport.test/api/${provider}/connect?clientId=client-a`,
+      );
+      const response = await bindProviderOAuth(
+        start,
+        NextResponse.redirect("https://provider.test"),
+        provider,
+        "owner",
+        "state-a",
+      );
+      const cookie = response.cookies.get(providerScopeCookie(provider))!.value;
+      const request = (state = "state-a") =>
+        new NextRequest(
+          `https://nextreport.test/api/${provider}/callback?state=${state}`,
+          { headers: { cookie: `${providerScopeCookie(provider)}=${cookie}` } },
+        );
+      expect(cookie).not.toContain("client-a");
+      const field =
+        provider === "ga4"
+          ? { ga4Enabled: true, ga4RefreshToken: "private" }
+          : provider === "meta"
+            ? { metaAdsEnabled: true, metaAccessToken: "private" }
+            : provider === "google-ads"
+              ? { googleAdsRefreshToken: "private" }
+              : provider === "tiktok"
+                ? { tiktokAccessToken: "private" }
+                : { googleRefreshToken: "private" };
+      await persistOAuthProvider(request(), provider, "owner", field);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.clientProviderConnection.upsert).toHaveBeenCalledOnce();
+      await expect(
+        persistOAuthProvider(request("wrong"), provider, "owner", field),
+      ).rejects.toThrow("Invalid or expired");
+      await expect(
+        persistOAuthProvider(request(), provider, "other", field),
+      ).rejects.toThrow("Invalid or expired");
+      const returnUrl = providerOAuthReturn(
+        request(),
+        provider,
+        "?connected=1",
+      );
+      expect(returnUrl.pathname).toBe("/clients/client-a");
+      expect(returnUrl.search).toBe("?connected=1");
+    },
+  );
+  it("rejects connection attempts for a foreign client without issuing cookies", async () => {
+    vi.mocked(prisma.client.findFirst).mockResolvedValue(null);
+    const res = await bindProviderOAuth(
+      new NextRequest("https://test/api/ga4/connect?clientId=foreign"),
+      NextResponse.redirect("https://provider.test"),
+      "ga4",
+      "owner",
+      "state",
+    );
+    expect(res.status).toBe(404);
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+  it("does not silently turn a missing scoped callback into an agency-wide update", async () => {
+    await expect(
+      persistOAuthProvider(
+        new NextRequest("https://test/api/ga4/callback?state=state"),
+        "ga4",
+        "owner",
+        credentials,
+      ),
+    ).rejects.toThrow("Invalid or expired");
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+});
