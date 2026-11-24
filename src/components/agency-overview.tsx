@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { MetaBudgetPanel } from "./meta-budget-panel";
 import { MetaPerformanceDashboard } from "./meta-performance-dashboard";
 import { MetaMonitoringSetup } from "./meta-monitoring-setup";
 import { OverviewNavigation } from "./overview-navigation";
@@ -37,13 +38,18 @@ export function AgencyOverview({
         ? document.getElementById(`account-${expanded}`)
         : null;
     if (panel) {
-      panel.scrollIntoView({
+      const budgetId = `meta-budget-${expanded}`;
+      const target =
+        window.location.hash === `#${encodeURIComponent(budgetId)}`
+          ? (document.getElementById(budgetId) ?? panel)
+          : panel;
+      target.scrollIntoView({
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
           ? "instant"
           : "smooth",
         block: "start",
       });
-      panel.focus({ preventScroll: true });
+      target.focus({ preventScroll: true });
     }
   }, [expanded, loaded]);
   function selectAccount(id: string) {
@@ -136,14 +142,6 @@ export function AgencyOverview({
       Number(b.linked) - Number(a.linked) ||
       a.name.localeCompare(b.name),
   );
-  const money = (n: number | null | undefined, c: OverviewRow) =>
-    n === null || n === undefined
-      ? "—"
-      : new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: c.currency,
-          maximumFractionDigits: 2,
-        }).format(n);
   const date = (s: string, c: OverviewRow) =>
     new Intl.DateTimeFormat("en", {
       dateStyle: "medium",
@@ -357,7 +355,7 @@ export function AgencyOverview({
                   </a>
                   <a
                     className="rounded-lg p-2 text-sm hover:bg-dash-bg"
-                    href={`/clients/${c.id}#budget-monitor`}
+                    href={`#meta-budget-${c.id}`}
                   >
                     Budget &amp; alerts
                   </a>
@@ -384,17 +382,6 @@ export function AgencyOverview({
                   }
                 >
                   {busy === c.id ? "Refreshing…" : "Refresh performance"}
-                </button>
-              )}
-              {c.budgetEnabled && (
-                <button
-                  disabled={!!busy}
-                  className={button}
-                  onClick={() =>
-                    void action(c.id, "budget-monitor", { action: "check" })
-                  }
-                >
-                  Check budget
                 </button>
               )}
             </div>
@@ -435,63 +422,12 @@ export function AgencyOverview({
               </div>
             )}
             <MetaPerformanceDashboard client={c} />
-            {c.budgetEnabled && (
-              <div
-                id={`meta-budget-${c.id}`}
-                className="mt-4 grid scroll-mt-6 gap-4"
-              >
-                {c.budgetEnabled && (
-                  <div className="rounded-xl border border-dash-border bg-dash-bg p-4">
-                    <h3 className="text-lg font-semibold">
-                      Monthly budget pacing
-                    </h3>
-                    <p className="mt-1 text-sm font-medium">{c.budgetLabel}</p>
-                    {c.budget?.facts && (
-                      <p
-                        className={`mt-1 text-sm ${c.budgetFresh ? "" : "text-dash-ink-secondary"}`}
-                      >
-                        {money(c.budget.facts.spent, c)} spent of{" "}
-                        {money(c.budget.config.monthlyBudget, c)} · Projected{" "}
-                        {money(c.budget.facts.projected, c)}
-                        {c.budgetFresh && (
-                          <span className="mt-1 block text-xs">
-                            {(c.budget.facts.projectedOver ?? 0) >
-                            c.budget.facts.tolerance ? (
-                              <>
-                                Projected over budget by{" "}
-                                {money(c.budget.facts.projectedOver, c)}.{" "}
-                              </>
-                            ) : (c.budget.facts.projectedShortfall ?? 0) >
-                              c.budget.facts.tolerance ? (
-                              <>
-                                Projected underspend of{" "}
-                                {money(c.budget.facts.projectedShortfall, c)}
-                                .{" "}
-                              </>
-                            ) : null}
-                            Remaining daily allowance:{" "}
-                            {money(c.dailyAllowance, c)} through month end,
-                            including today. Planning guide; adjust budgets in
-                            Ads Manager.
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    {c.budget?.checkedAt && (
-                      <p className="mt-1 text-xs text-dash-ink-secondary">
-                        {c.budgetFresh ? "Checked" : "Prior snapshot"}:{" "}
-                        {date(c.budget.checkedAt, c)}
-                      </p>
-                    )}
-                    {c.budget?.error && (
-                      <p className="mt-1 text-xs text-amber-400">
-                        {c.budget.error}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <MetaBudgetPanel
+              key={c.id}
+              clientId={c.id}
+              disabled={!!busy}
+              onUpdated={load}
+            />
 
             {expanded === c.id && c.linked && (
               <div className="mt-5 border-t border-dash-border pt-4">
@@ -534,10 +470,6 @@ export function AgencyOverview({
                         Email me about new issues
                       </label>
                     </div>
-                    <p className="mt-3 text-xs text-dash-ink-secondary">
-                      Rolling comparisons update daily. Custom dates refresh
-                      manually. Budget alerts are managed in client settings.
-                    </p>
                   </details>
                 )}
                 {c.performance?.emailError && (

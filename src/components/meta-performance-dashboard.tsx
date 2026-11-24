@@ -11,13 +11,14 @@ import {
 } from "@/lib/performance-monitor/portfolio";
 import { metricChange } from "@/lib/performance-monitor/metric-change";
 import {
-  deliveryMetrics,
-  outcomeMetrics,
-  additionalMetrics,
+  remainingAccountMetrics,
+  accountHighlightMetrics,
+  campaignComparisonMetrics,
   comparisonCampaignState,
   type DashboardMetric,
 } from "@/lib/performance-monitor/dashboard-metrics";
 import { PortfolioBadge } from "./portfolio-board";
+import { signalSummaryLine } from "@/lib/performance-monitor/summary-line";
 import { formatMetaPeriod } from "@/lib/performance-monitor/format-period";
 
 function formatted(
@@ -52,7 +53,7 @@ function Change({
   const delta = metricChange(
     metric.current,
     metric.previous,
-    metric.key,
+    metric.key.split(":")[0],
     metric.label,
     fresh && metric.comparable !== false,
   );
@@ -168,7 +169,9 @@ function Issue({
         )}
       </div>
       <p className="mt-2 break-words text-sm font-semibold">{campaign.name}</p>
-      <p className="mt-1 text-sm text-dash-ink-secondary">{signal.message}</p>
+      <p className="mt-1 text-sm text-dash-ink-secondary">
+        {signalSummaryLine(campaign, signal)}
+      </p>
       <span className="mt-2 block text-xs font-medium underline underline-offset-4">
         Review campaign ↓
       </span>
@@ -183,6 +186,7 @@ export function MetaPerformanceDashboard({
   const [showAll, setShowAll] = useState(false);
   const facts = c.performance?.facts;
   if (!facts) return null;
+  const highlights = accountHighlightMetrics(facts);
   const campaigns = [...facts.campaigns].sort(
     (a, b) =>
       ({
@@ -303,56 +307,53 @@ export function MetaPerformanceDashboard({
           </details>
         )}
       </section>
-      <section aria-label="Account metrics">
+      <section
+        aria-label="Account metrics"
+        className="rounded-2xl border border-blue-400/25 bg-blue-400/5 p-4 sm:p-5"
+      >
         <div className="mb-3">
-          <h3 className="text-lg font-semibold">Account comparison</h3>
-          <p className="mt-1 text-sm text-dash-ink-secondary">
-            Actual figures for both periods. Campaign results are compared by
-            goal below.
-          </p>
+          <h3 className="text-lg font-semibold text-blue-400">
+            Account comparison
+          </h3>
         </div>
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {deliveryMetrics(facts.current, facts.previous)
-            .filter((m) =>
-              ["spend", "reach", "impressions", "link_clicks"].includes(m.key),
-            )
-            .map((metric) => (
-              <div
-                key={metric.key}
-                className="min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4"
-              >
-                <dt className="text-xs text-dash-ink-secondary">
-                  {metric.label}
-                </dt>
-                <dd className="mt-2 break-words text-2xl font-semibold tabular-nums">
-                  {formatted(metric.current, metric.unit, c.currency)}
-                </dd>
-                <dd className="mt-2">
-                  <Change metric={metric} fresh={c.performanceFresh} />
-                </dd>
-                <dd className="mt-2 text-xs text-dash-ink-secondary">
-                  Previous {formatted(metric.previous, metric.unit, c.currency)}
-                </dd>
-              </div>
-            ))}
+        <dl
+          className={`grid grid-cols-2 gap-3 ${highlights.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}
+        >
+          {highlights.map((metric) => (
+            <div
+              key={metric.key}
+              className="min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4"
+            >
+              <dt className="text-xs text-dash-ink-secondary">
+                {metric.label}
+              </dt>
+              <dd className="mt-2 break-words text-2xl font-semibold tabular-nums">
+                {formatted(metric.current, metric.unit, c.currency)}
+              </dd>
+              <dd className="mt-2">
+                <Change metric={metric} fresh={c.performanceFresh} />
+              </dd>
+              <dd className="mt-2 text-xs text-dash-ink-secondary">
+                Previous {formatted(metric.previous, metric.unit, c.currency)}
+              </dd>
+            </div>
+          ))}
         </dl>
-        <details className="mt-4 rounded-xl border border-dash-border px-4 py-3">
-          <summary className="cursor-pointer text-sm font-medium">
-            All account metrics
-          </summary>
+        <div className="mt-4">
           <MetricsTable
-            metrics={deliveryMetrics(facts.current, facts.previous)}
+            metrics={remainingAccountMetrics(facts)}
             currency={c.currency}
             fresh={c.performanceFresh}
           />
-        </details>
+        </div>
       </section>
-      <section aria-label="Campaign results">
-        <h3 className="text-lg font-semibold">Campaign comparisons</h3>
-        <p className="mt-1 text-sm text-dash-ink-secondary">
-          Results follow each campaign’s detected goal, including leads,
-          purchases, traffic, video views, app installs and custom events.
-        </p>
+      <section
+        aria-label="Campaign results"
+        className="rounded-2xl border border-violet-400/25 bg-violet-400/5 p-4 sm:p-5"
+      >
+        <h3 className="text-lg font-semibold text-violet-400">
+          Campaign comparisons
+        </h3>
         {(facts.valueWarning || facts.metricsWarning) && (
           <p className="mt-3 text-sm text-dash-ink-secondary">
             Some metrics are unavailable. Refresh to retry; missing data is
@@ -385,32 +386,13 @@ export function MetaPerformanceDashboard({
                 </p>
               )}
               <MetricsTable
-                metrics={[
-                  ...outcomeMetrics(campaign),
-                  ...deliveryMetrics(campaign.current, campaign.previous),
-                ]}
+                metrics={campaignComparisonMetrics(campaign)}
                 currency={c.currency}
                 fresh={c.performanceFresh}
               />
               <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
                 Swipe the comparison table to see all columns →
               </p>
-              <details className="mt-4 border-t border-dash-border pt-3">
-                <summary className="cursor-pointer text-sm font-medium">
-                  Additional reported metrics
-                </summary>
-                <MetricsTable
-                  metrics={additionalMetrics(campaign)}
-                  currency={c.currency}
-                  fresh={c.performanceFresh}
-                />
-                {/purchase/i.test(campaign.objective) && (
-                  <p className="mt-3 text-xs text-dash-ink-secondary">
-                    Purchase ROAS uses matching purchase value and campaign
-                    spend. Attribution can revise recent results.
-                  </p>
-                )}
-              </details>
             </article>
           );
         })}
