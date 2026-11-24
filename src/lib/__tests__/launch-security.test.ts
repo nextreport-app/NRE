@@ -14,9 +14,9 @@ import { isRazorpaySubscriptionsConfigured, planIdForAmount } from "../razorpay"
 
 describe("launch security contracts", () => {
   it("rejects executable and external callbacks while preserving local paths", () => {
-    for (const path of ["javascript:alert(1)", "//evil.test", "/\\evil.test", "https://evil.test", "/\n/evil.test"]) expect(safeAuthRedirect(path)).toBe("/overview");
-    expect(safeAuthRedirect(null)).toBe("/overview");
-    expect(safeAuthRedirect(undefined)).toBe("/overview");
+    for (const path of ["javascript:alert(1)", "//evil.test", "/\\evil.test", "https://evil.test", "/\n/evil.test"]) expect(safeAuthRedirect(path)).toBe("/clients");
+    expect(safeAuthRedirect(null)).toBe("/clients");
+    expect(safeAuthRedirect(undefined)).toBe("/clients");
     expect(safeAuthRedirect("/clients/client/reports/new")).toBe("/clients/client/reports/new");
     expect(safeAuthRedirect("/overview?client=123")).toBe("/overview?client=123");
     expect(safeAuthRedirect("/pricing?billing=annual")).toBe("/pricing?billing=annual");

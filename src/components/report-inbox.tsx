@@ -12,7 +12,7 @@ const views: { key: InboxView; label: string }[] = [
   { key: "approved", label: "Ready to send" },
   { key: "working", label: "In progress" },
   { key: "attention", label: "Needs attention" },
-  { key: "history", label: "History" },
+  { key: "history", label: "Sent & skipped" },
 ];
 interface View {
   items: InboxItem[];
@@ -34,7 +34,7 @@ const labels: Record<string, string> = {
   REVIEW: "Verify delivery",
   SKIPPED: "Skipped",
 };
-export function ReportInbox() {
+export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [data, setData] = useState<View | null>(null),
     [view, setView] = useState<InboxView>("todo"),
     [search, setSearch] = useState(""),
@@ -59,7 +59,7 @@ export function ReportInbox() {
       );
       const result = await response.json();
       if (!response.ok)
-        throw Error(result.error ?? "Report inbox could not load.");
+        throw Error(result.error ?? "Scheduled drafts could not load.");
       if (version === requestVersion.current) {
         setData(result);
         setError("");
@@ -145,7 +145,7 @@ export function ReportInbox() {
     <div className="mx-auto w-full min-w-0 max-w-5xl text-dash-ink nre-report-inbox">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Report inbox</h1>
+          {embedded ? <h2 className="text-xl font-semibold">Scheduled drafts</h2> : <h1 className="text-2xl font-bold">Scheduled drafts</h1>}
           <p className="mt-2 text-sm text-dash-ink-secondary">
             Review scheduled drafts across your clients. Approve first, then
             send.
@@ -301,7 +301,7 @@ export function ReportInbox() {
                 <>
                   <a
                     className="text-dash-accent"
-                    href={`/clients/${item.clientId}/reports/${item.report.id}/copy`}
+                    href={`/clients/${item.clientId}/reports/${item.report.id}/copy?from=scheduled`}
                     target="_blank"
                     rel="noreferrer"
                   >

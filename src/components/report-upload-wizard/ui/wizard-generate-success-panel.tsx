@@ -439,7 +439,7 @@ export function WizardGenerateSuccessPanel({
             Generate another report for <span className="font-semibold">{clientName}</span>
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
-            <Link href="/reports" className="font-medium text-dash-accent hover:underline">Review scheduled drafts</Link>
+            <Link href="/reports?tab=scheduled" className="font-medium text-dash-accent hover:underline">Review scheduled drafts</Link>
             <button
               type="button"
               onClick={() => openExitLink(allReportsHref)}

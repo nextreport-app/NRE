@@ -1,6 +1,5 @@
+import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 import { ClientReportDesign } from "@/components/client-report-design";
-import { ScheduledReportsCard } from "@/components/scheduled-reports-card";
-import { BudgetMonitorCard } from "@/components/budget-monitor-card";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import { SettingsDisclosure } from "@/components/settings-disclosure";
 import Link from "next/link";
@@ -149,9 +148,10 @@ export default async function ClientDetailPage({
           ← Back to Clients
         </Link>
         <h1 className="mt-2 truncate text-[24px] font-bold text-dash-ink">{client.accountName}</h1>
-        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">{client.currency} · {client.timezone}</p>
+        <p className="mt-0.5 text-[14px] text-dash-ink-secondary">Client settings · {client.currency} · {client.timezone}</p>
       </div>
 
+      <ClientWorkspaceNav clientId={client.id} current="settings" />
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
@@ -197,13 +197,13 @@ export default async function ClientDetailPage({
           </Card>
         ) : null}
 
-        <a href={`/overview?client=${client.id}`} className="block rounded-xl border border-dash-border p-4 text-sm text-dash-accent hover:underline">View Meta performance & signals →</a>
+
 
         <ClientReportDesign clientId={client.id}/>
 
-        <BudgetMonitorCard key={JSON.stringify([client.id,client.monthlyBudget,client.currency,client.timezone,client.metaAdAccountId,client.budgetMonitorTolerance])} clientId={client.id} />
+        <Card id="budget-monitor"><CardHeading hint="Review spending, budget alerts and campaign changes together in Performance.">Budget &amp; alerts</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/overview?client=${client.id}#meta-budget-${client.id}`}>Open budget &amp; alerts →</Link></Card>
 
-        <ScheduledReportsCard key={client.id} clientId={client.id} />
+        <Card id="scheduled-reports"><CardHeading hint="Create or change recurring schedules in one place.">Scheduled reports</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/clients/${client.id}/schedules`}>Manage schedules →</Link></Card>
 
         <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
           <PreviousMonthDataUpload

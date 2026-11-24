@@ -1,3 +1,4 @@
+import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -20,11 +21,8 @@ export default async function ClientSchedulesPage({ params }: { params: Promise<
       <h1 className="mt-3 break-words text-2xl font-bold">Schedule reports · {client.accountName}</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">Fresh Meta API data → private draft → your review and approval → send.</p>
       <p className="mt-2 text-sm text-dash-ink-secondary">Schedules have their own dates and campaign settings. One-off CSV uploads and wizard selections are not copied.</p>
-      <nav aria-label="Client reporting" className="my-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-dash-accent">
-        <Link href="/reports" className="hover:underline">Report inbox</Link>
-        <Link href={`/clients/${client.id}/reports/new`} className="hover:underline">Generate a report now</Link>
-        <Link href={`/clients/${client.id}#client-settings`} className="hover:underline">Client settings</Link>
-      </nav>
+      <ClientWorkspaceNav clientId={client.id} current="schedules" />
+      <Link href="/reports?tab=scheduled" className="mb-4 inline-block text-sm text-dash-accent hover:underline">Review scheduled drafts →</Link>
       <ScheduledReportsCard key={client.id} clientId={client.id} />
     </div>
   );
