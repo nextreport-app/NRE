@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { metricChange } from "@/lib/performance-monitor/metric-change";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
@@ -145,7 +144,7 @@ export function PortfolioBoard({
             <p className="mt-2 text-sm">
               {c.linked
                 ? "Ready to load campaign performance."
-                : "No Meta ad account linked yet."}
+                : "Choose which Meta ad account belongs to this client."}
             </p>
           )}
           {c.unavailable && (
@@ -164,30 +163,23 @@ export function PortfolioBoard({
               No delivery was returned for either period.
             </p>
           )}
-          {!c.linked ? (
-            <Link
-              id={`open-account-${c.id}`}
-              href={`/clients/${c.id}/reports/new`}
-              className="mt-3 inline-flex rounded-xl border border-dash-border px-3 py-2 text-sm font-medium text-dash-accent"
-            >
-              Link Meta account<span className="sr-only"> for {c.name}</span>
-            </Link>
-          ) : (
-            <button
-              id={`open-account-${c.id}`}
-              aria-expanded={selected === c.id}
-              aria-controls={`account-${c.id}`}
-              className="mt-4 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
-              onClick={() => onOpen(c.id)}
-            >
-              {selected === c.id
+          <button
+            id={`open-account-${c.id}`}
+            aria-expanded={selected === c.id}
+            aria-controls={`account-${c.id}`}
+            className="mt-4 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+            onClick={() => onOpen(c.id)}
+          >
+            {!c.linked
+              ? "Choose ad account"
+              : selected === c.id
                 ? "Close account"
                 : c.performanceEnabled
                   ? "View performance"
                   : "Set up monitoring"}
-              <span className="sr-only"> {c.name}</span><span aria-hidden="true">→</span>
-            </button>
-          )}
+            <span className="sr-only"> {c.name}</span>
+            <span aria-hidden="true">→</span>
+          </button>
         </article>
       ))}
     </div>
