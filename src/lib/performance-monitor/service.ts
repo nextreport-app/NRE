@@ -1,3 +1,4 @@
+import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { buildPerformanceAlertEmail } from "./alert-email";
 import { decisionPeriods } from "./settings";
 import {
@@ -123,7 +124,7 @@ export async function checkClientPerformance(
     );
     if (
       account.currency !== client.currency ||
-      account.timezone_name !== client.timezone
+      !timezonesEquivalent(account.timezone_name, client.timezone)
     )
       throw new ServiceError(
         "Match this client's currency and timezone to its Meta account in Client settings.",

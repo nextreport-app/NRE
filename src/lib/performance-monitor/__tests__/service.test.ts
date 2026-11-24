@@ -308,3 +308,11 @@ it("keeps moderate deterioration at review severity for owner notifications", as
     }),
   );
 });
+
+it("loads performance when Meta returns an alias for the saved client timezone", async () => {
+  m.client.findUnique.mockResolvedValue({ ...client, currency: "CAD", timezone: "America/Toronto", performanceMonitorEmailEnabled: false });
+  m.metadata.mockResolvedValue({ currency: "CAD", timezone_name: "Canada/Eastern" });
+  const snapshot = await checkClientPerformance("client", "owner", now);
+  expect(snapshot.error).toBeUndefined();
+  expect(m.fetch).toHaveBeenCalledWith(expect.objectContaining({ timezone: "America/Toronto", currency: "CAD" }));
+});

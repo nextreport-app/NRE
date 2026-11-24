@@ -149,7 +149,7 @@ export function MetaClientAccountSelector({
             Manage Meta connection
           </Link>
         )}
-        <Link href={`/clients/${clientId}`} className="underline">
+        <Link href={`/clients/${clientId}#client-settings`} className="underline">
           Client settings
         </Link>
       </div>
