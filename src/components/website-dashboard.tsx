@@ -151,7 +151,7 @@ export function WebsiteDashboard({
       <p className="mt-2 text-sm text-dash-ink-secondary">
         All website traffic reported by GA4, separate from Meta ad delivery.
       </p>
-      <OverviewNavigation current="website" />
+      <OverviewNavigation current="website" clientId={selected?.id} />
       {view && (
         <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-end gap-3">

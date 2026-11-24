@@ -162,7 +162,7 @@ export function AgencyOverview({
         See what’s improving, what’s declining, and what needs attention
         compared with the previous period.
       </p>
-      <OverviewNavigation current="meta" />
+      <OverviewNavigation current="meta" clientId={expanded} />
       {clients?.length &&
       !expanded &&
       !clients.some((c) => c.performanceEnabled || c.budgetEnabled) ? (

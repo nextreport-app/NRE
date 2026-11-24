@@ -45,6 +45,7 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
+                title={link.href === "/overview" ? "Meta Ads & GA4 performance" : undefined}
                 className={
                   "shrink-0 " +
                   (link.hideOnMobile ? "hidden md:inline " : "") +
