@@ -163,6 +163,11 @@ export function AgencyOverview({
         falling results and changes that need attention.
       </p>
       <OverviewNavigation current="meta" />
+      <p className="mt-4 rounded-xl border border-dash-border bg-dash-card px-4 py-3 text-sm leading-relaxed text-dash-ink-secondary">
+        <span className="font-medium text-dash-ink">About this view:</span>{" "}
+        See what’s improving, what’s declining, and what needs attention
+        compared with the previous period.
+      </p>
       {clients?.length &&
       !expanded &&
       !clients.some((c) => c.performanceEnabled || c.budgetEnabled) ? (
