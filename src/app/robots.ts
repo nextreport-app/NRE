@@ -9,6 +9,10 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: [
         "/clients",
+        "/performance",
+        "/overview",
+        "/websites",
+        "/reports",
         "/account",
         "/billing",
         "/support",

@@ -4,7 +4,7 @@ My Clients (`/clients`) is the common signed-in starting point, including Home's
 
 | Job | Portfolio entry | Selected client |
 | --- | --- | --- |
-| Performance and alerts | `/overview` | `/overview?client=ID`; Website traffic tab keeps the client at `/websites?client=ID` |
+| Performance and alerts | `/performance/meta-ads` | `/performance/meta-ads?client=ID`; Website traffic tab keeps the client at `/performance/google-analytics?client=ID` |
 | Generate a one-off report | My Clients → Generate report | `/clients/ID/reports/new` |
 | Recurring reports | `/clients?task=schedule` | `/clients/ID/schedules` |
 | Find generated reports | `/reports` → All reports | `/clients/ID/reports` includes filters and management tools |
@@ -29,3 +29,5 @@ The report wizard's Import, Campaigns, Metrics and Review steps are one generati
 Focused tests cover signed-out redirects, local callback validation, preserved client context, report ownership, private draft review, pagination and scoped navigation. Existing schedule, inbox, download and share-review tests verify approval/delivery boundaries remain intact. A mocked browser preview exercises wizard menu destinations, state preservation, keyboard dismissal and viewport positioning.
 
 This is a source/route and mocked-data audit. It does not claim a live production signup, payment, Meta consent, GA4 consent or actual email delivery test. No production client assignments, schedules, provider data or emails are changed during verification.
+
+Legacy `/overview` and `/websites` permanently redirect to the corresponding `/performance/` routes, preserving query parameters. All dashboard routes remain private and excluded from search indexing.

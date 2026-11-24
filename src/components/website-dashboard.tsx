@@ -170,13 +170,13 @@ export function WebsiteDashboard({
             {view.clients.filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(c => <article key={c.id} className="rounded-2xl border border-dash-border bg-dash-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold">{c.name}</h3><span className="rounded-full border border-dash-border px-2 py-1 text-xs text-dash-ink-secondary">{!view.connected ? "Connect GA4" : c.propertyId ? "Property linked" : "Needs setup"}</span></div>
               <p className="mt-3 text-sm text-dash-ink-secondary">{c.propertyId ? (c.propertyName || `GA4 property ${c.propertyId}`) : "No GA4 property linked yet."}</p>
-              <Link href={!view.connected ? "/account#ga4" : c.propertyId ? `/websites?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-dash-border bg-dash-bg px-4 py-2 text-sm font-semibold transition hover:border-dash-accent focus-visible:outline-2 focus-visible:outline-dash-accent">{!view.connected ? "Connect GA4 →" : c.propertyId ? "View website performance →" : "Choose GA4 property →"}</Link>
+              <Link href={!view.connected ? "/account#ga4" : c.propertyId ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-dash-border bg-dash-bg px-4 py-2 text-sm font-semibold transition hover:border-dash-accent focus-visible:outline-2 focus-visible:outline-dash-accent">{!view.connected ? "Connect GA4 →" : c.propertyId ? "View website performance →" : "Choose GA4 property →"}</Link>
             </article>)}
           </div>
           {!!view.clients.length && !view.clients.some(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) && <p className="mt-4 text-sm text-dash-ink-secondary">No clients match your search.</p>}
         </section>
       )}
-      {selected && <Link href="/websites" className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-dash-border px-4 py-2 text-sm font-medium hover:bg-dash-card">← All websites</Link>}
+      {selected && <Link href="/performance/google-analytics" className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-dash-border px-4 py-2 text-sm font-medium hover:bg-dash-card">← All websites</Link>}
       {view && clientId && (
         <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
@@ -188,7 +188,7 @@ export function WebsiteDashboard({
               className="mt-2 block min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm text-dash-ink focus-visible:outline-2 focus-visible:outline-dash-accent"
               value={selected?.id ?? ""}
               onChange={(e) => {
-                router.push(`/websites?client=${encodeURIComponent(e.target.value)}`);
+                router.push(`/performance/google-analytics?client=${encodeURIComponent(e.target.value)}`);
               }}
             >
               <option value="" disabled>

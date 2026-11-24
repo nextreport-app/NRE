@@ -110,7 +110,7 @@ describe("budget monitoring snapshot and delivery boundaries",()=>{
  });
  it("queues an escaped owner-only alert and displays unconfirmed delivery",async()=>{
   mocks.spend.mockResolvedValue(1200);mocks.deliver.mockResolvedValue({accepted:false});const s=await checkClientBudget("c","owner",now);expect(s.facts?.over).toBe(450);expect(s.emailError).toContain("not been confirmed");
-  const message=mocks.queue.mock.calls[0][0];expect(message.payload.to).toEqual(["owner@test.example"]);expect(message.payload.text).toContain("https://nextreport.in/overview?client=c#meta-budget-c");expect(message.payload.html).toContain("&lt;agency&gt;");expect(message.payload.html).not.toContain("A <agency>");expect(message.key).toBe(budgetAlertKey("c","2026-11",config,"reached"));
+  const message=mocks.queue.mock.calls[0][0];expect(message.payload.to).toEqual(["owner@test.example"]);expect(message.payload.text).toContain("https://nextreport.in/performance/meta-ads?client=c#meta-budget-c");expect(message.payload.html).toContain("&lt;agency&gt;");expect(message.payload.html).not.toContain("A <agency>");expect(message.key).toBe(budgetAlertKey("c","2026-11",config,"reached"));
  });
  it("respects owner email opt-out",async()=>{
   mocks.find.mockResolvedValue({...client,budgetMonitorEmailEnabled:false});mocks.spend.mockResolvedValue(1200);expect((await checkClientBudget("c","owner",now)).facts?.level).toBe("reached");expect(mocks.queue).not.toHaveBeenCalled();

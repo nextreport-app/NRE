@@ -201,7 +201,7 @@ export default async function ClientDetailPage({
 
         <ClientReportDesign clientId={client.id}/>
 
-        <Card id="budget-monitor"><CardHeading hint="Review spending, budget alerts and campaign changes together in Performance.">Budget &amp; alerts</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/overview?client=${client.id}#meta-budget-${client.id}`}>Open budget &amp; alerts →</Link></Card>
+        <Card id="budget-monitor"><CardHeading hint="Review spending, budget alerts and campaign changes together in Performance.">Budget &amp; alerts</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/performance/meta-ads?client=${client.id}#meta-budget-${client.id}`}>Open budget &amp; alerts →</Link></Card>
 
         <Card id="scheduled-reports"><CardHeading hint="Create or change recurring schedules in one place.">Scheduled reports</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/clients/${client.id}/schedules`}>Manage schedules →</Link></Card>
 
@@ -224,7 +224,7 @@ export default async function ClientDetailPage({
             <CardHeading hint="Link this client’s website property for the GA4 dashboard (Beta).">
               Google Analytics property
             </CardHeading>
-            <a href={`/websites?client=${client.id}`} className="mb-3 inline-block text-sm text-dash-accent hover:underline">View website performance →</a>
+            <a href={`/performance/google-analytics?client=${client.id}`} className="mb-3 inline-block text-sm text-dash-accent hover:underline">View website performance →</a>
             <Ga4PropertyPicker
               clientId={client.id}
               initialPropertyId={client.ga4PropertyId}

@@ -15,8 +15,8 @@ const invoke = (path: string, signedIn = false) => {
 };
 describe("workflow entry and login context", () => {
   it.each([
-    "/overview?client=express",
-    "/websites?client=express",
+    "/performance/meta-ads?client=express",
+    "/performance/google-analytics?client=express",
     "/reports?tab=scheduled",
     "/clients?task=schedule",
     "/clients/express/reports/new?resumeReport=report",
@@ -31,11 +31,11 @@ describe("workflow entry and login context", () => {
     ).toBe("/clients");
     const url = new URL(
       invoke(
-        "/login?callbackUrl=%2Fwebsites%3Fclient%3Dexpress",
+        "/login?callbackUrl=%2Fperformance%2Fgoogle-analytics%3Fclient%3Dexpress",
         true,
       ).headers.get("location")!,
     );
-    expect(url.pathname + url.search).toBe("/websites?client=express");
+    expect(url.pathname + url.search).toBe("/performance/google-analytics?client=express");
   });
   it.each([
     "//evil.test",
@@ -53,7 +53,7 @@ describe("workflow entry and login context", () => {
       "1",
     );
     expect(
-      invoke("/overview?client=express", true).headers.get("x-middleware-next"),
+      invoke("/performance/meta-ads?client=express", true).headers.get("x-middleware-next"),
     ).toBe("1");
   });
 });

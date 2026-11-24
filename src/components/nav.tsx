@@ -6,7 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 const LINK_HREFS = [
   { href: "/", key: "navHome" as const, hideOnMobile: true },
-  { href: "/overview", key: "navOverview" as const, hideOnMobile: false },
+  { href: "/performance/meta-ads", key: "navOverview" as const, hideOnMobile: false },
   { href: "/reports", key: "navReports" as const, hideOnMobile: false },
   { href: "/clients", key: "navClients" as const, hideOnMobile: false },
   { href: "/account", key: "navAccount" as const, hideOnMobile: false },
@@ -19,7 +19,7 @@ const LINK_HREFS = [
 /** Active-page match: exact for "/", prefix for everything else (so /clients/abc still highlights "My Clients"). */
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
-  if (href === "/overview" && pathname === "/websites") return true;
+  if (href === "/performance/meta-ads" && pathname === "/performance/google-analytics") return true;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -45,7 +45,7 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                title={link.href === "/overview" ? "Meta Ads & GA4 performance" : undefined}
+                title={link.href === "/performance/meta-ads" ? "Meta Ads & GA4 performance" : undefined}
                 className={
                   "shrink-0 " +
                   (link.hideOnMobile ? "hidden md:inline " : "") +

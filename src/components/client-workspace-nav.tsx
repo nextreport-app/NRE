@@ -7,7 +7,7 @@ export function clientWorkspaceLinks(
     {
       key: "performance",
       label: "Performance",
-      href: `${performanceView === "website" ? "/websites" : "/overview"}?client=${encodeURIComponent(clientId)}`,
+      href: `${performanceView === "website" ? "/performance/google-analytics" : "/performance/meta-ads"}?client=${encodeURIComponent(clientId)}`,
     },
     {
       key: "generate",
