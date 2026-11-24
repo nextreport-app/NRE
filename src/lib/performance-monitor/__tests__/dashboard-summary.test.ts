@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   accountHighlightMetrics,
+  campaignHighlightMetrics,
+  duplicateAccountTotals,
   campaignComparisonMetrics,
   remainingAccountMetrics,
 } from "../dashboard-metrics";
@@ -198,5 +200,48 @@ describe("short summary sentences", () => {
         message: "technical",
       }),
     ).toBe("Purchase ROAS is unavailable for this comparison.");
+  });
+});
+
+describe("campaign highlights and duplicate account totals", () => {
+  it("highlights spend, results, cost and landing page views for lead campaigns", () => {
+    expect(campaignHighlightMetrics(campaign()).map((m) => m.key)).toEqual([
+      "spend",
+      "results",
+      "cpr",
+      "landing_page_views",
+    ]);
+  });
+  it("highlights goal-specific purchases and ROAS and handles other goals", () => {
+    expect(
+      campaignHighlightMetrics(campaign("PURCHASES", "Cost per purchase")).map(
+        (m) => m.key,
+      ),
+    ).toContain("roas");
+    const video = campaignHighlightMetrics(
+      campaign("VIDEO VIEWS", "Cost per video view"),
+    );
+    expect(video.find((m) => m.key === "results")?.label).toBe(
+      "Results · Video Views",
+    );
+    expect(new Set(video.map((m) => m.key)).size).toBe(video.length);
+  });
+  it("collapses only one campaign with identical account delivery figures in both periods", () => {
+    const f = {
+      ...facts([campaign()]),
+      current: { ...base },
+      previous: { ...base },
+    };
+    expect(duplicateAccountTotals(f)).toBe(true);
+    expect(
+      duplicateAccountTotals({ ...f, campaigns: [campaign(), campaign()] }),
+    ).toBe(false);
+    expect(
+      duplicateAccountTotals({ ...f, current: { ...base, spend: 101 } }),
+    ).toBe(false);
+    expect(
+      duplicateAccountTotals({ ...f, previous: { ...base, reach: 776 } }),
+    ).toBe(false);
+    expect(duplicateAccountTotals({ ...f, campaigns: [] })).toBe(false);
   });
 });

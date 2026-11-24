@@ -1,3 +1,4 @@
+import { hasComparisonActivity } from "./campaign-activity";
 import { decisionSignals } from "./decision";
 import {
   decisionPeriods,
@@ -398,12 +399,13 @@ export function buildPerformanceFacts(
       }),
     };
   });
+  const relevantCampaigns = campaigns.filter(hasComparisonActivity);
   return {
     periodA,
     periodB,
     current: metrics(inPeriod(scoped, periodA), null),
     previous: metrics(inPeriod(scoped, periodB), null),
-    campaigns,
-    empty: scoped.length === 0,
+    campaigns: relevantCampaigns,
+    empty: relevantCampaigns.length === 0,
   };
 }

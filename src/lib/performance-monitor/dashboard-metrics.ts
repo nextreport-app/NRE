@@ -323,3 +323,67 @@ export function remainingAccountMetrics(
     );
   });
 }
+
+/** Keep goal-specific outcomes prominent without repeating the same metrics below. */
+export function campaignHighlightMetrics(
+  c: CampaignPerformance,
+): DashboardMetric[] {
+  const all = campaignComparisonMetrics(c);
+  const keys = new Set([
+    "spend",
+    "results",
+    "cpr",
+    ...(/purchase/i.test(c.objective) ? ["roas", "purchase_value"] : []),
+  ]);
+  const cards = all.filter((m) => keys.has(m.key));
+  const preferred = /lead|landing|link click/i.test(c.objective)
+    ? ["landing_page_views", "link_clicks", "impressions", "reach"]
+    : ["impressions", "reach", "link_clicks", "landing_page_views"];
+  for (const key of preferred) {
+    if (cards.length >= 4) break;
+    const metric = all.find(
+      (m) => m.key === key && (m.current != null || m.previous != null),
+    );
+    if (metric) cards.push(metric);
+  }
+  return cards.sort(
+    (a, b) => Number(b.key === "spend") - Number(a.key === "spend"),
+  );
+}
+
+/** Collapse only proven duplicates; a single campaign does not imply identical account reach. */
+export function duplicateAccountTotals(
+  facts: import("./facts").PerformanceFacts,
+): boolean {
+  if (facts.campaigns.length !== 1) return false;
+  const campaign = facts.campaigns[0];
+  const fields: (keyof PeriodMetrics)[] = [
+    "spend",
+    "impressions",
+    "reach",
+    "clicks",
+    "ctr",
+    "cpc",
+    "linkClicks",
+    "linkCpc",
+    "landingPageViews",
+    "landingPageCost",
+    "metaLeads",
+    "websiteLeads",
+    "purchases",
+    "purchaseValue",
+    "roas",
+    "addToCart",
+    "initiateCheckout",
+  ];
+  return (["current", "previous"] as const).every((period) =>
+    fields.every((field) => {
+      const a = facts[period][field],
+        b = campaign[period][field];
+      if (a == null || b == null) return a == null && b == null;
+      return (
+        Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= 0.000001
+      );
+    }),
+  );
+}

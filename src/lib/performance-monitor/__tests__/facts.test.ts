@@ -1,3 +1,4 @@
+import { hasComparisonActivity } from "../campaign-activity";
 import { describe, it, expect } from "vitest";
 import { parseCsvText } from "../../nre/parse-csv";
 import {
@@ -241,4 +242,26 @@ it("uses exact purchase actions and campaign period spend for ROAS, without alia
   expect(facts.campaigns[0].signals.some((s) => s.key === "roas-up")).toBe(
     true,
   );
+});
+
+it("keeps previous-period activity but excludes wholly idle campaigns", () => {
+  const { facts } = fixture();
+  const c = facts.campaigns[0];
+  const idle = {
+    ...base,
+    spend: 0,
+    impressions: 0,
+    clicks: 0,
+    results: 0,
+    cpr: null,
+  };
+  expect(hasComparisonActivity({ ...c, current: idle, previous: idle })).toBe(
+    false,
+  );
+  expect(hasComparisonActivity({ ...c, current: idle })).toBe(true);
+  const parsed = parseCsvText(
+    "Campaign name,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all),Link clicks\nIdle,2026-11-19,0,0,Link clicks,0,0,0\nPaused recently,2026-11-12,100,10,Link clicks,1000,20,10",
+  );
+  const f = buildPerformanceFacts(parsed.rows, parsed.headers, config, now);
+  expect(f.campaigns.map((c) => c.name)).toEqual(["Paused recently"]);
 });

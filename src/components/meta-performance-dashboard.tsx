@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { hasComparisonActivity } from "@/lib/performance-monitor/campaign-activity";
 import type { OverviewRow } from "@/lib/agency-overview";
 import type {
   CampaignPerformance,
@@ -19,6 +20,8 @@ import {
   remainingAccountMetrics,
   accountHighlightMetrics,
   campaignComparisonMetrics,
+  campaignHighlightMetrics,
+  duplicateAccountTotals,
   comparisonCampaignState,
   type DashboardMetric,
 } from "@/lib/performance-monitor/dashboard-metrics";
@@ -188,6 +191,40 @@ function Issue({
     </a>
   );
 }
+function MetricHighlights({
+  metrics,
+  currency,
+  fresh,
+}: {
+  metrics: DashboardMetric[];
+  currency: string;
+  fresh: boolean;
+}) {
+  return (
+    <dl
+      className={`grid grid-cols-2 gap-3 ${metrics.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}
+    >
+      {metrics.map((metric) => (
+        <div
+          key={metric.key}
+          className="min-w-0 rounded-xl border border-dash-border bg-dash-card p-4"
+        >
+          <dt className="text-xs text-dash-ink-secondary">{metric.label}</dt>
+          <dd className="mt-2 break-words text-2xl font-semibold tabular-nums">
+            {formatted(metric.current, metric.unit, currency)}
+          </dd>
+          <dd className="mt-2">
+            <Change metric={metric} fresh={fresh} />
+          </dd>
+          <dd className="mt-2 text-xs text-dash-ink-secondary">
+            Previous {formatted(metric.previous, metric.unit, currency)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function MetaPerformanceDashboard({
   client: c,
 }: {
@@ -195,7 +232,11 @@ export function MetaPerformanceDashboard({
 }) {
   const [showAll, setShowAll] = useState(false);
   const facts = c.performance?.facts
-    ? evaluatePerformanceFacts(c.performance.facts)
+    ? evaluatePerformanceFacts({
+        ...c.performance.facts,
+        empty: !c.performance.facts.campaigns.some(hasComparisonActivity),
+        campaigns: c.performance.facts.campaigns.filter(hasComparisonActivity),
+      })
     : undefined;
   if (!facts) return null;
   const highlights = accountHighlightMetrics(facts);
@@ -354,46 +395,35 @@ export function MetaPerformanceDashboard({
           </details>
         )}
       </section>
-      <section
+      <details
+        key={`${c.id}:${duplicateAccountTotals(facts)}`}
+        open={!duplicateAccountTotals(facts)}
         aria-label="Account metrics"
         className="rounded-2xl border border-blue-400/25 bg-dash-bg p-4 sm:p-5"
       >
-        <div className="mb-3">
-          <h3 className="text-lg font-semibold text-blue-400">
-            Account comparison
-          </h3>
-        </div>
-        <dl
-          className={`grid grid-cols-2 gap-3 ${highlights.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}
-        >
-          {highlights.map((metric) => (
-            <div
-              key={metric.key}
-              className="min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4"
-            >
-              <dt className="text-xs text-dash-ink-secondary">
-                {metric.label}
-              </dt>
-              <dd className="mt-2 break-words text-2xl font-semibold tabular-nums">
-                {formatted(metric.current, metric.unit, c.currency)}
-              </dd>
-              <dd className="mt-2">
-                <Change metric={metric} fresh={c.performanceFresh} />
-              </dd>
-              <dd className="mt-2 text-xs text-dash-ink-secondary">
-                Previous {formatted(metric.previous, metric.unit, c.currency)}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <summary className="cursor-pointer text-lg font-semibold text-blue-400">
+          Account totals
+        </summary>
+        {duplicateAccountTotals(facts) && (
+          <p className="mt-2 text-xs text-dash-ink-secondary">
+            These totals match the single campaign below.
+          </p>
+        )}
         <div className="mt-4">
-          <MetricsTable
-            metrics={remainingAccountMetrics(facts)}
+          <MetricHighlights
+            metrics={highlights}
             currency={c.currency}
             fresh={c.performanceFresh}
           />
+          <div className="mt-4">
+            <MetricsTable
+              metrics={remainingAccountMetrics(facts)}
+              currency={c.currency}
+              fresh={c.performanceFresh}
+            />
+          </div>
         </div>
-      </section>
+      </details>
       <section
         aria-label="Campaign results"
         className="rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
@@ -409,6 +439,8 @@ export function MetaPerformanceDashboard({
         )}
         {campaigns.map((campaign, index) => {
           const state = comparisonCampaignState(campaign);
+          const cards = campaignHighlightMetrics(campaign);
+          const cardKeys = new Set(cards.map((m) => m.key));
           return (
             <article
               id={`meta-campaign-${c.id}-${index}`}
@@ -435,8 +467,24 @@ export function MetaPerformanceDashboard({
                   are shown without a favorable/unfavorable rating.
                 </p>
               )}
+              <div className="mt-4">
+                <MetricHighlights
+                  metrics={cards}
+                  currency={c.currency}
+                  fresh={c.performanceFresh}
+                />
+              </div>
+              {campaign.current.spend === 0 &&
+                campaign.current.impressions === 0 && (
+                  <p className="mt-3 text-xs text-dash-ink-secondary">
+                    No delivery in the selected period · shown for
+                    previous-period activity.
+                  </p>
+                )}
               <MetricsTable
-                metrics={campaignComparisonMetrics(campaign)}
+                metrics={campaignComparisonMetrics(campaign).filter(
+                  (m) => !cardKeys.has(m.key),
+                )}
                 currency={c.currency}
                 fresh={c.performanceFresh}
               />
