@@ -1,6 +1,7 @@
 import {
   readBudgetSnapshot,
   BUDGET_LEVEL_LABELS,
+  budgetAlertPresentation,
   type BudgetConfig,
 } from "./budget-monitor-facts";
 import {
@@ -10,6 +11,7 @@ import {
 } from "./performance-monitor/facts";
 import {
   actionableSignals,
+  evaluatePerformanceFacts,
   campaignVerdict,
   type Verdict,
 } from "./performance-monitor/decision";
@@ -36,6 +38,17 @@ export function overviewRow(client: OverviewClient, now = new Date()) {
       client,
       now,
     );
+  const evaluatedPerformance = performance?.facts
+    ? { ...performance, facts: evaluatePerformanceFacts(performance.facts) }
+    : performance;
+  return buildOverviewRow(client, budget, evaluatedPerformance, now);
+}
+function buildOverviewRow(
+  client: OverviewClient,
+  budget: ReturnType<typeof readBudgetSnapshot>,
+  performance: ReturnType<typeof readPerformanceSnapshot>,
+  now: Date,
+) {
   const budgetFresh =
     client.budgetMonitorEnabled &&
     !!budget?.facts &&
@@ -62,11 +75,13 @@ export function overviewRow(client: OverviewClient, now = new Date()) {
     bf = budgetFresh ? budget?.facts : undefined;
   const budgetCritical =
     !!bf &&
-    (bf.over > bf.tolerance + 1e-8 ||
-      (bw.days - bw.completedDays <= 7 &&
-        bf.alertable &&
-        (bf.projectedOver! > bf.tolerance ||
-          bf.projectedShortfall! > bf.tolerance)));
+    client.monthlyBudget != null &&
+    budgetAlertPresentation(
+      bf,
+      client.monthlyBudget,
+      client.currency,
+      bw.days - bw.completedDays,
+    ).tone === "critical";
   const verdict: Verdict =
     counts.critical || budgetCritical
       ? "critical"

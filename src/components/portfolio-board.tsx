@@ -25,6 +25,7 @@ export function matchesPortfolio(row: OverviewRow, filter: string) {
   );
 }
 export function PortfolioBadge({ state }: { state: PortfolioState }) {
+  if (state === "insufficient") return null;
   return (
     <span
       className={`inline-block rounded-full border px-2 py-1 text-xs ${state === "critical" ? "border-red-400 text-red-400" : state === "review" ? "border-amber-400 text-amber-400" : state === "positive" ? "border-emerald-400 text-emerald-400" : "border-dash-border text-dash-ink-secondary"}`}
@@ -122,8 +123,10 @@ export function PortfolioBoard({
           {c.performanceFresh && c.portfolio.lead && (
             <div className="mt-2 min-w-0">
               <p className="break-words text-sm">
-                <strong>{c.portfolio.lead.name}</strong> ·{" "}
-                {c.portfolio.lead.reason}
+                <strong className="text-violet-400">
+                  [Campaign] {c.portfolio.lead.name}
+                </strong>{" "}
+                · {c.portfolio.lead.reason}
               </p>
               {c.portfolio.lead.observation && (
                 <ObservationLine

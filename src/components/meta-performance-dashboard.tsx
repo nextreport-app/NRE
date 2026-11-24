@@ -9,6 +9,11 @@ import {
   campaignRank,
   signalObservation,
 } from "@/lib/performance-monitor/portfolio";
+import { evaluatePerformanceFacts } from "@/lib/performance-monitor/decision";
+import {
+  budgetAlertPresentation,
+  budgetWindow,
+} from "@/lib/budget-monitor-facts";
 import { metricChange } from "@/lib/performance-monitor/metric-change";
 import {
   remainingAccountMetrics,
@@ -168,7 +173,9 @@ function Issue({
           <span className="text-xs text-dash-ink-secondary">Ongoing</span>
         )}
       </div>
-      <p className="mt-2 break-words text-sm font-semibold">{campaign.name}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-violet-400">
+        [Campaign] {campaign.name}
+      </p>
       <p className="mt-1 text-sm text-dash-ink-secondary">
         {signalSummaryLine(campaign, signal)}
       </p>
@@ -184,7 +191,9 @@ export function MetaPerformanceDashboard({
   client: OverviewRow;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const facts = c.performance?.facts;
+  const facts = c.performance?.facts
+    ? evaluatePerformanceFacts(c.performance.facts)
+    : undefined;
   if (!facts) return null;
   const highlights = accountHighlightMetrics(facts);
   const campaigns = [...facts.campaigns].sort(
@@ -217,7 +226,23 @@ export function MetaPerformanceDashboard({
         Number(a.signal.tone === "critical"),
     );
   const improvements = changes.filter((s) => s.signal.tone === "positive");
-  const urgent = issues.filter((s) => s.signal.tone === "critical").length;
+  const urgent = new Set(
+    issues.filter((s) => s.signal.tone === "critical").map((s) => s.index),
+  ).size;
+  const budgetWindowNow = budgetWindow(c.timezone);
+  const budgetAlert =
+    c.budgetFresh && c.budget?.facts && c.budget.config.monthlyBudget
+      ? budgetAlertPresentation(
+          c.budget.facts,
+          c.budget.config.monthlyBudget,
+          c.currency,
+          budgetWindowNow.days - budgetWindowNow.completedDays,
+        )
+      : null;
+  const budgetCritical = budgetAlert?.tone === "critical";
+  const unassessed = campaigns.some((c) =>
+    ["insufficient", "no-delivery"].includes(comparisonCampaignState(c)),
+  );
   const issueCard = ({ campaign, signal, index }: (typeof changes)[number]) => (
     <Issue
       key={`${index}-${signal.key}`}
@@ -249,33 +274,53 @@ export function MetaPerformanceDashboard({
       </div>
       <section
         aria-label="Performance summary"
-        className="rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
+        className={`rounded-2xl border p-4 sm:p-5 ${budgetCritical || (urgent && c.performanceFresh) ? "border-red-400/40 bg-red-400/5" : (issues.length && c.performanceFresh) || budgetAlert?.tone === "warning" ? "border-amber-400/30 bg-amber-400/5" : "border-dash-border bg-dash-bg"}`}
       >
         <p className="text-xs font-semibold uppercase tracking-wider text-dash-ink-secondary">
           Comparison summary
         </p>
         <h3 className="mt-2 text-xl font-semibold">
-          {!c.performanceFresh
-            ? "Refresh to review current changes"
-            : urgent
-              ? `${urgent} urgent issue${urgent === 1 ? "" : "s"} to review`
-              : issues.length
-                ? `${issues.length} change${issues.length === 1 ? "" : "s"} need${issues.length === 1 ? "s" : ""} review`
-                : facts.empty
-                  ? "No delivery in these periods"
-                  : "No significant issues detected"}
+          {budgetAlert &&
+          budgetAlert.tone !== "neutral" &&
+          (!c.performanceFresh || (budgetCritical ? !urgent : !issues.length))
+            ? budgetAlert!.title
+            : !c.performanceFresh
+              ? "Refresh to review current changes"
+              : urgent
+                ? `${urgent} campaign${urgent === 1 ? " needs" : "s need"} urgent review${budgetCritical ? " · budget alert" : ""}`
+                : issues.length
+                  ? `${issues.length} change${issues.length === 1 ? "" : "s"} need${issues.length === 1 ? "s" : ""} review`
+                  : facts.empty
+                    ? "No delivery in these periods"
+                    : unassessed
+                      ? "Review the comparison below"
+                      : "No material changes detected"}
         </h3>
         {!c.performanceFresh && (
           <p className="mt-2 text-sm text-dash-ink-secondary">
             These are saved figures. Refresh before making decisions.
           </p>
         )}
-        {c.budgetAttention && (
+        {budgetAlert && budgetAlert.tone !== "neutral" && (
           <a
             href={`#meta-budget-${c.id}`}
-            className="mt-3 block text-sm font-semibold underline"
+            role="alert"
+            className={`mt-4 block rounded-xl border p-4 ${budgetCritical ? "border-red-400/50 bg-red-400/10" : "border-amber-400/50 bg-amber-400/10"}`}
           >
-            Budget: {c.budgetLabel} · Review pacing ↓
+            <p
+              className={`font-semibold ${budgetCritical ? "text-red-400" : "text-amber-400"}`}
+            >
+              {budgetCritical
+                ? "Critical budget alert"
+                : c.budgetAttention
+                  ? "Budget warning"
+                  : "Budget notice"}{" "}
+              · {budgetAlert.title}
+            </p>
+            <p className="mt-2 text-sm">{budgetAlert.description}</p>
+            <span className="mt-2 block text-xs underline">
+              Review budget ↓
+            </span>
           </a>
         )}
         {!!issues.length && (
@@ -294,8 +339,7 @@ export function MetaPerformanceDashboard({
         )}
         {!issues.length && !facts.empty && (
           <p className="mt-2 text-sm text-dash-ink-secondary">
-            Review results and costs below. Campaigns with limited data are
-            marked separately.
+            Review results and costs below.
           </p>
         )}
         {!!improvements.length && (
@@ -370,8 +414,8 @@ export function MetaPerformanceDashboard({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h4 className="break-words text-base font-semibold">
-                    {campaign.name}
+                  <h4 className="break-words text-base font-semibold text-violet-400">
+                    [Campaign] {campaign.name}
                   </h4>
                   <p className="mt-1 text-xs text-dash-ink-secondary">
                     Goal: {campaign.objective.toLowerCase()}

@@ -109,7 +109,7 @@ it("uses fresh Meta data, exact closed periods, and owner email only", async () 
   );
   expect(m.queue).toHaveBeenCalledWith(
     expect.objectContaining({
-      key: "performance-alert:client:2026-11-19:2026-11-13:review",
+      key: "performance-alert:client:2026-11-19:2026-11-13:critical",
       kind: "PERFORMANCE_ALERT",
       payload: expect.objectContaining({ to: ["owner@example.com"] }),
     }),
@@ -256,4 +256,51 @@ it("retains primary delivery evidence when optional metric lookups fail", async 
   expect(result.facts?.current.spend).toBe(100);
   expect(result.facts?.current.reach).toBeUndefined();
   expect(JSON.stringify(result)).not.toContain("private provider details");
+});
+it("sends a new critical alert for the 8-to-2 lead collapse even when an old snapshot had no signals", async () => {
+  const source =
+    "Campaign name,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all)\nLeads,2026-11-19,102.27,2,Website leads,1392,94\nLeads,2026-11-12,107.16,8,Website leads,1335,77";
+  const { parseCsvText } = await import("../../nre/parse-csv");
+  const { buildPerformanceFacts } = await import("../facts");
+  const parsed = parseCsvText(source);
+  const old = buildPerformanceFacts(parsed.rows, parsed.headers, config, now);
+  old.campaigns.forEach((c) => (c.signals = []));
+  m.fetch.mockResolvedValue({ csvText: source });
+  m.client.findUnique.mockResolvedValue({
+    ...client,
+    performanceMonitorSnapshot: JSON.stringify({
+      version: 2,
+      config,
+      checkedAt: now.toISOString(),
+      facts: old,
+    }),
+  });
+  const first = await checkClientPerformance("client", "owner", now);
+  expect(m.queue).toHaveBeenCalledTimes(1);
+  expect(m.queue).toHaveBeenCalledWith(
+    expect.objectContaining({
+      key: "performance-alert:client:2026-11-19:2026-11-13:critical",
+    }),
+  );
+  m.queue.mockClear();
+  m.client.findUnique.mockResolvedValue({
+    ...client,
+    performanceMonitorSnapshot: JSON.stringify(first),
+  });
+  await checkClientPerformance("client", "owner", now);
+  expect(m.queue).not.toHaveBeenCalled();
+});
+it("keeps moderate deterioration at review severity for owner notifications", async () => {
+  m.fetch.mockResolvedValue({
+    csvText: csv.replace("100,10,On-Facebook", "100,12,On-Facebook"),
+  });
+  const result = await checkClientPerformance("client", "owner", now);
+  expect(
+    result.facts?.campaigns[0].signals.some((s) => s.tone === "critical"),
+  ).toBe(false);
+  expect(m.queue).toHaveBeenCalledWith(
+    expect.objectContaining({
+      key: "performance-alert:client:2026-11-19:2026-11-13:review",
+    }),
+  );
 });

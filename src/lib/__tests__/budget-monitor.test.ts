@@ -116,3 +116,11 @@ describe("budget monitoring snapshot and delivery boundaries",()=>{
   mocks.find.mockResolvedValue({...client,budgetMonitorEmailEnabled:false});mocks.spend.mockResolvedValue(1200);expect((await checkClientBudget("c","owner",now)).facts?.level).toBe("reached");expect(mocks.queue).not.toHaveBeenCalled();
  });
 });
+it("queues the $357.99/$300 overspend as a critical owner alert and keeps approach warnings distinct",async()=>{
+ const scoped={...client,monthlyBudget:300,budgetMonitorTolerance:3};mocks.find.mockResolvedValue(scoped);mocks.current.mockResolvedValue(scoped);
+ mocks.spend.mockImplementation(async(_token,_account,_start,end)=>end==="2026-11-22"?357.99:350);
+ const snapshot=await checkClientBudget("c","owner",now);expect(snapshot.facts?.over).toBeCloseTo(57.99);
+ expect(mocks.queue).toHaveBeenCalledWith(expect.objectContaining({payload:expect.objectContaining({subject:expect.stringContaining("critical budget alert"),text:expect.stringContaining("$57.99 above the $300.00 approved budget")})}));
+ mocks.queue.mockClear();mocks.spend.mockImplementation(async(_token,_account,_start,end)=>end==="2026-11-22"?240:210);
+ const approaching=await checkClientBudget("c","owner",now);expect(approaching.facts?.level).toBe("approaching");expect(mocks.queue).toHaveBeenCalledWith(expect.objectContaining({payload:expect.objectContaining({subject:expect.stringContaining("budget warning")})}));
+});
