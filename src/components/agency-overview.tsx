@@ -172,12 +172,12 @@ export function AgencyOverview({
           </h2>
           <p className="mt-2 text-sm text-dash-ink-secondary">
             {clients.filter((c) => c.linked).length} of {clients.length} clients
-            have a linked Meta account. Choose a linked client below, then
-            enable and load its performance.
+            have an ad account selected. Choose a client below, select its
+            ad account if needed, then load performance.
           </p>
           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
             {[
-              "1 · Link a Meta account",
+              "1 · Choose the client’s ad account",
               "2 · Enable & load performance",
               "3 · Review campaigns and budgets",
             ].map((step) => (
@@ -328,6 +328,8 @@ export function AgencyOverview({
                 client={c}
                 busy={!!busy}
                 onEnable={(emails) => void enableAndLoad(c, emails)}
+                onLinked={load}
+                onActivity={(value) => setActivationBusy(value ? c.id : null)}
               />
             )}
             <div className="mt-4 flex flex-wrap gap-2">
