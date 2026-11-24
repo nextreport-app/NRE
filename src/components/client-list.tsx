@@ -166,7 +166,7 @@ function ClientActionIcon({ type }: { type: "performance" | "schedule" | "manage
     {type === "performance" ? <><path d="M4 5v14h16" /><path d="m7 14 4-4 4 2 5-7" /></> : type === "schedule" ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4m10-4v4M3 11h18m-12 4h3" /></> : type === "report" ? <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6M8 13h8m-8 4h5" /></> : <><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="3" /><circle cx="15" cy="17" r="3" /></>}
   </svg>;
 }
-const clientSecondaryAction = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-3 py-2.5 text-center text-[13px] font-semibold text-dash-ink shadow-sm transition hover:border-dash-accent/60 hover:bg-dash-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent";
+const clientSecondaryAction = "inline-flex min-w-0 min-h-12 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dash-border bg-dash-bg px-0.5 py-2.5 text-center text-xs font-semibold text-dash-ink shadow-sm transition hover:border-dash-accent/60 hover:bg-dash-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent lg:flex-row lg:gap-2 lg:px-2 lg:text-[13px]";
 
 function ClientCard({ client, scheduling = false }: { client: ClientListItem; scheduling?: boolean }) {
   const prevMonth = getPreviousMonthListStatus(
@@ -193,14 +193,11 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
           <StatusChip tone={prevMonth.status === "current" ? "good" : "warn"} label={prevMonth.status === "current" ? "Previous-month totals ready" : "Previous-month file needs refresh"} title={prevMonth.title} />
         )}
       </div>
-      <div className="nre-client-card__divider mt-auto grid grid-cols-2 gap-2 border-t border-dash-border px-4 py-3 sm:px-5">
-        <Link href={scheduling ? `/clients/${client.id}/schedules` : `/clients/${client.id}/reports/new`} aria-label={`${scheduling ? "Schedule reports" : "Generate report"} for ${client.accountName}`} className="col-span-2 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-center text-[13px] font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent">{scheduling ? "Schedule reports" : "Generate report"} <span aria-hidden="true">→</span></Link>
-        <Link href={`/overview?client=${encodeURIComponent(client.id)}`} aria-label={`View performance for ${client.accountName}`} className="col-span-2 inline-flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-blue-400/30 bg-blue-400/10 px-4 py-3 text-dash-ink shadow-sm transition hover:border-blue-400/60 hover:bg-blue-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent">
-          <span className="inline-flex items-center gap-2 text-[13px] font-semibold"><ClientActionIcon type="performance" />View performance</span>
-          <span className="text-[11px] text-dash-ink-secondary">Meta Ads &amp; GA4 <span aria-hidden="true">→</span></span>
-        </Link>
-        <Link href={scheduling ? `/clients/${client.id}/reports/new` : `/clients/${client.id}/schedules`} aria-label={`${scheduling ? "Generate report" : "Schedule reports"} for ${client.accountName}`} className={clientSecondaryAction}><ClientActionIcon type={scheduling ? "report" : "schedule"} />{scheduling ? "Generate report" : "Schedule reports"}</Link>
-        <Link href={`/clients/${client.id}`} aria-label={`Manage ${client.accountName}`} className={clientSecondaryAction}><ClientActionIcon type="manage" />Manage</Link>
+      <div className="nre-client-card__divider mt-auto grid grid-cols-3 gap-2 border-t border-dash-border px-4 py-3 sm:px-5">
+        <Link href={scheduling ? `/clients/${client.id}/schedules` : `/clients/${client.id}/reports/new`} aria-label={`${scheduling ? "Schedule reports" : "Generate report"} for ${client.accountName}`} className="col-span-3 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-center text-[13px] font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent">{scheduling ? "Schedule reports" : "Generate report"} <span aria-hidden="true">→</span></Link>
+        <Link href={`/overview?client=${encodeURIComponent(client.id)}`} aria-label={`View performance for ${client.accountName}`} title="Meta Ads & GA4 performance" className={clientSecondaryAction}><ClientActionIcon type="performance" />Performance</Link>
+        <Link href={scheduling ? `/clients/${client.id}/reports/new` : `/clients/${client.id}/schedules`} aria-label={`${scheduling ? "Generate report" : "Schedule reports"} for ${client.accountName}`} title={scheduling ? "Generate report" : "Schedule reports"} className={clientSecondaryAction}><ClientActionIcon type={scheduling ? "report" : "schedule"} />{scheduling ? "Generate" : "Schedule"}</Link>
+        <Link href={`/clients/${client.id}`} aria-label={`Manage ${client.accountName}`} title="Manage client" className={clientSecondaryAction}><ClientActionIcon type="manage" />Manage</Link>
       </div>
     </article>
   );
