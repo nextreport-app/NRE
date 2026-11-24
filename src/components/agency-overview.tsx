@@ -31,7 +31,10 @@ export function AgencyOverview({
     [filter, setFilter] = useState("all"),
     [expanded, setExpanded] = useState(initialClientId);
   const [budgetBusy, setBudgetBusy] = useState(false);
-  const busy = activationBusy ?? singleBusy ?? (bulkRunning ? "bulk" : budgetBusy ? "budget" : null);
+  const busy =
+    activationBusy ??
+    singleBusy ??
+    (bulkRunning ? "bulk" : budgetBusy ? "budget" : null);
   const loaded = clients !== null;
   useEffect(() => {
     const panel =
@@ -416,25 +419,13 @@ export function AgencyOverview({
                 {c.performanceEnabled && (
                   <details className="mt-4 rounded-xl border border-dash-border p-4">
                     <summary className="cursor-pointer text-sm font-medium">
-                      Monitoring &amp; email preferences
+                      Performance alerts
                     </summary>
-                    <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-                      <label className="flex items-start gap-2">
-                        <input
-                          type="checkbox"
-                          className="mt-1 h-4 w-4 accent-dash-accent"
-                          checked={c.performanceEnabled}
-                          disabled={!!busy}
-                          onChange={(e) =>
-                            void action(c.id, "performance-monitor", {
-                              action: "settings",
-                              enabled: e.target.checked,
-                              emailEnabled: c.emailEnabled,
-                            })
-                          }
-                        />
-                        Keep performance updated
-                      </label>
+                    <p className="mt-2 text-xs text-dash-ink-secondary">
+                      Critical issues and early warnings from your campaign
+                      comparisons.
+                    </p>
+                    <div className="mt-4 text-sm">
                       <label className="flex items-start gap-2">
                         <input
                           type="checkbox"
@@ -449,7 +440,7 @@ export function AgencyOverview({
                             })
                           }
                         />
-                        Email me about new issues
+                        Email me about performance alerts
                       </label>
                     </div>
                   </details>

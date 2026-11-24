@@ -206,35 +206,23 @@ export function MetaBudgetPanel({
               <input
                 type="checkbox"
                 className="h-4 w-4 accent-dash-accent"
+                ref={(node) => {
+                  if (node)
+                    node.indeterminate = view.enabled !== view.emailEnabled;
+                }}
                 disabled={
                   blocked || (!view.enabled && (!view.linked || !view.budget))
                 }
-                checked={view.enabled}
+                checked={view.enabled && view.emailEnabled}
                 onChange={(e) =>
                   void save({
                     action: "settings",
                     enabled: e.target.checked,
-                    emailEnabled: view.emailEnabled,
-                  })
-                }
-              />
-              Monitor monthly spend
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-dash-accent"
-                disabled={blocked}
-                checked={view.emailEnabled}
-                onChange={(e) =>
-                  void save({
-                    action: "settings",
-                    enabled: view.enabled,
                     emailEnabled: e.target.checked,
                   })
                 }
               />
-              Email me about budget issues
+              Track budget &amp; email me about spend alerts
             </label>
             {view.enabled && (
               <button
@@ -247,6 +235,17 @@ export function MetaBudgetPanel({
               </button>
             )}
           </div>
+          <p className="mt-2 text-xs text-dash-ink-secondary">
+            Alerts for approaching the limit, overspend and projected
+            underspend.
+          </p>
+          {view.enabled !== view.emailEnabled && (
+            <p className="mt-2 text-xs text-dash-ink-secondary">
+              {view.enabled
+                ? "Budget tracking is on; budget emails are off."
+                : "Budget tracking is off; saved email preference is on."}
+            </p>
+          )}
           {!view.linked && (
             <p className="mt-3 text-sm text-dash-ink-secondary">
               Link a Meta account to monitor its spend.
