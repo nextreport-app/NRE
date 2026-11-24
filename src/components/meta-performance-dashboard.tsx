@@ -3,31 +3,26 @@ import { useState } from "react";
 import type { OverviewRow } from "@/lib/agency-overview";
 import type {
   CampaignPerformance,
-  PeriodMetrics,
+  PerformanceSignal,
 } from "@/lib/performance-monitor/facts";
 import {
-  campaignBrief,
   campaignRank,
+  signalObservation,
 } from "@/lib/performance-monitor/portfolio";
+import { metricChange } from "@/lib/performance-monitor/metric-change";
 import {
-  metricChange,
-  type MetricDirection,
-} from "@/lib/performance-monitor/metric-change";
+  deliveryMetrics,
+  outcomeMetrics,
+  additionalMetrics,
+  comparisonCampaignState,
+  type DashboardMetric,
+} from "@/lib/performance-monitor/dashboard-metrics";
 import { PortfolioBadge } from "./portfolio-board";
 import { formatMetaPeriod } from "@/lib/performance-monitor/format-period";
 
-type Metric = {
-  label: string;
-  current: number | null | undefined;
-  previous: number | null | undefined;
-  unit?: "money" | "percent" | "multiple";
-  direction: MetricDirection;
-};
-const words = (s: string) =>
-  s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 function formatted(
-  n: Metric["current"],
-  unit: Metric["unit"],
+  n: DashboardMetric["current"],
+  unit: DashboardMetric["unit"],
   currency: string,
 ) {
   if (n == null) return "—";
@@ -35,7 +30,11 @@ function formatted(
     new Intl.NumberFormat(
       "en-US",
       unit === "money"
-        ? { style: "currency", currency, maximumFractionDigits: 2 }
+        ? {
+            style: "currency",
+            currency,
+            maximumFractionDigits: n > 0 && n < 0.1 ? 4 : 2,
+          }
         : {
             maximumFractionDigits:
               unit === "percent" || unit === "multiple" ? 2 : 1,
@@ -43,126 +42,138 @@ function formatted(
     ).format(n) + (unit === "percent" ? "%" : unit === "multiple" ? "×" : "")
   );
 }
-function Change({ metric, fresh }: { metric: Metric; fresh: boolean }) {
+function Change({
+  metric,
+  fresh,
+}: {
+  metric: DashboardMetric;
+  fresh: boolean;
+}) {
   const delta = metricChange(
     metric.current,
     metric.previous,
-    metric.direction,
-    fresh,
+    metric.key,
+    metric.label,
+    fresh && metric.comparable !== false,
   );
   return (
     <span
-      className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 bg-red-400/10 text-red-400" : "border-amber-400/30 bg-amber-400/10 text-amber-400"}`}
+      className={`inline-flex whitespace-nowrap rounded-full border px-2 py-1 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 bg-red-400/10 text-red-400" : "border-dash-border text-dash-ink-secondary"}`}
     >
       {delta.label}
     </span>
   );
 }
-function Tile({
-  metric,
+function MetricsTable({
+  metrics,
   currency,
   fresh,
 }: {
-  metric: Metric;
+  metrics: DashboardMetric[];
   currency: string;
   fresh: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4">
-      <dt className="text-xs font-medium text-dash-ink-secondary">
-        {metric.label}
-      </dt>
-      <dd className="mt-2 break-words text-2xl font-semibold tracking-tight">
-        {formatted(metric.current, metric.unit, currency)}
-      </dd>
-      <dd className="mt-2">
-        <Change metric={metric} fresh={fresh} />
-      </dd>
-      <dd className="mt-2 text-xs text-dash-ink-secondary">
-        Previous {formatted(metric.previous, metric.unit, currency)}
-      </dd>
+    <div className="mt-3 max-w-full overflow-x-auto">
+      <table className="w-full min-w-[560px] text-left text-sm">
+        <thead>
+          <tr className="text-xs text-dash-ink-secondary">
+            <th className="py-3 pr-3 font-medium">Metric</th>
+            <th className="px-3 font-medium">Selected period</th>
+            <th className="px-3 font-medium">Previous period</th>
+            <th className="pl-3 font-medium">Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          {metrics.map((metric) => (
+            <tr key={metric.key} className="border-t border-dash-border">
+              <th
+                className={`py-3 pr-3 ${metric.key === "results" || metric.key === "cpr" ? "font-semibold" : "font-normal"}`}
+              >
+                {metric.label}
+              </th>
+              <td className="px-3 font-semibold tabular-nums">
+                {formatted(metric.current, metric.unit, currency)}
+              </td>
+              <td className="px-3 tabular-nums text-dash-ink-secondary">
+                {formatted(metric.previous, metric.unit, currency)}
+              </td>
+              <td className="pl-3">
+                <Change metric={metric} fresh={fresh} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
-function delivery(a: PeriodMetrics, b: PeriodMetrics): Metric[] {
-  return [
-    {
-      label: "Ad spend",
-      current: a.spend,
-      previous: b.spend,
-      unit: "money",
-      direction: "signed",
-    },
-    {
-      label: "Impressions",
-      current: a.impressions,
-      previous: b.impressions,
-      direction: "signed",
-    },
-    {
-      label: "Clicks (all)",
-      current: a.clicks,
-      previous: b.clicks,
-      direction: "signed",
-    },
-    {
-      label: "CTR (all)",
-      current: a.ctr,
-      previous: b.ctr,
-      unit: "percent",
-      direction: "signed",
-    },
-    {
-      label: "CPC (all)",
-      current: a.cpc,
-      previous: b.cpc,
-      unit: "money",
-      direction: "signed",
-    },
-    {
-      label: "CPM",
-      current: a.impressions > 0 ? (a.spend / a.impressions) * 1000 : null,
-      previous: b.impressions > 0 ? (b.spend / b.impressions) * 1000 : null,
-      unit: "money",
-      direction: "signed",
-    },
-  ];
-}
-function outcomes(c: CampaignPerformance): Metric[] {
-  const direction = c.comparableResults;
-  return [
-    {
-      label: words(c.objective),
-      current: c.current.results,
-      previous: c.previous.results,
-      direction: direction ? "signed" : "neutral",
-    },
-    {
-      label: words(c.costLabel),
-      current: c.current.cpr,
-      previous: c.previous.cpr,
-      unit: "money",
-      direction: direction ? "signed" : "neutral",
-    },
-    ...(/purchase/i.test(c.objective)
-      ? [
-          {
-            label: "Purchase ROAS",
-            current: c.current.roas,
-            previous: c.previous.roas,
-            unit: "multiple" as const,
-            direction: direction ? ("signed" as const) : ("neutral" as const),
-          },
-          {
-            label: "Purchase value",
-            current: c.current.purchaseValue,
-            previous: c.previous.purchaseValue,
-            unit: "money" as const,
-            direction: direction ? ("signed" as const) : ("neutral" as const),
-          },
-        ]
-      : []),
-  ];
+function Issue({
+  campaign,
+  signal,
+  href,
+  fresh,
+}: {
+  campaign: CampaignPerformance;
+  signal: PerformanceSignal;
+  href: string;
+  fresh: boolean;
+}) {
+  const observation = signalObservation(campaign, signal);
+  const delta = observation
+    ? metricChange(
+        observation.current,
+        observation.previous,
+        signal.key.startsWith("cpr") || signal.key === "cost-above-target"
+          ? "cpr"
+          : signal.key.startsWith("cpc")
+            ? "cpc_all"
+            : signal.key.startsWith("ctr")
+              ? "ctr"
+              : signal.key.startsWith("roas")
+                ? "roas"
+                : "results",
+        signal.metric,
+        fresh,
+      )
+    : null;
+  return (
+    <a
+      href={href}
+      className="block rounded-xl border border-dash-border bg-dash-bg p-4 hover:bg-dash-card"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded-full border px-2 py-1 text-xs font-semibold ${!fresh ? "border-dash-border text-dash-ink-secondary" : signal.tone === "critical" ? "border-red-400/40 text-red-400" : signal.tone === "warning" ? "border-amber-400/40 text-amber-400" : "border-emerald-400/40 text-emerald-400"}`}
+        >
+          {!fresh
+            ? "Saved change"
+            : signal.tone === "critical"
+              ? "Urgent review"
+              : signal.tone === "warning"
+                ? "Review"
+                : "Improvement"}
+        </span>
+        <span className="text-sm font-semibold">{signal.metric}</span>
+        {delta && (
+          <span
+            className={`text-sm font-semibold ${delta.tone === "positive" ? "text-emerald-400" : delta.tone === "negative" ? "text-red-400" : "text-dash-ink-secondary"}`}
+          >
+            {delta.label}
+            {observation?.reference === "target" ? " vs target" : ""}
+          </span>
+        )}
+        {signal.state === "continuing" && (
+          <span className="text-xs text-dash-ink-secondary">Ongoing</span>
+        )}
+      </div>
+      <p className="mt-2 break-words text-sm font-semibold">{campaign.name}</p>
+      <p className="mt-1 text-sm text-dash-ink-secondary">{signal.message}</p>
+      <span className="mt-2 block text-xs font-medium underline underline-offset-4">
+        Review campaign ↓
+      </span>
+    </a>
+  );
 }
 export function MetaPerformanceDashboard({
   client: c,
@@ -173,256 +184,236 @@ export function MetaPerformanceDashboard({
   const facts = c.performance?.facts;
   if (!facts) return null;
   const campaigns = [...facts.campaigns].sort(
-    (a, b) => campaignRank(a) - campaignRank(b),
+    (a, b) =>
+      ({
+        critical: 0,
+        review: 1,
+        positive: 2,
+        neutral: 3,
+        insufficient: 4,
+        "no-delivery": 5,
+      })[comparisonCampaignState(a)] -
+        {
+          critical: 0,
+          review: 1,
+          positive: 2,
+          neutral: 3,
+          insufficient: 4,
+          "no-delivery": 5,
+        }[comparisonCampaignState(b)] || campaignRank(a) - campaignRank(b),
   );
-  const signals = campaigns
-    .flatMap((campaign, index) =>
-      campaign.signals.map((signal) => ({ campaign, signal, index })),
-    )
+  const changes = campaigns.flatMap((campaign, index) =>
+    campaign.signals.map((signal) => ({ campaign, signal, index })),
+  );
+  const issues = changes
+    .filter((s) => s.signal.tone !== "positive")
     .sort(
       (a, b) =>
-        ({ critical: 0, warning: 1, positive: 2 })[a.signal.tone] -
-        { critical: 0, warning: 1, positive: 2 }[b.signal.tone],
+        Number(b.signal.tone === "critical") -
+        Number(a.signal.tone === "critical"),
     );
-  const urgent = signals.filter((s) => s.signal.tone === "critical").length;
-  const review = signals.filter((s) => s.signal.tone === "warning").length;
-  const positive = signals.filter((s) => s.signal.tone === "positive").length;
+  const improvements = changes.filter((s) => s.signal.tone === "positive");
+  const urgent = issues.filter((s) => s.signal.tone === "critical").length;
+  const issueCard = ({ campaign, signal, index }: (typeof changes)[number]) => (
+    <Issue
+      key={`${index}-${signal.key}`}
+      campaign={campaign}
+      signal={signal}
+      href={`#meta-campaign-${c.id}-${index}`}
+      fresh={c.performanceFresh}
+    />
+  );
   return (
     <div className="mt-5 space-y-6">
+      <div className="grid gap-3 sm:grid-cols-2" aria-label="Comparison dates">
+        {[
+          { label: "Selected period", period: facts.periodA },
+          { label: "Previous period", period: facts.periodB },
+        ].map(({ label, period }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-dash-border bg-dash-bg px-4 py-3"
+          >
+            <p className="text-xs font-medium text-dash-ink-secondary">
+              {label}
+            </p>
+            <p className="mt-1 text-sm font-semibold">
+              {formatMetaPeriod(period.startIso, period.endIso)}
+            </p>
+          </div>
+        ))}
+      </div>
       <section
         aria-label="Performance summary"
-        className={`rounded-2xl border p-4 sm:p-5 ${!c.performanceFresh ? "border-dash-border bg-dash-bg" : urgent ? "border-red-400/40 bg-red-400/5" : review ? "border-amber-400/40 bg-amber-400/5" : "border-dash-border bg-dash-bg"}`}
+        className="rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
       >
         <p className="text-xs font-semibold uppercase tracking-wider text-dash-ink-secondary">
-          Your performance brief
+          Comparison summary
         </p>
         <h3 className="mt-2 text-xl font-semibold">
           {!c.performanceFresh
-            ? "Refresh to assess current performance"
+            ? "Refresh to review current changes"
             : urgent
-              ? `${urgent} critical signal${urgent === 1 ? " needs" : "s need"} attention`
-              : review
-                ? `${review} change${review === 1 ? "" : "s"} worth reviewing`
-                : positive
-                  ? "Improvements to review"
-                  : facts.empty
-                    ? "No delivery in these periods"
-                    : "No warning thresholds crossed"}
+              ? `${urgent} urgent issue${urgent === 1 ? "" : "s"} to review`
+              : issues.length
+                ? `${issues.length} change${issues.length === 1 ? "" : "s"} need${issues.length === 1 ? "s" : ""} review`
+                : facts.empty
+                  ? "No delivery in these periods"
+                  : "No significant issues detected"}
         </h3>
-        <p className="mt-2 text-sm text-dash-ink-secondary">
-          {!c.performanceFresh
-            ? "These are saved figures. Refresh before making decisions."
-            : `${campaigns.length} campaign${campaigns.length === 1 ? "" : "s"} · ${urgent} critical · ${review} to review · ${positive} positive`}
-        </p>
+        {!c.performanceFresh && (
+          <p className="mt-2 text-sm text-dash-ink-secondary">
+            These are saved figures. Refresh before making decisions.
+          </p>
+        )}
         {c.budgetAttention && (
           <a
             href={`#meta-budget-${c.id}`}
-            className={`mt-3 block rounded-xl border border-dash-border bg-dash-card p-3 text-sm font-semibold ${c.budgetCritical ? "text-red-400" : "text-amber-400"}`}
+            className="mt-3 block text-sm font-semibold underline"
           >
-            Budget: {c.budgetLabel} · View pacing ↓
+            Budget: {c.budgetLabel} · Review pacing ↓
           </a>
         )}
-        {!!signals.length && (
-          <div className="mt-4 space-y-2">
-            {(showAll ? signals : signals.slice(0, 3)).map(
-              ({ campaign, signal, index }) => (
-                <a
-                  key={`${index}-${signal.key}`}
-                  href={`#meta-campaign-${c.id}-${index}`}
-                  className="block rounded-xl border border-dash-border bg-dash-card p-3 transition-colors hover:bg-dash-bg"
-                >
-                  <span
-                    className={`text-sm font-semibold ${!c.performanceFresh ? "text-dash-ink-secondary" : signal.tone === "critical" ? "text-red-400" : signal.tone === "warning" ? "text-amber-400" : "text-emerald-400"}`}
-                  >
-                    {signal.metric}
-                    {signal.change != null && (
-                      <span
-                        className={
-                          !c.performanceFresh || signal.change === 0
-                            ? "text-amber-400"
-                            : signal.change > 0
-                              ? "text-emerald-400"
-                              : "text-red-400"
-                        }
-                      >{` ${signal.change > 0 ? "+" : signal.change < 0 ? "−" : ""}${Math.abs(signal.change).toFixed(1)}%`}</span>
-                    )}{" "}
-                    ·{" "}
-                    {signal.state === "continuing"
-                      ? "Continuing"
-                      : signal.state === "recovered"
-                        ? "Recovered"
-                        : "New"}
-                  </span>
-                  <span className="mt-1 block break-words text-sm">
-                    {campaign.name}
-                  </span>
-                  <span className="mt-1 block text-xs text-dash-ink-secondary">
-                    {signal.message}
-                  </span>
-                  <span className="mt-2 block text-xs font-medium text-dash-ink underline underline-offset-4">
-                    View campaign ↓
-                  </span>
-                </a>
-              ),
-            )}
+        {!!issues.length && (
+          <div className="mt-4 space-y-3">
+            {(showAll ? issues : issues.slice(0, 3)).map(issueCard)}
           </div>
         )}
-        {signals.length > 3 && (
+        {issues.length > 3 && (
           <button
             type="button"
-            className="mt-3 text-sm font-medium text-dash-accent"
+            className="mt-3 text-sm underline"
             onClick={() => setShowAll((v) => !v)}
           >
-            {showAll
-              ? "Show fewer changes"
-              : `View all ${signals.length} changes`}
+            {showAll ? "Show fewer issues" : `Show all ${issues.length} issues`}
           </button>
         )}
-        {!signals.length && !facts.empty && (
-          <p className="mt-3 text-sm text-dash-ink-secondary">
-            Check campaign results below. Low-volume or incomplete comparisons
-            still need more data.
+        {!issues.length && !facts.empty && (
+          <p className="mt-2 text-sm text-dash-ink-secondary">
+            Review results and costs below. Campaigns with limited data are
+            marked separately.
           </p>
+        )}
+        {!!improvements.length && (
+          <details className="mt-4 border-t border-dash-border pt-4">
+            <summary className="cursor-pointer text-sm font-medium">
+              Improvements ({improvements.length})
+            </summary>
+            <div className="mt-3 space-y-3">{improvements.map(issueCard)}</div>
+          </details>
         )}
       </section>
       <section aria-label="Account metrics">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold">Account performance</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-dash-border bg-dash-bg px-4 py-3">
-              <p className="text-xs font-medium text-dash-ink-secondary">
-                Selected period
-              </p>
-              <p className="mt-1 text-sm font-semibold">
-                {formatMetaPeriod(facts.periodA.startIso, facts.periodA.endIso)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-dash-border bg-dash-bg px-4 py-3">
-              <p className="text-xs font-medium text-dash-ink-secondary">
-                Compared with previous period
-              </p>
-              <p className="mt-1 text-sm font-semibold">
-                {formatMetaPeriod(facts.periodB.startIso, facts.periodB.endIso)}
-              </p>
-            </div>
-          </div>
+        <div className="mb-3">
+          <h3 className="text-lg font-semibold">Account comparison</h3>
+          <p className="mt-1 text-sm text-dash-ink-secondary">
+            Actual figures for both periods. Campaign results are compared by
+            goal below.
+          </p>
         </div>
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          {delivery(facts.current, facts.previous).map((metric) => (
-            <Tile
-              key={metric.label}
-              metric={metric}
-              currency={c.currency}
-              fresh={c.performanceFresh}
-            />
-          ))}
+        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {deliveryMetrics(facts.current, facts.previous)
+            .filter((m) =>
+              ["spend", "reach", "impressions", "link_clicks"].includes(m.key),
+            )
+            .map((metric) => (
+              <div
+                key={metric.key}
+                className="min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4"
+              >
+                <dt className="text-xs text-dash-ink-secondary">
+                  {metric.label}
+                </dt>
+                <dd className="mt-2 break-words text-2xl font-semibold tabular-nums">
+                  {formatted(metric.current, metric.unit, c.currency)}
+                </dd>
+                <dd className="mt-2">
+                  <Change metric={metric} fresh={c.performanceFresh} />
+                </dd>
+                <dd className="mt-2 text-xs text-dash-ink-secondary">
+                  Previous {formatted(metric.previous, metric.unit, c.currency)}
+                </dd>
+              </div>
+            ))}
         </dl>
+        <details className="mt-4 rounded-xl border border-dash-border px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            All account metrics
+          </summary>
+          <MetricsTable
+            metrics={deliveryMetrics(facts.current, facts.previous)}
+            currency={c.currency}
+            fresh={c.performanceFresh}
+          />
+        </details>
       </section>
       <section aria-label="Campaign results">
-        <h3 className="text-lg font-semibold">Campaign results</h3>
+        <h3 className="text-lg font-semibold">Campaign comparisons</h3>
         <p className="mt-1 text-sm text-dash-ink-secondary">
-          Results and costs are shown by campaign goal. Campaigns needing
-          attention appear first.
+          Results follow each campaign’s detected goal, including leads,
+          purchases, traffic, video views, app installs and custom events.
         </p>
-        {facts.valueWarning && (
-          <p className="mt-3 text-sm text-amber-400">
-            Purchase values are incomplete. Refresh before assessing ROAS.
+        {(facts.valueWarning || facts.metricsWarning) && (
+          <p className="mt-3 text-sm text-dash-ink-secondary">
+            Some metrics are unavailable. Refresh to retry; missing data is
+            shown as —.
           </p>
         )}
-        {campaigns.map((campaign, index) => (
-          <article
-            id={`meta-campaign-${c.id}-${index}`}
-            key={campaign.id ?? campaign.name}
-            className="mt-4 scroll-mt-6 rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <h4 className="break-words text-base font-semibold">
-                  {campaign.name}
-                </h4>
-                <p className="mt-1 text-xs text-dash-ink-secondary">
-                  {words(campaign.objective)}
-                </p>
+        {campaigns.map((campaign, index) => {
+          const state = comparisonCampaignState(campaign);
+          return (
+            <article
+              id={`meta-campaign-${c.id}-${index}`}
+              key={campaign.id ?? campaign.name}
+              className="mt-4 scroll-mt-6 rounded-2xl border border-dash-border bg-dash-bg p-4 sm:p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h4 className="break-words text-base font-semibold">
+                    {campaign.name}
+                  </h4>
+                  <p className="mt-1 text-xs text-dash-ink-secondary">
+                    Goal: {campaign.objective.toLowerCase()}
+                  </p>
+                </div>
+                <PortfolioBadge state={c.performanceFresh ? state : "check"} />
               </div>
-              <PortfolioBadge
-                state={
-                  c.performanceFresh ? campaignBrief(campaign).state : "check"
-                }
+              {!campaign.comparableResults && (
+                <p className="mt-3 text-sm text-dash-ink-secondary">
+                  The goal or result evidence differs across periods. Results
+                  are shown without a favorable/unfavorable rating.
+                </p>
+              )}
+              <MetricsTable
+                metrics={[
+                  ...outcomeMetrics(campaign),
+                  ...deliveryMetrics(campaign.current, campaign.previous),
+                ]}
+                currency={c.currency}
+                fresh={c.performanceFresh}
               />
-            </div>
-            <dl className="mt-4 grid grid-cols-2 gap-3">
-              {outcomes(campaign).map((metric) => (
-                <Tile
-                  key={metric.label}
-                  metric={metric}
+              <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
+                Swipe the comparison table to see all columns →
+              </p>
+              <details className="mt-4 border-t border-dash-border pt-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Additional reported metrics
+                </summary>
+                <MetricsTable
+                  metrics={additionalMetrics(campaign)}
                   currency={c.currency}
                   fresh={c.performanceFresh}
                 />
-              ))}
-            </dl>
-            {!campaign.comparableResults && (
-              <p className="mt-3 text-xs text-dash-ink-secondary">
-                Results are not comparable across both periods; outcome changes
-                stay neutral.
-              </p>
-            )}
-            <p className="mt-3 text-sm text-dash-ink-secondary">
-              {c.performanceFresh
-                ? campaignBrief(campaign).reason
-                : "Saved snapshot. Refresh before assessing this campaign."}
-            </p>
-            <details className="mt-4 border-t border-dash-border pt-3">
-              <summary className="cursor-pointer text-sm font-medium">
-                All metrics &amp; comparison
-              </summary>
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm">
-                  <thead>
-                    <tr className="text-xs text-dash-ink-secondary">
-                      <th className="py-2">Metric</th>
-                      <th>Current</th>
-                      <th>Previous</th>
-                      <th>Change</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ...delivery(campaign.current, campaign.previous),
-                      ...outcomes(campaign),
-                    ].map((metric) => (
-                      <tr
-                        key={metric.label}
-                        className="border-t border-dash-border"
-                      >
-                        <th className="py-3 pr-3 font-normal">
-                          {metric.label}
-                        </th>
-                        <td className="pr-3">
-                          {formatted(metric.current, metric.unit, c.currency)}
-                        </td>
-                        <td className="pr-3">
-                          {formatted(metric.previous, metric.unit, c.currency)}
-                        </td>
-                        <td>
-                          <Change metric={metric} fresh={c.performanceFresh} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {/purchase/i.test(campaign.objective) && (
-                <p className="mt-3 text-xs text-dash-ink-secondary">
-                  ROAS uses matching purchase values and campaign-level spend:{" "}
-                  {formatted(campaign.current.roasSpend, "money", c.currency)}{" "}
-                  current,{" "}
-                  {formatted(campaign.previous.roasSpend, "money", c.currency)}{" "}
-                  previous. Attribution can revise recent results.
-                </p>
-              )}
-            </details>
-          </article>
-        ))}
+                {/purchase/i.test(campaign.objective) && (
+                  <p className="mt-3 text-xs text-dash-ink-secondary">
+                    Purchase ROAS uses matching purchase value and campaign
+                    spend. Attribution can revise recent results.
+                  </p>
+                )}
+              </details>
+            </article>
+          );
+        })}
       </section>
     </div>
   );

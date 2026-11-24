@@ -154,11 +154,11 @@ export function AgencyOverview({
   return (
     <div className="nre-meta-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-        Meta Ads performance
+        Meta Ads comparisons
       </h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        Know what changed, what needs attention and where your ad budget is
-        going.
+        Compare campaign results with the previous period. Spot rising costs,
+        falling results and changes that need attention.
       </p>
       <OverviewNavigation current="meta" />
       {clients?.length &&
