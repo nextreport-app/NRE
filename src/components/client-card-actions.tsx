@@ -6,7 +6,7 @@ type ActionIcon = "performance" | "schedule" | "report" | "manage";
 export function clientCardActions(clientId: string, scheduling = false) {
   return [
     {
-      href: `/overview?client=${encodeURIComponent(clientId)}`,
+      href: `/performance/meta-ads?client=${encodeURIComponent(clientId)}`,
       label: "Performance (Meta Ads & GA4)",
       icon: "performance" as ActionIcon,
     },

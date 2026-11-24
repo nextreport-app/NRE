@@ -87,7 +87,7 @@ export default auth((req) => {
     pathname === "/api/meta/data-deletion";
 
   // Unknown document URLs must reach Next's genuine 404, not a login redirect.
-  const protectedPath = ["/clients", "/overview", "/websites", "/reports", "/account", "/billing", "/support", "/admin", "/dashboard"].some(path => pathname === path || pathname.startsWith(`${path}/`)) || pathname.startsWith("/api/");
+  const protectedPath = ["/clients", "/performance", "/overview", "/websites", "/reports", "/account", "/billing", "/support", "/admin", "/dashboard"].some(path => pathname === path || pathname.startsWith(`${path}/`)) || pathname.startsWith("/api/");
   if (!req.auth && !isPublic && protectedPath) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname + req.nextUrl.search);

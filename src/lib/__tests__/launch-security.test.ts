@@ -18,7 +18,7 @@ describe("launch security contracts", () => {
     expect(safeAuthRedirect(null)).toBe("/clients");
     expect(safeAuthRedirect(undefined)).toBe("/clients");
     expect(safeAuthRedirect("/clients/client/reports/new")).toBe("/clients/client/reports/new");
-    expect(safeAuthRedirect("/overview?client=123")).toBe("/overview?client=123");
+    expect(safeAuthRedirect("/performance/meta-ads?client=123")).toBe("/performance/meta-ads?client=123");
     expect(safeAuthRedirect("/pricing?billing=annual")).toBe("/pricing?billing=annual");
   });
   it("expires monthly/annual one-time purchases at clamped calendar boundaries", () => {

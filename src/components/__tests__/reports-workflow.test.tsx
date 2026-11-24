@@ -120,7 +120,7 @@ describe("Reports workflow and client navigation", () => {
   it("keeps all workspace destinations scoped to the same client, including GA4", () => {
     const links = clientWorkspaceLinks("client");
     expect(links.map((l) => l.href)).toEqual([
-      "/overview?client=client",
+      "/performance/meta-ads?client=client",
       "/clients/client/reports/new",
       "/clients/client/schedules",
       "/clients/client#client-settings",
@@ -132,7 +132,7 @@ describe("Reports workflow and client navigation", () => {
         performanceView="website"
       />,
     );
-    expect(html).toContain('href="/websites?client=client"');
+    expect(html).toContain('href="/performance/google-analytics?client=client"');
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   });
   it("returns report review to the correct Reports tab and preserves ownership enforcement", async () => {

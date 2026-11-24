@@ -62,7 +62,7 @@ export function WizardClientActions({
     ...(performance
       ? [
           {
-            href: `${performance === "website" ? "/websites" : "/overview"}?client=${encodeURIComponent(clientId)}`,
+            href: `${performance === "website" ? "/performance/google-analytics" : "/performance/meta-ads"}?client=${encodeURIComponent(clientId)}`,
             label: "Performance (Meta Ads & GA4)",
           },
         ]

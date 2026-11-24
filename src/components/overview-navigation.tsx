@@ -4,8 +4,8 @@ export function OverviewNavigation({ current, clientId }: { current: "meta" | "w
   return (
     <nav aria-label="Performance type" className="mt-5 inline-flex max-w-full gap-1 rounded-2xl border border-dash-border bg-dash-card p-1.5 shadow-sm">
       {([
-        ["meta", "/overview", "Meta Ads"],
-        ["website", "/websites", "Website traffic (GA4)"],
+        ["meta", "/performance/meta-ads", "Meta Ads"],
+        ["website", "/performance/google-analytics", "Website traffic (GA4)"],
       ] as const).map(([key, href, label]) => (
         <Link key={key} href={clientId ? `${href}?client=${encodeURIComponent(clientId)}` : href} aria-current={current === key ? "page" : undefined}
           className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:px-5 sm:text-sm ${current === key ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:bg-dash-bg hover:text-dash-ink"}`}>

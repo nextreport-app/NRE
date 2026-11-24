@@ -55,7 +55,7 @@ export function buildPerformanceAlertEmail(input: {
     minute: "2-digit",
     timeZone: snapshot.config.timezone,
   }).format(new Date(snapshot.checkedAt));
-  const url = `https://nextreport.in/overview?client=${encodeURIComponent(clientId)}`;
+  const url = `https://nextreport.in/performance/meta-ads?client=${encodeURIComponent(clientId)}`;
   const shown = [...alerts]
     .sort(
       (a, b) =>
