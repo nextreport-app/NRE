@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     const requested = new URL(req.url).searchParams.get("clientId"),
       selected = requested
         ? clients.find((c) => c.id === requested)
-        : (clients.find((c) => c.ga4PropertyId) ?? clients[0]);
+        : undefined;
     if (requested && !selected)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     const records =

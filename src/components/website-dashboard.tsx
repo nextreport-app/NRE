@@ -10,6 +10,7 @@ import { customWebsiteRangeSchema } from "@/lib/website-dashboard/range";
 import { WebsiteChannelComparison } from "./website-changes";
 import { WebsiteSessionsTrend } from "./website-sessions-trend";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type WebsiteSnapshot,
@@ -54,8 +55,10 @@ export function WebsiteDashboard({
 }: {
   initialClientId?: string;
 }) {
+  const router = useRouter();
+  const clientId = initialClientId;
   const [view, setView] = useState<View | null>(null),
-    [clientId, setClientId] = useState(initialClientId),
+    [search, setSearch] = useState(""),
     [days, setDays] = useState<7 | 30 | "custom">(7),
     [customStart, setCustomStart] = useState(""),
     [customEnd, setCustomEnd] = useState(""),
@@ -95,7 +98,7 @@ export function WebsiteDashboard({
     };
   }, [load, invalidate]);
   const selected = view?.clients.find(
-      (c) => c.id === (clientId || view.selectedClientId),
+      (c) => !!clientId && c.id === clientId,
     ),
     entry =
       view?.selectedClientId === (clientId || view?.selectedClientId)
@@ -153,9 +156,28 @@ export function WebsiteDashboard({
       <p className="mt-2 text-sm text-dash-ink-secondary">
         All website traffic reported by GA4, separate from Meta ad delivery.
       </p>
-      <OverviewNavigation current="website" clientId={selected?.id} />
+      <OverviewNavigation current="website" clientId={clientId || undefined} />
       {selected && <ClientWorkspaceNav clientId={selected.id} current="performance" performanceView="website" />}
-      {view && (
+      {view && !clientId && (
+        <section aria-label="All website clients" className="mt-5">
+          <div className="rounded-2xl border border-dash-border bg-dash-card p-5">
+            <h2 className="text-lg font-semibold">Across your websites</h2>
+            <p className="mt-2 text-sm text-dash-ink-secondary">{view.clients.length} clients · {view.clients.filter(c => c.propertyId).length} with a linked GA4 property</p>
+            <p className="mt-2 text-sm text-dash-ink-secondary">Choose a client to compare website traffic and engagement.</p>
+          </div>
+          {!!view.clients.length && <label className="mt-5 block"><span className="sr-only">Find a website client</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a client" className="min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-3 text-sm" /></label>}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {view.clients.filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(c => <article key={c.id} className="rounded-2xl border border-dash-border bg-dash-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold">{c.name}</h3><span className="rounded-full border border-dash-border px-2 py-1 text-xs text-dash-ink-secondary">{!view.connected ? "Connect GA4" : c.propertyId ? "Property linked" : "Needs setup"}</span></div>
+              <p className="mt-3 text-sm text-dash-ink-secondary">{c.propertyId ? (c.propertyName || `GA4 property ${c.propertyId}`) : "No GA4 property linked yet."}</p>
+              <Link href={!view.connected ? "/account#ga4" : c.propertyId ? `/websites?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-dash-border bg-dash-bg px-4 py-2 text-sm font-semibold transition hover:border-dash-accent focus-visible:outline-2 focus-visible:outline-dash-accent">{!view.connected ? "Connect GA4 →" : c.propertyId ? "View website performance →" : "Choose GA4 property →"}</Link>
+            </article>)}
+          </div>
+          {!!view.clients.length && !view.clients.some(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) && <p className="mt-4 text-sm text-dash-ink-secondary">No clients match your search.</p>}
+        </section>
+      )}
+      {selected && <Link href="/websites" className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-dash-border px-4 py-2 text-sm font-medium hover:bg-dash-card">← All websites</Link>}
+      {view && clientId && (
         <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
           <label className="w-full text-xs font-medium text-dash-ink-secondary lg:w-auto lg:flex-1">
@@ -166,10 +188,7 @@ export function WebsiteDashboard({
               className="mt-2 block min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm text-dash-ink focus-visible:outline-2 focus-visible:outline-dash-accent"
               value={selected?.id ?? ""}
               onChange={(e) => {
-                setView(null);
-                setError("");
-                setNotice("");
-                setClientId(e.target.value);
+                router.push(`/websites?client=${encodeURIComponent(e.target.value)}`);
               }}
             >
               <option value="" disabled>
@@ -186,7 +205,7 @@ export function WebsiteDashboard({
             {([7, 30] as const).map((n) => (
               <button
                 key={n}
-                className={`${periodButton} ${days === n ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:text-dash-ink"}`}
+                className={`${periodButton} ${days === n ? "bg-dash-card text-dash-ink ring-1 ring-inset ring-dash-ink-secondary" : "text-dash-ink-secondary hover:text-dash-ink"}`}
                 aria-pressed={days === n}
                 disabled={busy}
                 onClick={() => {
@@ -198,7 +217,7 @@ export function WebsiteDashboard({
                 Last {n} days
               </button>
             ))}
-            <button className={`${periodButton} ${days === "custom" ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:text-dash-ink"}`} aria-pressed={days === "custom"} disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");if(!customStart) {setCustomStart(data?.currentPeriod.startIso ?? "");setCustomEnd(data?.currentPeriod.endIso ?? "");}}}>Custom dates</button>
+            <button className={`${periodButton} ${days === "custom" ? "bg-dash-card text-dash-ink ring-1 ring-inset ring-dash-ink-secondary" : "text-dash-ink-secondary hover:text-dash-ink"}`} aria-pressed={days === "custom"} disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");if(!customStart) {setCustomStart(data?.currentPeriod.startIso ?? "");setCustomEnd(data?.currentPeriod.endIso ?? "");}}}>Custom dates</button>
           </div>
           <button
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm font-semibold text-dash-ink transition-colors hover:border-dash-accent disabled:opacity-50"
