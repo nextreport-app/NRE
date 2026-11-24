@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { clientActivityDate, type ClientConnectionState } from "@/lib/client-card-summary";
 import type { Currency } from "@/generated/prisma/enums";
 import { formatClientCurrency, formatClientTimezone, getClientInitial, getPreviousMonthListStatus } from "@/lib/client-display";
 
@@ -116,6 +117,12 @@ interface ClientListItem {
   previousMonthDataUpdatedAt: string | null;
   hasGa4Property: boolean;
   ga4PropertyName: string | null;
+  metaConnection?: ClientConnectionState;
+  ga4Connection?: ClientConnectionState;
+  metaAccountName?: string | null;
+  lastReportAt?: string | null;
+  nextScheduleAt?: string | null;
+  nextScheduleTimezone?: string;
 }
 
 function SearchIcon() {
@@ -148,7 +155,7 @@ function StatusChip({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium ${toneClass}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${toneClass}`}
     >
       <span
         aria-hidden="true"
@@ -177,7 +184,7 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
 
   return (
     <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-sky-500/40">
-      <div className="space-y-3 p-4 sm:p-5">
+      <div className="space-y-2.5 px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-lg font-semibold text-sky-400" aria-hidden="true">{getClientInitial(client.accountName)}</span>
           <div className="min-w-0 flex-1">
@@ -187,13 +194,18 @@ function ClientCard({ client, scheduling = false }: { client: ClientListItem; sc
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-dash-ink-secondary"><span>{formatClientCurrency(client.currency)}</span><span aria-hidden="true">·</span><span title={client.timezone}>{formatClientTimezone(client.timezone)}</span></p>
           </div>
         </div>
-        {prevMonth.status === "missing" ? (
-          <p className="text-[12px] text-dash-ink-secondary" title="Optional: upload previous-month data in Manage when you want those totals included.">Previous-month totals optional</p>
-        ) : (
-          <StatusChip tone={prevMonth.status === "current" ? "good" : "warn"} label={prevMonth.status === "current" ? "Previous-month totals ready" : "Previous-month file needs refresh"} title={prevMonth.title} />
-        )}
+        <div className="flex flex-wrap gap-1.5" aria-label="Platform connections">
+          {([ ["Meta", client.metaConnection, client.metaAccountName], ["GA4", client.ga4Connection, client.ga4PropertyName] ] as const).map(([platform, status, name]) => status ? (
+            <StatusChip key={platform} tone={status === "connected" ? "good" : status === "reconnect" ? "warn" : "neutral"} label={`${platform} ${status === "connected" ? "connected" : status === "reconnect" ? "reconnect" : "not linked"}`} title={status === "connected" ? name ?? `${platform} linked` : status === "reconnect" ? `Reconnect ${platform} in Account settings` : `Link ${platform} to this client`} />
+          ) : null)}
+          {prevMonth.status !== "missing" && <StatusChip tone={prevMonth.status === "current" ? "good" : "warn"} label={prevMonth.status === "current" ? "Previous-month data ready" : "Previous-month data needs refresh"} title={prevMonth.title} />}
+        </div>
+        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-dash-ink-secondary">
+          <div className="inline-flex flex-wrap gap-x-1"><dt>Last report:</dt><dd>{client.lastReportAt ? <time dateTime={client.lastReportAt} title={client.timezone}>{clientActivityDate(client.lastReportAt, client.timezone)}</time> : "No reports yet"}</dd></div>
+          {client.nextScheduleAt && <div className="inline-flex flex-wrap gap-x-1"><dt>Next scheduled:</dt><dd><time dateTime={client.nextScheduleAt} title={`Scheduled draft · ${client.nextScheduleTimezone ?? client.timezone}`}>{clientActivityDate(client.nextScheduleAt, client.nextScheduleTimezone ?? client.timezone, true)}</time></dd></div>}
+        </dl>
       </div>
-      <div className="nre-client-card__divider mt-auto grid grid-cols-2 gap-2 border-t border-dash-border px-4 py-3 sm:px-5">
+      <div className="nre-client-card__divider mt-auto grid grid-cols-2 gap-2 border-t border-dash-border px-4 py-2.5 sm:px-5">
         <Link href={scheduling ? `/clients/${client.id}/schedules` : `/clients/${client.id}/reports/new`} aria-label={`${scheduling ? "Schedule reports" : "Generate report"} for ${client.accountName}`} className="col-span-2 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-center text-[13px] font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent">{scheduling ? "Schedule reports" : "Generate report"} <span aria-hidden="true">→</span></Link>
         <Link href={`/overview?client=${encodeURIComponent(client.id)}`} aria-label={`View performance for ${client.accountName}`} title="Meta Ads & GA4 performance" className={`${clientSecondaryAction} col-span-2`}><ClientActionIcon type="performance" /><span className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 leading-snug"><span>Performance</span><span className="text-xs font-normal text-dash-ink-secondary">Meta Ads &amp; GA4</span></span></Link>
         <Link href={scheduling ? `/clients/${client.id}/reports/new` : `/clients/${client.id}/schedules`} aria-label={`${scheduling ? "Generate report" : "Schedule reports"} for ${client.accountName}`} title={scheduling ? "Generate report" : "Schedule reports"} className={clientSecondaryAction}><ClientActionIcon type={scheduling ? "report" : "schedule"} /><span className="min-w-0 leading-snug">{scheduling ? "Generate report" : "Schedule reports"}</span></Link>

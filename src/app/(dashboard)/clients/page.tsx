@@ -1,3 +1,4 @@
+import { clientConnectionState } from "@/lib/client-card-summary";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClientList } from "@/components/client-list";
@@ -8,7 +9,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const scheduling = (await searchParams).task === "schedule";
   const session = await auth();
   const userId = session?.user?.id;
-  const owner = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { emailVerified: true } }) : null;
+  const owner = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { emailVerified: true, metaAdsEnabled: true, metaAccessToken: true, ga4Enabled: true, ga4RefreshToken: true } }) : null;
   const clients = userId
     ? await prisma.client.findMany({
         where: { userId },
@@ -18,6 +19,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           accountName: true,
           currency: true,
           timezone: true,
+          metaAdAccountId: true,
+          metaAdAccountName: true,
+          reports: { where: { status: "COMPLETE" }, orderBy: [{ completedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], take: 1, select: { completedAt: true, createdAt: true } },
+          reportSchedules: { where: { enabled: true }, orderBy: { nextRunAt: "asc" }, take: 1, select: { nextRunAt: true, timezone: true } },
           ga4PropertyId: true,
           ga4PropertyName: true,
           previousMonthDataUrl: true,
@@ -33,6 +38,12 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     timezone: c.timezone,
     hasPreviousMonthData: !!c.previousMonthDataUrl,
     previousMonthDataUpdatedAt: c.previousMonthDataUpdatedAt?.toISOString() ?? null,
+    metaConnection: clientConnectionState(!!c.metaAdAccountId, !!(owner?.metaAdsEnabled && owner.metaAccessToken)),
+    ga4Connection: clientConnectionState(!!c.ga4PropertyId, !!(owner?.ga4Enabled && owner.ga4RefreshToken)),
+    metaAccountName: c.metaAdAccountName,
+    lastReportAt: (c.reports[0]?.completedAt ?? c.reports[0]?.createdAt)?.toISOString() ?? null,
+    nextScheduleAt: c.reportSchedules[0]?.nextRunAt.toISOString() ?? null,
+    nextScheduleTimezone: c.reportSchedules[0]?.timezone ?? c.timezone,
     hasGa4Property: !!c.ga4PropertyId,
     ga4PropertyName: c.ga4PropertyName,
   }));
