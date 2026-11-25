@@ -8,6 +8,7 @@ import { ServiceError } from "./service-error";
 import type { Prisma } from "@/generated/prisma/client";
 export const providerKeys = [
   "ga4",
+  "gsc",
   "meta",
   "google-ads",
   "tiktok",
@@ -16,6 +17,7 @@ export const providerKeys = [
 export type ClientProvider = (typeof providerKeys)[number];
 const prefixes: Record<ClientProvider, string> = {
   ga4: "ga4",
+  gsc: "gsc",
   meta: "meta",
   "google-ads": "googleAds",
   tiktok: "tiktok",
@@ -154,6 +156,10 @@ export async function saveClientProvider(
       },
     });
     // A different identity must explicitly choose its own assets. Never infer by name.
+    if (provider === "gsc") {
+      await tx.client.update({where: {id: clientId}, data: {gscSiteUrl: null}});
+      await tx.searchConsoleSnapshot.deleteMany({where: {clientId}});
+    }
     if (provider === "ga4") {
       await tx.client.update({
         where: { id: clientId },

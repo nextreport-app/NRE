@@ -1,3 +1,5 @@
+import { GscSitePicker } from "@/components/gsc-site-picker";
+import { isGscConfigured } from "@/lib/search-console/api";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { ClientProviderSettings } from "@/components/client-provider-settings";
 import { clientProviderSummaries } from "@/lib/client-provider-connections";
@@ -102,6 +104,7 @@ export default async function ClientDetailPage({
         googleAdsRefreshToken: true,
         googleAdsEnabled: true,
         googleAdsConnectedEmail: true,
+        gscRefreshToken: true, gscEnabled: true, gscConnectedEmail: true,
         ga4RefreshToken: true,
         ga4Enabled: true,
         ga4ConnectedEmail: true,
@@ -117,7 +120,7 @@ export default async function ClientDetailPage({
   ]);
 
   const owner = await resolveClientUser(rawOwner, client);
-  const connectionSummaries = (await clientProviderSummaries(rawOwner ?? {}, client)).map(c => ({...c, configured: c.provider === "meta" ? isMetaApiConfigured() : c.provider === "ga4" ? isGa4ApiConfigured() : c.provider === "google-ads" ? isGoogleAdsApiConfigured() : c.provider === "tiktok" ? isTikTokApiConfigured() && !tiktokRegionRestricted : !!process.env.AUTH_GOOGLE_ID && !!process.env.AUTH_GOOGLE_SECRET}));
+  const connectionSummaries = (await clientProviderSummaries(rawOwner ?? {}, client)).map(c => ({...c, configured: c.provider === "gsc" ? isGscConfigured() : c.provider === "meta" ? isMetaApiConfigured() : c.provider === "ga4" ? isGa4ApiConfigured() : c.provider === "google-ads" ? isGoogleAdsApiConfigured() : c.provider === "tiktok" ? isTikTokApiConfigured() && !tiktokRegionRestricted : !!process.env.AUTH_GOOGLE_ID && !!process.env.AUTH_GOOGLE_SECRET}));
   const reportRetentionDays = owner
     ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
     : DEFAULT_REPORT_RETENTION_DAYS;
@@ -161,11 +164,12 @@ export default async function ClientDetailPage({
       </div>
 
       {connectionFailed && <p role="alert" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">Connection was not completed. Try connecting again and choose the login that has access to this client.</p>}
-      {connectionSaved && <p role="status" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">Client connection saved. Choose its ad account, GA4 property or Drive folder before loading data or exporting.</p>}
+      {connectionSaved && <p role="status" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">{connectionParams.gsc_connected === "1" ? "Search Console connected. Choose the site that belongs to this client below, then open SEO performance." : "Client connection saved. Choose its ad account, GA4 property or Drive folder before loading data or exporting."}</p>}
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
         <ClientProviderSettings clientId={client.id} connections={connectionSummaries}
+          gscSite={<div id="search-console" className="mt-4 scroll-mt-6 border-t border-dash-border pt-4"><h4 className="mb-2 text-sm font-semibold">Search Console site</h4><GscSitePicker configured={isGscConfigured()} clientId={client.id} initialSiteUrl={client.gscSiteUrl} connected={!!owner?.gscEnabled && !!owner?.gscRefreshToken}/><Link href={`/performance/search-console?client=${client.id}`} className="mt-3 inline-flex min-h-11 items-center text-xs font-semibold text-dash-accent hover:underline">View SEO performance →</Link></div>}
           ga4Property={isClientPlatformConnectionVisible("ga4") ? (
             <div id="website-analytics" className="mt-4 scroll-mt-6 border-t border-dash-border pt-4">
               <h4 className="mb-2 text-sm font-semibold">Website property</h4>

@@ -100,3 +100,8 @@ export function Ga4BrandIcon() {
     </IntegrationTile>
   );
 }
+
+/** Search Console — search and discovery. */
+export function SearchConsoleBrandIcon() {
+ return <IntegrationTile label="Google Search Console"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16805d" strokeWidth="2"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6M6 11l3-3 3 2 3-4"/></svg></IntegrationTile>;
+}

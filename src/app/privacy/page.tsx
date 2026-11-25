@@ -132,9 +132,12 @@ export default async function PrivacyPage() {
               (for example sessions, channels, and conversions) for Website Traffic reports you
               generate. We do not modify your Analytics configuration.
             </li>
+            <li>
+              <span className="text-white">Connect Google Search Console</span> — with your consent we request <span className="text-white">https://www.googleapis.com/auth/webmasters.readonly</span>, plus openid and email. We list sites your Google login can access and read search clicks, impressions, CTR, average position, queries, pages, country and device breakdowns for the site you select per client. We do not verify or modify sites, submit sitemaps, request indexing, or change search settings. This connection is separate from Google Analytics and Drive. Refresh tokens are encrypted at rest. Cached search rows, including queries and page URLs, are private to your account; they are replaced on refresh and removed when the site is unlinked or its connection is changed/disconnected, or the client/account is deleted. This integration does not publish search queries through public report links.
+            </li>
           </ul>
           <p className="mt-2">
-            OAuth access and refresh tokens for Google Ads and GA4 are stored in our database and
+            OAuth access and refresh tokens for Google Ads, Search Console and GA4 are stored in our database and
             are used only to perform the actions above on your behalf until you disconnect in
             Account settings or revoke access in your{" "}
             <a

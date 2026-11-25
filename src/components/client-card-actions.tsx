@@ -7,7 +7,7 @@ export function clientCardActions(clientId: string, scheduling = false) {
   return [
     {
       href: `/performance/meta-ads?client=${encodeURIComponent(clientId)}`,
-      label: "Performance (Meta Ads & GA4)",
+      label: "Performance (Meta Ads, GA4 & SEO)",
       description: "Compare results and monitor spending",
       icon: "performance" as ActionIcon,
     },

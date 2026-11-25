@@ -8,7 +8,8 @@ import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { getClientCapacityUsage } from "@/lib/client-capacity";
 import { getSubscriptionStatus } from "@/lib/subscription";
 
-export default async function NewClientPage() {
+export default async function NewClientPage({searchParams}: {searchParams: Promise<{task?: string}>}) {
+  const seo = (await searchParams).task === "search-console";
   const session = await auth();
   if (!session?.user) notFound();
 
@@ -41,9 +42,9 @@ export default async function NewClientPage() {
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-[24px] font-bold text-dash-ink">New client</h1>
-      <p className="mb-5 text-sm leading-relaxed text-dash-ink-secondary">Create a workspace for this client. It is not tied to a platform; you’ll choose an available report source next.</p>
+      <p className="mb-5 text-sm leading-relaxed text-dash-ink-secondary">{seo ? "Create a workspace for this client, then connect Google Search Console and choose its site. No report import is needed." : "Create a workspace for this client. It is not tied to a platform; you’ll choose an available report source next."}</p>
       <p className="mb-5 text-xs text-dash-ink-secondary">Need to connect an account? <Link href="/account" target="_blank" rel="noopener noreferrer" className="font-medium text-dash-accent hover:underline">Manage connections in Account settings ↗</Link></p>
-      <ClientForm />
+      <ClientForm createTask={seo ? "search-console" : "report"} showTemplatePicker={!seo} submitLabel={seo ? "Create client & choose site" : undefined} />
     </div>
   );
 }

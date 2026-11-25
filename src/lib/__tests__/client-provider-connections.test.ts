@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: vi.fn(),
     },
     websiteDashboardSnapshot: { deleteMany: vi.fn() },
+    searchConsoleSnapshot: { deleteMany: vi.fn() },
     user: { update: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -189,7 +190,7 @@ describe("provider OAuth scope", () => {
         );
       expect(cookie).not.toContain("client-a");
       const field =
-        provider === "ga4"
+        provider === "gsc" ? {gscEnabled: true, gscRefreshToken: "private"} : provider === "ga4"
           ? { ga4Enabled: true, ga4RefreshToken: "private" }
           : provider === "meta"
             ? { metaAdsEnabled: true, metaAccessToken: "private" }

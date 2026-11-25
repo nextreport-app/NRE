@@ -125,6 +125,10 @@ model User {
   // Google Analytics 4 (account settings) — separate OAuth grant with
   // analytics.readonly scope. Lists GA4 properties via Admin API and pulls
   // website performance metrics via Data API (see lib/ga4-api.ts).
+  gscEnabled Boolean @default(false)
+  gscRefreshToken String? @db.Text
+  gscConnectedEmail String?
+
   ga4Enabled          Boolean @default(false)
   ga4RefreshToken     String? @db.Text
   ga4AccessToken      String? @db.Text
@@ -419,6 +423,8 @@ model Client {
 
   // GA4 property linked to this client for Website Traffic reports —
   // numeric property ID (e.g. "123456789"), not the full resource name.
+  gscSiteUrl String?
+  searchConsoleSnapshots SearchConsoleSnapshot[]
   ga4PropertyId   String?
   ga4PropertyName String?
 
@@ -786,4 +792,20 @@ model ClientProviderConnection {
   updatedAt DateTime @updatedAt
   @@unique([clientId, provider])
   @@index([provider, externalId])
+}
+
+model SearchConsoleSnapshot {
+  id String @id @default(cuid())
+  clientId String
+  days Int
+  rangeKey String
+  siteUrl String
+  connectionKey String
+  dataJson String? @db.Text
+  error String? @db.Text
+  checkedAt DateTime?
+  lastAttemptAt DateTime?
+  leaseUntil DateTime?
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@unique([clientId, days])
 }

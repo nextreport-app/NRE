@@ -2,10 +2,11 @@
 import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientProvider } from "@/lib/client-provider-connections";
-import { Ga4BrandIcon, MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
-const icons = { ga4: Ga4BrandIcon, meta: MetaAdsBrandIcon, "google-ads": GoogleAdsBrandIcon, tiktok: TikTokAdsBrandIcon };
+import { SearchConsoleBrandIcon, Ga4BrandIcon, MetaAdsBrandIcon, GoogleAdsBrandIcon, TikTokAdsBrandIcon } from "@/components/platform-brand-icons";
+const icons = { gsc: SearchConsoleBrandIcon, ga4: Ga4BrandIcon, meta: MetaAdsBrandIcon, "google-ads": GoogleAdsBrandIcon, tiktok: TikTokAdsBrandIcon };
 const names: Record<ClientProvider, string> = {
   ga4: "Google Analytics (GA4)",
+  gsc: "Google Search Console",
   meta: "Meta Ads",
   "google-drive": "Google Drive",
   "google-ads": "Google Ads",
@@ -15,10 +16,12 @@ export function ClientProviderSettings({
   clientId,
   connections,
   ga4Property,
+  gscSite,
   automations,
 }: {
   clientId: string;
   ga4Property?: ReactNode;
+  gscSite?: ReactNode;
   automations?: ReactNode;
   connections: Array<{
     provider: ClientProvider;
@@ -60,7 +63,7 @@ export function ClientProviderSettings({
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         {connections.map((c) => {
           const Icon = c.provider === "google-drive" ? null : icons[c.provider];
-          return <article key={c.provider} className={`min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4 ${c.provider === "ga4" ? "sm:col-span-2" : ""}`}>
+          return <article key={c.provider} className={`min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4 ${c.provider === "ga4" || c.provider === "gsc" ? "sm:col-span-2" : ""}`}>
             <div className="flex items-start gap-3">
               <span className="shrink-0" aria-hidden="true">{Icon ? <Icon /> : <svg width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="11" fill="white"/><path d="M17 8h7l10 18h-8z" fill="#FFC107"/><path d="M17 8 6 27l4 6 11-19z" fill="#34A853"/><path d="M10 33h20l4-7H14z" fill="#4285F4"/></svg>}</span>
               <div className="min-w-0 flex-1">
@@ -75,6 +78,7 @@ export function ClientProviderSettings({
             </div>
             {c.provider === "meta" && <details className="mt-3 text-xs text-dash-ink-secondary"><summary className="cursor-pointer">Need another Meta profile?</summary><p className="mt-2">Switch accounts on Meta before authorizing. Stay signed in to NextReport.</p></details>}
             {c.provider === "ga4" && ga4Property}
+            {c.provider === "gsc" && gscSite}
           </article>;
         })}
       </div>
