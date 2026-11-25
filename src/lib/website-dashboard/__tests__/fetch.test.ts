@@ -89,7 +89,8 @@ describe("GA4 data contracts", () => {
       endIso: "2026-11-19",
     });
     expect(s.channels[0].name).toBe("Organic Search");
-    expect(s.pages[0].name).toBe("/pricing");
+    expect(s.pages).toEqual([]);
+    expect(vi.mocked(runGa4Report).mock.calls.some(call => call[2].dimensions?.some(d => d.name === "landingPage"))).toBe(false);
     expect(s.current.sessionKeyEventRate).toBe(0.1);
     expect(s.current.keyEvents! / s.current.sessions!).toBe(0.25);
   });
@@ -355,12 +356,12 @@ it("accepts an explicit zero-row GA4 response without headers as an empty period
   expect(parseWebsiteSnapshot(JSON.stringify(snapshot), "552954256", 7)).not.toBeNull();
 });
 
-it("fetches custom periods and all core daily/page metrics without exceeding API limits", async () => {
+it("fetches custom periods and daily metrics without the removed landing-page report", async () => {
   const selection = {startIso:"2026-11-10",endIso:"2026-11-19"};
   const s = await fetchWebsiteSnapshot("token","552954256",selection,now);
   expect(s.rangeMode).toBe("custom");expect(s.days).toBe(10);
   expect(s.previousPeriod).toEqual({startIso:"2026-10-31",endIso:"2026-11-09"});
-  expect(s.trend[0].bounceRate).toBe(.3);expect(s.pages[0].totalUsers).toBe(80);
+  expect(s.trend[0].bounceRate).toBe(.3);expect(s.pages).toEqual([]);
   expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",selection)).not.toBeNull();
   expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",{...selection,startIso:"2026-11-11"})).toBeNull();
   expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",7)).toBeNull();

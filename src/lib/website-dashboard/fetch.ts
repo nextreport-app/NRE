@@ -154,17 +154,11 @@ export async function fetchWebsiteSnapshot(
     }
     throw Error("GA4 channel report is too large to display completely.");
   }
-  const [current, previous, channelRows, pageResponse, trendResponse] =
+  const [current, previous, channelRows, trendResponse] =
     await Promise.all([
       overview(periods.currentPeriod),
       overview(periods.previousPeriod),
       channels(periods.currentPeriod),
-      request(
-        periods.currentPeriod,
-        WEBSITE_METRICS,
-        ["landingPage"],
-        10,
-      ),
       request(periods.currentPeriod, WEBSITE_METRICS, ["date"], 100),
     ]);
   // Separate two-metric overview requests keep every GA4 report below its ten-metric limit.
@@ -179,14 +173,6 @@ export async function fetchWebsiteSnapshot(
     request(periods.currentPeriod, ["activeUsers"], ["country"], 10),
     request(periods.currentPeriod, ["screenPageViews"], ["pageTitle"], 10),
   ]);
-  const pages = ga4DashboardRows(
-    pageResponse,
-    WEBSITE_METRICS,
-    ["landingPage"],
-  ).map((r) => ({
-    name: r.dimensions.landingPage,
-    ...r.metrics,
-  })) as WebsiteSnapshot["pages"];
   const trend = ga4DashboardRows(
     trendResponse,
     WEBSITE_METRICS,
@@ -226,7 +212,7 @@ export async function fetchWebsiteSnapshot(
     previous: { ...previous.metrics, ...previousExtra },
     channels: channelRows,
     previousChannels,
-    pages,
+    pages: [], // Preserve the cached JSON contract without fetching the removed landing-page report.
     trend,
     countries: ga4DashboardRows(countryResponse, ["activeUsers"], ["country"]).map(row => ({name: row.dimensions.country, activeUsers: row.metrics.activeUsers})),
     pageTitles: ga4DashboardRows(titleResponse, ["screenPageViews"], ["pageTitle"]).map(row => ({name: row.dimensions.pageTitle, screenPageViews: row.metrics.screenPageViews})),

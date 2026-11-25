@@ -28,7 +28,7 @@ export function WebsiteSessionsTrend({ data }: { data: WebsiteSnapshot }) {
   const ticks = Array.from(new Set([0, Math.round((data.days - 1) / 4), Math.round((data.days - 1) / 2), Math.round(3 * (data.days - 1) / 4), data.days - 1]));
   return <section aria-label="Daily traffic chart" className="mt-5 min-w-0 overflow-hidden rounded-2xl border border-dash-border bg-dash-card p-4 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><p className="text-xs font-medium uppercase tracking-wider text-dash-ink-secondary">Traffic over time</p><h2 className="mt-1 text-lg font-semibold">Daily {label.toLowerCase()}</h2><p className="mt-1 text-xs text-dash-ink-secondary">{dateLabel(data.currentPeriod.startIso)} – {dateLabel(data.currentPeriod.endIso)} · current period</p></div>
+      <div><p className="text-xs font-medium uppercase tracking-wider text-dash-ink-secondary">Traffic over time</p><h2 className="mt-1 text-lg font-semibold">Daily {label.toLowerCase()}</h2></div>
       <label className="text-xs text-dash-ink-secondary">Chart metric<select aria-label="Trend metric" value={metric} onChange={e => {setMetric(e.target.value as WebsiteMetric);setFocusedDate("");}} className="mt-1 block min-h-11 rounded-lg border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink">{choices.map(([key, title]) => <option key={key} value={key}>{title}</option>)}</select></label>
     </div>
     {points.length ? <>
@@ -45,7 +45,7 @@ export function WebsiteSessionsTrend({ data }: { data: WebsiteSnapshot }) {
           {points.map(p => <g key={p.iso}><circle cx={x(p.day)} cy={y(p.value)} r={focused?.iso === p.iso ? 5 : 3} fill="var(--nre-dash-card)" stroke="currentColor" strokeWidth="2"/><circle role="button" tabIndex={0} aria-label={`${dateLabel(p.iso)}: ${formatWebsiteMetric(metric, p.value)} ${label.toLowerCase()}`} cx={x(p.day)} cy={y(p.value)} r="11" fill="transparent" className="cursor-pointer focus:outline-dash-accent" onMouseEnter={() => setFocusedDate(p.iso)} onFocus={() => setFocusedDate(p.iso)} onClick={() => setFocusedDate(p.iso)} onKeyDown={e => {if(e.key === "Enter" || e.key === " "){e.preventDefault();setFocusedDate(p.iso);}}}><title>{dateLabel(p.iso)}: {formatWebsiteMetric(metric, p.value)}</title></circle></g>)}
         </svg>
       </div>
-      <p className="mt-2 text-xs text-dash-ink-secondary">Hover, tap or focus a point for its daily value. Gaps mean GA4 returned no row; they are not assumed to be zero. Swipe the chart on smaller screens.</p>
+      <p className="mt-2 text-xs text-dash-ink-secondary">Hover, tap or focus a point for its daily value. Gaps mean GA4 returned no row; they are not assumed to be zero.</p>
     </> : <p className="mt-4 text-sm text-dash-ink-secondary">Daily {label.toLowerCase()} are unavailable. Refresh GA4 to load the latest metrics.</p>}
   </section>;
 }
