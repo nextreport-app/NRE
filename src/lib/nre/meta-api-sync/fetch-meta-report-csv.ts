@@ -1,3 +1,4 @@
+import { appendMetaFunnelColumns } from "./funnel-metrics";
 import {META_API_RESULT_MAPPING_HEADER,META_API_RESULT_MAPPING_VERSION} from "../meta-api-result-version";
 import { labelMetaInsightIdentities } from "./insight-identities";
 import { API_RANGE_START_HEADER, API_RANGE_END_HEADER } from "../api-query-coverage";
@@ -160,6 +161,7 @@ export async function fetchMetaReportCsv(input: FetchMetaReportCsvInput): Promis
         : deduped[index].actions?.find(action => action.action_type === "offsite_conversion.fb_pixel_schedule")?.value ?? "0",
     ));
   }
+  appendMetaFunnelColumns(headers, dataRows, deduped);
   let csvText = rowsToCsv(headers, dataRows);
 
   if (input.referenceManualCsvText?.trim()) {
