@@ -1,3 +1,4 @@
+import { WEBSITE_RANGE_REFRESH_FAILED } from "./refresh-messages";
 import { resolveClientUser, clientProviderGuard } from "@/lib/client-provider-connections";
 import { type WebsiteRange, websiteRangeKey } from "./range";
 import { createHash } from "node:crypto";
@@ -114,8 +115,10 @@ export async function refreshWebsiteDashboard(
       ...(scopedGuard ? {providerConnections:{some:scopedGuard}} : {user: { ga4RefreshToken: token, ga4Enabled: true }}),
     },
   };
+  let authorizationPending = true;
   try {
     const fresh = await refreshGa4AccessToken(token);
+    authorizationPending = false;
     const current = scopedGuard ? { count: 1 } : await prisma.user.updateMany({
       where: { id: userId, ga4RefreshToken: token, ga4Enabled: true },
       data: { ga4AccessToken: fresh.access_token },
@@ -164,7 +167,9 @@ export async function refreshWebsiteDashboard(
     const message =
       error instanceof ServiceError
         ? error.message
-        : "GA4 refresh failed. Check your Analytics connection and property access, then retry. Prior figures are not a fresh check.";
+        : authorizationPending
+          ? "The Google Analytics connection could not be refreshed. Try again or reconnect in this client’s settings. Prior figures are not a fresh check."
+          : WEBSITE_RANGE_REFRESH_FAILED;
     await prisma.websiteDashboardSnapshot.updateMany({
       where,
       data: { error: message, leaseUntil: null },

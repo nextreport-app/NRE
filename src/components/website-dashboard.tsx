@@ -1,5 +1,6 @@
 "use client";
 
+import { isWebsiteRangeFailure } from "@/lib/website-dashboard/refresh-messages";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
 import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
@@ -105,6 +106,7 @@ export function WebsiteDashboard({
         ? view?.snapshots.find((s) => days !== "custom" ? s.days === days : s.days === 0 && s.data?.currentPeriod.startIso === customStart && s.data?.currentPeriod.endIso === customEnd)
         : undefined,
     data = entry?.data;
+  const rangeFailure = isWebsiteRangeFailure(error || entry?.error);
   const propertyTimezone = view?.snapshots.find(s => s.data?.property.propertyId === selected?.propertyId)?.data?.property.timezone;
   const latestCompletedDate = propertyTimezone ? reportCalendarYesterday(new Date(), propertyTimezone) : undefined;
   async function refresh() {
@@ -267,10 +269,19 @@ export function WebsiteDashboard({
       )}
       {(error || entry?.error) && (
         <section role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-dash-card p-4 text-sm">
-          <p className="font-semibold text-dash-ink">{error ? "Website data could not be refreshed" : "Last GA4 refresh failed"}</p>
-          {selected?.propertyId && <p className="mt-2 text-dash-ink-secondary">Your property link is saved. Use Refresh GA4 to try fetching report data again; you do not need to save the property again.</p>}
-          <p className="mt-2 text-dash-ink-secondary">{error || entry?.error}</p>
-          {selected && <Link href={`/clients/${selected.id}#website-analytics`} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-dash-border px-3 font-medium hover:border-dash-accent">Review GA4 connection &amp; property →</Link>}
+          <p className="font-semibold text-dash-ink">{rangeFailure ? "Couldn’t load website data for these dates" : error ? "Website data could not be refreshed" : "Last GA4 refresh failed"}</p>
+          {rangeFailure ? <>
+            <p className="mt-2 text-dash-ink-secondary">Try {days === 30 ? "Custom dates" : "Last 30 days or Custom dates"} to check a different period, then click Refresh GA4. Your property link is saved.</p>
+            {data && <p className="mt-2 text-dash-ink-secondary">Prior figures are not a fresh check.</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {days !== 30 && <button type="button" disabled={busy} onClick={() => {setDays(30);setError("");setNotice("");}} className="min-h-11 rounded-lg border border-dash-border px-3 font-medium hover:border-dash-accent disabled:opacity-50">Try last 30 days</button>}
+              <button type="button" disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");}} className="min-h-11 rounded-lg border border-dash-border px-3 font-medium hover:border-dash-accent disabled:opacity-50">Choose custom dates</button>
+            </div>
+          </> : <>
+            {selected?.propertyId && <p className="mt-2 text-dash-ink-secondary">Your property link is saved. You do not need to save the property again.</p>}
+            <p className="mt-2 text-dash-ink-secondary">{error || entry?.error}</p>
+            {selected && <Link href={`/clients/${selected.id}#website-analytics`} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-dash-border px-3 font-medium hover:border-dash-accent">Review GA4 connection &amp; property →</Link>}
+          </>}
         </section>
       )}
       {view && !view.connected && (
@@ -343,9 +354,10 @@ export function WebsiteDashboard({
               {data.empty ? (
                 <section className="mt-5 rounded-xl border border-dash-border bg-dash-card p-5">
                   <h2 className="font-semibold">No website data reported for these dates</h2>
-                  <p className="mt-2 text-sm text-dash-ink-secondary">GA4 returned no rows for these {data.days} completed days. Check the selected property and its collection setup in Analytics. This does not confirm whether the tag is working.</p>
+                  <p className="mt-2 text-sm text-dash-ink-secondary">Your property is linked, but GA4 reported no website activity for these {data.days} completed days. Try {days === 30 ? "Custom dates" : "Last 30 days or Custom dates"} to check a different period.</p>
                   <div className="mt-4 flex flex-wrap gap-3 text-sm text-dash-accent">
-                    {days === 7 && <button onClick={() => { setDays(30); setError(""); }}>View last 30 days</button>}
+                    {days === 7 && <button type="button" className="min-h-11 rounded-lg border border-dash-border px-3" onClick={() => { setDays(30); setError(""); setNotice(""); }}>View last 30 days</button>}
+                    <button type="button" className="min-h-11 rounded-lg border border-dash-border px-3" onClick={() => {setDays("custom");setError("");setNotice("");}}>Choose custom dates</button>
                     <a href={`https://analytics.google.com/analytics/web/#/p${data.property.propertyId}/reports/intelligenthome`} target="_blank" rel="noreferrer">Open GA4</a>
                   </div>
                 </section>
