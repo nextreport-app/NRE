@@ -39,3 +39,13 @@ export function buildMetaCustomConversionResultTypeMap(
   return out;
 }
 
+
+/** Standard purchase/lead/click events need no live custom-conversion catalogue. */
+export function needsMetaCustomConversionCatalog(
+  rows: readonly import("./columns").NreRow[],
+  captured?: MetaCustomConversionResultTypeMap,
+): boolean {
+  if (captured !== undefined) return false;
+  const customId = /offsite_conversion\.custom[.:]\d+/i;
+  return rows.some(row => [row.result_type, row._raw?.["NRE API result action"], row._raw?.["Result indicator"]].some(value => typeof value === "string" && customId.test(value)));
+}

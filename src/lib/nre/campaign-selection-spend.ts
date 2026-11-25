@@ -49,3 +49,16 @@ export function campaignSelectionSpend(rows: NreRow[], selection: MetaApiReportS
     ranges,
   };
 }
+
+/** Stable request identity: ignore inputs which cannot affect this report's spend window. */
+export function campaignSpendRequestKey(selection: MetaApiReportSelection): string {
+  const reportType = selection.reportType ?? "WEEKLY";
+  const dates = selection.dateSelection;
+  return JSON.stringify({
+    reportType,
+    ...(reportType === "COMPARISON" ? { comparisonPeriodA: selection.comparisonPeriodA, comparisonPeriodB: selection.comparisonPeriodB } : {
+      dateSelection: dates ? { mode: dates.mode, ...(dates.mode === "custom" ? {customStart: dates.customStart, customEnd: dates.customEnd} : {}) } : {mode:"last7"},
+    }),
+    ...(reportType === "HISTORICAL" ? {historicalMonthCount: selection.historicalMonthCount ?? 1} : {}),
+  });
+}
