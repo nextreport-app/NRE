@@ -10,7 +10,6 @@ import { customWebsiteRangeSchema } from "@/lib/website-dashboard/range";
 import { WebsiteChannelComparison } from "./website-changes";
 import { WebsiteSessionsTrend } from "./website-sessions-trend";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type WebsiteSnapshot,
@@ -56,7 +55,6 @@ export function WebsiteDashboard({
 }: {
   initialClientId?: string;
 }) {
-  const router = useRouter();
   const clientId = initialClientId;
   const [view, setView] = useState<View | null>(null),
     [search, setSearch] = useState(""),
@@ -198,27 +196,10 @@ export function WebsiteDashboard({
       {view && clientId && (
         <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
-          <label className="w-full text-xs font-medium text-dash-ink-secondary lg:w-auto lg:flex-1">
-            Website / client
-            <select
-              aria-label="Website client"
-              disabled={busy}
-              className="mt-2 block min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm text-dash-ink focus-visible:outline-2 focus-visible:outline-dash-accent"
-              value={selected?.id ?? ""}
-              onChange={(e) => {
-                router.push(`/performance/google-analytics?client=${encodeURIComponent(e.target.value)}`);
-              }}
-            >
-              <option value="" disabled>
-                Select a client
-              </option>
-              {view.clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="w-full min-w-0 lg:w-auto lg:flex-1">
+            <p className="text-xs font-medium text-dash-ink-secondary">Website / client</p>
+            <h2 className="mt-2 break-words text-lg font-semibold text-dash-ink">{selected?.name ?? "Loading client…"}</h2>
+          </div>
           <div className="flex max-w-full gap-1 rounded-xl border border-dash-border bg-dash-bg p-1" role="group" aria-label="Website period">
             {([7, 30] as const).map((n) => (
               <button
