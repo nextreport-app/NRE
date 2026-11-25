@@ -6,9 +6,9 @@ import { signOut, useSession } from "next-auth/react";
 import { useSiteCopy } from "@/hooks/use-site-copy";
 const LINK_HREFS = [
   { href: "/", key: "navHome" as const, hideOnMobile: true },
+  { href: "/clients", key: "navClients" as const, hideOnMobile: false },
   { href: "/performance/meta-ads", key: "navOverview" as const, hideOnMobile: false },
   { href: "/reports", key: "navReports" as const, hideOnMobile: false },
-  { href: "/clients", key: "navClients" as const, hideOnMobile: false },
   { href: "/account", key: "navAccount" as const, hideOnMobile: false },
   { href: "/billing", key: "navBilling" as const, hideOnMobile: false },
   { href: "/support", key: "navSupport" as const, hideOnMobile: false },
@@ -45,7 +45,8 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                title={link.href === "/performance/meta-ads" ? "Meta Ads & GA4 performance" : undefined}
+                title={link.href === "/performance/meta-ads" ? "Monitor Meta Ads and GA4 across clients" : link.href === "/reports" ? "Generated reports and scheduled drafts" : link.href === "/clients" ? "Choose a client and start a task" : undefined}
+                aria-current={active ? "page" : undefined}
                 className={
                   "shrink-0 " +
                   (link.hideOnMobile ? "hidden md:inline " : "") +

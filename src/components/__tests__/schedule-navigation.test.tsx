@@ -19,16 +19,17 @@ describe("Scheduling navigation and ownership", () => {
     expect(html).toContain('aria-label="Client actions for Example"');
     expect(clientCardActions(client.id, scheduling)).toContainEqual(expect.objectContaining({ href: scheduling ? "/clients/client-1/reports/new" : "/clients/client-1/schedules" }));
   });
-  it("loads only the signed-in owner's client and includes the complete return paths", async () => {
+  it("loads only the signed-in owner's client and returns to the client chooser without a cross-task toolbar", async () => {
     const html = renderToStaticMarkup(await ClientSchedulesPage({ params: Promise.resolve({ id: client.id }) }));
     expect(mocks.findFirst).toHaveBeenCalledWith({ where: { id: client.id, userId: "owner-1" }, select: { id: true, accountName: true } });
     expect(html).toContain('data-client="client-1"');
-    expect(html).toContain('href="/clients/client-1"');
-    expect(html).toContain("← Back to Client settings");
+    expect(html).toContain('href="/clients"');
+    expect(html).toContain("← Back to My Clients");
     expect(html).toContain("Report scheduling");
     expect(html).toContain('href="/reports?tab=scheduled"');
-    expect(html).toContain('href="/clients?task=schedule"');
-    expect(html).toContain('href="/clients/client-1/reports/new"');
+    expect(html).not.toContain('aria-label="Client workspace"');
+    expect(html).not.toContain('/clients/client-1/reports/new');
+
   });
   it("rejects an unauthenticated request without querying clients", async () => {
     mocks.auth.mockResolvedValue(null);

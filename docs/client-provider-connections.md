@@ -28,4 +28,4 @@ API/service suites cover existing agency behavior, scoped OAuth for all five pro
 
 ## Client settings layout
 
-Provider logins and GA4 property selection live together in Connections for this client. Slack and Zapier/Make settings are editable in the same section, explicitly marked agency-wide because they affect all clients. Optional provider help and automation controls are collapsed to keep the page compact. Report scheduling remains a dedicated workspace tab with a direct Back to Client settings link.
+Provider logins and GA4 property selection live together in Connections for this client. Slack and Zapier/Make settings are editable in the same section, explicitly marked agency-wide because they affect all clients. Optional provider help and automation controls are collapsed to keep the page compact. Client tasks are launched from My Clients. Task pages no longer repeat a cross-task toolbar; report scheduling returns to My Clients, while provider/property setup links remain beside the controls that need them.

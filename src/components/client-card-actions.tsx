@@ -8,16 +8,19 @@ export function clientCardActions(clientId: string, scheduling = false) {
     {
       href: `/performance/meta-ads?client=${encodeURIComponent(clientId)}`,
       label: "Performance (Meta Ads & GA4)",
+      description: "Compare results and monitor spending",
       icon: "performance" as ActionIcon,
     },
     {
       href: `/clients/${clientId}/${scheduling ? "reports/new" : "schedules"}`,
-      label: scheduling ? "Generate report" : "Schedule reports",
+      label: scheduling ? "Generate report" : "Report scheduling",
+      description: scheduling ? "Create a one-off client report" : "Prepare recurring report drafts",
       icon: (scheduling ? "report" : "schedule") as ActionIcon,
     },
     {
       href: `/clients/${clientId}`,
       label: "Client settings",
+      description: "Manage connections and client details",
       icon: "manage" as ActionIcon,
     },
   ];
@@ -155,7 +158,7 @@ export function ClientCardActions({
         onClick={onToggle}
         className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-3 py-2 text-xs font-semibold text-dash-ink shadow-sm transition hover:border-dash-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
       >
-        Client actions
+        More tasks
         <svg
           aria-hidden="true"
           width="12"
@@ -187,7 +190,7 @@ export function ClientCardActions({
                   className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-dash-ink transition hover:bg-dash-bg focus-visible:outline-2 focus-visible:outline-dash-accent"
                 >
                   <ActionIcon type={action.icon} />
-                  <span>{action.label}</span>
+                  <span><span className="block font-medium">{action.label}</span><span className="mt-1 block text-xs leading-relaxed text-dash-ink-secondary">{action.description}</span></span>
                 </Link>
               ))}
             </nav>

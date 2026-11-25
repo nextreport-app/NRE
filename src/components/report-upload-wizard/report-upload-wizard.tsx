@@ -3,7 +3,7 @@
 import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { useEffect, useRef } from "react";
 import { normalizeMetaAccountId } from "@/lib/meta-client-account";
-import { WizardClientActions } from "./ui/wizard-client-actions";
+import { WizardChangeClient } from "./ui/wizard-client-actions";
 import dynamic from "next/dynamic";
 import { getAdWizardFlow } from "@/lib/nre/platform-labels";
 import { wizardStepHeading, wizardStepSubtitle } from "@/lib/wizard-i18n";
@@ -35,17 +35,11 @@ export function ReportUploadWizard(props: ReportUploadWizardProps) {
 
 function WizardClientLine({
   clientName,
-  clientId,
-  showSchedule,
-  performance,
   metaAdAccountId,
   selectedAccount = false,
   onChangeClientClick,
 }: {
   clientName: string;
-  clientId: string;
-  showSchedule: boolean;
-  performance?: "meta" | "website";
   metaAdAccountId?: string | null;
   selectedAccount?: boolean;
   onChangeClientClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
@@ -63,7 +57,7 @@ function WizardClientLine({
           {accountId && <span className="ml-2 inline-block break-all text-[13px] font-normal sm:text-[14px]">({selectedAccount ? "Selected ad account ID" : "Ad account ID"}: {accountId})</span>}
         </p>
       </div>
-      <WizardClientActions clientId={clientId} showSchedule={showSchedule} performance={performance} changeClientLabel={copy.changeClient} onChangeClientClick={onChangeClientClick} />
+      <WizardChangeClient changeClientLabel={copy.changeClient} onChangeClientClick={onChangeClientClick} />
     </div>
   );
 }
@@ -121,7 +115,7 @@ function ReportUploadWizardBody() {
   const savedAccountId = normalizeMetaAccountId(w.linkedMetaAdAccountId);
   const selectedAccountId = w.dataSourceMode === "api" ? normalizeMetaAccountId(w.selectedApiAdAccountId) : null;
   const clientLine = (
-    <WizardClientLine clientName={w.clientName} clientId={w.clientId} showSchedule={w.wizardKind === "ads" && w.platform === "META"} performance={w.wizardKind === "website" ? "website" : w.platform === "META" ? "meta" : undefined} metaAdAccountId={w.step === 1 && w.wizardKind === "ads" && w.platform === "META" ? savedAccountId ?? selectedAccountId : null} selectedAccount={!savedAccountId && !!selectedAccountId} onChangeClientClick={guardedClientChange} />
+    <WizardClientLine clientName={w.clientName} metaAdAccountId={w.step === 1 && w.wizardKind === "ads" && w.platform === "META" ? savedAccountId ?? selectedAccountId : null} selectedAccount={!savedAccountId && !!selectedAccountId} onChangeClientClick={guardedClientChange} />
   );
 
   if (w.resumeBootstrapping) {
