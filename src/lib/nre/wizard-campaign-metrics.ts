@@ -37,10 +37,14 @@ export function buildCampaignMetricBundle(
   const fullPool = listSelectableMetrics(observedHeaders ?? headers, metricsPlatform);
   const objectiveKey = usesMetaObjectiveEngine(platform) ? objectiveKeyFor(resultLabel) : undefined;
 
+  // A funnel event observed in another campaign must not become this campaign's default.
+  const observed = observedHeaders ? new Set(observedHeaders.map(h => h.trim().toLowerCase())) : null;
+  const funnelHeaders = new Set(["adds to cart", "website adds to cart", "add to cart", "initiate checkout", "checkouts initiated"]);
+  const selectionHeaders = platform === "META" && observed ? headers.filter(h => !funnelHeaders.has(h.trim().toLowerCase()) || observed.has(h.trim().toLowerCase())) : headers;
   const selection = defaultMetricSelectionForCampaign(platform, {
     resultLabel,
     costLabel,
-    headers,
+    headers: selectionHeaders,
     googleObjectiveKey: googleKey,
   }).filter((m): m is SelectedMetric => m !== null);
 

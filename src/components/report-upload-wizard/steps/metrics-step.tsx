@@ -1,4 +1,5 @@
 "use client";
+import { ApiSourceDownload } from "../ui/api-source-download";
 import { dailyBaseMetrics, dailyMetricIsExcluded } from "@/lib/nre/daily-metric-selection";
 import { paginateComparisonMetrics } from "@/lib/nre/comparison-extra-metrics";
 
@@ -81,6 +82,7 @@ export function WizardMetricsStep() {
     const toggleMetric = (key: string) => daily && baseMetrics.some(metric => metric.key === key) ? w.toggleDailyBaseMetric(key) : toggle(key);
     const extras = optional.filter(metric => keys.includes(metric.key));
     return <div className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5 shadow-sm pb-24 md:pb-5">
+      {w.dataSourceMode === "api" && w.platform === "META" && w.uploadSessionId && <ApiSourceDownload clientId={w.clientId} uploadSessionId={w.uploadSessionId} />}
       <p className="text-sm leading-relaxed text-dash-ink-secondary">Metrics are selected from {w.dataSourceMode === "api" ? "Meta API" : "your CSV"}. Add or remove optional metrics below.</p>
       <div className="rounded-lg bg-dash-card nre-dash-surface p-4" style={{ borderTop: "var(--nre-wizard-section-border, 3px solid #38bdf8)" }}>
         <h3 className="text-[15px] font-bold text-dash-ink">{daily ? "Daily tables · selected campaigns" : "Comparison · selected campaigns"}</h3>
@@ -101,6 +103,7 @@ export function WizardMetricsStep() {
         </div>
       )}
 
+      {w.dataSourceMode === "api" && w.platform === "META" && w.uploadSessionId && <ApiSourceDownload clientId={w.clientId} uploadSessionId={w.uploadSessionId} />}
       <p className="text-sm leading-relaxed text-dash-ink-secondary">Metrics are selected from {w.dataSourceMode === "api" ? "Meta API" : "your CSV"}. Review or expand to customize.</p>
       {activeCampaigns.length > 1 ? (
         <p className="text-[14px] text-dash-ink-secondary">

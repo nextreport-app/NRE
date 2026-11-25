@@ -1,18 +1,13 @@
 "use client";
 import { useState } from "react";
 
-// Temporarily hide testing diagnostics across the wizard, schedules and inbox.
-// Re-enable for creative-report acceptance when source exports are needed again.
-// This controls presentation only; the source endpoint keeps its existing auth.
-const SHOW_API_SOURCE_DIAGNOSTICS = false;
-
 type ApiSourceDownloadProps = { clientId: string; uploadSessionId: string };
 
 export function ApiSourceDownload(props: ApiSourceDownloadProps) {
-  return SHOW_API_SOURCE_DIAGNOSTICS ? <ApiSourceDownloadControls {...props} /> : null;
+  return <ApiSourceDownloadControls {...props} />;
 }
 
-/** Retained source controls; not mounted while diagnostics are hidden. */
+/** Private source downloads retain the endpoint’s existing owner and expiry checks. */
 function ApiSourceDownloadControls({ clientId, uploadSessionId }: ApiSourceDownloadProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
