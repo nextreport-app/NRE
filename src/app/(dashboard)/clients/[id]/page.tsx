@@ -1,3 +1,4 @@
+import { IntegrationSettings } from "@/components/integration-settings";
 import { ClientProviderSettings } from "@/components/client-provider-settings";
 import { clientProviderSummaries } from "@/lib/client-provider-connections";
 import { resolveClientUser } from "@/lib/client-provider-connections";
@@ -94,6 +95,7 @@ export default async function ClientDetailPage({
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
+        slackWebhookUrl: true, automationWebhookUrl: true,
         googleRefreshToken: true, googleConnectedEmail: true,
         metaAdsEnabled: true, metaAccessToken: true,
         metaConnectedUserId: true,
@@ -165,58 +167,24 @@ export default async function ClientDetailPage({
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />
 
       <div className="space-y-4">
-        <Card accent id="generate-report">
-          <CardHeading hint="Choose Meta API sync or upload a day-wise CSV on Import.">
-            Generate report
-          </CardHeading>
-          <Link
-            href={`/clients/${client.id}/reports/new`}
-            className="block w-full rounded-md bg-[#f6ad55] px-6 py-3 text-center text-[15px] font-semibold text-[#0d1b2e] shadow-sm hover:bg-[#fbd38d]"
-          >
-            Generate Report
-          </Link>
-        </Card>
-        <ClientProviderSettings clientId={client.id} connections={connectionSummaries} />
+        <ClientProviderSettings clientId={client.id} connections={connectionSummaries}
+          ga4Property={isClientPlatformConnectionVisible("ga4") ? (
+            <div id="website-analytics" className="mt-4 scroll-mt-6 border-t border-dash-border pt-4">
+              <h4 className="mb-2 text-sm font-semibold">Website property</h4>
+              <Ga4PropertyPicker clientId={client.id} initialPropertyId={client.ga4PropertyId} initialPropertyName={client.ga4PropertyName} ga4Connected={ga4Connected} connectedEmail={owner?.ga4ConnectedEmail} embedded />
+              <Link href={`/performance/google-analytics?client=${client.id}`} className="mt-3 inline-block text-xs font-medium text-dash-accent hover:underline">View website performance →</Link>
+            </div>
+          ) : null}
+          automations={
+            <details className="mt-4 rounded-xl border border-dash-border bg-dash-bg p-4">
+              <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm font-semibold"><svg aria-hidden="true" className="shrink-0 text-dash-accent" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2" y="8" width="6" height="6" rx="1.5"/><rect x="16" y="2" width="6" height="6" rx="1.5"/><rect x="16" y="16" width="6" height="6" rx="1.5"/><path d="M8 11h4V5h4M12 11v8h4"/></svg> Slack, Zapier &amp; Make <span className="rounded-full border border-dash-border px-2 py-1 text-[11px] font-normal text-dash-ink-secondary">Agency-wide</span></summary>
+              <p className="my-3 text-xs text-dash-ink-secondary">These notification and automation settings apply to reports for all your clients.</p>
+              <IntegrationSettings initialSlackWebhookUrl={rawOwner?.slackWebhookUrl ?? null} initialAutomationWebhookUrl={rawOwner?.automationWebhookUrl ?? null} />
+            </details>
+          }
+        />
 
-
-
-        <ClientReportDesign clientId={client.id}/>
-
-        <Card id="budget-monitor"><CardHeading hint="Review spending, budget alerts and campaign changes together in Performance.">Budget &amp; alerts</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/performance/meta-ads?client=${client.id}#meta-budget-${client.id}`}>Open budget &amp; alerts →</Link></Card>
-
-        <Card id="scheduled-reports"><CardHeading hint="Create or change recurring schedules in one place.">Scheduled reports</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/clients/${client.id}/schedules`}>Manage schedules →</Link></Card>
-
-        <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
-          <PreviousMonthDataUpload
-            clientCurrency={client.currency}
-            clientTimezone={client.timezone}
-            clientId={client.id}
-            initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
-            initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
-            initialCampaigns={previousMonthCampaigns}
-            initialSelectedCampaigns={previousMonthSelectedCampaigns}
-            initialCampaignSpend={previousMonthCampaignSpend}
-            currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
-          />
-        </SettingsDisclosure>
-
-        {isClientPlatformConnectionVisible("ga4") ? (
-          <Card id="website-analytics">
-            <CardHeading hint="Link this client’s website property for the GA4 dashboard (Beta).">
-              Google Analytics property
-            </CardHeading>
-            <a href={`/performance/google-analytics?client=${client.id}`} className="mb-3 inline-block text-sm text-dash-accent hover:underline">View website performance →</a>
-            <Ga4PropertyPicker
-              clientId={client.id}
-              initialPropertyId={client.ga4PropertyId}
-              initialPropertyName={client.ga4PropertyName}
-              ga4Connected={ga4Connected}
-              connectedEmail={owner?.ga4ConnectedEmail}
-            />
-          </Card>
-        ) : null}
-
-        <SettingsDisclosure id="client-settings" title="Client settings" hint="This brand’s currency, timezone, template, budget, logo and notes.">
+        <SettingsDisclosure id="client-settings" title="Client settings" hint="Name, currency, timezone, budget, logo and notes.">
           <ClientForm
             showTemplatePicker={false}
             clientId={client.id}
@@ -241,6 +209,25 @@ export default async function ClientDetailPage({
             </span>
             <DeleteClientButton clientId={client.id} />
           </div>
+        </SettingsDisclosure>
+
+        <ClientReportDesign clientId={client.id}/>
+
+        <Card id="budget-monitor"><CardHeading hint="Review spending, budget alerts and campaign changes together in Performance.">Budget &amp; alerts</CardHeading><Link className="text-sm font-medium text-dash-accent hover:underline" href={`/performance/meta-ads?client=${client.id}#meta-budget-${client.id}`}>Open budget &amp; alerts →</Link></Card>
+
+
+        <SettingsDisclosure id="previous-month-data" title="Previous month data" hint="Optional · add a month-over-month comparison when you need it.">
+          <PreviousMonthDataUpload
+            clientCurrency={client.currency}
+            clientTimezone={client.timezone}
+            clientId={client.id}
+            initialFileName={client.previousMonthDataUrl ? previousMonthDataFileName(client.previousMonthDataUrl) : null}
+            initialUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
+            initialCampaigns={previousMonthCampaigns}
+            initialSelectedCampaigns={previousMonthSelectedCampaigns}
+            initialCampaignSpend={previousMonthCampaignSpend}
+            currencySymbol={CURRENCY_SYMBOLS[client.currency] ?? "$"}
+          />
         </SettingsDisclosure>
 
         {reportCount > 0 ? (
@@ -268,7 +255,6 @@ export default async function ClientDetailPage({
             ) : null}
           </Card>
         ) : null}
-
 
       </div>
     </div>

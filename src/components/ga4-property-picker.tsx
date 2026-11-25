@@ -20,12 +20,14 @@ export function Ga4PropertyPicker({
   initialPropertyName,
   ga4Connected,
   connectedEmail,
+  embedded = false,
 }: {
   clientId: string;
   initialPropertyId: string | null;
   initialPropertyName: string | null;
   ga4Connected: boolean;
   connectedEmail?: string | null;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -109,6 +111,8 @@ export function Ga4PropertyPicker({
     }
   }
 
+  if (!ga4Connected && embedded) return <p className="text-sm text-dash-ink-secondary">Connect a login above to choose this client’s GA4 property.</p>;
+
   if (!ga4Connected) {
     return (
       <div className="space-y-3">
@@ -130,7 +134,7 @@ export function Ga4PropertyPicker({
       <p className="text-[15px] text-dash-ink-secondary">
         Link the website property that belongs to this client.
       </p>
-      {connectedEmail && <p className="text-xs text-dash-ink-secondary">Google login: {connectedEmail}</p>}
+      {!embedded && connectedEmail && <p className="text-xs text-dash-ink-secondary">Google login: {connectedEmail}</p>}
       {initialPropertyId && initialPropertyName ? (
         <p className="text-[13px] text-dash-ink">
           Linked: <span className="font-medium">{initialPropertyName}</span>
@@ -151,7 +155,7 @@ export function Ga4PropertyPicker({
         </p>
       ) : attempted && properties.length === 0 ? (
         <p className="text-[13px] text-amber-200">
-          No GA4 properties found under this login. Connect a different Google login below.
+          No GA4 properties found under this login. Choose a different login to try another account.
         </p>
       ) : properties.length > 0 ? (
         <select
@@ -193,12 +197,12 @@ export function Ga4PropertyPicker({
             Unlink
           </button>
         ) : null}
-        <Link
+        {!embedded && <Link
           href={`/api/ga4/connect?clientId=${encodeURIComponent(clientId)}`}
           className="self-center text-[12px] text-dash-ink-secondary underline"
         >
-          Connect a different Google login
-        </Link>
+          Choose different login
+        </Link>}
       </div>
     </div>
   );
