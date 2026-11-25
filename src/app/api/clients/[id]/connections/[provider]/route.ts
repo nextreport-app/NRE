@@ -26,6 +26,10 @@ export async function DELETE(
       await tx.clientProviderConnection.deleteMany({
         where: { clientId: id, provider },
       });
+      if (provider === "gsc") {
+        await tx.client.update({where: {id}, data: {gscSiteUrl: null}});
+        await tx.searchConsoleSnapshot.deleteMany({where: {clientId: id}});
+      }
       if (provider === "ga4") {
         await tx.client.update({
           where: { id },

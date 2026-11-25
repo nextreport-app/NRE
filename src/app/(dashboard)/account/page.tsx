@@ -1,3 +1,5 @@
+import { GscConnectionSettings } from "@/components/gsc-connection-settings";
+import { isGscConfigured } from "@/lib/search-console/api";
 import { AgencyTemplateLibrary } from "@/components/agency-template-library";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import Link from "next/link";
@@ -45,6 +47,8 @@ export default async function AccountSettingsPage({
     meta_ads_error?: string;
     google_ads_connected?: string;
     google_ads_error?: string;
+    gsc_connected?: string;
+    gsc_error?: string;
     ga4_connected?: string;
     ga4_error?: string;
     tiktok_ads_connected?: string;
@@ -68,6 +72,7 @@ export default async function AccountSettingsPage({
         metaConnectedUserId: true,
         googleAdsConnectedEmail: true,
         googleAdsEnabled: true,
+        gscEnabled: true, gscConnectedEmail: true,
         ga4ConnectedEmail: true,
         ga4Enabled: true,
         tiktokConnectedName: true,
@@ -153,6 +158,7 @@ export default async function AccountSettingsPage({
             />
           </section>
 
+      <section id="search-console" className="mb-10 scroll-mt-6"><SectionHeading>Google Search Console</SectionHeading><GscConnectionSettings connected={user.gscEnabled} email={user.gscConnectedEmail} configured={isGscConfigured()} justConnected={params.gsc_connected === "1"} error={params.gsc_error}/></section>
       <details open={!!(google_ads_connected || google_ads_error || tiktok_ads_connected || tiktok_ads_error)} className="mb-10 rounded-lg border border-dash-border bg-dash-card/30 p-4">
         <summary className="cursor-pointer text-sm font-semibold text-dash-ink">Other platform connections</summary>
         <p className="mt-2 text-[13px] text-dash-ink-secondary">For testing only. These platforms are not included in the current Meta Ads reporting launch.</p>

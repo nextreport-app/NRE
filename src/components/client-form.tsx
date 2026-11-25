@@ -61,8 +61,10 @@ export function ClientForm({
   submitFullWidth = false,
   inline = false,
   showTemplatePicker=true,
+  createTask = "report",
 }: {
   clientId?: string;
+  createTask?: "report" | "search-console";
   showTemplatePicker?:boolean;
   initial?: Partial<ClientFormValues>;
   /** Whether this client already has a logo uploaded — drives the initial preview/remove-button state on edit. Irrelevant on create (no clientId yet). */
@@ -171,7 +173,7 @@ export function ClientForm({
       accountName: values.accountName,
       currency: values.currency,
       timezone: values.timezone,
-      ...(showTemplatePicker?{template:values.template}:{}),
+      ...(showTemplatePicker || !effectiveClientId ? {template:values.template} : {}),
       notes: values.notes,
       monthlyBudget: budgetNum != null && !Number.isNaN(budgetNum) && budgetNum > 0 ? budgetNum : null,
     };
@@ -222,7 +224,7 @@ export function ClientForm({
       router.refresh();
       return;
     }
-    router.push(clientId ? `/clients/${savedClientId}` : `/clients/${savedClientId}/reports/new`);
+    router.push(clientId ? `/clients/${savedClientId}` : createTask === "search-console" ? `/clients/${savedClientId}#search-console` : `/clients/${savedClientId}/reports/new`);
     router.refresh();
     } catch {
       const message = "Could not save your client. Check your connection and retry; a client already created in this form will be reused.";
@@ -243,7 +245,7 @@ export function ClientForm({
         />
       </div>
 
-      <p className="text-xs text-dash-ink-secondary">Use the client’s name as it should appear on the report cover.</p>
+      <p className="text-xs text-dash-ink-secondary">{createTask === "search-console" ? "Use a name that identifies this client or website." : "Use the client’s name as it should appear on the report cover."}</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="client-currency" className="mb-1 block text-sm text-dash-ink-secondary">Currency</label>
@@ -279,7 +281,7 @@ export function ClientForm({
         </div>
       </div>
 
-      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">Match the currency and timezone used in the ad account. These control report formatting and date windows.</p>
+      <p className="text-[12px] leading-relaxed text-dash-ink-secondary">{createTask === "search-console" ? "Currency and timezone are workspace defaults. Search Console reporting uses Pacific dates." : "Match the currency and timezone used in the ad account. These control report formatting and date windows."}</p>
       <details open={!!clientId} className="group/client-options rounded-lg border border-dash-border">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-dash-ink [&::-webkit-details-marker]:hidden">Branding, budget &amp; notes <span className="text-xs text-dash-ink-secondary">Optional ▾</span></summary>
         <div className="space-y-5 border-t border-dash-border p-4">
@@ -321,7 +323,7 @@ export function ClientForm({
         </select>
       </div>
 
-      ) : <p className="text-sm text-dash-ink-secondary">Change report design in <a href={`/clients/${clientId}#report-design`} className="text-dash-accent hover:underline">Report design</a>.</p>}
+      ) : clientId ? <p className="text-sm text-dash-ink-secondary">Change report design in <a href={`/clients/${clientId}#report-design`} className="text-dash-accent hover:underline">Report design</a>.</p> : null}
 
       <div>
         <label htmlFor="client-logo-upload" className="mb-1 block text-sm text-dash-ink-secondary">Client logo — optional</label>

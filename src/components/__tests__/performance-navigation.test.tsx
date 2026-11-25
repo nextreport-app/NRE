@@ -10,16 +10,17 @@ describe("client performance discovery", () => {
     const html = renderToStaticMarkup(<ClientList clients={[client]} totalCount={1} scheduling={scheduling} />);
     const actions = clientCardActions(client.id, scheduling);
     expect(actions.map(a => a.href)).toEqual(["/performance/meta-ads?client=client-1", scheduling ? "/clients/client-1/reports/new" : "/clients/client-1/schedules", "/clients/client-1"]);
-    expect(actions[0].label).toBe("Performance (Meta Ads & GA4)");
+    expect(actions[0].label).toBe("Performance (Meta Ads, GA4 & SEO)");
     expect(html).toContain('aria-label="Client actions for Example"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain(`href="/clients/client-1/${scheduling ? "schedules" : "reports/new"}"`);
 
   });
-  it.each(["meta", "website"] as const)("keeps the client when switching from %s", current => {
+  it.each(["meta", "website", "seo"] as const)("keeps the client when switching from %s", current => {
     const html = renderToStaticMarkup(<OverviewNavigation current={current} clientId="client&one" />);
     expect(html).toContain('href="/performance/meta-ads?client=client%26one"');
     expect(html).toContain('href="/performance/google-analytics?client=client%26one"');
+    expect(html).toContain('href="/performance/search-console?client=client%26one"');
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   });
   it("keeps portfolio navigation unscoped and names the header link Performance", () => {

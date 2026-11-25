@@ -98,7 +98,9 @@ export function providerOAuthReturn(
   url.search = q.search;
   url.hash =
     clientId && !returnToWizard
-      ? provider === "ga4"
+      ? provider === "gsc"
+        ? "search-console"
+        : provider === "ga4"
         ? "website-analytics"
         : "provider-connections"
       : q.hash;
@@ -113,5 +115,11 @@ export async function persistOAuthProvider(
   const context = providerOAuthContext(req, provider, userId);
   if (context.clientId)
     return saveClientProvider(userId, context.clientId, provider, data);
+  if (provider === "gsc") return prisma.$transaction(async tx => {
+    const inherited = {userId, providerConnections: {none: {provider: "gsc"}}};
+    await tx.client.updateMany({where: inherited, data: {gscSiteUrl: null}});
+    await tx.searchConsoleSnapshot.deleteMany({where: {client: inherited}});
+    return tx.user.update({where: {id: userId}, data});
+  });
   return prisma.user.update({ where: { id: userId }, data });
 }

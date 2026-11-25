@@ -19,7 +19,7 @@ const LINK_HREFS = [
 /** Active-page match: exact for "/", prefix for everything else (so /clients/abc still highlights "My Clients"). */
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
-  if (href === "/performance/meta-ads" && pathname === "/performance/google-analytics") return true;
+  if (href === "/performance/meta-ads" && ["/performance/google-analytics", "/performance/search-console"].includes(pathname)) return true;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -45,7 +45,7 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                title={link.href === "/performance/meta-ads" ? "Monitor Meta Ads and GA4 across clients" : link.href === "/reports" ? "Generated reports and scheduled drafts" : link.href === "/clients" ? "Choose a client and start a task" : undefined}
+                title={link.href === "/performance/meta-ads" ? "Monitor Meta Ads, GA4 and SEO across clients" : link.href === "/reports" ? "Generated reports and scheduled drafts" : link.href === "/clients" ? "Choose a client and start a task" : undefined}
                 aria-current={active ? "page" : undefined}
                 className={
                   "shrink-0 " +
