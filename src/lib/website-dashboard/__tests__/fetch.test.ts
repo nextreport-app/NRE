@@ -14,6 +14,8 @@ import {
 } from "../model";
 const now = new Date("2026-11-20T12:00:00Z");
 const current = {
+  activeUsers: 75,
+  eventCount: 430,
   sessions: 100,
   totalUsers: 80,
   newUsers: 60,
@@ -53,6 +55,8 @@ beforeEach(() => {
           String(current[name as keyof typeof current]),
         );
       }
+      if (dimensionNames[0] === "country") dimensions = ["India"];
+      if (dimensionNames[0] === "pageTitle") dimensions = ["Pricing"];
       if (dimensionNames[0] === "date") {
         dimensions = ["20261119"];
         values = metricNames.map((name) =>
@@ -77,6 +81,8 @@ describe("GA4 data contracts", () => {
   it("reads period metrics from rows, not absent totals, in property timezone", async () => {
     const s = await fetchWebsiteSnapshot("token", "552954256", 7, now);
     expect(s.current).toEqual(current);
+    expect(s.countries).toEqual([{name: "India", activeUsers: 75}]);
+    expect(s.pageTitles).toEqual([{name: "Pricing", screenPageViews: 150}]);
     expect(s.property.timezone).toBe("Asia/Kolkata");
     expect(s.currentPeriod).toEqual({
       startIso: "2026-11-13",
@@ -105,6 +111,28 @@ describe("GA4 data contracts", () => {
     expect(snapshot.channels).toEqual([]);
     expect(snapshot.trend).toEqual([]);
     expect(snapshot.property.propertyId).toBe("552954256");
+  });
+  it("keeps new requests bounded and ranks dimensions by their own metric", async () => {
+    const original = vi.mocked(runGa4Report).getMockImplementation()!;
+    let active = 0, peak = 0;
+    vi.mocked(runGa4Report).mockImplementation(async (...args) => {
+      active++; peak = Math.max(peak, active);
+      try { return await original(...args); } finally { active--; }
+    });
+    const snapshot = await fetchWebsiteSnapshot("token", "552954256", 30, now);
+    expect(peak).toBeLessThanOrEqual(5);
+    for (const [dimension, metric] of [["country", "activeUsers"], ["pageTitle", "screenPageViews"]]) {
+      const call = vi.mocked(runGa4Report).mock.calls.find(args => args[2].dimensions?.[0]?.name === dimension)!;
+      expect(call[2].orderBys).toEqual([{metric: {metricName: metric}, desc: true}]);
+      expect(call[2].limit).toBe(10);
+    }
+    const legacy = JSON.parse(JSON.stringify(snapshot));
+    delete legacy.current.activeUsers; delete legacy.current.eventCount;
+    delete legacy.previous.activeUsers; delete legacy.previous.eventCount;
+    delete legacy.countries; delete legacy.pageTitles;
+    const parsed = parseWebsiteSnapshot(JSON.stringify(legacy), "552954256", 30);
+    expect(parsed).not.toBeNull();
+    expect(parsed!.current.activeUsers).toBeUndefined();
   });
   it("keeps missing metric values unavailable", async () => {
     vi.mocked(runGa4Report).mockResolvedValue({

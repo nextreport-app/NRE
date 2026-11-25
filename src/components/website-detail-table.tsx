@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import type {
   WebsiteMetric,
   WebsiteMetrics,
@@ -38,34 +37,15 @@ export function WebsiteDetailTable({
   rows: Array<Partial<WebsiteMetrics> & { name?: string; date?: string }>;
   kind: "date" | "page";
 }) {
-  const [all, setAll] = useState(false);
-  const columns = all
-    ? WEBSITE_DETAIL_COLUMNS
-    : WEBSITE_DETAIL_COLUMNS.filter(([key]) =>
-        [
-          "sessions",
-          "totalUsers",
-          "screenPageViews",
-          "engagementRate",
-          "bounceRate",
-          "keyEvents",
-        ].includes(key),
-      );
+  const columns = WEBSITE_DETAIL_COLUMNS;
   return (
     <>
-      <button
-        className="mt-3 rounded-lg border border-dash-border px-3 py-2 text-xs"
-        aria-expanded={all}
-        onClick={() => setAll(!all)}
-      >
-        {all ? "Show key metrics" : "Show all metrics"}
-      </button>
-      <div className="mt-3 max-w-full overflow-x-auto">
+      <div className={`mt-3 max-w-full overflow-x-auto ${kind === "date" ? "max-h-[420px] overflow-y-auto" : ""}`}>
         <table
           className="w-full text-left text-sm"
-          style={{ minWidth: all ? 1100 : 760 }}
+          style={{ minWidth: 1100 }}
         >
-          <thead>
+          <thead className="sticky top-0 bg-dash-card">
             <tr>
               <th className="pb-3 pr-5">
                 {kind === "date" ? "Date" : "Landing page"}

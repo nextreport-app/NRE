@@ -6,6 +6,7 @@ import {
 } from "../ga4-api";
 import {
   WEBSITE_METRICS,
+  WEBSITE_EXTRA_SUMMARY_METRICS,
   websitePeriods,
   type WebsiteMetrics,
   type WebsiteSnapshot,
@@ -78,7 +79,7 @@ export async function fetchWebsiteSnapshot(
             orderBys: [
               dimensionNames[0] === "date"
                 ? { dimension: { dimensionName: "date" }, desc: false }
-                : { metric: { metricName: "sessions" }, desc: true },
+                : { metric: { metricName: metricNames[0] }, desc: true },
             ],
           }
         : {}),
@@ -166,8 +167,18 @@ export async function fetchWebsiteSnapshot(
       ),
       request(periods.currentPeriod, WEBSITE_METRICS, ["date"], 100),
     ]);
-  // Keep each snapshot at the existing five concurrent GA4 requests; the two window caches may refresh together.
-  const previousChannels = await channels(periods.previousPeriod);
+  // Separate two-metric overview requests keep every GA4 report below its ten-metric limit.
+  async function extraSummary(range: typeof periods.currentPeriod) {
+    const response = await request(range, WEBSITE_EXTRA_SUMMARY_METRICS);
+    const rows = ga4DashboardRows(response, WEBSITE_EXTRA_SUMMARY_METRICS);
+    if (rows.length > 1 || (response.rowCount ?? 0) > 1 || (!rows.length && (response.rowCount ?? 0) > 0)) throw Error("Unexpected GA4 overview rows.");
+    return Object.fromEntries(WEBSITE_EXTRA_SUMMARY_METRICS.map(key => [key, rows[0]?.metrics[key] ?? null]));
+  }
+  const [previousChannels, currentExtra, previousExtra, countryResponse, titleResponse] = await Promise.all([
+    channels(periods.previousPeriod), extraSummary(periods.currentPeriod), extraSummary(periods.previousPeriod),
+    request(periods.currentPeriod, ["activeUsers"], ["country"], 10),
+    request(periods.currentPeriod, ["screenPageViews"], ["pageTitle"], 10),
+  ]);
   const pages = ga4DashboardRows(
     pageResponse,
     WEBSITE_METRICS,
@@ -211,12 +222,14 @@ export async function fetchWebsiteSnapshot(
     property,
     checkedAt: new Date().toISOString(),
     ...periods,
-    current: current.metrics,
-    previous: previous.metrics,
+    current: { ...current.metrics, ...currentExtra },
+    previous: { ...previous.metrics, ...previousExtra },
     channels: channelRows,
     previousChannels,
     pages,
     trend,
+    countries: ga4DashboardRows(countryResponse, ["activeUsers"], ["country"]).map(row => ({name: row.dimensions.country, activeUsers: row.metrics.activeUsers})),
+    pageTitles: ga4DashboardRows(titleResponse, ["screenPageViews"], ["pageTitle"]).map(row => ({name: row.dimensions.pageTitle, screenPageViews: row.metrics.screenPageViews})),
     warnings: [...warnings],
     empty: current.empty,
   };

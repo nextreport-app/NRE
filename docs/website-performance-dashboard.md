@@ -42,3 +42,13 @@ Daily rows, landing pages and channel details request all ten core metrics, with
 Paid Social, Paid Search and other recognized GA4 paid-channel rows are highlighted when returned. No absent row becomes zero, and no Meta delivery metric is substituted for website traffic. Expected paid visits need correct campaign UTMs and, where applicable, Google Ads auto-tagging/property linking. An agency's connection to an ad account does not itself create paid GA4 sessions or identify every Paid Social visitor as Meta.
 
 This core traffic/engagement/key-event overview does not infer revenue, purchases or business outcomes from key events. Ecommerce revenue reporting requires actual ecommerce instrumentation and is not manufactured from the available figures.
+
+## Overview refresh
+
+The selected website opens on Last 30 days. Ten summary cards show new users, active users, event count, key events, sessions, average session duration, page views, bounce rate, total users and engagement rate. Desktop uses five columns; mobile uses two. Active users and event count come from dimensionless current/previous GA4 reports, never sums of daily unique users. Their fields are optional in version-1 snapshots, so old saved reports remain readable and show — until refreshed.
+
+The daily line chart exposes date/value axes and keyboard, pointer and touch inspection. Missing daily rows break the line rather than becoming zeros. It shows the current period only; previous-period daily values are not fabricated. All reporting sections remain visible. Channel tables show users, views, engagement, bounce, key events and session duration with available previous-period values. Landing pages precede the scrollable daily evidence table.
+
+Additional top-ten country and page-title queries show active users by country and most-viewed page titles, respectively. Titles measure all page views; landing pages measure entrances and remain a separate report. New requests are staged in batches of at most five and each report requests at most ten metrics. Country/page-title arrays are optional in existing JSON caches; no database migration or new OAuth scope is needed. Existing property/grant ownership, cooldown, quality warnings and failure retention remain enforced.
+
+Search Console is a proposed separate integration for organic search clicks, impressions, CTR, average position, queries and search landing pages. It is not implemented by this dashboard refresh and would require its own read-only authorization, client-site assignment and privacy handling for query data.

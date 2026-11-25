@@ -13,9 +13,12 @@ export const WEBSITE_METRICS = [
   "sessionKeyEventRate",
   "averageSessionDuration",
 ] as const;
-export type WebsiteMetric = (typeof WEBSITE_METRICS)[number];
+export const WEBSITE_EXTRA_SUMMARY_METRICS = ["activeUsers", "eventCount"] as const;
+export type WebsiteMetric = (typeof WEBSITE_METRICS)[number] | (typeof WEBSITE_EXTRA_SUMMARY_METRICS)[number];
 const number = z.number().finite().nonnegative().nullable();
 const metrics = z.object({
+  activeUsers: number.optional(),
+  eventCount: number.optional(),
   sessions: number,
   totalUsers: number,
   newUsers: number,
@@ -65,6 +68,8 @@ export const websiteSnapshotSchema = z.object({
   trend: z.array(
     metrics.partial().extend({ date: z.string(), sessions: number, keyEvents: number }),
   ),
+  countries: z.array(z.object({ name: z.string(), activeUsers: number })).optional(),
+  pageTitles: z.array(z.object({ name: z.string(), screenPageViews: number })).optional(),
   warnings: z.array(z.string()),
   empty: z.boolean(),
 });
