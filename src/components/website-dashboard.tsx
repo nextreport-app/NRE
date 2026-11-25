@@ -106,6 +106,7 @@ export function WebsiteDashboard({
         ? view?.snapshots.find((s) => days !== "custom" ? s.days === days : s.days === 0 && s.data?.currentPeriod.startIso === customStart && s.data?.currentPeriod.endIso === customEnd)
         : undefined,
     data = entry?.data;
+  const timeframeLabel = data ? `${data.rangeMode === "custom" ? "Custom period · " : "Last "}${data.days} ${data.days === 1 ? "day" : "days"}` : "";
   const rangeFailure = isWebsiteRangeFailure(error || entry?.error);
   const propertyTimezone = view?.snapshots.find(s => s.data?.property.propertyId === selected?.propertyId)?.data?.property.timezone;
   const latestCompletedDate = propertyTimezone ? reportCalendarYesterday(new Date(), propertyTimezone) : undefined;
@@ -319,11 +320,7 @@ export function WebsiteDashboard({
             <>
               <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 text-sm">
                 <p>{new Date(data.currentPeriod.startIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", timeZone:"UTC"})} – {new Date(data.currentPeriod.endIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})} <span className="text-dash-ink-secondary">· compared with previous {data.days} days</span></p>
-                <div className="text-xs leading-relaxed text-dash-ink-secondary">
-                  <p>Previous: {data.previousPeriod.startIso} – {data.previousPeriod.endIso}</p>
-                  <p>{data.property.timezone} · Updated {new Intl.DateTimeFormat("en", {dateStyle:"medium", timeStyle:"short",timeZone:data.property.timezone}).format(new Date(data.checkedAt))}</p>
-                  <p>GA4 can take 24–48 hours to settle. Website attribution differs from Meta ad results.</p>
-                </div>
+                <p className="text-xs text-dash-ink-secondary">GA4 can take 24–48 hours to settle.</p>
               </div>
               {!entry?.fresh && <p className="mt-2 text-xs text-amber-400">Saved data is older or the last refresh failed. Refresh before acting.</p>}
               {data.warnings.map((w) => (
@@ -342,17 +339,14 @@ export function WebsiteDashboard({
                   </div>
                 </section>
               ) : <>
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-2"><div><p className="nre-ga4-eyebrow text-xs font-medium uppercase tracking-wider text-dash-accent">Website overview</p><h2 className="mt-1 text-xl font-semibold">Audience &amp; engagement</h2></div><p className="text-xs text-dash-ink-secondary">Current period · compared with previous {data.days} days</p></div>
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-2"><div><p className="nre-ga4-eyebrow text-xs font-medium uppercase tracking-wider text-dash-accent">Website overview</p><h2 className="mt-1 text-xl font-semibold">Audience &amp; engagement</h2></div></div>
               <section aria-label="Website summary" className="nre-ga4-summary mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                 {primaryMetrics.map((key) => (
                   <div
                     key={key}
-                    className="nre-ga4-metric-card relative min-w-0 overflow-hidden rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm"
+                    className="nre-ga4-summary-card relative min-w-0 overflow-hidden rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-dash-ink-secondary">{labels[key]}</p>
-                      <span aria-hidden="true" className="nre-ga4-metric-symbol inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm">{["newUsers", "activeUsers", "totalUsers"].includes(key) ? "◎" : key.endsWith("Rate") ? "%" : key === "averageSessionDuration" ? "◷" : "▥"}</span>
-                    </div>
+                    <p className="text-xs font-medium text-dash-ink-secondary">{labels[key]}</p>
                     <p className="mt-3 text-3xl font-semibold tracking-tight">
                       {metric(key, data.current[key])}
                     </p>
@@ -363,8 +357,8 @@ export function WebsiteDashboard({
                   </div>
                 ))}
               </section>
-              {(data.current.activeUsers === undefined || data.current.eventCount === undefined) && <p className="mt-3 text-xs text-dash-ink-secondary">Refresh GA4 to add active users and event count to this saved report. Missing values appear as —.</p>}
-              <p className="mt-3 text-xs text-dash-ink-secondary">Key events are actions marked as important in GA4; they are not automatically purchases or leads. Event count includes all recorded events.</p>
+              {(data.current.activeUsers === undefined || data.current.eventCount === undefined) && <p className="mt-3 text-xs text-dash-ink-secondary">Refresh GA4 to add active users and event count to this saved report.</p>}
+              <p className="mt-3 text-xs text-dash-ink-secondary">Key events are actions marked as important in GA4. Event count includes all recorded events.</p>
               <WebsiteSessionsTrend data={data} />
               <WebsiteChannelComparison
                 key={`${selected.id}:${days}:${data.property.propertyId}`}
@@ -374,24 +368,15 @@ export function WebsiteDashboard({
 
               <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
                 <section aria-label="Top countries" className="min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5">
-                  <h2 className="text-lg font-semibold">Where your visitors are</h2><p className="mt-1 text-xs text-dash-ink-secondary">Top 10 countries by active users</p>
+                  <h2 className="text-lg font-semibold">Where your visitors are</h2><p className="mt-1 text-xs text-dash-ink-secondary">Top 10 countries by active users · {timeframeLabel}</p>
                   {data.countries?.length ? <ol className="mt-4 space-y-3">{data.countries.map(row => <li key={row.name}><div className="flex justify-between gap-3 text-sm"><span className="break-words">{row.name}</span><strong>{num(row.activeUsers)}</strong></div><div className="mt-2 h-1.5 rounded-full bg-dash-bg"><div className="h-full rounded-full bg-dash-accent" style={{width: `${row.activeUsers == null ? 0 : row.activeUsers / Math.max(1,...data.countries!.map(r => r.activeUsers ?? 0)) * 100}%`}} /></div></li>)}</ol> : <p className="mt-4 text-sm text-dash-ink-secondary">{data.countries ? "No country rows reported for these dates." : "Refresh GA4 to load countries for this saved report."}</p>}
                 </section>
                 <section aria-label="Top page titles" className="min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5">
-                  <h2 className="text-lg font-semibold">Most viewed pages</h2><p className="mt-1 text-xs text-dash-ink-secondary">Top 10 page titles by views · includes repeat views</p>
+                  <h2 className="text-lg font-semibold">Most viewed pages</h2><p className="mt-1 text-xs text-dash-ink-secondary">Top 10 page titles by views · includes repeat views · {timeframeLabel}</p>
                   {data.pageTitles?.length ? <ol className="mt-4 divide-y divide-dash-border">{data.pageTitles.map(row => <li key={row.name} className="flex items-start justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.name || "(not set)"}</span><strong className="shrink-0">{num(row.screenPageViews)}</strong></li>)}</ol> : <p className="mt-4 text-sm text-dash-ink-secondary">{data.pageTitles ? "No page views reported for these dates." : "Refresh GA4 to load page titles for this saved report."}</p>}
                 </section>
               </div>
 
-
-              <section className="mt-5 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4">
-                <h2 className="font-semibold">
-                  Top 10 landing pages
-                </h2>
-                <p className="mt-2 text-xs text-dash-ink-secondary">The pages where visits started, ranked by sessions. Use engagement and key events to assess the quality of those visits.</p>
-                {data.pages.some(row => row.bounceRate === undefined) && <p className="mt-2 text-xs text-dash-ink-secondary">Refresh GA4 to load the additional page metrics.</p>}
-                <WebsiteDetailTable rows={data.pages} kind="page" />
-              </section>
               <section className="mt-5 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4">
                 <h2 className="font-semibold">
                   Daily data

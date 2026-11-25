@@ -16,7 +16,7 @@ The existing factual summary is retained under collapsed **All reported changes*
 
 Both completed property-local periods now request the full paginated session-default-channel report. Known absolute session changes sort first; channels only reported in one period remain visible with the other value unavailable. Missing rows are not invented zeros and missing metrics stay unavailable. A genuinely reported zero baseline is labelled From zero / 0→0 rather than an infinite percentage. Small nonzero percentages retain their direction instead of rounding into unchanged values.
 
-Channel comparisons are visible directly, including sessions, users, views, engagement rate, bounce rate, key events and session duration with available previous-period values. User counts are never summed across channels. GA4 channel attribution is independent of Meta campaign attribution, and Paid Social need not be exclusively Meta.
+Channel comparisons show current and previous sessions with one Change column. Users, views, engagement rate, bounce rate, key events and session duration show current values only, without repeated previous-value labels or change badges. User counts are never summed across channels. GA4 channel attribution is independent of Meta campaign attribution, and Paid Social need not be exclusively Meta.
 
 Previous-channel rows are an optional additive field in the existing version-1 JSON cache: older snapshots remain readable and ask for a refresh to load channel baselines. A successful snapshot under five minutes old can still be reused by the existing cooldown; wait for that interval before refreshing a legacy snapshot. No database migration is needed.
 

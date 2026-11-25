@@ -1208,7 +1208,5 @@ html[data-site-theme="light"] .nre-ga4-property-linked__action:hover { backgroun
 .nre-ga4-metric-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: #69b7d5; }
 .nre-ga4-metric-card:nth-child(3n + 2)::before { background: #a398df; }
 .nre-ga4-metric-card:nth-child(3n)::before { background: #71bc9c; }
-.nre-ga4-metric-symbol { color: var(--nre-dash-accent); background: color-mix(in srgb, var(--nre-dash-accent) 12%, transparent); }
-.nre-ga4-summary .nre-ga4-metric-card { background-image: linear-gradient(140deg, color-mix(in srgb, var(--nre-dash-ink) 3%, transparent), transparent 65%); }
 
-html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-metric-symbol, .nre-ga4-eyebrow) { color: #915407; }
+html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { color: #915407; }
