@@ -166,11 +166,25 @@ export function WebsiteDashboard({
           </div>
           {!!view.clients.length && <label className="mt-5 block"><span className="sr-only">Find a website client</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a client" className="min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-3 text-sm" /></label>}
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {view.clients.filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(c => <article key={c.id} className="rounded-2xl border border-dash-border bg-dash-card p-5">
-              <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold">{c.name}</h3><span className="rounded-full border border-dash-border px-2 py-1 text-xs text-dash-ink-secondary">{!(c.connected ?? view.connected) ? "Connect GA4" : c.propertyId ? "Property linked" : "Needs setup"}</span></div>
-              <p className="mt-3 text-sm text-dash-ink-secondary">{c.propertyId ? (c.propertyName || `GA4 property ${c.propertyId}`) : "No GA4 property linked yet."}</p>
-              <Link href={!(c.connected ?? view.connected) ? `/clients/${c.id}#website-analytics` : c.propertyId ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-dash-border bg-dash-bg px-4 py-2 text-sm font-semibold transition hover:border-dash-accent focus-visible:outline-2 focus-visible:outline-dash-accent">{!(c.connected ?? view.connected) ? "Connect GA4 →" : c.propertyId ? "View website performance →" : "Choose GA4 property →"}</Link>
-            </article>)}
+            {view.clients.filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(c => {
+              const connected = c.connected ?? view.connected;
+              const linked = connected && !!c.propertyId;
+              return (
+                <article key={c.id} className={`rounded-2xl border bg-dash-card p-5 ${linked ? "nre-ga4-property-linked" : "border-dash-border"}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <h3 className="font-semibold">{c.name}</h3>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${linked ? "nre-ga4-property-linked__badge" : "border-dash-border text-dash-ink-secondary"}`}>
+                      {linked && <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 8 3 3 7-7" /></svg>}
+                      {!connected ? "Connect GA4" : linked ? "Property linked" : "Needs setup"}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm text-dash-ink-secondary">{c.propertyId ? (c.propertyName || `GA4 property ${c.propertyId}`) : "No GA4 property linked yet."}</p>
+                  <Link href={linked ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-dash-accent ${linked ? "nre-ga4-property-linked__action" : "border-dash-border bg-dash-bg hover:border-dash-accent"}`}>
+                    {!connected ? "Connect GA4 →" : linked ? "View website performance →" : "Choose GA4 property →"}
+                  </Link>
+                </article>
+              );
+            })}
           </div>
           {!!view.clients.length && !view.clients.some(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) && <p className="mt-4 text-sm text-dash-ink-secondary">No clients match your search.</p>}
         </section>
