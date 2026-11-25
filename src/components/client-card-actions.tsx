@@ -17,7 +17,7 @@ export function clientCardActions(clientId: string, scheduling = false) {
     },
     {
       href: `/clients/${clientId}`,
-      label: "Manage client",
+      label: "Client settings",
       icon: "manage" as ActionIcon,
     },
   ];
