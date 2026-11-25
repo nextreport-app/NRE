@@ -338,13 +338,12 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         ? new Map(Object.entries(aiCopyPrecalc))
         : null;
 
-    const [aiCopyBySlideKey, user, clientLogo] = await Promise.all([
+    const [aiCopyBySlideKey, user, clientLogo, templateBuffer] = await Promise.all([
       reportData.metaContent?.includeStandard === false ? Promise.resolve(new Map()) : precalcMap ? Promise.resolve(revalidateCachedInsights(reportData, precalcMap)) : generateInsights(reportData, aiKeysFromEnv()),
       prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }),
       loadLogoAsset(client.logoUrl),
+      loadReportTemplate(platform, renderVariant,job.userId,report.agencyTemplateId),
     ]);
-
-    const templateBuffer = await loadReportTemplate(platform, renderVariant,job.userId,report.agencyTemplateId);
     const pptxBuffer = await renderPptx({
       templateBuffer,
       data: reportData,

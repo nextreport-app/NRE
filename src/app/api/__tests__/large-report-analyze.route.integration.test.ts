@@ -22,8 +22,9 @@ vi.mock("@/lib/prisma", () => ({
     },
   },
 }));
+const catalogue = vi.hoisted(() => vi.fn(async () => ({"123":"Quote Request Submitted"})));
 vi.mock("@/lib/nre/meta-custom-conversion-catalog", () => ({
-  tryFetchMetaCustomConversionResultTypesForUser: async () => undefined,
+  tryFetchMetaCustomConversionResultTypesForUser: catalogue,
 }));
 vi.mock("@/lib/nre/previous-month-data", () => ({
   loadPreviousMonthDataRowsForCampaigns: async () => null,
@@ -73,4 +74,15 @@ describe("large multi-campaign Analyze request", () => {
     const session = saved.mock.calls[0][0] as unknown as { rows: unknown[] };
     expect(session.rows).toHaveLength(1026);
   }, 60000);
+});
+
+it.each([['Purchases',false],['actions:offsite_conversion.custom.123',true]] as const)("only calls custom metadata when needed: %s", async(resultType,needed)=>{
+ catalogue.mockClear();
+ const form=new FormData();
+ form.set("mtdDailyCsv",new File([`Campaign name,Ad set name,Day,Amount spent (USD),Result type,Results,Cost per result,Reach,Impressions\nExample,Broad,2026-11-20,30,${resultType},3,10,100,200`],"data.csv"));
+ form.set("reportType",JSON.stringify("WEEKLY"));form.set("metaAdAccountId",JSON.stringify("123"));
+ const response=await POST(new Request("https://test/analyze",{method:"POST",body:form}),{params:Promise.resolve({id:"client"})});
+ expect(response.status).toBe(200);const result=await response.json();expect(result.valid).toBe(true);
+ expect(catalogue).toHaveBeenCalledTimes(needed?1:0);
+ expect(result.campaignSpendRequestKey).toBeDefined();
 });

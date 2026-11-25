@@ -322,3 +322,21 @@ describe("strict wizard insight source contract", () => {
     expect(new URL(fetch.mock.calls[0][0]).searchParams.get("fields")!.split(",")).toContain("results");
   });
 });
+
+it("fetches independent windows in two bounded waves and keeps chronological output", async () => {
+  vi.useFakeTimers();
+  let active=0, peak=0;
+  const fetchMock=vi.fn(async(raw:string)=>{
+    const range=JSON.parse(new URL(raw).searchParams.get("time_range")!);
+    active++;peak=Math.max(peak,active);
+    await new Promise(resolve=>setTimeout(resolve,200));active--;
+    return new Response(JSON.stringify({data:[{campaign_name:"Example",date_start:range.since,spend:"1"}]}));
+  });
+  vi.stubGlobal("fetch",fetchMock);
+  const pending=fetchMetaAdAccountInsights({accessToken:"test",adAccountId:"123",sinceIso:"2026-09-01",untilIso:"2026-09-21"});
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(200);expect(fetchMock).toHaveBeenCalledTimes(3);
+  await vi.advanceTimersByTimeAsync(200);
+  expect((await pending).map(row=>row.date_start)).toEqual(["2026-09-01","2026-09-08","2026-09-15"]);
+  expect(peak).toBe(2);vi.useRealTimers();
+});

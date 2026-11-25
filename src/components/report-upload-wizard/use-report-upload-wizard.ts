@@ -1,4 +1,5 @@
 "use client";
+import { campaignSpendRequestKey } from "@/lib/nre/campaign-selection-spend";
 import {metaReportSelectionSchema,metaReportTitle,type MetaReportSelection} from "@/lib/nre/meta-report-content/selection";
 import { formatClientCalendarDate, formatClientCalendarRange } from "@/lib/client-date-format";
 import { fetchWizardUpload, uploadFailureMessage } from "./upload-transport";
@@ -174,6 +175,7 @@ export function useReportUploadWizard({
   const [generatedWithCsvVerifySkipped, setGeneratedWithCsvVerifySkipped] = useState(false);
   const csvAlignAttemptedRef = useRef(false);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewAbortRef = useRef<AbortController | null>(null);
   const generateStatusRef = useRef<GenerateStatus>("idle");
 
   function invalidateDownstreamFromStep(target: Step) {
@@ -716,6 +718,7 @@ export function useReportUploadWizard({
   }
 
   function resetPreviewState() {
+    previewAbortRef.current?.abort();
     setPreviewStatus("idle");
     setPreviewErrors([]);
     setPreviewMessage(null);
@@ -982,7 +985,7 @@ export function useReportUploadWizard({
     setCampaignSpendLabel(json.campaignSpendLabel ?? "Reporting-period spend");
     setZeroSpendCampaigns(json.zeroSpendCampaigns ?? Object.keys(json.campaignSpend ?? {}).filter(name => json.campaignSpend[name] === 0));
     if (!preserve) campaignChoiceOverrides.current.clear();
-    setCampaignSpendResolvedKey("");
+    setCampaignSpendResolvedKey(typeof json.uploadSessionId === "string" && typeof json.campaignSpendRequestKey === "string" ? `${json.uploadSessionId}\0${json.campaignSpendRequestKey}` : "");
 
     if (preserve) {
       setSelectedCampaigns((prev) => {
@@ -1202,9 +1205,8 @@ export function useReportUploadWizard({
     if (currentStep >= 2 && selectedCampaigns.size > 0) {
       await ensureObjectivesForSelection(selectedCampaignsKey());
     }
-    if (currentStep >= 4) {
-      void fetchPreview();
-    }
+    // The preview effect reacts to the new upload session after React commits it.
+    // Calling here reads stale state and duplicates that request.
     showToast("Upload session restored — continue where you left off.");
   }
 
@@ -1420,11 +1422,12 @@ export function useReportUploadWizard({
     setSelectedCampaigns(include ? new Set(campaigns) : new Set());
   }
 
-  const campaignSpendRequest = JSON.stringify({reportType,dateSelection:currentDateSelection(),comparisonPeriodA:comparisonPeriodA ?? undefined,comparisonPeriodB:comparisonPeriodB ?? undefined,historicalMonthCount});
+  const campaignSpendRequest = campaignSpendRequestKey({reportType,dateSelection:currentDateSelection(),comparisonPeriodA:comparisonPeriodA ?? undefined,comparisonPeriodB:comparisonPeriodB ?? undefined,historicalMonthCount});
   const campaignSpendLoading = step === 2 && !!uploadSessionId && campaignSpendResolvedKey !== `${uploadSessionId}\0${campaignSpendRequest}`;
   useEffect(() => {
     if (step !== 2 || !uploadSessionId) return;
     const key = `${uploadSessionId}\0${campaignSpendRequest}`;
+    if (campaignSpendResolvedKey === key) return;
     const controller = new AbortController();
     void fetch(`/api/clients/${clientId}/reports/upload-session-context`, {
       method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,
@@ -1448,7 +1451,7 @@ export function useReportUploadWizard({
     })
       .finally(() => { if (!controller.signal.aborted) setCampaignSpendResolvedKey(key); });
     return () => controller.abort();
-  },[step,uploadSessionId,campaignSpendRequest,clientId]);
+  },[step,uploadSessionId,campaignSpendRequest,clientId,campaignSpendResolvedKey]);
 
   /**
    * The Objective Confirmation dropdown's fixed option list is the common
@@ -1647,7 +1650,7 @@ export function useReportUploadWizard({
   // ── Step 2: Campaigns + Objectives -> Metric Cards ──────────────────────
   async function handleCampaignsContinue() {
     if (campaignSpendLoading) return;
-    await saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns),
+    void saveSelection({ campaigns, selectedCampaigns: Array.from(selectedCampaigns),
       ...(supportsAdSetSlides(reportType) && uploadSessionId ? { uploadSessionId, selectedAdSets: Array.from(selectedAdSets) } : {}),
     });
     const selectionKey = selectedCampaignsKey();
@@ -1961,6 +1964,10 @@ export function useReportUploadWizard({
   }
 
   async function fetchPreview(options?: { csvAlignResults?: boolean; recoveryIncidentId?: string }): Promise<CsvVerificationResult | null> {
+    previewAbortRef.current?.abort();
+    const controller = new AbortController();
+    previewAbortRef.current = controller;
+    if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     const alignForRequest = options?.csvAlignResults ?? csvAlignResults;
     if (!mtdFile && !uploadSessionId) {
       setPreviewMessage("Go back to Import and sync or upload your data again.");
@@ -2025,7 +2032,7 @@ export function useReportUploadWizard({
     const dateSelection =
       ["WEEKLY", "DAY_BREAKDOWN", "MONTHLY", "DAILY", "HISTORICAL"].includes(reportType) ? currentDateSelection() : undefined;
     // Shared server preference is weekly-only; other periods live in type-specific wizard state.
-    if (dateSelection && (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN")) await saveSelection({ dateSelection });
+    if (dateSelection && (reportType === "WEEKLY" || reportType === "DAY_BREAKDOWN")) void saveSelection({ dateSelection });
 
     const hasExistingPreview = !!(data || comparisonData || historicalData || dayBreakdownData);
     if (!hasExistingPreview) {
@@ -2038,6 +2045,7 @@ export function useReportUploadWizard({
 
     const res = await fetchWizardUpload(`/api/clients/${clientId}/reports/preview`, {
       method: "POST",
+      signal: controller.signal,
       body: buildUploadFormData(
         mtdFile,
         {
@@ -2066,6 +2074,7 @@ export function useReportUploadWizard({
       ),
     }).catch(() => null);
     const json = await res?.json().catch(() => null);
+    if (controller.signal.aborted || previewAbortRef.current !== controller) return null;
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
@@ -2152,7 +2161,7 @@ export function useReportUploadWizard({
     if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     previewDebounceRef.current = setTimeout(() => {
       void fetchPreview();
-    }, 500);
+    }, hasExistingPreview ? 300 : 0);
 
     const stuckTimer = window.setTimeout(() => {
       setPreviewRefreshing(false);
@@ -2165,6 +2174,7 @@ export function useReportUploadWizard({
 
     return () => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      previewAbortRef.current?.abort();
       window.clearTimeout(stuckTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

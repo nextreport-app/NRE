@@ -1,10 +1,11 @@
+import { needsMetaCustomConversionCatalog } from "@/lib/nre/meta-custom-conversion-labels";
 import {standaloneMetaRange} from "@/lib/nre/meta-report-content/range";
 import {metaReportSelectionSchema,metaReportOptions,assertMetaReportSource} from "@/lib/nre/meta-report-content/selection";
 import {audienceOnlyPrimary,hasAudienceColumns} from "@/lib/nre/meta-report-content/primary";
 import {parseMetaContentSource} from "@/lib/nre/meta-report-content/data";
 import {detectCsvCurrency} from "@/lib/nre/csv-currency";
 import type {MetaReportContent} from "@/lib/nre/meta-report-content/types";
-import { campaignSelectionSpend } from "@/lib/nre/campaign-selection-spend";
+import { campaignSelectionSpend, campaignSpendRequestKey } from "@/lib/nre/campaign-selection-spend";
 import { resolveReportCurrencySymbol } from "@/lib/nre/csv-currency";
 import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
@@ -116,7 +117,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? parseJsonFormField(formData, "metaAdAccountId", metaAdAccountIdSchema)
       : undefined;
     const metaCustomConversionResultTypes =
-      platform === "META"
+      platform === "META" && needsMetaCustomConversionCatalog(mtdParsed.rows)
         ? await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountIdEarly, id)
         : undefined;
     const requestedReportType = formData ? parseJsonFormField(formData, "reportType", reportTypeSchema) : undefined;
@@ -176,13 +177,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const requestedDates = formData ? parseJsonFormField(formData, "dateSelection", dateSelectionSchema) : undefined;
     if (requestedDates) dateSelection = requestedDates;
     let spendContext;
-    try {
-      spendContext = campaignSelectionSpend(mtdParsed.rows, {
+    const spendSelection = {
         reportType: requestedReportType ?? "WEEKLY", dateSelection,
         comparisonPeriodA: formData ? parseJsonFormField(formData,"comparisonPeriodA",comparisonPeriodSchema) : undefined,
         comparisonPeriodB: formData ? parseJsonFormField(formData,"comparisonPeriodB",comparisonPeriodSchema) : undefined,
         historicalMonthCount: formData ? Number(formData.get("historicalMonthCount")) || 1 : 1,
-      }, client.timezone, new Date(), campaignMemory);
+      };
+    try {
+      spendContext = campaignSelectionSpend(mtdParsed.rows, spendSelection, client.timezone, new Date(), campaignMemory);
     } catch (error) {
       return NextResponse.json({valid:false,errors:[{field:"dateSelection",message:(error as Error).message}],warnings:[],detectedPlatform,platform});
     }
@@ -237,6 +239,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       metricHeaderProfile: buildCsvMetricHeaderProfile(mtdParsed.headers,mtdParsed.rows),
       campaigns,
       campaignSpend,
+      campaignSpendRequestKey: campaignSpendRequestKey(spendSelection),
       detailCampaigns: spendContext.detailCampaigns,
       selectedCampaigns,
       campaignStepMode,

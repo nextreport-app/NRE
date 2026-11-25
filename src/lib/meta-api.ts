@@ -1,3 +1,4 @@
+import { forEachConcurrent } from "./for-each-concurrent";
 /**
  * Meta Marketing API client — read-only OAuth + Graph API helpers.
  *
@@ -467,13 +468,16 @@ export async function fetchMetaAdAccountInsights(params: {
   const chunks = splitIsoDateRangeIntoChunks(params.sinceIso, params.untilIso, chunkDays);
 
   if (chunks.length > 1) {
-    const allRows: MetaInsightRow[] = [];
-    for (const chunk of chunks) {
-      allRows.push(
-        ...(await fetchMetaAdAccountInsightsForRangeResilient({ ...params, ...chunk, level })),
-      );
-    }
-    return allRows;
+    // Date windows are independent. Two workers reduce import latency without
+    // an unbounded burst; pagination/retries within each window remain serial.
+    const grouped = new Array<MetaInsightRow[]>(chunks.length);
+    let failed = false;
+    await forEachConcurrent(chunks.map((chunk, index) => ({chunk, index})), 2, async ({chunk, index}) => {
+      if (failed) return;
+      try { grouped[index] = await fetchMetaAdAccountInsightsForRangeResilient({...params, ...chunk, level}); }
+      catch (error) { failed = true; throw error; }
+    });
+    return grouped.flat();
   }
 
   return fetchMetaAdAccountInsightsForRangeResilient({ ...params, level });

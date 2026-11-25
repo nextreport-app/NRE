@@ -1,3 +1,4 @@
+import { needsMetaCustomConversionCatalog } from "@/lib/nre/meta-custom-conversion-labels";
 import { buildCsvMetricHeaderProfile } from "@/lib/nre/csv-metric-evidence";
 import { enforceWizardLimits } from "@/lib/usage-rate-limit";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
@@ -57,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const selectedCampaigns = formData ? parseJsonFormField(formData, "selectedCampaigns", selectedCampaignsSchema) : undefined;
 
     let metaCustomConversionResultTypes = sessionCustomMap;
-    if (platform === "META" && metaAdAccountId) {
+    if (platform === "META" && metaAdAccountId && needsMetaCustomConversionCatalog(mtdParsed.rows, sessionCustomMap)) {
       const fromApi = await tryFetchMetaCustomConversionResultTypesForUser(session.user.id, metaAdAccountId, id);
       if (fromApi) {
         metaCustomConversionResultTypes = { ...sessionCustomMap, ...fromApi };
