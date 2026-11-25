@@ -166,7 +166,10 @@ export function WebsiteDashboard({
           </div>
           {!!view.clients.length && <label className="mt-5 block"><span className="sr-only">Find a website client</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a client" className="min-h-11 w-full rounded-xl border border-dash-border bg-dash-bg px-4 py-3 text-sm" /></label>}
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {view.clients.filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(c => {
+            {view.clients
+              .filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+              .sort((a, b) => Number(!!b.propertyId) - Number(!!a.propertyId) || a.name.localeCompare(b.name))
+              .map(c => {
               const connected = c.connected ?? view.connected;
               const linked = connected && !!c.propertyId;
               return (
