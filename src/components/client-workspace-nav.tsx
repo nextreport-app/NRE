@@ -16,7 +16,7 @@ export function clientWorkspaceLinks(
     },
     {
       key: "schedules",
-      label: "Schedules",
+      label: "Report scheduling",
       href: `/clients/${clientId}/schedules`,
     },
     {
