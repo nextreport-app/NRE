@@ -32,7 +32,7 @@ export function Ga4PropertyPicker({
   const router = useRouter();
   const { showToast } = useToast();
   const [propertyId, setPropertyId] = useState(initialPropertyId ?? "");
-  const [propertyName, setPropertyName] = useState(initialPropertyName ?? "");
+  const [savedProperty, setSavedProperty] = useState({ id: initialPropertyId ?? "", name: initialPropertyName ?? "" });
   const [properties, setProperties] = useState<Ga4PropertyOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -49,10 +49,9 @@ export function Ga4PropertyPicker({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not load properties");
       setProperties(data.properties ?? []);
-      if (data.linkedPropertyId) {
-        setPropertyId(data.linkedPropertyId);
-        setPropertyName(data.linkedPropertyName ?? "");
-      }
+      const saved = { id: data.linkedPropertyId ?? "", name: data.linkedPropertyName ?? "" };
+      setSavedProperty(saved);
+      setPropertyId(saved.id);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not load properties",
@@ -63,12 +62,13 @@ export function Ga4PropertyPicker({
   }, [clientId, ga4Connected]);
 
   async function handleSave() {
+    if (propertyId === savedProperty.id || saving || loading) return;
     if (!propertyId) {
       setError("Select a GA4 property first.");
       return;
     }
     const selected = properties.find((p) => p.propertyId === propertyId);
-    const name = selected?.displayName ?? propertyName ?? propertyId;
+    const name = selected?.displayName ?? propertyId;
     setSaving(true);
     setError(null);
     try {
@@ -79,7 +79,7 @@ export function Ga4PropertyPicker({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save property");
-      setPropertyName(data.propertyName);
+      setSavedProperty({ id: data.propertyId ?? propertyId, name: data.propertyName ?? name });
       showToast("GA4 property linked");
       router.refresh();
     } catch (err) {
@@ -99,7 +99,7 @@ export function Ga4PropertyPicker({
       const data = await response.json();
       if (!response.ok) throw Error(data.error ?? "Could not unlink property.");
       setPropertyId("");
-      setPropertyName("");
+      setSavedProperty({ id: "", name: "" });
       showToast("GA4 property unlinked");
       router.refresh();
     } catch (error) {
@@ -132,13 +132,13 @@ export function Ga4PropertyPicker({
   return (
     <div className="space-y-3">
       <p className="text-[15px] text-dash-ink-secondary">
-        Link the website property that belongs to this client.
+        {savedProperty.id ? "Your website property is saved. Choose another property only if you want to change it." : "Link the website property that belongs to this client."}
       </p>
       {!embedded && connectedEmail && <p className="text-xs text-dash-ink-secondary">Google login: {connectedEmail}</p>}
-      {initialPropertyId && initialPropertyName ? (
+      {savedProperty.id ? (
         <p className="text-[13px] text-dash-ink">
-          Linked: <span className="font-medium">{initialPropertyName}</span>
-          <span className="text-dash-ink-muted"> · ID {initialPropertyId}</span>
+          Linked: <span className="font-medium">{savedProperty.name || "GA4 property"}</span>
+          <span className="text-dash-ink-muted"> · ID {savedProperty.id}</span>
         </p>
       ) : null}
       <button
@@ -160,6 +160,7 @@ export function Ga4PropertyPicker({
       ) : properties.length > 0 ? (
         <select
           aria-label="GA4 property"
+          disabled={loading || saving}
           value={propertyId}
           onChange={(e) => setPropertyId(e.target.value)}
           className="w-full rounded-md border border-dash-border bg-dash-bg px-3 py-2.5 text-[14px] text-dash-ink"
@@ -175,7 +176,7 @@ export function Ga4PropertyPicker({
       ) : null}
       {error ? <p className="text-[13px] text-red-300">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <button
+        {propertyId !== savedProperty.id && !!propertyId && <button
           type="button"
           onClick={() => void handleSave()}
           disabled={
@@ -186,8 +187,8 @@ export function Ga4PropertyPicker({
           className="rounded-md nre-account-primary bg-dash-accent px-4 py-2 text-[13px] font-semibold hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save property"}
-        </button>
-        {initialPropertyId ? (
+        </button>}
+        {savedProperty.id ? (
           <button
             type="button"
             onClick={() => void handleClear()}

@@ -267,7 +267,8 @@ export function WebsiteDashboard({
       )}
       {(error || entry?.error) && (
         <section role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-dash-card p-4 text-sm">
-          <p className="font-semibold text-dash-ink">Website data could not be refreshed</p>
+          <p className="font-semibold text-dash-ink">{error ? "Website data could not be refreshed" : "Last GA4 refresh failed"}</p>
+          {selected?.propertyId && <p className="mt-2 text-dash-ink-secondary">Your property link is saved. Use Refresh GA4 to try fetching report data again; you do not need to save the property again.</p>}
           <p className="mt-2 text-dash-ink-secondary">{error || entry?.error}</p>
           {selected && <Link href={`/clients/${selected.id}#website-analytics`} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-dash-border px-3 font-medium hover:border-dash-accent">Review GA4 connection &amp; property →</Link>}
         </section>
