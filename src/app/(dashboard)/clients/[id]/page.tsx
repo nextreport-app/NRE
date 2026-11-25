@@ -2,7 +2,6 @@ import { IntegrationSettings } from "@/components/integration-settings";
 import { ClientProviderSettings } from "@/components/client-provider-settings";
 import { clientProviderSummaries } from "@/lib/client-provider-connections";
 import { resolveClientUser } from "@/lib/client-provider-connections";
-import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 import { ClientReportDesign } from "@/components/client-report-design";
 import { getVisitorCountryCode, isIndiaCountryCode } from "@/lib/visitor-geo";
 import { SettingsDisclosure } from "@/components/settings-disclosure";
@@ -161,7 +160,6 @@ export default async function ClientDetailPage({
         <p className="mt-0.5 text-[14px] text-dash-ink-secondary">Client settings · {client.currency} · {client.timezone}</p>
       </div>
 
-      <ClientWorkspaceNav clientId={client.id} current="settings" />
       {connectionFailed && <p role="alert" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">Connection was not completed. Try connecting again and choose the login that has access to this client.</p>}
       {connectionSaved && <p role="status" className="mb-4 rounded-xl border border-dash-border p-4 text-sm text-dash-ink">Client connection saved. Choose its ad account, GA4 property or Drive folder before loading data or exporting.</p>}
       <WizardReturnBanner clientId={client.id} returnTo={returnTo} />

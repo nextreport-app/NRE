@@ -1,5 +1,4 @@
 "use client";
-import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 
 import Link from "next/link";
 import { MetaBudgetPanel } from "./meta-budget-panel";
@@ -324,7 +323,6 @@ export function AgencyOverview({
               </div>
               <PortfolioBadge state={c.portfolio.state} />
             </div>
-            <ClientWorkspaceNav clientId={c.id} current="performance" />
             {(!c.linked || !c.performanceEnabled) && (
               <MetaMonitoringSetup
                 key={c.id}

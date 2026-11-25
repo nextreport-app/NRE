@@ -78,7 +78,7 @@ const EN: DashboardCopy = {
   clientsTitle: "My Clients",
   clientsEmptySubtitle: "Your client workspaces will appear here.",
   clientsCountSubtitle: (count) =>
-    `${count} client${count === 1 ? "" : "s"} · pick one to generate or manage`,
+    `${count} client${count === 1 ? "" : "s"} · generate reports, monitor performance or change client settings`,
   clientsNewClient: "+ New Client",
   clientsPlaceholderDuringGuide: "Client workspaces you add in step 1 will be listed here.",
   clientsSupportPrefix: "Questions?",

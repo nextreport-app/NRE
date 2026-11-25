@@ -1,4 +1,3 @@
-import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 import { ClientDateInput } from "@/components/client-date-input";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -135,7 +134,6 @@ export default async function ClientAllReportsPage({
         </p>
       </div>
 
-      <ClientWorkspaceNav clientId={client.id} current="reports" />
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-dash-border bg-dash-card p-4">
         <div>
           <label className="mb-1 block text-[13px] text-dash-ink-secondary">Report type</label>

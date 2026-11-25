@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { MetaClientAccountSelector } from "./meta-client-account-selector";
 import {
   cadenceLabel,
   SCHEDULE_CADENCES,
@@ -45,7 +45,7 @@ const input =
   "mt-1 block w-full rounded border border-dash-border bg-dash-bg px-3 py-2 text-dash-ink";
 const button =
   "rounded border border-dash-border px-3 py-2 text-sm disabled:opacity-50";
-export function ScheduledReportsCard({ clientId }: { clientId: string }) {
+export function ScheduledReportsCard({ clientId, clientName = "this client" }: { clientId: string; clientName?: string }) {
   const [view, setView] = useState<View | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -205,9 +205,7 @@ export function ScheduledReportsCard({ clientId }: { clientId: string }) {
       </div>
       {!view && !error && <p className="mt-3 text-sm">Loading schedules…</p>}
       {view && !view.linked && (
-        <p className="mt-3 text-sm">
-          <Link href="/account#meta-ads" className="text-dash-accent underline">Connect Meta</Link>, then <Link href={`/clients/${clientId}/reports/new`} className="text-dash-accent underline">open Import</Link>, choose Meta API and complete a sync to link this client&apos;s ad account. Return here using Schedule reports; generating a report is not required.
-        </p>
+        <MetaClientAccountSelector clientId={clientId} clientName={clientName} busy={busy} onLinked={load} onActivity={setBusy} />
       )}
       {view?.linked && !view.health.healthy && (
         <p className="mt-3 text-sm text-dash-ink-secondary">

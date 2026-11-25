@@ -30,10 +30,7 @@ vi.mock("../report-share-review", () => ({
 import EditClientPage from "@/app/(dashboard)/clients/[id]/edit/page";
 import ReportsPage from "@/app/(dashboard)/reports/page";
 import ReportCopyPage from "@/app/(dashboard)/clients/[id]/reports/[reportId]/copy/page";
-import {
-  ClientWorkspaceNav,
-  clientWorkspaceLinks,
-} from "../client-workspace-nav";
+import { clientCardActions } from "../client-card-actions";
 const record = {
   id: "report",
   status: "COMPLETE",
@@ -117,23 +114,12 @@ describe("Reports workflow and client navigation", () => {
     await expect(renderPage()).rejects.toThrow("REDIRECT:/login");
     expect(m.count).not.toHaveBeenCalled();
   });
-  it("keeps all workspace destinations scoped to the same client, including GA4", () => {
-    const links = clientWorkspaceLinks("client");
-    expect(links.map((l) => l.href)).toEqual([
+  it("offers client tasks from the client chooser with scoped destinations", () => {
+    expect(clientCardActions("client").map(action => action.href)).toEqual([
       "/performance/meta-ads?client=client",
-      "/clients/client/reports/new",
       "/clients/client/schedules",
-      "/clients/client#client-settings",
+      "/clients/client",
     ]);
-    const html = renderToStaticMarkup(
-      <ClientWorkspaceNav
-        clientId="client"
-        current="performance"
-        performanceView="website"
-      />,
-    );
-    expect(html).toContain('href="/performance/google-analytics?client=client"');
-    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   });
   it("returns report review to the correct Reports tab and preserves ownership enforcement", async () => {
     const props = {

@@ -1,5 +1,4 @@
 "use client";
-import { ClientWorkspaceNav } from "@/components/client-workspace-nav";
 
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
@@ -158,7 +157,6 @@ export function WebsiteDashboard({
         All website traffic reported by GA4, separate from Meta ad delivery.
       </p>
       <OverviewNavigation current="website" clientId={clientId || undefined} />
-      {selected && <ClientWorkspaceNav clientId={selected.id} current="performance" performanceView="website" />}
       {view && !clientId && (
         <section aria-label="All website clients" className="mt-5">
           <div className="rounded-2xl border border-dash-border bg-dash-card p-5">
@@ -251,9 +249,11 @@ export function WebsiteDashboard({
         </p>
       )}
       {(error || entry?.error) && (
-        <p role="alert" className="mt-4 text-sm text-amber-400">
-          {error || entry?.error}
-        </p>
+        <section role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-dash-card p-4 text-sm">
+          <p className="font-semibold text-dash-ink">Website data could not be refreshed</p>
+          <p className="mt-2 text-dash-ink-secondary">{error || entry?.error}</p>
+          {selected && <Link href={`/clients/${selected.id}#website-analytics`} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-dash-border px-3 font-medium hover:border-dash-accent">Review GA4 connection &amp; property →</Link>}
+        </section>
       )}
       {view && !view.connected && (
         <section className="mt-5 rounded-xl border border-dash-border bg-dash-card p-5">
@@ -263,7 +263,7 @@ export function WebsiteDashboard({
           </p>
           <Link
             className="mt-3 inline-block text-sm text-dash-accent"
-            href="/account#ga4"
+            href={selected ? `/clients/${selected.id}#website-analytics` : "/account#ga4"}
           >
             Connect GA4 →
           </Link>
@@ -292,7 +292,7 @@ export function WebsiteDashboard({
       )}
       {selected?.propertyId && view?.connected && (
         <>
-          {!data && (
+          {!data && !error && !entry?.error && (
             <p className="mt-5 text-sm">
               Click Refresh GA4 to load {days === "custom" ? "your selected dates" : `the last ${days} completed days`} and compare with the previous equal-length period.
             </p>
