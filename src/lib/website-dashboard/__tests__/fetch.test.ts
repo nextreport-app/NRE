@@ -98,6 +98,14 @@ describe("GA4 data contracts", () => {
       ).not.toBe(true);
     }
   });
+  it("treats a successful zero-row report as an empty period, not a connection failure", async () => {
+    vi.mocked(runGa4Report).mockResolvedValue({ rowCount: 0 });
+    const snapshot = await fetchWebsiteSnapshot("token", "552954256", 7, now);
+    expect(snapshot.empty).toBe(true);
+    expect(snapshot.channels).toEqual([]);
+    expect(snapshot.trend).toEqual([]);
+    expect(snapshot.property.propertyId).toBe("552954256");
+  });
   it("keeps missing metric values unavailable", async () => {
     vi.mocked(runGa4Report).mockResolvedValue({
       metricHeaders: WEBSITE_METRICS.map((name) => ({ name })),

@@ -149,7 +149,7 @@ it("retains prior data on failure and hides provider error details", async () =>
   m.fetch.mockRejectedValue(Error("private provider body"));
   await expect(
     refreshWebsiteDashboard("own-website", "owner", 7, now),
-  ).rejects.toThrow("GA4 refresh failed");
+  ).rejects.toThrow("Website data could not be loaded for the selected dates");
   expect(m.update).toHaveBeenLastCalledWith(
     expect.objectContaining({
       data: {
