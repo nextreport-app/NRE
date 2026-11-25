@@ -20,7 +20,7 @@ export async function ga4RequestError(response: Response, stage: Ga4Stage): Prom
     message = "NextReport’s GA4 connection configuration needs attention. Contact support; changing the linked property will not fix it.";
   } else if (oauthCode === "invalid_grant" || status === 401) {
     code = "RECONNECT";
-    message = "Google Analytics authorization expired or was revoked. Reconnect Google Analytics in Account settings, then refresh again.";
+    message = "Google Analytics authorization expired or was revoked. Reconnect Google Analytics in this client’s settings, then refresh again.";
   } else if (status === 429 || reasons.includes("RATE_LIMIT_EXCEEDED") || reasons.includes("QUOTA_EXCEEDED")) {
     code = "QUOTA";
     message = "Google Analytics temporarily limited requests. Wait a few minutes and retry; your saved figures have not been refreshed.";
