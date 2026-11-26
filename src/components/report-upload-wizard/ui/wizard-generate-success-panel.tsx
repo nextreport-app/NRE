@@ -1,4 +1,5 @@
 "use client";
+import { OperationProgressRing } from "@/components/operation-progress-ring";
 import {ReportDownloadLink} from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
@@ -235,13 +236,13 @@ export function WizardGenerateSuccessPanel({
         <section aria-labelledby="success-review-heading">
           <h3 id="success-review-heading" className="sr-only">Review and download</h3>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
-            <ReportDownloadLink key={downloadUrl} href={downloadUrl} className={primaryActionClass} containerClassName="flex min-w-0 flex-1 flex-col">
+            <ReportDownloadLink circularProgress key={downloadUrl} href={downloadUrl} className={primaryActionClass} containerClassName="flex min-w-0 flex-1 flex-col">
               <PptxDownloadIcon />
               Download PPTX
             </ReportDownloadLink>
             {hasGoogleDriveConnected ? (
-              <button type="button" onClick={handleSaveButtonClick} disabled={driveSaving} className={secondaryExportClass}>
-                <GoogleDriveIcon />
+              <button type="button" onClick={handleSaveButtonClick} disabled={driveSaving} aria-busy={driveSaving || undefined} className={secondaryExportClass}>
+                {driveSaving ? <OperationProgressRing label="Saving report to Drive" /> : <GoogleDriveIcon />}
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
             ) : <Link href={`/clients/${clientId}#provider-connections`} target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}

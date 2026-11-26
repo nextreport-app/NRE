@@ -18,7 +18,7 @@ import {
   isSpecificFieldError,
 } from "../utils";
 import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
-import { Spinner } from "../ui/icons";
+import { OperationProgressRing } from "@/components/operation-progress-ring";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
 import { WizardPeriodSummary } from "../ui/wizard-period-summary";
@@ -246,9 +246,10 @@ export function WizardGenerateStep() {
                 <button
                   onClick={handleSaveToFolderLink}
                   disabled={!driveFolderLinkInput.trim() || driveSaving}
-                  className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                  aria-busy={driveSaving || undefined}
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-[#102033] hover:bg-dash-accent-hover disabled:opacity-50"
                 >
-                  {driveSaving ? "Saving…" : "Save to this folder"}
+                  {driveSaving && <OperationProgressRing label="Saving report to Drive" onAmber />} {driveSaving ? "Saving…" : "Save to this folder"}
                 </button>
                 <button
                   type="button"
@@ -499,23 +500,19 @@ export function WizardGenerateStep() {
 
           {showGenerateFooter && (
             <div className="space-y-3">
-              {generateStatus === "idle" && (
+              {(generateStatus === "idle" || generateStatus === "loading") && (
                 <div className="hidden md:block">
                   <button
                     type="button"
                     onClick={handleGenerateStepPrimary}
-                    disabled={generateCtaDisabled}
-                    className="h-12 w-full rounded-md bg-dash-accent text-[16px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+                    disabled={generateCtaDisabled || generateStatus === "loading"}
+                    aria-busy={generateStatus === "loading" || undefined}
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-dash-accent text-[16px] font-semibold text-[#102033] hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-80"
                   >
+                    {generateStatus === "loading" && <OperationProgressRing onAmber label="Generating report" />}
                     {generateCtaLabel}
                   </button>
                   <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
-                </div>
-              )}
-              {generateStatus === "loading" && (
-                <div className="hidden items-center gap-3 rounded-lg border border-dash-border bg-dash-card p-4 text-[14px] text-dash-ink-secondary md:flex">
-                  <Spinner />
-                  Generating your report…
                 </div>
               )}
               {generateStatus === "error" && (

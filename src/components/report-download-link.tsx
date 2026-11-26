@@ -1,5 +1,6 @@
 "use client";
 
+import { OperationProgressRing } from "./operation-progress-ring";
 import {
   useEffect,
   useRef,
@@ -18,12 +19,14 @@ export function ReportDownloadLink({
   className,
   containerClassName = "inline-flex min-w-0 flex-col",
   ariaLabel,
+  circularProgress = false,
 }: {
   href: string;
   children: ReactNode;
   className?: string;
   containerClassName?: string;
   ariaLabel?: string;
+  circularProgress?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
@@ -98,7 +101,14 @@ export function ReportDownloadLink({
       : transferred
         ? `Downloading… ${transferred}`
         : "Preparing download…";
-  const label = busy ? loadingLabel : error ? "Retry download" : children;
+  const busyLabel = circularProgress
+    ? progress?.reconnecting
+      ? "Reconnecting…"
+      : progress
+        ? "Downloading…"
+        : "Preparing download…"
+    : loadingLabel;
+  const label = busy ? busyLabel : error ? "Retry download" : children;
   return (
     <span className={containerClassName}>
       <a
@@ -109,6 +119,13 @@ export function ReportDownloadLink({
         aria-busy={busy || undefined}
         aria-disabled={busy || undefined}
       >
+        {busy && circularProgress && (
+          <OperationProgressRing
+            progress={progress?.reconnecting ? undefined : percentage}
+            onAmber
+            label="Report download progress"
+          />
+        )}
         {label}
       </a>
       {error ? (
@@ -117,7 +134,7 @@ export function ReportDownloadLink({
         </span>
       ) : (
         <span role="status" aria-live="polite" className="sr-only">
-          {busy ? loadingLabel : started ? "Download started" : ""}
+          {busy ? busyLabel : started ? "Download started" : ""}
         </span>
       )}
     </span>
