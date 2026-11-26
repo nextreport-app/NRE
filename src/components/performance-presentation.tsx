@@ -132,3 +132,35 @@ export function sumReported(values: Array<number | null | undefined>) {
     ? values.reduce<number>((sum, value) => sum + value!, 0)
     : null;
 }
+
+export function ExternalDashboardLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-card px-4 py-3 text-sm font-semibold text-dash-ink transition hover:border-dash-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+    >
+      {children}
+      <svg
+        aria-hidden="true"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M14 3h7v7M21 3l-11 11M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" />
+      </svg>
+    </a>
+  );
+}

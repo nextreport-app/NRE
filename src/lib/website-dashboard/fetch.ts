@@ -154,13 +154,26 @@ export async function fetchWebsiteSnapshot(
     }
     throw Error("GA4 channel report is too large to display completely.");
   }
+  async function devices(): Promise<NonNullable<WebsiteSnapshot["devices"]>> {
+    // Sequential reports retain the five-request concurrency and ten-metric limits.
+    const response = await request(periods.currentPeriod, WEBSITE_METRICS, ["deviceCategory"], 10);
+    const extra = await request(periods.currentPeriod, WEBSITE_EXTRA_SUMMARY_METRICS, ["deviceCategory"], 10);
+    const extras = new Map(ga4DashboardRows(extra, WEBSITE_EXTRA_SUMMARY_METRICS, ["deviceCategory"])
+      .map(row => [row.dimensions.deviceCategory, row.metrics]));
+    return ga4DashboardRows(response, WEBSITE_METRICS, ["deviceCategory"]).map(row => ({
+      name: row.dimensions.deviceCategory,
+      ...row.metrics,
+      activeUsers: extras.get(row.dimensions.deviceCategory)?.activeUsers ?? null,
+      eventCount: extras.get(row.dimensions.deviceCategory)?.eventCount ?? null,
+    })) as NonNullable<WebsiteSnapshot["devices"]>;
+  }
   const [current, previous, channelRows, trendResponse, deviceResponse] =
     await Promise.all([
       overview(periods.currentPeriod),
       overview(periods.previousPeriod),
       channels(periods.currentPeriod),
       request(periods.currentPeriod, WEBSITE_METRICS, ["date"], 100),
-      request(periods.currentPeriod, ["sessions", "engagedSessions", "keyEvents"], ["deviceCategory"], 10),
+      devices(),
     ]);
   // Separate two-metric overview requests keep every GA4 report below its ten-metric limit.
   async function extraSummary(range: typeof periods.currentPeriod) {
@@ -215,7 +228,7 @@ export async function fetchWebsiteSnapshot(
     previousChannels,
     pages: [], // Preserve the cached JSON contract without fetching the removed landing-page report.
     trend,
-    devices: ga4DashboardRows(deviceResponse, ["sessions", "engagedSessions", "keyEvents"], ["deviceCategory"]).map(row => ({name: row.dimensions.deviceCategory, sessions: row.metrics.sessions, engagedSessions: row.metrics.engagedSessions, keyEvents: row.metrics.keyEvents})),
+    devices: deviceResponse,
     countries: ga4DashboardRows(countryResponse, ["activeUsers"], ["country"]).map(row => ({name: row.dimensions.country, activeUsers: row.metrics.activeUsers})),
     pageTitles: ga4DashboardRows(titleResponse, ["screenPageViews"], ["pageTitle"]).map(row => ({name: row.dimensions.pageTitle, screenPageViews: row.metrics.screenPageViews})),
     warnings: [...warnings],

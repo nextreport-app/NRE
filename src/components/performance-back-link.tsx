@@ -15,9 +15,26 @@ export function PerformanceBackLink({
     <nav aria-label="Portfolio return" className="mb-5">
       <Link
         href={href}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-dash-border bg-dash-card px-4 py-2 text-sm font-medium text-dash-ink-secondary transition hover:border-dash-accent hover:text-dash-ink focus-visible:outline-2 focus-visible:outline-dash-accent"
+        className="group inline-flex min-h-12 items-center gap-3 rounded-xl border border-violet-400/50 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-dash-ink shadow-sm transition hover:border-violet-400 hover:bg-violet-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
       >
-        ← {label}
+        <span
+          aria-hidden="true"
+          className="grid h-7 w-7 place-items-center rounded-lg bg-violet-400/15"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m10 6-6 6 6 6M4 12h16" />
+          </svg>
+        </span>
+        {label}
       </Link>
     </nav>
   );
