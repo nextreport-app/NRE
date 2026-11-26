@@ -1211,13 +1211,15 @@ html[data-site-theme="light"] .nre-performance-card-ready { border-color: #c99c5
 
 html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { color: #915407; }
 
-/* Colored outline platform icons match the report-type icon style. */
+/* Bordered platform navigation with transparent gradient outline icons. */
 .nre-platform-navigation {
   display: inline-flex;
   max-width: 100%;
   gap: 6px;
   margin-top: 20px;
-  border-bottom: 1px solid var(--nre-dash-border);
+  padding: 5px;
+  border: 1px solid var(--nre-dash-border);
+  border-radius: 16px;
   vertical-align: top;
 }
 .nre-platform-tab {
@@ -1228,7 +1230,7 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   min-width: 0;
   gap: 12px;
   padding: 15px 22px;
-  border-radius: 9px 9px 0 0;
+  border-radius: 11px;
   color: var(--nre-dash-ink-secondary);
   transition: background .15s, color .15s;
 }
@@ -1238,7 +1240,7 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   content: "";
   position: absolute;
   right: 12px;
-  bottom: -1px;
+  bottom: 2px;
   left: 12px;
   height: 3px;
   border-radius: 3px 3px 0 0;
@@ -1256,9 +1258,9 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   .nre-platform-tab[aria-current="page"]::after { right: 6px; left: 6px; }
 }
 
-.nre-platform-icon--meta { color: #00b8e6; }
-.nre-platform-icon--website { color: #aa83ff; }
-.nre-platform-icon--seo { color: #00ccae; }
-html[data-site-theme="light"] .nre-platform-icon--meta { color: #007f9e; }
-html[data-site-theme="light"] .nre-platform-icon--website { color: #7547c7; }
-html[data-site-theme="light"] .nre-platform-icon--seo { color: #00846f; }
+.nre-platform-icon--meta { --nre-platform-icon-start: #47e4ff; --nre-platform-icon-end: #4285ff; }
+.nre-platform-icon--website { --nre-platform-icon-start: #dbabff; --nre-platform-icon-end: #8b68f8; }
+.nre-platform-icon--seo { --nre-platform-icon-start: #65efc6; --nre-platform-icon-end: #08a8b8; }
+html[data-site-theme="light"] .nre-platform-icon--meta { --nre-platform-icon-start: #008cae; --nre-platform-icon-end: #2455cc; }
+html[data-site-theme="light"] .nre-platform-icon--website { --nre-platform-icon-start: #a13fb8; --nre-platform-icon-end: #6440c7; }
+html[data-site-theme="light"] .nre-platform-icon--seo { --nre-platform-icon-start: #00855c; --nre-platform-icon-end: #007b9a; }
