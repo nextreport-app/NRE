@@ -1251,3 +1251,7 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
 /* Search Console hover/focus values stay green with readable light-theme contrast. */
 .nre-search-trend { --nre-search-focus: #34d399; }
 html[data-site-theme="light"] .nre-search-trend { --nre-search-focus: #047857; }
+
+/* Shared operation status ring; measured progress uses the same two-color treatment. */
+.nre-operation-ring { --ring-green: #34d399; --ring-amber: #f5b45a; }
+html[data-site-theme="light"] .nre-operation-ring { --ring-green: #047857; --ring-amber: #a16207; }

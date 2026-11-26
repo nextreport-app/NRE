@@ -1,5 +1,6 @@
 "use client";
 
+import { OperationProgressRing } from "@/components/operation-progress-ring";
 import type { ReactNode } from "react";
 
 /** Fixed bottom action bar on small screens; optional inline duplicate on md+. */
@@ -54,8 +55,10 @@ export function WizardStickyFooter({
             type="button"
             onClick={onPrimary}
             disabled={primaryDisabled || primaryLoading}
-            className="h-11 w-full rounded-md bg-dash-accent text-[15px] font-semibold text-dash-ink hover:bg-dash-accent-hover disabled:opacity-50"
+            aria-busy={primaryLoading || undefined}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-dash-accent text-[15px] font-semibold text-[#102033] hover:bg-dash-accent-hover disabled:opacity-50"
           >
+            {primaryLoading && <OperationProgressRing onAmber />}
             {primaryLoading ? primaryLoadingLabel : primaryLabel}
           </button>
           {secondaryLabel && onSecondary ? (
