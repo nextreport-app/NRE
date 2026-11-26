@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
 import {
@@ -373,6 +374,7 @@ export function SearchConsoleDashboard({
   };
   return (
     <div className="nre-search-console mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
+      {initialClientId && <PerformanceBackLink view="seo" />}
       <h1 className="text-2xl font-bold">SEO performance</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
         Google Search Console · organic Google Web Search clicks, visibility and
@@ -476,9 +478,6 @@ export function SearchConsoleDashboard({
       )}
       {selected && (
         <>
-          <Link href="/performance/search-console" className={`${button} mt-4`}>
-            ← All search properties
-          </Link>
           <section className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0">

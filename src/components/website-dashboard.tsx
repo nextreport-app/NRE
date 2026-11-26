@@ -1,6 +1,7 @@
 "use client";
 
 import { isWebsiteRangeFailure } from "@/lib/website-dashboard/refresh-messages";
+import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
 import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
@@ -150,6 +151,7 @@ export function WebsiteDashboard({
           : num(value);
   return (
     <div className="nre-website-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
+      {clientId && <PerformanceBackLink view="website" />}
       <h1 className="text-2xl font-bold">
         Website performance{" "}
         <span className="text-xs font-normal text-dash-ink-secondary">
@@ -195,7 +197,6 @@ export function WebsiteDashboard({
           {!!view.clients.length && !view.clients.some(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) && <p className="mt-4 text-sm text-dash-ink-secondary">No clients match your search.</p>}
         </section>
       )}
-      {selected && <Link href="/performance/google-analytics" className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-dash-border px-4 py-2 text-sm font-medium hover:bg-dash-card">← All websites</Link>}
       {view && clientId && (
         <section aria-label="Website filters" className="mt-5 rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-end gap-3">
@@ -322,7 +323,7 @@ export function WebsiteDashboard({
                 <p>{new Date(data.currentPeriod.startIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", timeZone:"UTC"})} – {new Date(data.currentPeriod.endIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})} <span className="text-dash-ink-secondary">· compared with previous {data.days} days</span></p>
                 <p className="text-xs text-dash-ink-secondary">GA4 can take 24–48 hours to settle.</p>
               </div>
-              {!entry?.fresh && <p className="mt-2 text-xs text-amber-400">Saved data is older or the last refresh failed. Refresh before acting.</p>}
+              {!entry?.fresh && !error && !entry?.error && <p className="mt-2 text-xs text-amber-400">Saved data is older, refresh once before analyzing.</p>}
               {data.warnings.map((w) => (
                 <p key={w} className="mt-2 text-sm text-amber-400">
                   {w}

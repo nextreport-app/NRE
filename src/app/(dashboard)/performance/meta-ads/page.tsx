@@ -5,5 +5,10 @@ export default async function OverviewPage({
   searchParams: Promise<{ client?: string }>;
 }) {
   const params = await searchParams;
-  return <AgencyOverview initialClientId={params.client ?? ""} />;
+  return (
+    <AgencyOverview
+      key={params.client ?? "all"}
+      initialClientId={params.client ?? ""}
+    />
+  );
 }
