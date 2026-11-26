@@ -1211,51 +1211,48 @@ html[data-site-theme="light"] .nre-performance-card-ready { border-color: #c99c5
 
 html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { color: #915407; }
 
-/* Bordered platform navigation with transparent gradient outline icons. */
+/* Three distinct dashboard destinations, with a restrained current-location state. */
 .nre-platform-navigation {
-  display: inline-flex;
-  max-width: 100%;
-  gap: 6px;
-  margin-top: 20px;
-  padding: 5px;
-  border: 1px solid var(--nre-dash-border);
-  border-radius: 16px;
-  vertical-align: top;
-}
-.nre-platform-tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 68px;
-  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
   gap: 12px;
-  padding: 15px 22px;
-  border-radius: 11px;
-  color: var(--nre-dash-ink-secondary);
-  transition: background .15s, color .15s;
+  margin-top: 24px;
 }
-.nre-platform-tab:hover,
-.nre-platform-tab[aria-current="page"] { background: var(--nre-dash-card); color: var(--nre-dash-ink); }
-.nre-platform-tab[aria-current="page"]::after {
-  content: "";
-  position: absolute;
-  right: 12px;
-  bottom: 2px;
-  left: 12px;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--nre-dash-accent);
+.nre-dashboard-entry {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--nre-dash-border);
+  border-radius: 14px;
+  background: var(--nre-dash-card);
+  color: var(--nre-dash-ink);
+  transition: border-color .15s, box-shadow .15s;
 }
-.nre-platform-tab:focus-visible { outline: 2px solid var(--nre-dash-accent); outline-offset: 2px; }
-.nre-platform-icon { display: inline-flex; width: 28px; height: 28px; flex-shrink: 0; }
+.nre-dashboard-entry:hover { border-color: var(--nre-dash-ink-secondary); box-shadow: 0 4px 16px #0000000d; }
+.nre-dashboard-entry[aria-current="page"] {
+  border-color: color-mix(in srgb, var(--nre-dash-accent) 65%, var(--nre-dash-border));
+  box-shadow: inset 0 2px 0 var(--nre-dash-accent);
+}
+.nre-dashboard-entry:focus-visible { outline: 2px solid var(--nre-dash-accent); outline-offset: 3px; }
+.nre-dashboard-entry-top { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.nre-platform-icon { display: inline-flex; width: 27px; height: 27px; flex-shrink: 0; }
 .nre-platform-icon > svg { width: 100%; height: 100%; }
-.nre-platform-label { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.nre-dashboard-entry-arrow { color: var(--nre-dash-ink-secondary); }
+.nre-dashboard-entry-current { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; color: var(--nre-dash-ink-secondary); background: var(--nre-dash-bg); font-size: 10px; font-weight: 600; }
+.nre-dashboard-entry-current > span { width: 5px; height: 5px; border-radius: 50%; background: var(--nre-dash-accent); }
+.nre-dashboard-entry-copy { display: flex; flex-direction: column; gap: 5px; margin-top: 14px; }
+.nre-dashboard-entry-title { font-size: 15px; font-weight: 650; line-height: 1.4; }
+.nre-dashboard-entry-description { font-size: 12px; line-height: 1.5; color: var(--nre-dash-ink-secondary); }
 @media (max-width: 639px) {
-  .nre-platform-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: 3px; }
-  .nre-platform-tab { flex-direction: column; justify-content: flex-start; gap: 8px; padding: 12px 5px 14px; text-align: center; }
-  .nre-platform-icon { width: 25px; height: 25px; }
-  .nre-platform-label { font-size: 13px; }
-  .nre-platform-tab[aria-current="page"]::after { right: 6px; left: 6px; }
+  .nre-platform-navigation { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .nre-dashboard-entry { flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px; }
+  .nre-dashboard-entry-top { display: contents; }
+  .nre-dashboard-entry-copy { order: 1; flex: 1; min-width: 0; gap: 3px; margin-top: 0; }
+  .nre-dashboard-entry-current, .nre-dashboard-entry-arrow { order: 2; flex-shrink: 0; }
+  .nre-dashboard-entry-title { font-size: 14px; }
+  .nre-dashboard-entry-description { font-size: 11px; }
 }
 
 .nre-platform-icon--meta { --nre-platform-icon-start: #47e4ff; --nre-platform-icon-end: #4285ff; }

@@ -5,16 +5,19 @@ const platforms = [
     key: "meta",
     href: "/performance/meta-ads",
     label: "Meta Ads",
+    description: "Campaigns, costs & results",
   },
   {
     key: "website",
     href: "/performance/google-analytics",
     label: "Website traffic (GA4)",
+    description: "Visitors, activity & engagement",
   },
   {
     key: "seo",
     href: "/performance/search-console",
     label: "Google Search Console",
+    description: "Search clicks, queries & rankings",
   },
 ] as const;
 
@@ -51,7 +54,6 @@ function PlatformIcon({ platform }: { platform: "meta" | "website" | "seo" }) {
         <>
           <path d="M4 19V5M4 19h16" />
           <path d="M8 15v-3m5 3V8m5 7V4" />
-          <path d="m7 7 4-3" opacity=".6" />
         </>
       ) : (
         <>
@@ -72,7 +74,7 @@ export function OverviewNavigation({
 }) {
   return (
     <nav aria-label="Performance type" className="nre-platform-navigation">
-      {platforms.map(({ key, href, label }) => (
+      {platforms.map(({ key, href, label, description }) => (
         <Link
           key={key}
           href={
@@ -80,15 +82,39 @@ export function OverviewNavigation({
           }
           aria-label={label}
           aria-current={current === key ? "page" : undefined}
-          className="nre-platform-tab"
+          className="nre-dashboard-entry"
         >
-          <span
-            className={`nre-platform-icon nre-platform-icon--${key}`}
-            aria-hidden="true"
-          >
-            <PlatformIcon platform={key} />
+          <span className="nre-dashboard-entry-top" aria-hidden="true">
+            <span className={`nre-platform-icon nre-platform-icon--${key}`}>
+              <PlatformIcon platform={key} />
+            </span>
+            {current === key ? (
+              <span className="nre-dashboard-entry-current">
+                <span />
+                Viewing
+              </span>
+            ) : (
+              <svg
+                className="nre-dashboard-entry-arrow"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14m-5-5 5 5-5 5" />
+              </svg>
+            )}
           </span>
-          <span className="nre-platform-label">{label}</span>
+          <span className="nre-dashboard-entry-copy">
+            <span className="nre-dashboard-entry-title">{label}</span>
+            <span className="nre-dashboard-entry-description">
+              {description}
+            </span>
+          </span>
         </Link>
       ))}
     </nav>
