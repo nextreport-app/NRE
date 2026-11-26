@@ -304,7 +304,7 @@ export function AgencyOverview({
             tabIndex={-1}
             aria-label={`${c.name} performance and settings`}
             key={c.id}
-            className="mt-[76px] min-w-0 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
+            className="mt-8 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>

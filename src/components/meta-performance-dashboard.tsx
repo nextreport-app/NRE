@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { isMeaningfulImprovement } from "@/lib/performance-monitor/meaningful-improvement";
 import { hasComparisonActivity } from "@/lib/performance-monitor/campaign-activity";
 import type { OverviewRow } from "@/lib/agency-overview";
 import type {
@@ -151,9 +152,23 @@ function Issue({
       href={href}
       className="block rounded-xl border border-dash-border bg-dash-bg p-4 hover:bg-dash-card"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold">{signal.metric}</span>
+          {delta && (
+            <span className="text-sm font-semibold text-dash-ink-secondary">
+              {delta.label}
+              {observation?.reference === "target" ? " vs target" : ""}
+            </span>
+          )}
+          <span className="text-xs text-dash-ink-secondary">
+            {observation?.reference === "target"
+              ? "Compared to saved target"
+              : "Compared to previous period"}
+          </span>
+        </div>
         <span
-          className={`rounded-full border px-2 py-1 text-xs font-semibold ${!fresh ? "border-dash-border text-dash-ink-secondary" : signal.tone === "critical" ? "border-red-400/40 text-red-400" : signal.tone === "warning" ? "border-amber-400/40 text-amber-400" : "border-emerald-400/40 text-emerald-400"}`}
+          className={`ml-auto shrink-0 rounded-full border px-2 py-1 text-xs font-semibold ${!fresh ? "border-dash-border text-dash-ink-secondary" : signal.tone === "critical" ? "border-red-400/40 text-red-400" : signal.tone === "warning" ? "border-amber-400/40 text-amber-400" : "border-emerald-400/40 text-emerald-400"}`}
         >
           {!fresh
             ? "Saved change"
@@ -163,20 +178,8 @@ function Issue({
                 ? "Review"
                 : "Improvement"}
         </span>
-        <span className="text-sm font-semibold">{signal.metric}</span>
-        {delta && (
-          <span
-            className={`text-sm font-semibold ${delta.tone === "positive" ? "text-emerald-400" : delta.tone === "negative" ? "text-red-400" : "text-dash-ink-secondary"}`}
-          >
-            {delta.label}
-            {observation?.reference === "target" ? " vs target" : ""}
-          </span>
-        )}
-        {signal.state === "continuing" && (
-          <span className="text-xs text-dash-ink-secondary">Ongoing</span>
-        )}
       </div>
-      <p className="mt-2 break-words text-sm font-semibold text-blue-400">
+      <p className="mt-2 break-words text-sm font-semibold text-dash-ink">
         {campaign.name}{" "}
         <span className="text-xs font-normal text-dash-ink-secondary">
           [Campaign]
@@ -269,7 +272,11 @@ export function MetaPerformanceDashboard({
         Number(b.signal.tone === "critical") -
         Number(a.signal.tone === "critical"),
     );
-  const improvements = changes.filter((s) => s.signal.tone === "positive");
+  const improvements = c.performanceFresh
+    ? changes.filter(({ campaign, signal }) =>
+        isMeaningfulImprovement(campaign, signal),
+      )
+    : [];
   const urgent = new Set(
     issues.filter((s) => s.signal.tone === "critical").map((s) => s.index),
   ).size;
@@ -338,7 +345,9 @@ export function MetaPerformanceDashboard({
                     ? "No delivery in these periods"
                     : unassessed
                       ? "Review the comparison below"
-                      : "No material changes detected"}
+                      : improvements.length
+                        ? `${improvements.length} significant improvement${improvements.length === 1 ? "" : "s"}`
+                        : "No material changes detected"}
         </h3>
         {!c.performanceFresh && (
           <p className="mt-2 text-sm text-dash-ink-secondary">
@@ -391,6 +400,10 @@ export function MetaPerformanceDashboard({
             <summary className="cursor-pointer text-sm font-medium">
               Improvements ({improvements.length})
             </summary>
+            <p className="mt-2 text-xs text-dash-ink-secondary">
+              Substantial gains in campaign results or efficiency compared to
+              the previous period.
+            </p>
             <div className="mt-3 space-y-3">{improvements.map(issueCard)}</div>
           </details>
         )}
