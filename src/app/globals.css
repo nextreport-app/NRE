@@ -1251,9 +1251,5 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   .nre-dashboard-entry-description { font-size: 11px; }
 }
 
-.nre-platform-icon--meta { --nre-platform-icon-start: #47e4ff; --nre-platform-icon-end: #4285ff; }
-.nre-platform-icon--website { --nre-platform-icon-start: #dbabff; --nre-platform-icon-end: #8b68f8; }
-.nre-platform-icon--seo { --nre-platform-icon-start: #65efc6; --nre-platform-icon-end: #08a8b8; }
-html[data-site-theme="light"] .nre-platform-icon--meta { --nre-platform-icon-start: #008cae; --nre-platform-icon-end: #2455cc; }
-html[data-site-theme="light"] .nre-platform-icon--website { --nre-platform-icon-start: #a13fb8; --nre-platform-icon-end: #6440c7; }
-html[data-site-theme="light"] .nre-platform-icon--seo { --nre-platform-icon-start: #00855c; --nre-platform-icon-end: #007b9a; }
+.nre-platform-icon { --nre-platform-icon-start: #47e4ff; --nre-platform-icon-end: #4285ff; }
+html[data-site-theme="light"] .nre-platform-icon { --nre-platform-icon-start: #008cae; --nre-platform-icon-end: #2455cc; }
