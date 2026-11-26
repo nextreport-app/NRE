@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import {
+  loadMetaOverview,
+  openMetaDashboard,
+} from "@/lib/performance-monitor/dashboard-entry";
 import { useRouter } from "next/navigation";
 import { PerformanceBackLink } from "./performance-back-link";
 import { MetaBudgetPanel } from "./meta-budget-panel";
 import { MetaPerformanceDashboard } from "./meta-performance-dashboard";
 import { MetaMonitoringSetup } from "./meta-monitoring-setup";
 import { OverviewNavigation } from "./overview-navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { OverviewRow } from "@/lib/agency-overview";
 import { DecisionSettingsPanel } from "./performance-decision-controls";
 import {
@@ -45,7 +49,8 @@ export function AgencyOverview({
         : null;
     if (
       panel &&
-      window.location.hash === `#${encodeURIComponent(`meta-budget-${expanded}`)}`
+      window.location.hash ===
+        `#${encodeURIComponent(`meta-budget-${expanded}`)}`
     ) {
       const budgetId = `meta-budget-${expanded}`;
       const target = document.getElementById(budgetId) ?? panel;
@@ -61,13 +66,25 @@ export function AgencyOverview({
   function selectAccount(id: string) {
     router.push(`/performance/meta-ads?client=${encodeURIComponent(id)}`);
   }
+  const opening = useRef<Promise<OverviewRow[]> | null>(null);
+  const opened = useRef(false);
   const load = useCallback(async () => {
-    const r = await fetch("/api/agency-overview", { cache: "no-store" });
-    const data = await r.json();
-    if (!r.ok) throw Error(data.error ?? "Overview could not load.");
-    setClients(data.clients);
+    let rows: OverviewRow[];
+    if (!opened.current) {
+      opening.current ??= openMetaDashboard(initialClientId);
+      try {
+        rows = await opening.current;
+        opened.current = true;
+      } catch (error) {
+        opening.current = null;
+        throw error;
+      }
+    } else {
+      rows = await loadMetaOverview();
+    }
+    setClients(rows);
     setError("");
-  }, []);
+  }, [initialClientId]);
   useEffect(() => {
     const refresh = () => void load().catch((e) => setError(e.message));
     refresh();
@@ -353,10 +370,11 @@ export function AgencyOverview({
             {expanded === c.id && c.linked && (
               <div className="mt-5 border-t border-dash-border pt-4">
                 {c.performanceEnabled && (
-                  <section aria-label="Performance alerts" className="mt-4 rounded-xl border border-dash-border p-4">
-                    <h3 className="text-sm font-medium">
-                      Performance alerts
-                    </h3>
+                  <section
+                    aria-label="Performance alerts"
+                    className="mt-4 rounded-xl border border-dash-border p-4"
+                  >
+                    <h3 className="text-sm font-medium">Performance alerts</h3>
                     <p className="mt-2 text-xs text-dash-ink-secondary">
                       Critical issues and early warnings from your campaign
                       comparisons.
