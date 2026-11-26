@@ -3,12 +3,10 @@ import {
   performancePortfolioCard,
   performancePortfolioAction,
 } from "./performance-portfolio-styles";
-import { metricChange } from "@/lib/performance-monitor/metric-change";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
   PORTFOLIO_LABELS,
   type PortfolioState,
-  type Observation,
 } from "@/lib/performance-monitor/portfolio";
 export const PORTFOLIO_FILTERS = [
   { key: "all", label: "All accounts" },
@@ -35,52 +33,26 @@ export function PortfolioBadge({ state }: { state: PortfolioState }) {
     </span>
   );
 }
-function format(n: number | null, unit: Observation["unit"], currency: string) {
-  if (n === null) return "—";
-  return unit === "money"
-    ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency,
-        maximumFractionDigits: 2,
-      }).format(n)
-    : new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n) +
-        (unit === "percent" ? "%" : unit === "multiple" ? "×" : "");
+function money(value: number | null, currency: string) {
+  if (value === null) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
-export function ObservationLine({
-  observation: o,
-  currency,
-}: {
-  observation: Observation;
-  currency: string;
-}) {
-  const delta = metricChange(
-    o.current,
-    o.previous,
-    /cost|cpc|cpl|cpr/i.test(o.metric)
-      ? "cpr"
-      : /ctr/i.test(o.metric)
-        ? "ctr"
-        : /roas/i.test(o.metric)
-          ? "roas"
-          : "results",
-    o.metric,
-  );
-  return (
-    <p className="mt-1 text-sm">
-      <strong>
-        {o.metric}: {format(o.current, o.unit, currency)}
-      </strong>
-      {" · "}
-      {o.reference === "target" ? "Target" : "Previous"}{" "}
-      {format(o.previous, o.unit, currency)}
-      {o.change !== null && (
-        <span className="ml-2 inline-block text-xs font-medium text-dash-ink-secondary">
-          {delta.label}
-          {o.reference === "target" ? " vs target" : ""}
-        </span>
-      )}
-    </p>
-  );
+/** One account-level summary only; campaign details belong in the dashboard. */
+function accountSummary(c: OverviewRow) {
+  if (!c.linked) return "Choose which Meta ad account belongs to this client.";
+  if (!c.performanceEnabled)
+    return "Set up monitoring to view account performance.";
+  if (c.unavailable)
+    return "Saved data needs a fresh check. Open the account to refresh.";
+  if (c.portfolio.state === "critical" || c.portfolio.state === "review")
+    return "Performance needs attention. Open the account for details.";
+  if (c.performanceFresh && !c.portfolio.coverage.total)
+    return "No delivery was returned for either period.";
+  return "Open the account to review performance.";
 }
 export function PortfolioBoard({
   rows,
@@ -99,72 +71,34 @@ export function PortfolioBoard({
       {rows.map((c) => (
         <article
           key={c.id}
-          className={`${performancePortfolioCard} ${selected === c.id ? "border-dash-accent" : "border-dash-border"}`}
+          className={`${performancePortfolioCard} flex flex-col ${selected === c.id ? "border-dash-accent" : "border-dash-border"}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="break-words font-semibold">{c.name}</h2>
             <PortfolioBadge state={c.portfolio.state} />
           </div>
-          {c.budgetAttention && (
-            <p className="mt-2 text-sm font-medium">
-              <span>Budget needs attention</span>
-              {c.budget?.facts && (
-                <span className="mt-1 block font-normal">
-                  Spent {format(c.budget.facts.spent, "money", c.currency)} of{" "}
-                  {format(c.budget.config.monthlyBudget, "money", c.currency)}
+          <div className="mt-3 flex-1 text-sm text-dash-ink-secondary">
+            {c.budgetAttention ? (
+              <p>
+                <span className="font-medium text-dash-ink">
+                  Budget needs attention
                 </span>
-              )}
-            </p>
-          )}
-          {c.performanceFresh && c.portfolio.lead && (
-            <div className="mt-2 min-w-0">
-              <p className="break-words text-sm">
-                <strong className="text-dash-ink">
-                  {c.portfolio.lead.name}
-                </strong>{" "}
-                <span className="text-xs text-dash-ink-secondary">
-                  [Campaign]
-                </span>
-                {!c.portfolio.lead.observation && (
-                  <> · {c.portfolio.lead.reason}</>
+                {c.budget?.facts && (
+                  <span className="mt-1 block">
+                    Spent {money(c.budget.facts.spent, c.currency)} of{" "}
+                    {money(c.budget.config.monthlyBudget, c.currency)}
+                  </span>
                 )}
               </p>
-              {c.portfolio.lead.observation && (
-                <ObservationLine
-                  observation={c.portfolio.lead.observation}
-                  currency={c.currency}
-                />
-              )}
-            </div>
-          )}
-          {c.portfolio.state === "setup" && (
-            <p className="mt-2 text-sm">
-              {c.linked
-                ? "Ready to load campaign performance."
-                : "Choose which Meta ad account belongs to this client."}
-            </p>
-          )}
-          {c.unavailable && (
-            <p className="mt-2 text-xs text-dash-ink-secondary">
-              {!c.performanceFresh && c.performanceEnabled
-                ? "Performance needs a fresh check. "
-                : ""}
-              {!c.budgetFresh && c.budgetEnabled
-                ? "Budget needs a fresh check."
-                : ""}{" "}
-              Prior data does not establish current performance.
-            </p>
-          )}
-          {c.performanceFresh && !c.portfolio.coverage.total && (
-            <p className="mt-2 text-sm">
-              No delivery was returned for either period.
-            </p>
-          )}
+            ) : (
+              <p>{accountSummary(c)}</p>
+            )}
+          </div>
           <button
             id={`open-account-${c.id}`}
             aria-expanded={selected === c.id}
             aria-controls={`account-${c.id}`}
-            className={performancePortfolioAction}
+            className={`${performancePortfolioAction} self-start ${c.linked && c.performanceEnabled ? "nre-performance-action-ready" : ""}`}
             onClick={() => onOpen(c.id)}
           >
             {!c.linked

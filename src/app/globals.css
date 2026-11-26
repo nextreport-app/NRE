@@ -1180,6 +1180,20 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
 [data-site-theme="light"] .nre-meta-performance .text-blue-400 { color: #1d4ed8; }
 [data-site-theme="light"] .nre-meta-performance .text-violet-400 { color: #6d28d9; }
 
+/* A ready Meta action signals access to the dashboard, not account health. */
+.nre-performance-action-ready {
+  color: #a3e6c5;
+  border-color: #35765e;
+  background: #17372c;
+}
+.nre-performance-action-ready:hover { background: #214a3b; }
+html[data-site-theme="light"] .nre-performance-action-ready {
+  color: #14633f;
+  border-color: #8cc7ad;
+  background: #e7f5ed;
+}
+html[data-site-theme="light"] .nre-performance-action-ready:hover { background: #d4ecdf; }
+
 /* GA4 portfolio: linked configuration is distinct from performance health. */
 .nre-ga4-property-linked {
   border-color: #35765e;
