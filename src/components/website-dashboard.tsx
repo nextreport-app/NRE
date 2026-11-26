@@ -1,6 +1,7 @@
 "use client";
 
 import { isWebsiteRangeFailure } from "@/lib/website-dashboard/refresh-messages";
+import { performancePortfolioCard, performancePortfolioAction } from "./performance-portfolio-styles";
 import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
@@ -178,7 +179,7 @@ export function WebsiteDashboard({
               const connected = c.connected ?? view.connected;
               const linked = connected && !!c.propertyId;
               return (
-                <article key={c.id} className={`rounded-2xl border bg-dash-card p-5 ${linked ? "nre-ga4-property-linked" : "border-dash-border"}`}>
+                <article key={c.id} className={`${performancePortfolioCard} ${linked ? "nre-ga4-property-linked" : "border-dash-border"}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-semibold">{c.name}</h3>
                     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${linked ? "nre-ga4-property-linked__badge" : "border-dash-border text-dash-ink-secondary"}`}>
@@ -187,7 +188,7 @@ export function WebsiteDashboard({
                     </span>
                   </div>
                   <p className="mt-3 text-sm text-dash-ink-secondary">{c.propertyId ? (c.propertyName || `GA4 property ${c.propertyId}`) : "No GA4 property linked yet."}</p>
-                  <Link href={linked ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-dash-accent ${linked ? "nre-ga4-property-linked__action" : "border-dash-border bg-dash-bg hover:border-dash-accent"}`}>
+                  <Link href={linked ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className={performancePortfolioAction}>
                     {!connected ? "Connect GA4 →" : linked ? "View website performance →" : "Choose GA4 property →"}
                   </Link>
                 </article>

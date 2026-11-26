@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { searchConsoleSiteLabel } from "@/lib/search-console/site-label";
+import { performancePortfolioCard, performancePortfolioAction } from "./performance-portfolio-styles";
 import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
@@ -426,7 +428,7 @@ export function SearchConsoleDashboard({
               .map((c) => (
                 <article
                   key={c.id}
-                  className={`min-w-0 rounded-2xl border bg-dash-card p-5 ${c.connected && c.siteUrl ? "nre-ga4-property-linked" : "border-dash-border"}`}
+                  className={`${performancePortfolioCard} ${c.connected && c.siteUrl ? "nre-ga4-property-linked" : "border-dash-border"}`}
                 >
                   <div className="flex flex-wrap justify-between gap-2">
                     <h3 className="font-semibold">{c.name}</h3>
@@ -441,7 +443,7 @@ export function SearchConsoleDashboard({
                     </span>
                   </div>
                   <p className="mt-3 break-all text-sm text-dash-ink-secondary">
-                    {c.siteUrl ?? "No Search Console site linked yet."}
+                    {c.siteUrl ? searchConsoleSiteLabel(c.siteUrl) : "No Search Console site linked yet."}
                   </p>
                   <Link
                     href={
@@ -449,7 +451,7 @@ export function SearchConsoleDashboard({
                         ? `/performance/search-console?client=${encodeURIComponent(c.id)}`
                         : `/clients/${c.id}#search-console`
                     }
-                    className={`${button} mt-4 ${c.connected && c.siteUrl ? "nre-ga4-property-linked__action" : ""}`}
+                    className={performancePortfolioAction}
                   >
                     {!c.connected
                       ? "Connect Search Console →"
@@ -555,7 +557,7 @@ export function SearchConsoleDashboard({
             )}
             <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-dash-border pt-3 text-xs text-dash-ink-secondary">
               <span className="break-all">
-                {selected.siteUrl ?? "No site selected"}
+                {selected.siteUrl ? searchConsoleSiteLabel(selected.siteUrl) : "No site selected"}
               </span>
               <Link
                 href={`/clients/${selected.id}#search-console`}

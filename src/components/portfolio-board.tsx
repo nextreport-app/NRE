@@ -1,4 +1,8 @@
 "use client";
+import {
+  performancePortfolioCard,
+  performancePortfolioAction,
+} from "./performance-portfolio-styles";
 import { metricChange } from "@/lib/performance-monitor/metric-change";
 import type { OverviewRow } from "@/lib/agency-overview";
 import {
@@ -70,9 +74,7 @@ export function ObservationLine({
       {o.reference === "target" ? "Target" : "Previous"}{" "}
       {format(o.previous, o.unit, currency)}
       {o.change !== null && (
-        <span
-          className={`ml-2 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${delta.tone === "positive" ? "border-emerald-400/30 text-emerald-400" : delta.tone === "negative" ? "border-red-400/30 text-red-400" : "border-dash-border text-dash-ink-secondary"}`}
-        >
+        <span className="ml-2 inline-block text-xs font-medium text-dash-ink-secondary">
           {delta.label}
           {o.reference === "target" ? " vs target" : ""}
         </span>
@@ -91,13 +93,13 @@ export function PortfolioBoard({
 }) {
   return (
     <div
-      className="mt-4 grid gap-3 md:grid-cols-2"
+      className="mt-4 grid gap-4 sm:grid-cols-2"
       aria-label="Account performance list"
     >
       {rows.map((c) => (
         <article
           key={c.id}
-          className={`min-w-0 rounded-xl border bg-dash-card p-4 ${selected === c.id ? "border-dash-accent" : "border-dash-border"}`}
+          className={`${performancePortfolioCard} ${selected === c.id ? "border-dash-accent" : "border-dash-border"}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="break-words font-semibold">{c.name}</h2>
@@ -105,11 +107,7 @@ export function PortfolioBoard({
           </div>
           {c.budgetAttention && (
             <p className="mt-2 text-sm font-medium">
-              <span
-                className={c.budgetCritical ? "text-red-400" : "text-amber-400"}
-              >
-                Budget needs attention
-              </span>
+              <span>Budget needs attention</span>
               {c.budget?.facts && (
                 <span className="mt-1 block font-normal">
                   Spent {format(c.budget.facts.spent, "money", c.currency)} of{" "}
@@ -121,7 +119,7 @@ export function PortfolioBoard({
           {c.performanceFresh && c.portfolio.lead && (
             <div className="mt-2 min-w-0">
               <p className="break-words text-sm">
-                <strong className="text-blue-400">
+                <strong className="text-dash-ink">
                   {c.portfolio.lead.name}
                 </strong>{" "}
                 <span className="text-xs text-dash-ink-secondary">
@@ -147,7 +145,7 @@ export function PortfolioBoard({
             </p>
           )}
           {c.unavailable && (
-            <p className="mt-2 text-xs text-amber-400">
+            <p className="mt-2 text-xs text-dash-ink-secondary">
               {!c.performanceFresh && c.performanceEnabled
                 ? "Performance needs a fresh check. "
                 : ""}
@@ -166,7 +164,7 @@ export function PortfolioBoard({
             id={`open-account-${c.id}`}
             aria-expanded={selected === c.id}
             aria-controls={`account-${c.id}`}
-            className="mt-4 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+            className={performancePortfolioAction}
             onClick={() => onOpen(c.id)}
           >
             {!c.linked
