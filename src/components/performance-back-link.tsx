@@ -15,7 +15,7 @@ export function PerformanceBackLink({
     <nav aria-label="Portfolio return" className="mb-5">
       <Link
         href={href}
-        className="group inline-flex min-h-12 items-center gap-3 rounded-xl border border-[#927348] bg-[#372d20] px-4 py-2 text-sm font-semibold text-[#f5b45a] shadow-sm transition hover:border-dash-accent hover:bg-[#463723] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+        className="group inline-flex min-h-12 items-center gap-3 rounded-xl border border-[#927348] bg-[#372d20] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:border-dash-accent hover:bg-[#463723] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
       >
         <span
           aria-hidden="true"
