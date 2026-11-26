@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
 import { decisionPeriods } from "@/lib/performance-monitor/settings";
 import { reportCalendarYesterday } from "@/lib/nre/report-period-selection";
@@ -41,7 +41,9 @@ export function DecisionSettingsPanel({
   client: c,
   busy,
   save,
+  refreshControl,
 }: {
+  refreshControl?: ReactNode;
   client: OverviewRow;
   busy: boolean;
   save: (body: object) => Promise<boolean>;
@@ -68,7 +70,10 @@ export function DecisionSettingsPanel({
       aria-label="Comparison controls"
       className="rounded-xl border border-dash-border bg-dash-bg p-4"
     >
-      <h3 className="text-sm font-semibold">Compare periods</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold">Compare periods</h3>
+        {refreshControl}
+      </div>
       <form
         className="mt-3"
         onSubmit={async (e) => {
