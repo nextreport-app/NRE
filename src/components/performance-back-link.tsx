@@ -15,11 +15,11 @@ export function PerformanceBackLink({
     <nav aria-label="Portfolio return" className="mb-5">
       <Link
         href={href}
-        className="group inline-flex min-h-12 items-center gap-3 rounded-xl border border-violet-400/50 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-dash-ink shadow-sm transition hover:border-violet-400 hover:bg-violet-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+        className="group inline-flex min-h-12 items-center gap-3 rounded-xl border border-[#927348] bg-[#372d20] px-4 py-2 text-sm font-semibold text-[#f5b45a] shadow-sm transition hover:border-dash-accent hover:bg-[#463723] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
       >
         <span
           aria-hidden="true"
-          className="grid h-7 w-7 place-items-center rounded-lg bg-violet-400/15"
+          className="grid h-7 w-7 place-items-center rounded-lg bg-dash-accent/10"
         >
           <svg
             width="18"
