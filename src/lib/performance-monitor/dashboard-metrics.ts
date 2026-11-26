@@ -1,3 +1,4 @@
+import { packForResultLabel } from "../nre/packs";
 import { campaignBrief } from "./portfolio";
 import type { CampaignPerformance, PeriodMetrics } from "./facts";
 export interface DashboardMetric {
@@ -275,9 +276,9 @@ export function accountHighlightMetrics(
     }
   }
   if (
-    facts.campaigns.some((c) => /lead|landing|link click/i.test(c.objective)) ||
-    facts.current.landingPageViews != null ||
-    facts.previous.landingPageViews != null
+    facts.campaigns.some((c) =>
+      /website|landing|link click|purchase/i.test(c.objective),
+    )
   )
     cards.push({
       key: "landing_page_views",
@@ -329,26 +330,31 @@ export function campaignHighlightMetrics(
   c: CampaignPerformance,
 ): DashboardMetric[] {
   const all = campaignComparisonMetrics(c);
-  const keys = new Set([
-    "spend",
-    "results",
-    "cpr",
-    ...(/purchase/i.test(c.objective) ? ["roas", "purchase_value"] : []),
-  ]);
-  const cards = all.filter((m) => keys.has(m.key));
-  const preferred = /lead|landing|link click/i.test(c.objective)
-    ? ["landing_page_views", "link_clicks", "impressions", "reach"]
-    : ["impressions", "reach", "link_clicks", "landing_page_views"];
-  for (const key of preferred) {
-    if (cards.length >= 4) break;
-    const metric = all.find(
-      (m) => m.key === key && (m.current != null || m.previous != null),
-    );
-    if (metric) cards.push(metric);
-  }
-  return cards.sort(
-    (a, b) => Number(b.key === "spend") - Number(a.key === "spend"),
+  const cards = ["spend", "results", "cpr"].map((key) =>
+    all.find((metric) => metric.key === key)!,
   );
+  // Use the wizard's canonical objective pack, never its optional CSV extras:
+  // API data can contain incidental website activity even for instant forms.
+  const aliases: Record<string, string> = {
+    cpc_link_click: "cpc_link",
+    cost_per_lpv: "cost_per_landing_page_view",
+    results_roas: "roas",
+    add_to_cart: "conversions_add_to_cart",
+    initiate_checkout: "conversions_checkout",
+  };
+  const preferred = (packForResultLabel(c.objective)?.keys.slice(6) ?? []).map(
+    (key) => aliases[key] ?? key,
+  );
+  for (const key of [...preferred, "ctr", "impressions", "reach"]) {
+    const metric = all.find(
+      (m) =>
+        m.key === key &&
+        !cards.some((card) => card.key === key) &&
+        (m.current != null || m.previous != null),
+    );
+    if (metric) return [...cards, metric];
+  }
+  return cards;
 }
 
 /** Collapse only proven duplicates; a single campaign does not imply identical account reach. */
