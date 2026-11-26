@@ -286,7 +286,7 @@ export function SearchConsoleDashboard({
   return (
     <div className="nre-search-console mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
       {initialClientId && <PerformanceBackLink view="seo" />}
-      <h1 className="text-2xl font-bold">SEO performance</h1>
+      <h1 className="nre-performance-page-title">SEO performance</h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
         Google Search Console · organic Google Web Search clicks, visibility and
         rankings.
@@ -397,7 +397,7 @@ export function SearchConsoleDashboard({
                 <p className="text-xs text-dash-ink-secondary">
                   Website / client
                 </p>
-                <h2 className="mt-1 break-words text-lg font-semibold">
+                <h2 className="nre-performance-account-name mt-1 break-words">
                   {selected.name}
                 </h2>
               </div>

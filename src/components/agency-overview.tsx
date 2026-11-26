@@ -172,7 +172,7 @@ export function AgencyOverview({
   return (
     <div className="nre-meta-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
       {expanded && <PerformanceBackLink view="meta" />}
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+      <h1 className="nre-performance-page-title">
         Meta Ads Performance Comparisons
       </h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
@@ -310,7 +310,7 @@ export function AgencyOverview({
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">{c.name}</h2>
+                <h2 className="nre-performance-account-name">{c.name}</h2>
               </div>
               <AccountStatusBadges client={c} />
             </div>

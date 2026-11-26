@@ -160,7 +160,7 @@ export function WebsiteDashboard({
   return (
     <div className="nre-website-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
       {clientId && <PerformanceBackLink view="website" />}
-      <h1 className="text-2xl font-bold">
+      <h1 className="nre-performance-page-title">
         Website performance{" "}
         <span className="text-xs font-normal text-dash-ink-secondary">
           Beta
@@ -210,7 +210,7 @@ export function WebsiteDashboard({
           <div className="flex flex-wrap items-end gap-3">
           <div className="w-full min-w-0 lg:w-auto lg:flex-1">
             <p className="text-xs font-medium text-dash-ink-secondary">Website / client</p>
-            <h2 className="mt-2 break-words text-lg font-semibold text-dash-ink">{selected?.name ?? "Loading client…"}</h2>
+            <h2 className="nre-performance-account-name mt-2 break-words">{selected?.name ?? "Loading client…"}</h2>
           </div>
           <div className="flex max-w-full gap-1 rounded-xl border border-dash-border bg-dash-bg p-1" role="group" aria-label="Website period">
             {([7, 30] as const).map((n) => (
