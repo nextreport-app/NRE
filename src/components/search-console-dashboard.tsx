@@ -1,14 +1,22 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { SearchConsoleTrend } from "./search-console-trend";
+import {
+  searchCountry,
+  searchDateRange,
+  searchClickShare,
+} from "@/lib/search-console/presentation";
 import { searchConsoleSiteLabel } from "@/lib/search-console/site-label";
-import { performancePortfolioCard, performancePortfolioAction } from "./performance-portfolio-styles";
+import {
+  performancePortfolioCard,
+  performancePortfolioAction,
+} from "./performance-portfolio-styles";
 import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
 import {
   GSC_LABELS,
-  GSC_TIMEZONE,
   formatGscMetric,
   type GscSnapshot,
   type GscMetric,
@@ -71,163 +79,103 @@ export function GscMetricChange({
     </span>
   );
 }
-function SearchTrend({ data }: { data: GscSnapshot }) {
-  const [metric, setMetric] = useState<GscMetric>("clicks"),
-    [date, setDate] = useState("");
-  const rows = data.trend.filter((r) => r[metric] !== null),
-    max = Math.max(
-      metric === "ctr" ? 0.001 : 1,
-      ...rows.map((r) => r[metric]!),
-    ),
-    start = Date.parse(data.currentPeriod.startIso + "T12:00:00Z");
-  const x = (name: string) =>
-      55 +
-      ((Date.parse(name + "T12:00:00Z") - start) /
-        86400000 /
-        Math.max(1, data.days - 1)) *
-        690,
-    y = (value: number) => 205 - (value / max) * 165;
-  const selected = rows.find((r) => r.name === date) ?? rows[rows.length - 1];
-  return (
-    <section
-      className="mt-5 min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5"
-      aria-label="Search performance trend"
+function CountryFlag({ code }: { code: string }) {
+  const { region } = searchCountry(code);
+  return region ? (
+    <svg
+      aria-hidden="true"
+      width="24"
+      height="16"
+      viewBox="0 0 513 342"
+      className="shrink-0 rounded-sm"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Search performance over time</h2>
-        <select
-          aria-label="Search chart metric"
-          value={metric}
-          onChange={(e) => setMetric(e.target.value as GscMetric)}
-          className="min-h-11 rounded-lg border border-dash-border bg-dash-bg px-3 text-sm"
-        >
-          {metrics.map((key) => (
-            <option key={key} value={key}>
-              {GSC_LABELS[key]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <p aria-live="polite" className="mt-3 text-sm text-dash-ink-secondary">
-        {selected
-          ? `${selected.name} · ${formatGscMetric(metric, selected[metric])}`
-          : "No daily rows reported for these dates."}
-      </p>
-      {rows.length > 0 && (
-        <div className="mt-3 max-w-full overflow-x-auto">
-          <svg
-            className="nre-ga4-trend-chart block w-full text-dash-accent"
-            style={{ minWidth: 550 }}
-            viewBox="0 0 800 245"
-            role="group"
-            aria-label={`Daily ${GSC_LABELS[metric].toLowerCase()}. Focus or tap a point for its date and value.`}
-          >
-            {[0, 0.5, 1].map((f) => (
-              <g key={f}>
-                <line
-                  x1="55"
-                  x2="745"
-                  y1={y(max * f)}
-                  y2={y(max * f)}
-                  stroke="var(--nre-dash-border)"
-                  strokeDasharray="4 5"
-                />
-                <text
-                  x="45"
-                  y={y(max * f) + 4}
-                  textAnchor="end"
-                  fill="var(--nre-dash-ink-secondary)"
-                  fontSize="11"
-                >
-                  {formatGscMetric(metric, max * f)}
-                </text>
-              </g>
-            ))}
-            {rows.map((row, index) => {
-              const prior = rows[index - 1];
-              return (
-                <g key={row.name}>
-                  {prior &&
-                    Date.parse(row.name) - Date.parse(prior.name) ===
-                      86400000 && (
-                      <line
-                        x1={x(prior.name)}
-                        x2={x(row.name)}
-                        y1={y(prior[metric]!)}
-                        y2={y(row[metric]!)}
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      />
-                    )}
-                  <circle
-                    cx={x(row.name)}
-                    cy={y(row[metric]!)}
-                    r="4"
-                    fill="currentColor"
-                  />
-                  <circle
-                    cx={x(row.name)}
-                    cy={y(row[metric]!)}
-                    r="11"
-                    fill="transparent"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`${row.name}: ${formatGscMetric(metric, row[metric])}`}
-                    onMouseEnter={() => setDate(row.name)}
-                    onFocus={() => setDate(row.name)}
-                    onClick={() => setDate(row.name)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setDate(row.name);
-                      }
-                    }}
-                  />
-                </g>
-              );
-            })}
-            <text
-              x="55"
-              y="235"
-              fill="var(--nre-dash-ink-secondary)"
-              fontSize="11"
-            >
-              {data.currentPeriod.startIso}
-            </text>
-            <text
-              x="745"
-              y="235"
-              textAnchor="end"
-              fill="var(--nre-dash-ink-secondary)"
-              fontSize="11"
-            >
-              {data.currentPeriod.endIso}
-            </text>
-          </svg>
-        </div>
+      <use href={`/country-flags.svg#${region}`} />
+    </svg>
+  ) : null;
+}
+function DeviceIcon({ device }: { device: string }) {
+  const type = device.toLowerCase();
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0"
+    >
+      {type === "desktop" ? (
+        <>
+          <rect x="3" y="3" width="18" height="13" rx="2" />
+          <path d="M8 21h8M12 16v5" />
+        </>
+      ) : type === "mobile" || type === "tablet" ? (
+        <>
+          <rect
+            x={type === "mobile" ? "6" : "3"}
+            y="2"
+            width={type === "mobile" ? "12" : "18"}
+            height="20"
+            rx="2"
+          />
+          <path d="M11 18h2" />
+        </>
+      ) : (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9 9h6v6H9z" />
+        </>
       )}
-      <p className="mt-2 text-xs text-dash-ink-secondary">
-        Current period · hover, tap or focus a point. Missing days are gaps, not
-        assumed zeros. Dates use Pacific time.
-      </p>
-    </section>
+    </svg>
   );
 }
-function SearchTable({
+export function SearchConsoleTable({
   title,
   description,
   rows,
   kind,
+  totalClicks,
 }: {
   title: string;
   description: string;
   rows: GscSnapshot["queries"];
   kind: "query" | "page" | "country" | "device";
+  totalClicks: number;
 }) {
   return (
     <section className="mt-5 min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5">
       <h2 className="text-lg font-semibold">{title}</h2>
       <p className="mt-1 text-xs text-dash-ink-secondary">{description}</p>
+      {(kind === "query" || kind === "page") && rows.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-3 text-xs">
+          <span className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2">
+            <strong>{rows.length}</strong>{" "}
+            {kind === "query" ? "queries" : "pages"} shown
+          </span>
+          <span className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2">
+            <strong>
+              {formatGscMetric(
+                "clicks",
+                rows.reduce((sum, row) => sum + row.clicks, 0),
+              )}
+            </strong>{" "}
+            clicks in listed rows
+          </span>
+          <span className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2">
+            <strong>
+              {formatGscMetric(
+                "impressions",
+                rows.reduce((sum, row) => sum + row.impressions, 0),
+              )}
+            </strong>{" "}
+            impressions in listed rows
+          </span>
+        </div>
+      )}
       <p className="mt-2 text-xs text-dash-ink-secondary sm:hidden">
         Swipe horizontally to see all metrics →
       </p>
@@ -251,12 +199,15 @@ function SearchTable({
                     : kind === "page"
                       ? "Page"
                       : kind === "country"
-                        ? "Country code"
+                        ? "Country"
                         : "Device",
                   "Clicks",
                   "Impressions",
                   "CTR",
-                  "Position",
+                  "Avg. position",
+                  ...(kind === "query" || kind === "page"
+                    ? ["Share of site clicks"]
+                    : []),
                 ].map((label) => (
                   <th
                     key={label}
@@ -271,13 +222,31 @@ function SearchTable({
               {rows.map((row) => (
                 <tr key={row.name} className="border-t border-dash-border">
                   <th className="max-w-md break-all py-3 pr-4 font-normal">
-                    {kind === "country" ? row.name.toUpperCase() : row.name}
+                    {kind === "country" ? (
+                      <span className="inline-flex items-center gap-2">
+                        <CountryFlag code={row.name} />
+                        {searchCountry(row.name).name}
+                      </span>
+                    ) : kind === "device" ? (
+                      <span className="inline-flex items-center gap-2">
+                        <DeviceIcon device={row.name} />
+                        {row.name.charAt(0).toUpperCase() +
+                          row.name.slice(1).toLowerCase()}
+                      </span>
+                    ) : (
+                      row.name
+                    )}
                   </th>
                   {metrics.map((key) => (
                     <td key={key} className="whitespace-nowrap py-3 pr-4">
                       {formatGscMetric(key, row[key])}
                     </td>
                   ))}
+                  {(kind === "query" || kind === "page") && (
+                    <td className="whitespace-nowrap py-3 pr-4">
+                      {searchClickShare(row.clicks, totalClicks)}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -443,7 +412,9 @@ export function SearchConsoleDashboard({
                     </span>
                   </div>
                   <p className="mt-3 break-all text-sm text-dash-ink-secondary">
-                    {c.siteUrl ? searchConsoleSiteLabel(c.siteUrl) : "No Search Console site linked yet."}
+                    {c.siteUrl
+                      ? searchConsoleSiteLabel(c.siteUrl)
+                      : "No Search Console site linked yet."}
                   </p>
                   <Link
                     href={
@@ -518,7 +489,7 @@ export function SearchConsoleDashboard({
               {selected.connected && selected.siteUrl && (
                 <button
                   disabled={busy}
-                  className={button}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-dash-accent px-5 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:opacity-50"
                   onClick={() => void refresh()}
                 >
                   {busy ? "Refreshing…" : "Refresh Search Console"}
@@ -557,7 +528,9 @@ export function SearchConsoleDashboard({
             )}
             <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-dash-border pt-3 text-xs text-dash-ink-secondary">
               <span className="break-all">
-                {selected.siteUrl ? searchConsoleSiteLabel(selected.siteUrl) : "No site selected"}
+                {selected.siteUrl
+                  ? searchConsoleSiteLabel(selected.siteUrl)
+                  : "No site selected"}
               </span>
               <Link
                 href={`/clients/${selected.id}#search-console`}
@@ -566,12 +539,6 @@ export function SearchConsoleDashboard({
                 {selected.siteUrl ? "Change site" : "Choose site"}
               </Link>
             </div>
-            <p className="mt-3 text-xs text-dash-ink-secondary">
-              Latest selectable date: {view?.maxDate} · {GSC_TIMEZONE}. Search
-              Console data arrives later than GA4. Custom comparisons support
-              1–90 days within the last 16 months, including the previous
-              comparison period.
-            </p>
           </section>
           {(!selected.connected || !selected.siteUrl) && (
             <section className="mt-5 rounded-xl border border-dash-border bg-dash-card p-5">
@@ -643,20 +610,35 @@ export function SearchConsoleDashboard({
         )}
       {selected && data && (
         <>
-          <div className="mt-5 text-sm">
-            <p>
-              {data.currentPeriod.startIso} – {data.currentPeriod.endIso} ·
-              previous {data.previousPeriod.startIso} –{" "}
-              {data.previousPeriod.endIso}
-            </p>
-            <p className="mt-1 text-xs text-dash-ink-secondary">
-              Checked{" "}
-              {new Date(data.checkedAt).toLocaleString("en", {
-                timeZone: GSC_TIMEZONE,
-              })}{" "}
-              Pacific time · Google Web Search
-            </p>
-          </div>
+          <section
+            aria-label="Comparison dates"
+            className="mt-5 rounded-xl border border-dash-border bg-dash-card p-4"
+          >
+            <h2 className="text-sm font-semibold">
+              {data.rangeKey.includes(":")
+                ? `${data.days} days`
+                : `Last ${data.days} days`}{" "}
+              vs previous {data.days} days
+            </h2>
+            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              <p>
+                <span className="block text-xs text-dash-ink-secondary">
+                  Selected period
+                </span>
+                <span className="mt-1 block">
+                  {searchDateRange(data.currentPeriod)}
+                </span>
+              </p>
+              <p>
+                <span className="block text-xs text-dash-ink-secondary">
+                  Previous period
+                </span>
+                <span className="mt-1 block">
+                  {searchDateRange(data.previousPeriod)}
+                </span>
+              </p>
+            </div>
+          </section>
           {!entry?.fresh && (
             <p className="mt-2 text-sm text-amber-400">
               Saved data is older or the last refresh failed. Refresh before
@@ -715,33 +697,37 @@ export function SearchConsoleDashboard({
               </button>
             </section>
           )}
-          <SearchTrend key={`${data.rangeKey}:${data.checkedAt}`} data={data} />
+          <SearchConsoleTrend
+            key={`${data.rangeKey}:${data.checkedAt}`}
+            data={data}
+          />
           <p className="mt-4 text-xs leading-relaxed text-dash-ink-secondary">
-            Search Console clicks are not GA4 sessions. Average position is not
-            a fixed ranking; lower is better. Google withholds some queries for
-            privacy and returns top rows, so query/page totals may differ from
-            the headline totals. Tables below show the current period.
+            Search Console clicks are not GA4 sessions.
           </p>
-          <SearchTable
+          <SearchConsoleTable
+            totalClicks={data.current.clicks}
             title="Top 20 search queries"
             description="Search terms returned by Google, ranked by clicks. Anonymized queries are omitted by Google."
             rows={data.queries}
             kind="query"
           />
-          <SearchTable
+          <SearchConsoleTable
+            totalClicks={data.current.clicks}
             title="Top 20 pages in search"
             description="Your search landing pages, ranked by Google Search clicks."
             rows={data.pages}
             kind="page"
           />
           <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-            <SearchTable
+            <SearchConsoleTable
+              totalClicks={data.current.clicks}
               title="Top 10 countries"
-              description="Country codes as reported by Google, ranked by clicks."
+              description="Countries ranked by Google Search clicks."
               rows={data.countries}
               kind="country"
             />
-            <SearchTable
+            <SearchConsoleTable
+              totalClicks={data.current.clicks}
               title="Devices"
               description="Search clicks and visibility across device types."
               rows={data.devices}
