@@ -212,11 +212,72 @@ describe("campaign highlights and duplicate account totals", () => {
       "landing_page_views",
     ]);
   });
+  it("uses link clicks for instant forms even when landing-page activity is present", () => {
+    const c = campaign("META FORM LEADS", "Cost per lead");
+    expect(campaignHighlightMetrics(c).map((m) => m.key)).toEqual([
+      "spend",
+      "results",
+      "cpr",
+      "link_clicks",
+    ]);
+    expect(
+      accountHighlightMetrics(facts([c])).some(
+        (m) => m.key === "landing_page_views",
+      ),
+    ).toBe(false);
+  });
+  it("falls back to CPC then CTR for instant forms without using incidental landing-page views", () => {
+    const metrics = { ...base, linkClicks: null };
+    const c = campaign("META FORM LEADS", "Cost per lead", metrics, metrics);
+    expect(campaignHighlightMetrics(c)[3].key).toBe("cpc_link");
+    c.current = c.previous = { ...metrics, linkCpc: null };
+    expect(campaignHighlightMetrics(c)[3].key).toBe("ctr");
+  });
+  it("keeps zero supporting metrics and uses the available period", () => {
+    const c = campaign(
+      "META FORM LEADS",
+      "Cost per lead",
+      { ...base, linkClicks: 0 },
+      { ...base, linkClicks: null },
+    );
+    expect(campaignHighlightMetrics(c)[3]).toMatchObject({
+      key: "link_clicks",
+      current: 0,
+      previous: null,
+    });
+  });
+  it("uses purchase funnel metrics from the wizard pack and keeps exactly four highlights", () => {
+    const c = campaign(
+      "PURCHASES",
+      "Cost per purchase",
+      { ...base, addToCart: 12, roas: 2 },
+      { ...base, addToCart: 10, roas: 1 },
+    );
+    expect(campaignHighlightMetrics(c).map((m) => m.key)).toEqual([
+      "spend",
+      "results",
+      "cpr",
+      "conversions_add_to_cart",
+    ]);
+  });
+  it("uses landing page views for click goals and link clicks for landing-page goals without duplicating results", () => {
+    expect(campaignHighlightMetrics(campaign("LINK CLICKS"))[3].key).toBe(
+      "landing_page_views",
+    );
+    expect(
+      campaignHighlightMetrics(campaign("LANDING PAGE VIEWS"))[3].key,
+    ).toBe("link_clicks");
+  });
   it("highlights goal-specific purchases and ROAS and handles other goals", () => {
     expect(
-      campaignHighlightMetrics(campaign("PURCHASES", "Cost per purchase")).map(
-        (m) => m.key,
-      ),
+      campaignHighlightMetrics(
+        campaign(
+          "PURCHASES",
+          "Cost per purchase",
+          { ...base, roas: 2 },
+          { ...base, roas: 1 },
+        ),
+      ).map((m) => m.key),
     ).toContain("roas");
     const video = campaignHighlightMetrics(
       campaign("VIDEO VIEWS", "Cost per video view"),
