@@ -224,7 +224,7 @@ export function WebsiteDashboard({
             <button className={`${periodButton} ${days === "custom" ? "bg-dash-card text-dash-ink ring-1 ring-inset ring-dash-ink-secondary" : "text-dash-ink-secondary hover:text-dash-ink"}`} aria-pressed={days === "custom"} disabled={busy} onClick={() => {setDays("custom");setError("");setNotice("");if(!customStart) {setCustomStart(data?.currentPeriod.startIso ?? "");setCustomEnd(data?.currentPeriod.endIso ?? "");}}}>Custom dates</button>
           </div>
           <button
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-4 py-2.5 text-sm font-semibold text-dash-ink transition-colors hover:border-dash-accent disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-dash-accent px-5 py-3 text-sm font-semibold text-[#102033] shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent disabled:opacity-50"
             disabled={busy || !view.connected || !selected?.propertyId}
             onClick={() => void refresh()}
           >

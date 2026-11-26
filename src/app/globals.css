@@ -1247,3 +1247,7 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
 @media (max-width: 639px) {
   .nre-platform-navigation, .nre-dashboard-entry { width: 100%; }
 }
+
+/* Search Console hover/focus values stay green with readable light-theme contrast. */
+.nre-search-trend { --nre-search-focus: #34d399; }
+html[data-site-theme="light"] .nre-search-trend { --nre-search-focus: #047857; }
