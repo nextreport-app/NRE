@@ -1180,29 +1180,28 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
 [data-site-theme="light"] .nre-meta-performance .text-blue-400 { color: #1d4ed8; }
 [data-site-theme="light"] .nre-meta-performance .text-violet-400 { color: #6d28d9; }
 
-/* Ready accounts share the report-type selector's warm amber/brown treatment. */
+/* Ready clients echo the selected dashboard's violet border glow. */
 .nre-performance-action-ready,
 .nre-performance-linked-badge {
   color: var(--nre-dash-ink);
-  border-color: color-mix(in srgb, var(--nre-dash-accent) 55%, var(--nre-dash-border));
-  background: color-mix(in srgb, var(--nre-dash-accent) 10%, var(--nre-dash-card));
+  border-color: #b77cff;
+  background: #252030;
 }
-.nre-performance-action-ready:hover {
-  border-color: var(--nre-dash-accent);
-  background: color-mix(in srgb, var(--nre-dash-accent) 18%, var(--nre-dash-card));
+.nre-performance-action-ready {
+  box-shadow: 0 0 0 1px #b77cff26, 0 0 8px #b77cff24;
 }
+.nre-performance-action-ready:hover { border-color: #c99cff; background: #30263e; }
 .nre-performance-card-ready {
-  border-color: color-mix(in srgb, var(--nre-dash-accent) 55%, var(--nre-dash-border));
-  box-shadow: inset 3px 0 0 var(--nre-dash-accent);
+  border-color: #b77cff;
+  box-shadow: 0 0 0 1px #b77cff26, 0 0 8px #b77cff24;
 }
 html[data-site-theme="light"] .nre-performance-action-ready,
 html[data-site-theme="light"] .nre-performance-linked-badge {
-  color: #805017;
-  border-color: #c99c5d;
-  background: #fff4e2;
+  color: #6935a2;
+  border-color: #b77cff;
+  background: #f6efff;
 }
-html[data-site-theme="light"] .nre-performance-action-ready:hover { background: #ffe9c4; border-color: #a87836; }
-html[data-site-theme="light"] .nre-performance-card-ready { border-color: #c99c5d; box-shadow: inset 3px 0 0 #b78033; }
+html[data-site-theme="light"] .nre-performance-action-ready:hover { border-color: #9857d8; background: #eddefd; }
 
 /* GA4 overview: a clear metric grid with subtle category accents. */
 .nre-ga4-metric-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: #69b7d5; }
