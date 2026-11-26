@@ -71,6 +71,9 @@ describe("performance alert email", () => {
     const { html, text } = render();
     expect(html).not.toContain("<pre");
     expect(html).toContain("CRITICAL ALERT");
+    expect(html).toContain('src="https://nextreport.in/logo.png"');
+    expect(html).toContain('width="48" height="48" alt="N"');
+    expect(html).toContain('Next<span style="color:#f7b955">Report</span>');
     expect(html).toContain('role="presentation"');
     expect(html).toContain("max-width:600px");
     expect(html).toContain("Review performance &rarr;");
@@ -96,7 +99,8 @@ describe("performance alert email", () => {
       snapshot,
       alerts: [{ campaign: c, signal: c.signals[1] }],
     });
-    expect(email.html).not.toContain("<img");
+    expect(email.html.match(/<img /g)).toHaveLength(1);
+    expect(email.html).not.toContain('<img src=x');
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("&lt;img");
     expect(email.html).toContain("&lt;a href=&quot;evil&quot;&gt;");
