@@ -179,16 +179,16 @@ export function WebsiteDashboard({
               const connected = c.connected ?? view.connected;
               const linked = connected && !!c.propertyId;
               return (
-                <article key={c.id} className={`${performancePortfolioCard} ${linked ? "nre-ga4-property-linked" : "border-dash-border"}`}>
+                <article key={c.id} className={`${performancePortfolioCard} ${linked ? "nre-performance-card-ready" : "border-dash-border"}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-semibold">{c.name}</h3>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${linked ? "nre-ga4-property-linked__badge" : "border-dash-border text-dash-ink-secondary"}`}>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${linked ? "nre-performance-linked-badge" : "border-dash-border text-dash-ink-secondary"}`}>
                       {linked && <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 8 3 3 7-7" /></svg>}
                       {!connected ? "Connect GA4" : linked ? "Property linked" : "Needs setup"}
                     </span>
                   </div>
                   <p className="mt-3 text-sm text-dash-ink-secondary">{c.propertyId ? (c.propertyName || `GA4 property ${c.propertyId}`) : "No GA4 property linked yet."}</p>
-                  <Link href={linked ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className={performancePortfolioAction}>
+                  <Link href={linked ? `/performance/google-analytics?client=${encodeURIComponent(c.id)}` : `/clients/${c.id}#website-analytics`} className={`${performancePortfolioAction} ${linked ? "nre-performance-action-ready" : ""}`}>
                     {!connected ? "Connect GA4 →" : linked ? "View website performance →" : "Choose GA4 property →"}
                   </Link>
                 </article>

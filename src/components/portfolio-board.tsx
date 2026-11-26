@@ -71,7 +71,7 @@ export function PortfolioBoard({
       {rows.map((c) => (
         <article
           key={c.id}
-          className={`${performancePortfolioCard} flex flex-col ${selected === c.id ? "border-dash-accent" : "border-dash-border"}`}
+          className={`${performancePortfolioCard} flex flex-col ${c.linked && c.performanceEnabled ? "nre-performance-card-ready" : "border-dash-border"}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="break-words font-semibold">{c.name}</h2>

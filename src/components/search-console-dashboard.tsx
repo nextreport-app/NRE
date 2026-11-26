@@ -428,12 +428,12 @@ export function SearchConsoleDashboard({
               .map((c) => (
                 <article
                   key={c.id}
-                  className={`${performancePortfolioCard} ${c.connected && c.siteUrl ? "nre-ga4-property-linked" : "border-dash-border"}`}
+                  className={`${performancePortfolioCard} ${c.connected && c.siteUrl ? "nre-performance-card-ready" : "border-dash-border"}`}
                 >
                   <div className="flex flex-wrap justify-between gap-2">
                     <h3 className="font-semibold">{c.name}</h3>
                     <span
-                      className={`rounded-full border px-2 py-1 text-xs ${c.connected && c.siteUrl ? "nre-ga4-property-linked__badge" : "border-dash-border text-dash-ink-secondary"}`}
+                      className={`rounded-full border px-2 py-1 text-xs ${c.connected && c.siteUrl ? "nre-performance-linked-badge" : "border-dash-border text-dash-ink-secondary"}`}
                     >
                       {!c.connected
                         ? "Connect Search Console"
@@ -451,7 +451,7 @@ export function SearchConsoleDashboard({
                         ? `/performance/search-console?client=${encodeURIComponent(c.id)}`
                         : `/clients/${c.id}#search-console`
                     }
-                    className={performancePortfolioAction}
+                    className={`${performancePortfolioAction} ${c.connected && c.siteUrl ? "nre-performance-action-ready" : ""}`}
                   >
                     {!c.connected
                       ? "Connect Search Console →"
