@@ -1,12 +1,13 @@
-import { resolveClientUser, updateResolvedProviderUser, clientProviderGuard } from "@/lib/client-provider-connections";
+import { performanceAlertIntent } from "./alert-intent";
+import {
+  resolveClientUser,
+  updateResolvedProviderUser,
+  clientProviderGuard,
+} from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { buildPerformanceAlertEmail } from "./alert-email";
 import { decisionPeriods } from "./settings";
-import {
-  applySignalLifecycle,
-  decisionAlertKey,
-  actionableSignals,
-} from "./decision";
+import { applySignalLifecycle, evaluatePerformanceFacts } from "./decision";
 import { fetchMetaPerformancePeriodInsights } from "../meta-api";
 import { enrichPerformanceMetrics } from "./supplemental-metrics";
 import { purchasePeriodMap, type PurchaseEvidence } from "./purchase-values";
@@ -22,6 +23,7 @@ import { fetchMetaReportCsv } from "../nre/meta-api-sync";
 import { parseCsvText } from "../nre/parse-csv";
 import {
   buildPerformanceFacts,
+  buildRecentPerformanceFacts,
   readPerformanceSnapshot,
   type PerformanceSnapshot,
 } from "./facts";
@@ -107,21 +109,27 @@ export async function checkClientPerformance(
   let snapshot: PerformanceSnapshot;
   try {
     if (!client.user.metaAdsEnabled || !client.user.metaAccessToken)
-      throw new ServiceError("Reconnect Meta Ads for this client in Client settings.");
+      throw new ServiceError(
+        "Reconnect Meta Ads for this client in Client settings.",
+      );
     const token = await ensureFreshMetaAccessToken({
       accessToken: decryptMetaToken(client.user.metaAccessToken),
       tokenExpiresAt: client.user.metaTokenExpiresAt,
     });
     if (token.refreshed)
-      await updateResolvedProviderUser({
-        where: { id: userId },
-        data: {
-          metaAccessToken: encryptMetaToken(token.accessToken),
-          metaTokenExpiresAt: token.tokenExpiresAt,
+      await updateResolvedProviderUser(
+        {
+          where: { id: userId },
+          data: {
+            metaAccessToken: encryptMetaToken(token.accessToken),
+            metaTokenExpiresAt: token.tokenExpiresAt,
+          },
         },
-      }, client.user);
-    const credentialGuard=clientProviderGuard(client.user,"meta");
-    if(credentialGuard) Object.assign(where,{providerConnections:{some:credentialGuard}});
+        client.user,
+      );
+    const credentialGuard = clientProviderGuard(client.user, "meta");
+    if (credentialGuard)
+      Object.assign(where, { providerConnections: { some: credentialGuard } });
     const account = await fetchMetaAdAccountMetadata(
       token.accessToken,
       client.metaAdAccountId,
@@ -204,6 +212,32 @@ export async function checkClientPerformance(
       currentAccount: rows(2),
       previousAccount: rows(3),
     });
+    if (!config.performanceCustomStart) {
+      const recentFacts = buildRecentPerformanceFacts(
+        parsed.rows,
+        parsed.headers,
+        config,
+        now,
+      );
+      for (const campaign of facts.campaigns) {
+        const recent = recentFacts.campaigns.find(
+          (r) =>
+            r.objective === campaign.objective &&
+            (campaign.id && r.id
+              ? r.id === campaign.id
+              : r.name === campaign.name),
+        );
+        if (recent)
+          campaign.recent = {
+            periodA: recentFacts.periodA,
+            periodB: recentFacts.periodB,
+            current: recent.current,
+            previous: recent.previous,
+            comparableResults: recent.comparableResults,
+          };
+      }
+      facts.campaigns = evaluatePerformanceFacts(facts).campaigns;
+    }
     applySignalLifecycle(
       facts,
       readPerformanceSnapshot(client.performanceMonitorSnapshot, config, now),
@@ -257,27 +291,23 @@ export async function checkClientPerformance(
     return snapshot;
   }
   try {
-    const newSignals = snapshot.facts!.campaigns.flatMap((c) =>
-      actionableSignals(c)
-        .filter((s) => s.state !== "continuing")
-        .map((s) => ({ campaign: c, signal: s })),
+    const intent = performanceAlertIntent(
+      id,
+      snapshot,
+      client.performanceMonitorEmailEnabled,
     );
     if (
       !config.performanceCustomStart &&
-      client.performanceMonitorEmailEnabled &&
-      newSignals.length &&
+      intent &&
       (await prisma.client.findFirst({
-        where: { ...where, performanceMonitorEmailEnabled: true },
+        where: {
+          ...where,
+          ...(intent.critical ? {} : { performanceMonitorEmailEnabled: true }),
+        },
       }))
     ) {
-      const key = decisionAlertKey(
-        id,
-        snapshot.facts!.periodA.endIso,
-        snapshot.facts!.periodA.startIso,
-        newSignals.some((s) => s.signal.tone === "critical")
-          ? "critical"
-          : "review",
-      );
+      const key = intent.key;
+      const newSignals = intent.alerts;
       const email = buildPerformanceAlertEmail({
         accountName: client.accountName,
         clientId: id,

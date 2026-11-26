@@ -1,6 +1,6 @@
 # Approved-budget monitoring — overspend and underspend
 
-The client's existing monthlyBudget is approved whole-account Meta media spend, excluding tax and agency fees. Monitoring is opt-in; saving a budget alone does not authorize email delivery. The owner can enable monitoring and owner email on the client Manage page. No campaign writes, automatic pausing, or hard spending caps.
+The client's existing monthlyBudget is approved whole-account Meta media spend, excluding tax and agency fees. Monitoring is opt-in; while enabled, critical alerts are automatically emailed to the verified owner. Review-warning email remains optional. Saving a budget alone does not enable monitoring. No campaign writes, automatic pausing, or hard spending caps.
 
 ## Scope and rules
 
@@ -11,7 +11,7 @@ The client's existing monthlyBudget is approved whole-account Meta media spend, 
 - Before the final seven calendar days, projected overspend must exceed both the allowed variance and 5% of budget. In the final week it must exceed the allowed variance. Approaching remains an informational 80% actual-spend warning. Reached/exceeded remains visible at 100%, but a small actual overage within the allowance does not email unless the continued-spend forecast is materially over budget.
 - Projected underspend waits for seven completed days. Before the final week it must exceed both the allowed variance and 10% of budget; in the final week it must exceed the allowed variance. The alert shows the projected shortfall. Underspend forecasts take priority over the generic approaching-budget status. This is current-month pacing, not a closed-month reconciliation or a guarantee of final spend.
 - Version-2 rules, configuration (including effective variance) and month changes invalidate displayed snapshots. Failed checks keep prior facts explicitly marked with an error and prior successful timestamp; snapshots older than 26 hours are stale. UI never triggers Meta calls merely by loading a page.
-- Email: agency owner only, at most one immutable message per account/configuration/month/alert level. Provider idempotency and durable EmailDelivery recovery are reused. Pending messages are cancelled if monitoring, email, configuration, month or alert level becomes obsolete. Missing Resend config/failed sends remain visible in-app.
+- Email: agency owner only, at most one immutable message per account/configuration/month/alert level/severity, allowing warning-to-critical escalation. Provider idempotency and durable EmailDelivery recovery are reused. Pending messages are cancelled if monitoring, configuration, month or alert severity becomes obsolete; warning email opt-out cancels warnings, while current critical alerts remain eligible. Missing Resend config/failed sends remain visible in-app.
 - GET/POST are owner-authenticated. Checks have a five-minute cooldown and database lease; a settings change during a scan prevents committing outdated facts or queuing an alert.
 
 ## Deployment
@@ -24,3 +24,7 @@ The client's existing monthlyBudget is approved whole-account Meta media spend, 
 6. Test 80%, budget reached, small tolerated final overages, material underspend after day seven, final-week variance boundaries, projection after day three, disabled email, changed budgets, revoked access and the next month. Confirm provider acknowledgement and no duplicate email on retries. Do not change a customer's live budget merely to exercise an alert.
 
 Scheduling drafts, performance/GA4 dashboards and custom templates remain separate Phase 2 deliveries. The linked GA4 property is not queried or modified by this release.
+
+## Intraday runner
+
+The monitoring runner in `.github/workflows/monitoring-alerts.yml` checks budget and performance, then retries pending monitoring emails every 30 minutes when enabled. Add repository secret `MONITORING_CRON_SECRET` equal to the deployed app's `CRON_SECRET`, and repository variable `NEXTREPORT_MONITORING_RUNNER_ENABLED=true`. It uses fixed HTTPS destinations, rejects redirects and logs only numeric counters. Manual workflow dispatch can verify activation. GitHub scheduled jobs can be delayed; this is detection-based notification, not real-time spend enforcement. The default Vercel daily fallback remains in place; it cannot provide intraday coverage by itself. Actual overspend beyond tolerance is Critical; projections, including final-week projections/underspend, remain Review.

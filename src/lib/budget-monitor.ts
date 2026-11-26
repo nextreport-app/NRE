@@ -54,10 +54,11 @@ export async function checkClientBudget(id: string, userId: string, now = new Da
     return snapshot;
   }
   try {
-    if (client.budgetMonitorEmailEnabled && snapshot.facts?.alertable) {
-      const current=await prisma.client.findFirst({where:{...where,budgetMonitorEmailEnabled:true}});
+    const presentation = snapshot.facts ? budgetAlertPresentation(snapshot.facts,client.monthlyBudget,client.currency,window.days-window.completedDays) : null;
+    if ((client.budgetMonitorEmailEnabled || presentation?.tone === "critical") && snapshot.facts?.alertable) {
+      const current=await prisma.client.findFirst({where:{...where,...(presentation?.tone === "critical" ? {} : {budgetMonitorEmailEnabled:true})}});
       if (current) {
-        const key=budgetAlertKey(id,window.month,config,snapshot.facts!.level);
+        const key=budgetAlertKey(id,window.month,config,snapshot.facts!.level,presentation!.tone);
         const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:client.currency}).format(n);
         const alert=budgetAlertPresentation(snapshot.facts!,client.monthlyBudget,client.currency,window.days-window.completedDays);
         const title=alert.title;

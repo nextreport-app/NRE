@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MonitoringStatusGuide } from "./monitoring-status-guide";
 import {
   loadMetaOverview,
   openMetaDashboard,
@@ -16,7 +17,7 @@ import type { OverviewRow } from "@/lib/agency-overview";
 import { DecisionSettingsPanel } from "./performance-decision-controls";
 import {
   PortfolioBoard,
-  PortfolioBadge,
+  AccountStatusBadges,
   PORTFOLIO_FILTERS,
   matchesPortfolio,
 } from "./portfolio-board";
@@ -310,7 +311,7 @@ export function AgencyOverview({
               <div>
                 <h2 className="text-lg font-semibold">{c.name}</h2>
               </div>
-              <PortfolioBadge state={c.portfolio.state} />
+              <AccountStatusBadges client={c} />
             </div>
             {(!c.linked || !c.performanceEnabled) && (
               <MetaMonitoringSetup
@@ -333,6 +334,7 @@ export function AgencyOverview({
                 {c.performance.error}
               </p>
             )}
+            {c.linked && <MonitoringStatusGuide />}
             {c.linked && (
               <div className="mt-4">
                 <DecisionSettingsPanel
@@ -391,8 +393,9 @@ export function AgencyOverview({
                   >
                     <h3 className="text-sm font-medium">Performance alerts</h3>
                     <p className="mt-2 text-xs text-dash-ink-secondary">
-                      Critical issues and early warnings from your campaign
-                      comparisons.
+                      Critical alerts are emailed automatically while monitoring
+                      is enabled. Choose whether to also receive review
+                      warnings.
                     </p>
                     <div className="mt-4 text-sm">
                       <label className="flex items-start gap-2">
@@ -409,7 +412,7 @@ export function AgencyOverview({
                             })
                           }
                         />
-                        Email me about performance alerts
+                        Also email me about review warnings
                       </label>
                     </div>
                   </section>

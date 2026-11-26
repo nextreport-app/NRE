@@ -155,8 +155,7 @@ export function MetaBudgetPanel({
         Monthly budget &amp; alerts
       </h3>
       <p className="mt-1 text-sm text-dash-ink-secondary">
-        Approved account spend excluding tax. Alerts do not change campaign
-        budgets in Meta.
+        Approved account spend excluding tax. Critical alerts are emailed automatically while tracking is on. Alerts do not change campaign budgets in Meta.
       </p>
       {!view && !error && (
         <p role="status" className="mt-3 text-sm">
@@ -222,7 +221,7 @@ export function MetaBudgetPanel({
                   })
                 }
               />
-              Track budget &amp; email me about spend alerts
+              Track budget &amp; email me about review warnings
             </label>
             {view.enabled && (
               <button
@@ -242,7 +241,7 @@ export function MetaBudgetPanel({
           {view.enabled !== view.emailEnabled && (
             <p className="mt-2 text-xs text-dash-ink-secondary">
               {view.enabled
-                ? "Budget tracking is on; budget emails are off."
+                ? "Budget tracking is on; critical alerts are emailed automatically. Review warning emails are off."
                 : "Budget tracking is off; saved email preference is on."}
             </p>
           )}

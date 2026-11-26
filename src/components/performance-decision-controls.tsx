@@ -32,7 +32,7 @@ export function VerdictBadge({
         : verdict === "review"
           ? "Review"
           : verdict === "improving"
-            ? "Improving"
+            ? "Improvement"
             : fallback}
     </span>
   );

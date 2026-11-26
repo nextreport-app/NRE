@@ -25,7 +25,7 @@ export interface Observation {
 export const PORTFOLIO_LABELS: Record<PortfolioState, string> = {
   critical: "Critical",
   review: "Review",
-  positive: "Positive",
+  positive: "Improvement",
   neutral: "Neutral",
   insufficient: "More data needed",
   "no-delivery": "No delivery",
@@ -74,6 +74,7 @@ export function signalObservation(
   s?: PerformanceSignal,
 ): Observation | null {
   if (!s) return null;
+  if (s.key === "results-stopped-7d" && c.recent) return { metric: `${c.objective} · last 7 days`, current: c.recent.current.results, previous: c.recent.previous.results, reference: "previous", unit: "number", change: s.change };
   let key: keyof PeriodMetrics, unit: ObservationUnit;
   const name = s.key.replace(/^recovered:/, "");
   if (name.startsWith("ctr-")) {

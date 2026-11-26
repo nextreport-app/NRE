@@ -1,3 +1,4 @@
+import { isMeaningfulImprovement } from "./meaningful-improvement";
 import type {
   CampaignPerformance,
   PeriodMetrics,
@@ -307,28 +308,42 @@ export function decisionSignals(
   }
   return out;
 }
-export function campaignVerdict(
-  c: Pick<CampaignPerformance, "signals" | "current" | "comparableResults">,
-): Verdict {
-  if (c.signals.some((s) => s.tone === "critical")) return "critical";
-  if (c.signals.some((s) => s.tone === "warning" && s.role !== "supporting"))
-    return "review";
+/** Fixed recent health window, independent of the displayed comparison range. */
+export function recentResultsStopped(
+  c: CampaignPerformance,
+): PerformanceSignal | null {
+  const recent = c.recent;
+  if (!recent?.comparableResults || !c.comparableResults) return null;
+  const a = recent.current,
+    b = recent.previous;
+  const baseline =
+    b.results != null && b.results >= 5 && b.cpr != null && b.cpr > 0
+      ? b.cpr
+      : c.target?.objective === c.objective
+        ? c.target.maxCpr
+        : undefined;
   if (
-    c.signals.some(
-      (s) =>
-        s.tone === "positive" &&
-        (s.role === "primary" ||
-          [
-            "cpr-down",
-            "results-up",
-            "roas-up",
-            "target-met",
-            "results-resumed",
-          ].includes(s.key)),
-    )
+    a.results !== 0 ||
+    !baseline ||
+    a.spend < baseline * 3 ||
+    a.impressions < 500
   )
-    return "improving";
+    return null;
+  return {
+    key: "results-stopped-7d",
+    metric: `${c.objective} · last 7 days`,
+    role: "primary",
+    tone: "critical",
+    state: "new",
+    change: b.results != null && b.results > 0 ? -100 : null,
+    message: `No ${c.objective.toLowerCase()} were reported from ${recent.periodA.startIso} to ${recent.periodA.endIso}, despite spend of at least three times the prior result cost or saved cost target. Verify tracking and attribution.`,
+  };
+}
+
+export function campaignVerdict(c: CampaignPerformance): Verdict {
+  if (c.signals.some((s) => s.tone === "critical")) return "critical";
   if (c.signals.some((s) => s.tone === "warning")) return "review";
+  if (c.signals.some((s) => isMeaningfulImprovement(c, s))) return "improving";
   return "neutral";
 }
 function recovered(old: PerformanceSignal, c: CampaignPerformance) {
@@ -470,6 +485,9 @@ export function evaluatePerformanceFacts(
           targetMismatch: c.targetMismatch,
         },
       );
+      const recent = recentResultsStopped(c);
+      if (recent && !evaluated.some((s) => s.key === "results-stopped"))
+        evaluated.push(recent);
       const signals = evaluated.map((signal) => {
         const old = c.signals.find(
           (s) => s.key === signal.key && s.tone === signal.tone,

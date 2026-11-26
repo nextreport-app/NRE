@@ -64,6 +64,13 @@ export interface CampaignPerformance {
   previous: PeriodMetrics;
   comparableResults: boolean;
   signals: PerformanceSignal[];
+  recent?: {
+    periodA: { startIso: string; endIso: string };
+    periodB: { startIso: string; endIso: string };
+    current: PeriodMetrics;
+    previous: PeriodMetrics;
+    comparableResults: boolean;
+  };
 }
 export interface PerformanceFacts {
   periodA: { startIso: string; endIso: string };
@@ -167,6 +174,15 @@ const snapshotSchema = z.object({
           current: metricSchema,
           previous: metricSchema,
           comparableResults: z.boolean(),
+          recent: z
+            .object({
+              periodA: periodSchema,
+              periodB: periodSchema,
+              current: metricSchema,
+              previous: metricSchema,
+              comparableResults: z.boolean(),
+            })
+            .optional(),
           signals: z.array(
             z.object({
               key: z.string(),
@@ -408,4 +424,29 @@ export function buildPerformanceFacts(
     campaigns: relevantCampaigns,
     empty: relevantCampaigns.length === 0,
   };
+}
+
+/** Reuse a successfully validated daily CSV, scoped to the last two seven-day periods. */
+export function buildRecentPerformanceFacts(
+  rows: NreRow[],
+  headers: string[],
+  config: PerformanceConfig,
+  now = new Date(),
+): PerformanceFacts {
+  const recentConfig = {
+    ...config,
+    performanceWindowDays: 7,
+    performanceCustomStart: null,
+    performanceCustomEnd: null,
+  };
+  const window = decisionPeriods(config.timezone, recentConfig, now);
+  return buildPerformanceFacts(
+    rows.filter((row) => {
+      const day = rowIso(row);
+      return day >= window.periodB.startIso && day <= window.periodA.endIso;
+    }),
+    headers,
+    recentConfig,
+    now,
+  );
 }

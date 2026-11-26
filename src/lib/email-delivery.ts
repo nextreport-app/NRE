@@ -1,7 +1,7 @@
-import { decisionAlertKey,actionableSignals } from "./performance-monitor/decision";
+import { performanceAlertIntent } from "./performance-monitor/alert-intent";
 import { scheduledDeliveryIsCurrent } from "./report-schedules/delivery-guard";
 import { budgetAlertKey } from "./budget-alert-key";
-import { readBudgetSnapshot } from "./budget-monitor-facts";
+import { budgetWindow, budgetAlertPresentation, readBudgetSnapshot } from "./budget-monitor-facts";
 import { prisma } from "./prisma";
 import { FROM_ADDRESS, getResendClient } from "./email";
 import { getSubscriptionStatus } from "./subscription";
@@ -45,23 +45,28 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
     if(!valid){await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
   if (row.kind === "BUDGET_ALERT") {
-    const id=row.key.split(":")[1];
-    const client=id ? await prisma.client.findUnique({where:{id},include:{user:true}}) : null;
-    const snapshot=client ? readBudgetSnapshot(client.budgetMonitorSnapshot,client,now) : null;
-    const payload=JSON.parse(row.payloadJson) as QueuedEmail;
-    const valid=client && !getSubscriptionStatus(client.user).isBlocked && payload.to.length===1 && payload.to[0]===client.user.email && client.userId===row.userId && client.budgetMonitorEnabled && client.budgetMonitorEmailEnabled &&
-      snapshot?.facts?.alertable && !snapshot.error && now.getTime()-Date.parse(snapshot.checkedAt)<26*3600000 &&
-      row.key===budgetAlertKey(client.id,snapshot.month,client,snapshot.facts.level);
-    if (!valid) {await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
+    const id = row.key.split(":")[1];
+    const client = id ? await prisma.client.findUnique({ where: { id }, include: { user: true } }) : null;
+    const snapshot = client ? readBudgetSnapshot(client.budgetMonitorSnapshot, client, now) : null;
+    const payload = JSON.parse(row.payloadJson) as QueuedEmail;
+    const window = client ? budgetWindow(client.timezone, now) : null;
+    const presentation = client?.monthlyBudget && snapshot?.facts && window
+      ? budgetAlertPresentation(snapshot.facts, client.monthlyBudget, client.currency, window.days - window.completedDays) : null;
+    const age = snapshot ? now.getTime() - Date.parse(snapshot.checkedAt) : Infinity;
+    const valid = client && !getSubscriptionStatus(client.user).isBlocked && !!client.user.emailVerified
+      && payload.to.length === 1 && payload.to[0] === client.user.email && client.userId === row.userId
+      && client.budgetMonitorEnabled && (client.budgetMonitorEmailEnabled || presentation?.tone === "critical")
+      && snapshot?.facts?.alertable && !snapshot.error && age >= 0 && age < 26 * 3600000 && presentation
+      && row.key === budgetAlertKey(client.id, snapshot.month, client, snapshot.facts.level, presentation.tone);
+    if (!valid) { await prisma.emailDelivery.update({ where: { key }, data: { status: "CANCELLED" } }); return { accepted: false, cancelled: true }; }
   }
   if (row.kind === "PERFORMANCE_ALERT") {
     const id=row.key.split(":")[1];
     const client=id?await prisma.client.findUnique({where:{id},include:{user:true}}):null;
     const snapshot=client?readPerformanceSnapshot(client.performanceMonitorSnapshot,client,now):null;
     const payload=JSON.parse(row.payloadJson) as QueuedEmail;
-    const newSignals=snapshot?.facts?.campaigns.flatMap(c=>actionableSignals(c).filter(s=>s.state!=="continuing"))??[];
-    const warnings=newSignals.length>0;
-    const valid=client && !getSubscriptionStatus(client.user).isBlocked && !!client.user.emailVerified && client.userId===row.userId && client.performanceMonitorEnabled && client.performanceMonitorEmailEnabled && isPerformanceFresh(snapshot,now) && warnings && payload.to.length===1 && payload.to[0]===client.user.email && !client.performanceCustomStart && row.key===decisionAlertKey(client.id,snapshot!.facts!.periodA.endIso,snapshot!.facts!.periodA.startIso,newSignals.some(s=>s.tone==="critical")?"critical":"review") && payload.text.includes(`Last checked: ${snapshot!.checkedAt}.`);
+    const intent = client && snapshot ? performanceAlertIntent(client.id, snapshot, client.performanceMonitorEmailEnabled) : null;
+    const valid=client && !getSubscriptionStatus(client.user).isBlocked && !!client.user.emailVerified && client.userId===row.userId && client.performanceMonitorEnabled && isPerformanceFresh(snapshot,now) && intent && payload.to.length===1 && payload.to[0]===client.user.email && !client.performanceCustomStart && row.key===intent.key;
     if(!valid){await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
   if (!process.env.RESEND_API_KEY?.trim()) return { accepted: false, error: "Email sending is not configured." };
@@ -91,8 +96,8 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
   }
 }
 
-export async function retryPendingEmails(limit = 30) {
-  const rows = await prisma.emailDelivery.findMany({ where: { OR: [{ status: "PENDING", OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }] }, { status: "SENDING", leaseUntil: { lte: new Date() } }] }, orderBy: { createdAt: "asc" }, take: limit });
+export async function retryPendingEmails(limit = 30, kinds?: string[]) {
+  const rows = await prisma.emailDelivery.findMany({ where: { ...(kinds ? { kind: { in: kinds } } : {}), OR: [{ status: "PENDING", OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }] }, { status: "SENDING", leaseUntil: { lte: new Date() } }] }, orderBy: { createdAt: "asc" }, take: limit });
   let accepted = 0, failed = 0;
   for (const row of rows) { const result = await deliverQueuedEmail(row.key); if (result.accepted) accepted++; else if (!result.cancelled && !result.busy) failed++; if (!result.cancelled && !result.busy) await new Promise(resolve => setTimeout(resolve, 550)); }
   return { checked: rows.length, accepted, failed };
