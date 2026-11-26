@@ -10,7 +10,7 @@ const platforms = [
   {
     key: "website",
     href: "/performance/google-analytics",
-    label: "Website traffic (GA4)",
+    label: "Website Traffic (GA4)",
     description: "Visitors, activity & engagement",
   },
   {
@@ -84,36 +84,25 @@ export function OverviewNavigation({
           aria-current={current === key ? "page" : undefined}
           className="nre-dashboard-entry"
         >
-          <span className="nre-dashboard-entry-top" aria-hidden="true">
-            <span className={`nre-platform-icon nre-platform-icon--${key}`}>
+          <span className="nre-dashboard-entry-top">
+            <span
+              className={`nre-platform-icon nre-platform-icon--${key}`}
+              aria-hidden="true"
+            >
               <PlatformIcon platform={key} />
             </span>
-            {current === key ? (
-              <span className="nre-dashboard-entry-current">
-                <span />
-                Viewing
-              </span>
-            ) : (
-              <svg
-                className="nre-dashboard-entry-arrow"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14m-5-5 5 5-5 5" />
-              </svg>
-            )}
+            <span className="nre-dashboard-entry-title">{label}</span>
           </span>
           <span className="nre-dashboard-entry-copy">
-            <span className="nre-dashboard-entry-title">{label}</span>
             <span className="nre-dashboard-entry-description">
               {description}
             </span>
+            {current === key && (
+              <span className="nre-dashboard-entry-current" aria-hidden="true">
+                <span />
+                Viewing
+              </span>
+            )}
           </span>
         </Link>
       ))}

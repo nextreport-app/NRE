@@ -1236,21 +1236,17 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   box-shadow: inset 0 2px 0 var(--nre-dash-accent);
 }
 .nre-dashboard-entry:focus-visible { outline: 2px solid var(--nre-dash-accent); outline-offset: 3px; }
-.nre-dashboard-entry-top { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.nre-dashboard-entry-top { display: flex; align-items: center; gap: 10px; min-height: 28px; }
 .nre-platform-icon { display: inline-flex; width: 27px; height: 27px; flex-shrink: 0; }
 .nre-platform-icon > svg { width: 100%; height: 100%; }
-.nre-dashboard-entry-arrow { color: var(--nre-dash-ink-secondary); }
-.nre-dashboard-entry-current { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; color: var(--nre-dash-ink-secondary); background: var(--nre-dash-bg); font-size: 10px; font-weight: 600; }
+.nre-dashboard-entry-current { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; color: var(--nre-dash-ink-secondary); background: var(--nre-dash-bg); font-size: 10px; font-weight: 600; }
 .nre-dashboard-entry-current > span { width: 5px; height: 5px; border-radius: 50%; background: var(--nre-dash-accent); }
-.nre-dashboard-entry-copy { display: flex; flex-direction: column; gap: 5px; margin-top: 14px; }
+.nre-dashboard-entry-copy { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .nre-dashboard-entry-title { font-size: 15px; font-weight: 650; line-height: 1.4; }
 .nre-dashboard-entry-description { font-size: 12px; line-height: 1.5; color: var(--nre-dash-ink-secondary); }
 @media (max-width: 639px) {
   .nre-platform-navigation { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .nre-dashboard-entry { flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px; }
-  .nre-dashboard-entry-top { display: contents; }
-  .nre-dashboard-entry-copy { order: 1; flex: 1; min-width: 0; gap: 3px; margin-top: 0; }
-  .nre-dashboard-entry-current, .nre-dashboard-entry-arrow { order: 2; flex-shrink: 0; }
+  .nre-dashboard-entry { padding: 14px 16px; }
   .nre-dashboard-entry-title { font-size: 14px; }
   .nre-dashboard-entry-description { font-size: 11px; }
 }
