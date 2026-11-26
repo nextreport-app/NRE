@@ -11,7 +11,9 @@ export function PortfolioRefresh({
   disabled,
   onActivity,
   onComplete,
+  compact = false,
 }: {
+  compact?: boolean;
   clients: OverviewRow[];
   scopeId: string;
   disabled: boolean;
@@ -117,7 +119,7 @@ export function PortfolioRefresh({
     }
   }
   return (
-    <div className="mt-4 text-sm">
+    <div className={compact ? "text-sm" : "mt-4 text-sm"}>
       <div className="flex flex-wrap items-center gap-3">
         <button
           className="rounded-xl bg-dash-accent px-5 py-3 font-semibold text-[#102033] shadow-sm disabled:opacity-50"

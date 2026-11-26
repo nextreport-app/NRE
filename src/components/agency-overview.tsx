@@ -266,15 +266,16 @@ export function AgencyOverview({
           another.
         </p>
       )}
-      {clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
-        <PortfolioRefresh
-          clients={clients}
-          scopeId={expanded}
-          disabled={!!singleBusy || !!activationBusy || budgetBusy}
-          onActivity={setBulkRunning}
-          onComplete={load}
-        />
-      )}
+      {!expanded &&
+        clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
+          <PortfolioRefresh
+            clients={clients}
+            scopeId={expanded}
+            disabled={!!singleBusy || !!activationBusy || budgetBusy}
+            onActivity={setBulkRunning}
+            onComplete={load}
+          />
+        )}
       {error && (
         <p role="alert" className="mt-3 text-sm text-amber-400">
           {error}
@@ -303,7 +304,7 @@ export function AgencyOverview({
             tabIndex={-1}
             aria-label={`${c.name} performance and settings`}
             key={c.id}
-            className="mt-4 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
+            className="mt-[76px] min-w-0 rounded-xl border border-dash-border bg-dash-card p-4 sm:p-5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -335,6 +336,20 @@ export function AgencyOverview({
             {c.linked && (
               <div className="mt-4">
                 <DecisionSettingsPanel
+                  refreshControl={
+                    (c.performanceEnabled || c.budgetEnabled) && (
+                      <PortfolioRefresh
+                        compact
+                        clients={clients ?? []}
+                        scopeId={c.id}
+                        disabled={
+                          !!singleBusy || !!activationBusy || budgetBusy
+                        }
+                        onActivity={setBulkRunning}
+                        onComplete={load}
+                      />
+                    )
+                  }
                   client={c}
                   busy={!!busy}
                   save={async (body) => {
