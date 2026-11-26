@@ -42,8 +42,7 @@ export function MonitoringStatusGuide() {
           automatically.
         </p>
         <p>
-          When the intraday runner is enabled, scheduled checks run every 30
-          minutes, oldest accounts first; large queues can take longer. Refresh
+          When the intraday runner is enabled, scheduled checks run once an hour, oldest accounts first; large queues can take longer. Refresh
           data also checks now, subject to provider cooldowns. Critical alerts
           are queued for your verified account email as soon as a check detects
           them; review warnings follow your email preference. Repeat checks

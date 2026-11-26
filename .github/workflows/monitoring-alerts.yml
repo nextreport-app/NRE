@@ -3,7 +3,7 @@ name: Monitoring alerts
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '17 * * * *'
 
 permissions:
   contents: read
