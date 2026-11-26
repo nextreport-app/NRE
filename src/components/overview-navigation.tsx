@@ -1,19 +1,101 @@
 import Link from "next/link";
 
-export function OverviewNavigation({ current, clientId }: { current: "meta" | "website" | "seo"; clientId?: string }) {
+const platforms = [
+  {
+    key: "meta",
+    href: "/performance/meta-ads",
+    label: "Meta Ads",
+    description: "Campaign performance",
+  },
+  {
+    key: "website",
+    href: "/performance/google-analytics",
+    label: "Website traffic (GA4)",
+    description: "Visitors & engagement",
+  },
+  {
+    key: "seo",
+    href: "/performance/search-console",
+    label: "Google Search Console",
+    description: "Search visibility",
+  },
+] as const;
+
+export function OverviewNavigation({
+  current,
+  clientId,
+}: {
+  current: "meta" | "website" | "seo";
+  clientId?: string;
+}) {
   return (
-    <nav aria-label="Performance type" className="mt-5 inline-flex max-w-full flex-wrap gap-1 rounded-2xl border border-dash-border bg-dash-card p-1.5 shadow-sm">
-      {([
-        ["meta", "/performance/meta-ads", "Meta Ads"],
-        ["website", "/performance/google-analytics", "Website traffic (GA4)"],
-        ["seo", "/performance/search-console", "Google Search Console"],
-      ] as const).map(([key, href, label]) => (
-        <Link key={key} href={clientId ? `${href}?client=${encodeURIComponent(clientId)}` : href} aria-current={current === key ? "page" : undefined}
-          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:px-5 sm:text-sm ${current === key ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:bg-dash-bg hover:text-dash-ink"}`}>
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="shrink-0">
-            {key === "meta" ? <><path d="M4 19V5M4 19h16"/><path d="m7 14 4-4 4 2 5-7"/></> : key === "seo" ? <><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></> : <><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></>}
-          </svg>
-          <span>{label}</span>
+    <nav aria-label="Performance type" className="nre-platform-navigation">
+      {platforms.map(({ key, href, label, description }) => (
+        <Link
+          key={key}
+          href={
+            clientId ? `${href}?client=${encodeURIComponent(clientId)}` : href
+          }
+          aria-label={label}
+          aria-current={current === key ? "page" : undefined}
+          className="nre-platform-tab"
+        >
+          <span
+            className={`nre-platform-icon nre-platform-icon--${key}`}
+            aria-hidden="true"
+          >
+            {key === "meta" ? (
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M16 16c-3-5-5-8-7-8-4 0-6 7-6 12 0 3 1 4 3 4 4 0 7-8 10-13 2-3 3-3 5-3 4 0 8 7 8 12 0 3-1 4-3 4-4 0-7-8-10-13" />
+              </svg>
+            ) : key === "website" ? (
+              <svg
+                width="27"
+                height="27"
+                viewBox="0 0 28 28"
+                fill="currentColor"
+              >
+                <rect x="3" y="17" width="6" height="8" rx="3" opacity=".65" />
+                <rect
+                  x="11"
+                  y="10"
+                  width="6"
+                  height="15"
+                  rx="3"
+                  opacity=".85"
+                />
+                <rect x="19" y="3" width="6" height="22" rx="3" />
+              </svg>
+            ) : (
+              <svg
+                width="27"
+                height="27"
+                viewBox="0 0 28 28"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="8" />
+                <path d="m18 18 7 7M7 14l4-4 3 2 3-4" />
+              </svg>
+            )}
+          </span>
+          <span className="nre-platform-copy">
+            <span className="nre-platform-label">{label}</span>
+            <span className="nre-platform-description">{description}</span>
+          </span>
+          <span className="nre-platform-indicator" aria-hidden="true" />
         </Link>
       ))}
     </nav>
