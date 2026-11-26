@@ -109,7 +109,7 @@ it("uses fresh Meta data, exact closed periods, and owner email only", async () 
   );
   expect(m.queue).toHaveBeenCalledWith(
     expect.objectContaining({
-      key: "performance-alert:client:2026-11-19:2026-11-13:critical",
+      key: expect.stringMatching(/^performance\-alert:client:2026\-11\-19:2026\-11\-13:critical:[a-f0-9]{20}$/),
       kind: "PERFORMANCE_ALERT",
       payload: expect.objectContaining({
         to: ["owner@example.com"],
@@ -119,13 +119,13 @@ it("uses fresh Meta data, exact closed periods, and owner email only", async () 
     }),
   );
 });
-it("does not send mail when owner opted out", async () => {
+it("sends critical mail automatically when review warnings are opted out", async () => {
   m.client.findUnique.mockResolvedValue({
     ...client,
     performanceMonitorEmailEnabled: false,
   });
   await checkClientPerformance("client", "owner", now);
-  expect(m.queue).not.toHaveBeenCalled();
+  expect(m.queue).toHaveBeenCalledWith(expect.objectContaining({payload: expect.objectContaining({subject: expect.stringContaining("critical performance alert")})}));
 });
 it("rejects currency/timezone mismatch before data fetch", async () => {
   m.metadata.mockResolvedValue({ currency: "INR", timezone_name: "UTC" });
@@ -172,8 +172,9 @@ it("marks failed email separately without losing measured facts", async () => {
   expect(s.emailError).toContain("not been confirmed");
 });
 
-it("does not repeat continuing owner warnings", async () => {
+it("reuses the idempotent key for continuing critical incidents", async () => {
   const first = await checkClientPerformance("client", "owner", now);
+  const firstKey = m.queue.mock.calls[0][0].key;
   m.queue.mockClear();
   m.deliver.mockClear();
   m.client.findUnique.mockResolvedValue({
@@ -184,7 +185,7 @@ it("does not repeat continuing owner warnings", async () => {
   expect(
     next.facts?.campaigns[0].signals.every((s) => s.state === "continuing"),
   ).toBe(true);
-  expect(m.queue).not.toHaveBeenCalled();
+  expect(m.queue).toHaveBeenCalledWith(expect.objectContaining({key: firstKey}));
 });
 it("fixed historical custom comparisons never email", async () => {
   m.client.findUnique.mockResolvedValue({
@@ -281,9 +282,10 @@ it("sends a new critical alert for the 8-to-2 lead collapse even when an old sna
   });
   const first = await checkClientPerformance("client", "owner", now);
   expect(m.queue).toHaveBeenCalledTimes(1);
+  const initialKey = m.queue.mock.calls[0][0].key;
   expect(m.queue).toHaveBeenCalledWith(
     expect.objectContaining({
-      key: "performance-alert:client:2026-11-19:2026-11-13:critical",
+      key: expect.stringMatching(/^performance\-alert:client:2026\-11\-19:2026\-11\-13:critical:[a-f0-9]{20}$/),
     }),
   );
   m.queue.mockClear();
@@ -292,7 +294,7 @@ it("sends a new critical alert for the 8-to-2 lead collapse even when an old sna
     performanceMonitorSnapshot: JSON.stringify(first),
   });
   await checkClientPerformance("client", "owner", now);
-  expect(m.queue).not.toHaveBeenCalled();
+  expect(m.queue).toHaveBeenCalledWith(expect.objectContaining({key: initialKey}));
 });
 it("keeps moderate deterioration at review severity for owner notifications", async () => {
   m.fetch.mockResolvedValue({
@@ -304,7 +306,7 @@ it("keeps moderate deterioration at review severity for owner notifications", as
   ).toBe(false);
   expect(m.queue).toHaveBeenCalledWith(
     expect.objectContaining({
-      key: "performance-alert:client:2026-11-19:2026-11-13:review",
+      key: expect.stringMatching(/^performance\-alert:client:2026\-11\-19:2026\-11\-13:review:[a-f0-9]{20}$/),
     }),
   );
 });
@@ -315,4 +317,16 @@ it("loads performance when Meta returns an alias for the saved client timezone",
   const snapshot = await checkClientPerformance("client", "owner", now);
   expect(snapshot.error).toBeUndefined();
   expect(m.fetch).toHaveBeenCalledWith(expect.objectContaining({ timezone: "America/Toronto", currency: "CAD" }));
+});
+
+it("checks the recent seven days independently of a healthy 30-day comparison and emails the same critical signal", async () => {
+  m.client.findUnique.mockResolvedValue({ ...client, performanceWindowDays: 30, performanceMonitorEmailEnabled: false });
+  m.fetch.mockResolvedValue({csvText: "Campaign name,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all)\nLeads,2026-11-19,100,0,On-Facebook leads,10000,100\nLeads,2026-11-12,100,10,On-Facebook leads,10000,100\nLeads,2026-11-01,100,20,On-Facebook leads,10000,100\nLeads,2026-10-01,300,30,On-Facebook leads,30000,300"});
+  const result = await checkClientPerformance("client", "owner", now);
+  expect(result.error).toBeUndefined();
+  const c = result.facts!.campaigns[0];
+  expect(c.current.results).toBe(30);
+  expect(c.recent?.current.results).toBe(0);
+  expect(c.signals.some(s=>s.key==="results-stopped-7d" && s.tone==="critical")).toBe(true);
+  expect(m.queue).toHaveBeenCalledWith(expect.objectContaining({payload:expect.objectContaining({text:expect.stringContaining("last 7 completed days"),to:["owner@example.com"]})}));
 });

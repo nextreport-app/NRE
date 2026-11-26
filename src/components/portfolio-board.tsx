@@ -12,13 +12,14 @@ export const PORTFOLIO_FILTERS = [
   { key: "all", label: "All accounts" },
   { key: "critical", label: "Critical" },
   { key: "review", label: "Review" },
-  { key: "positive", label: "Positive" },
+  { key: "positive", label: "Improvement" },
   { key: "setup", label: "Needs setup" },
 ] as const;
 export function matchesPortfolio(row: OverviewRow, filter: string) {
   return (
     filter === "all" ||
     filter === row.portfolio.state ||
+    (filter === "positive" && (row.counts?.improving ?? 0) > 0) ||
     (filter === "data" &&
       ["check", "insufficient", "no-delivery"].includes(row.portfolio.state))
   );
@@ -31,6 +32,21 @@ export function PortfolioBadge({ state }: { state: PortfolioState }) {
     >
       {PORTFOLIO_LABELS[state]}
     </span>
+  );
+}
+export function AccountStatusBadges({ client }: { client: OverviewRow }) {
+  return (
+    <div
+      className="flex flex-wrap justify-end gap-2"
+      aria-label="Account status"
+    >
+      <PortfolioBadge state={client.portfolio.state} />
+      {(client.portfolio.state === "critical" ||
+        client.portfolio.state === "review") &&
+        (client.counts?.improving ?? 0) > 0 && (
+          <PortfolioBadge state="positive" />
+        )}
+    </div>
   );
 }
 function money(value: number | null, currency: string) {
@@ -75,7 +91,7 @@ export function PortfolioBoard({
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="break-words font-semibold">{c.name}</h2>
-            <PortfolioBadge state={c.portfolio.state} />
+            <AccountStatusBadges client={c} />
           </div>
           <div className="mt-3 flex-1 text-sm text-dash-ink-secondary">
             {c.budgetAttention ? (

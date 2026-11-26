@@ -148,8 +148,10 @@ export function budgetAlertPresentation(
   facts: ReturnType<typeof budgetFacts>,
   budget: number,
   currency: string,
-  daysRemaining: number,
+  _daysRemaining: number,
 ) {
+  // Forecast risk remains a warning regardless of days left in the month.
+  void _daysRemaining;
   const money = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency }).format(n);
   if (facts.over > facts.tolerance + 1e-8)
@@ -160,13 +162,13 @@ export function budgetAlertPresentation(
     };
   if (facts.alertable && (facts.projectedOver ?? 0) > facts.tolerance)
     return {
-      tone: daysRemaining <= 7 ? ("critical" as const) : ("warning" as const),
+      tone: "warning" as const,
       title: "Projected to exceed budget",
       description: `Projected month-end spend is ${money(facts.projected!)} — ${money(facts.projectedOver!)} above budget.`,
     };
   if (facts.alertable && facts.level === "underspend")
     return {
-      tone: daysRemaining <= 7 ? ("critical" as const) : ("warning" as const),
+      tone: "warning" as const,
       title: "Projected underspend",
       description: `Projected month-end spend is ${money(facts.projected!)} — ${money(facts.projectedShortfall!)} below budget.`,
     };

@@ -31,7 +31,8 @@ export function MetaMonitoringSetup({
       <h3 className="font-semibold">Load your first performance comparison</h3>
       <p className="mt-2 max-w-2xl text-sm text-dash-ink-secondary">
         Compare campaign results with the previous period. This only reads your
-        ad data; it does not change your campaigns.
+        ad data; it does not change your campaigns. Critical alerts are emailed
+        automatically while monitoring is enabled.
       </p>
       <>
         <label className="mt-4 flex items-start gap-2 text-sm">
@@ -42,7 +43,7 @@ export function MetaMonitoringSetup({
             checked={emails}
             onChange={(e) => setEmails(e.target.checked)}
           />
-          Email me about new performance issues
+          Also email me about review warnings
         </label>
         <button
           type="button"

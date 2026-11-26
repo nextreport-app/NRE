@@ -6,6 +6,7 @@ export function signalSummaryLine(
   campaign: CampaignPerformance,
   signal: PerformanceSignal,
 ) {
+  if (signal.key === "results-stopped-7d" && campaign.recent) return `No ${words(campaign.objective)} were reported in the last 7 completed days (${campaign.recent.periodA.startIso} – ${campaign.recent.periodA.endIso}) despite meaningful spend. Check tracking, delivery and attribution.`;
   const observation = signalObservation(campaign, signal);
   const change = signal.change;
   const name = signal.key.replace(/^recovered:/, "");

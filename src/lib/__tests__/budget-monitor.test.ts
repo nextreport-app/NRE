@@ -71,8 +71,8 @@ describe("approved whole-account budget facts",()=>{
   expect(readBudgetSnapshot(raw,{...config,metaAdAccountId:"999"},now)).toBeNull();
   expect(readBudgetSnapshot(raw,config,new Date("2026-12-01"))).toBeNull();
   expect(readBudgetSnapshot("invalid",config,now)).toBeNull();
-  expect(budgetAlertKey("c","2026-11",config,"reached")).toBe(budgetAlertKey("c","2026-11",config,"reached"));
-  expect(budgetAlertKey("c","2026-11",config,"reached")).not.toBe(budgetAlertKey("c","2026-11",{...config,monthlyBudget:800},"reached"));
+  expect(budgetAlertKey("c","2026-11",config,"reached","critical")).toBe(budgetAlertKey("c","2026-11",config,"reached","critical"));
+  expect(budgetAlertKey("c","2026-11",config,"reached","critical")).not.toBe(budgetAlertKey("c","2026-11",{...config,monthlyBudget:800},"reached"));
  });
 });
 describe("budget monitoring snapshot and delivery boundaries",()=>{
@@ -110,10 +110,10 @@ describe("budget monitoring snapshot and delivery boundaries",()=>{
  });
  it("queues an escaped owner-only alert and displays unconfirmed delivery",async()=>{
   mocks.spend.mockResolvedValue(1200);mocks.deliver.mockResolvedValue({accepted:false});const s=await checkClientBudget("c","owner",now);expect(s.facts?.over).toBe(450);expect(s.emailError).toContain("not been confirmed");
-  const message=mocks.queue.mock.calls[0][0];expect(message.payload.to).toEqual(["owner@test.example"]);expect(message.payload.text).toContain("https://nextreport.in/performance/meta-ads?client=c#meta-budget-c");expect(message.payload.html).toContain("&lt;agency&gt;");expect(message.payload.html).not.toContain("A <agency>");expect(message.key).toBe(budgetAlertKey("c","2026-11",config,"reached"));
+  const message=mocks.queue.mock.calls[0][0];expect(message.payload.to).toEqual(["owner@test.example"]);expect(message.payload.text).toContain("https://nextreport.in/performance/meta-ads?client=c#meta-budget-c");expect(message.payload.html).toContain("&lt;agency&gt;");expect(message.payload.html).not.toContain("A <agency>");expect(message.key).toBe(budgetAlertKey("c","2026-11",config,"reached","critical"));
  });
- it("respects owner email opt-out",async()=>{
-  mocks.find.mockResolvedValue({...client,budgetMonitorEmailEnabled:false});mocks.spend.mockResolvedValue(1200);expect((await checkClientBudget("c","owner",now)).facts?.level).toBe("reached");expect(mocks.queue).not.toHaveBeenCalled();
+ it("sends critical budget alerts even when optional warning emails are off",async()=>{
+  mocks.find.mockResolvedValue({...client,budgetMonitorEmailEnabled:false});mocks.spend.mockResolvedValue(1200);expect((await checkClientBudget("c","owner",now)).facts?.level).toBe("reached");expect(mocks.queue).toHaveBeenCalledWith(expect.objectContaining({payload:expect.objectContaining({subject:expect.stringContaining("critical budget alert")})}));
  });
 });
 it("queues the $357.99/$300 overspend as a critical owner alert and keeps approach warnings distinct",async()=>{

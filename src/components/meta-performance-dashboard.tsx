@@ -162,9 +162,11 @@ function Issue({
             </span>
           )}
           <span className="text-xs text-dash-ink-secondary">
-            {observation?.reference === "target"
-              ? "Compared to saved target"
-              : "Compared to previous period"}
+            {signal.key === "results-stopped-7d"
+              ? "Last 7 days vs previous 7 days"
+              : observation?.reference === "target"
+                ? "Compared to saved target"
+                : "Compared to previous period"}
           </span>
         </div>
         <span
@@ -173,7 +175,7 @@ function Issue({
           {!fresh
             ? "Saved change"
             : signal.tone === "critical"
-              ? "Urgent review"
+              ? "Critical"
               : signal.tone === "warning"
                 ? "Review"
                 : "Improvement"}

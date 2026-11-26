@@ -88,13 +88,13 @@ describe("decision priorities", () => {
     expect(campaignVerdict(c)).toBe("critical");
     expect(c.signals.some((s) => s.key === "roas-down")).toBe(true);
   });
-  it("keeps primary efficiency improvement green despite a supporting CTR warning", () => {
+  it("prioritizes a supporting CTR warning over primary efficiency improvement", () => {
     const c = campaign(
       { ...b, ctr: 0.7, results: 30, cpr: 100 / 30, roas: 2 },
       { ...b, roas: 2 },
     );
-    expect(campaignVerdict(c)).toBe("improving");
-    expect(actionableSignals(c)).toEqual([]);
+    expect(campaignVerdict(c)).toBe("review");
+    expect(actionableSignals(c).some(s => s.key === "ctr-down")).toBe(true);
   });
   it("an improvement above the saved target remains amber", () => {
     const a = { ...b, cpr: 4, results: 25 };
@@ -274,7 +274,7 @@ describe("purchase value evidence", () => {
 });
 
 describe("budget decision urgency", () => {
-  it("makes material actual overspend and final-week underspend critical, but respects tolerance", async () => {
+  it("makes actual overspend critical and forecasts review, respecting tolerance", async () => {
     const { overviewRow } = await import("../../agency-overview");
     const { budgetFacts, budgetWindow } =
       await import("../../budget-monitor-facts");
@@ -313,7 +313,7 @@ describe("budget decision urgency", () => {
         date,
       );
     expect(row(800, 780).verdict).toBe("critical");
-    expect(row(300, 290).verdict).toBe("critical");
+    expect(row(300, 290).verdict).toBe("review");
     expect(row(755, 650).budgetCritical).toBe(false);
     expect(row(700, 650).dailyAllowance).toBe(12.5);
   });

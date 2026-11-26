@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
 }));
 vi.mock("../../prisma", () => ({
   prisma: {
+    $transaction: async (fn: (tx: unknown) => unknown) => fn({ emailDelivery: {updateMany: m.claim} }),
     emailDelivery: {
       findUnique: m.find,
       update: m.update,
@@ -23,12 +24,13 @@ vi.mock("../../email", () => ({
 vi.mock("../../subscription", () => ({
   getSubscriptionStatus: () => ({ isBlocked: false }),
 }));
+import { performanceAlertIntent } from "../alert-intent";
 import { deliverQueuedEmail } from "../../email-delivery";
 import { buildPerformanceFacts } from "../facts";
 import { parseCsvText } from "../../nre/parse-csv";
 const now = new Date("2026-11-20T12:00Z"),
-  key = "performance-alert:client:2026-11-19:2026-11-13:critical",
   config = { currency: "USD", timezone: "UTC", metaAdAccountId: "123" };
+let key: string;
 function client() {
   const parsed = parseCsvText(
     "Campaign name,Day,Amount spent (USD),Results,Result type,Impressions,Clicks (all)\nCampaign,2026-11-19,100,10,On-Facebook leads,10000,50\nCampaign,2026-11-12,100,20,On-Facebook leads,10000,100",
@@ -51,6 +53,7 @@ function client() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("RESEND_API_KEY", "");
+  key = performanceAlertIntent("client", JSON.parse(client().performanceMonitorSnapshot), true)!.key;
   m.find.mockResolvedValue({
     key,
     kind: "PERFORMANCE_ALERT",
@@ -70,13 +73,11 @@ it("keeps a current owner notification queued when email is not configured", asy
 });
 it.each([
   "disabled",
-  "email off",
   "other owner",
   "recipient changed",
   "new account",
   "unverified",
   "new window",
-  "superseded snapshot",
 ])("cancels obsolete warning mail: %s", async (reason) => {
   const c = client();
   if (reason === "disabled") c.performanceMonitorEnabled = false;
@@ -99,5 +100,26 @@ it.each([
       )
     ).cancelled,
   ).toBe(true);
+  expect(m.send).not.toHaveBeenCalled();
+});
+
+it("keeps a current critical email eligible when optional warnings are off", async () => {
+  m.client.mockResolvedValue({...client(), performanceMonitorEmailEnabled:false});
+  expect((await deliverQueuedEmail(key, now)).cancelled).not.toBe(true);
+});
+it("keeps the same incident queued across a fresh recheck for retry", async () => {
+  const c = client();const snapshot=JSON.parse(c.performanceMonitorSnapshot);snapshot.checkedAt="2026-11-20T12:01:00.000Z";c.performanceMonitorSnapshot=JSON.stringify(snapshot);m.client.mockResolvedValue(c);
+  expect((await deliverQueuedEmail(key, new Date("2026-11-20T12:02Z"))).cancelled).not.toBe(true);
+});
+it("delivers an eligible critical alert to the verified owner even with review warnings off", async () => {
+  vi.stubEnv("RESEND_API_KEY", "mock-test-key");
+  m.client.mockResolvedValue({...client(), performanceMonitorEmailEnabled:false});
+  m.claim.mockResolvedValue({count:1});m.send.mockResolvedValue({data:{id:"mock-email"},error:null});
+  expect(await deliverQueuedEmail(key, now)).toMatchObject({accepted:true});
+  expect(m.send).toHaveBeenCalledWith(expect.objectContaining({to:["owner@example.com"]}), {idempotencyKey:key});
+});
+it("does not send an already accepted critical alert twice", async () => {
+  m.find.mockResolvedValue({key,status:"ACCEPTED"});
+  expect(await deliverQueuedEmail(key, now)).toMatchObject({accepted:true,alreadyAccepted:true});
   expect(m.send).not.toHaveBeenCalled();
 });
