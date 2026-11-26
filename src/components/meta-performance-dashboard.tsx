@@ -396,8 +396,8 @@ export function MetaPerformanceDashboard({
         )}
       </section>
       <details
-        key={`${c.id}:${duplicateAccountTotals(facts)}`}
-        open={!duplicateAccountTotals(facts)}
+        key={`${c.id}:${campaigns.length === 1}`}
+        open={campaigns.length !== 1}
         aria-label="Account metrics"
         className="rounded-2xl border border-blue-400/25 bg-dash-bg p-4 sm:p-5"
       >

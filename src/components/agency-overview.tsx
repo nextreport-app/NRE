@@ -353,10 +353,10 @@ export function AgencyOverview({
             {expanded === c.id && c.linked && (
               <div className="mt-5 border-t border-dash-border pt-4">
                 {c.performanceEnabled && (
-                  <details className="mt-4 rounded-xl border border-dash-border p-4">
-                    <summary className="cursor-pointer text-sm font-medium">
+                  <section aria-label="Performance alerts" className="mt-4 rounded-xl border border-dash-border p-4">
+                    <h3 className="text-sm font-medium">
                       Performance alerts
-                    </summary>
+                    </h3>
                     <p className="mt-2 text-xs text-dash-ink-secondary">
                       Critical issues and early warnings from your campaign
                       comparisons.
@@ -379,7 +379,7 @@ export function AgencyOverview({
                         Email me about performance alerts
                       </label>
                     </div>
-                  </details>
+                  </section>
                 )}
                 {c.performance?.emailError && (
                   <p className="mt-3 text-xs text-amber-400">
