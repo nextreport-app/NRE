@@ -28,7 +28,7 @@ import {
 } from "@/lib/performance-monitor/dashboard-metrics";
 import { PortfolioBadge } from "./portfolio-board";
 import { signalSummaryLine } from "@/lib/performance-monitor/summary-line";
-import { formatMetaPeriod } from "@/lib/performance-monitor/format-period";
+import { ComparisonPeriod, BreakdownTotals } from "./performance-presentation";
 
 function formatted(
   n: DashboardMetric["current"],
@@ -212,7 +212,7 @@ function MetricHighlights({
       {metrics.map((metric) => (
         <div
           key={metric.key}
-          className="min-w-0 rounded-xl border border-dash-border bg-dash-card p-4"
+          className="nre-ga4-metric-card relative min-w-0 overflow-hidden rounded-xl border border-dash-border bg-dash-card p-4"
         >
           <dt className="text-xs text-dash-ink-secondary">{metric.label}</dt>
           <dd className="mt-2 break-words text-2xl font-semibold tabular-nums">
@@ -307,24 +307,11 @@ export function MetaPerformanceDashboard({
   );
   return (
     <div className="mt-5 space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2" aria-label="Comparison dates">
-        {[
-          { label: "Selected period", period: facts.periodA },
-          { label: "Previous period", period: facts.periodB },
-        ].map(({ label, period }) => (
-          <div
-            key={label}
-            className="rounded-xl border border-dash-border bg-dash-bg px-4 py-3"
-          >
-            <p className="text-xs font-medium text-dash-ink-secondary">
-              {label}
-            </p>
-            <p className="mt-1 text-sm font-semibold">
-              {formatMetaPeriod(period.startIso, period.endIso)}
-            </p>
-          </div>
-        ))}
-      </div>
+      <ComparisonPeriod
+        current={facts.periodA}
+        previous={facts.periodB}
+        custom={!!c.performance?.config.performanceCustomStart}
+      />
       <section
         aria-label="Performance summary"
         className={`rounded-2xl border p-4 sm:p-5 ${budgetCritical || (urgent && c.performanceFresh) ? "border-dash-border border-l-4 border-l-red-400 bg-dash-bg" : (issues.length && c.performanceFresh) || budgetAlert?.tone === "warning" ? "border-dash-border border-l-4 border-l-amber-400 bg-dash-bg" : "border-dash-border bg-dash-bg"}`}
@@ -446,6 +433,25 @@ export function MetaPerformanceDashboard({
         <h3 className="text-lg font-semibold text-blue-400">
           Campaign comparisons
         </h3>
+        <BreakdownTotals
+          items={[
+            <>
+              <strong>{campaigns.length}</strong> campaigns shown
+            </>,
+            <>
+              <strong>
+                {formatted(facts.current.spend, "money", c.currency)}
+              </strong>{" "}
+              account spend
+            </>,
+            <>
+              <strong>
+                {formatted(facts.current.impressions, undefined, c.currency)}
+              </strong>{" "}
+              account impressions
+            </>,
+          ]}
+        />
         {(facts.valueWarning || facts.metricsWarning) && (
           <p className="mt-3 text-sm text-dash-ink-secondary">
             Some metrics are unavailable. Refresh to retry; missing data is

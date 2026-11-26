@@ -2,6 +2,7 @@
 
 import { isWebsiteRangeFailure } from "@/lib/website-dashboard/refresh-messages";
 import { performancePortfolioCard, performancePortfolioAction } from "./performance-portfolio-styles";
+import { ComparisonPeriod, BreakdownTotals, CountryLabel, DeviceLabel, sumReported } from "./performance-presentation";
 import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
@@ -320,10 +321,14 @@ export function WebsiteDashboard({
           )}
           {data && (
             <>
-              <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                <p>{new Date(data.currentPeriod.startIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", timeZone:"UTC"})} – {new Date(data.currentPeriod.endIso + "T12:00:00Z").toLocaleDateString("en", {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})} <span className="text-dash-ink-secondary">· compared with previous {data.days} days</span></p>
-                <p className="text-xs text-dash-ink-secondary">GA4 can take 24–48 hours to settle.</p>
-              </div>
+              <ComparisonPeriod
+                current={data.currentPeriod}
+                previous={data.previousPeriod}
+                custom={data.rangeMode === "custom"}
+              />
+              <p className="mt-2 text-xs text-dash-ink-secondary">
+                GA4 can take 24–48 hours to settle.
+              </p>
               {!entry?.fresh && !error && !entry?.error && <p className="mt-2 text-xs text-amber-400">Saved data is older, refresh once before analyzing.</p>}
               {data.warnings.map((w) => (
                 <p key={w} className="mt-2 text-sm text-amber-400">
@@ -346,7 +351,7 @@ export function WebsiteDashboard({
                 {primaryMetrics.map((key) => (
                   <div
                     key={key}
-                    className="nre-ga4-summary-card relative min-w-0 overflow-hidden rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm"
+                    className="nre-ga4-summary-card nre-ga4-metric-card relative min-w-0 overflow-hidden rounded-2xl border border-dash-border bg-dash-card p-4 shadow-sm"
                   >
                     <p className="text-xs font-medium text-dash-ink-secondary">{labels[key]}</p>
                     <p className="mt-3 text-3xl font-semibold tracking-tight">
@@ -369,15 +374,200 @@ export function WebsiteDashboard({
               />
 
               <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
-                <section aria-label="Top countries" className="min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5">
-                  <h2 className="text-lg font-semibold">Where your visitors are</h2><p className="mt-1 text-xs text-dash-ink-secondary">Top 10 countries by active users · {timeframeLabel}</p>
-                  {data.countries?.length ? <ol className="mt-4 space-y-3">{data.countries.map(row => <li key={row.name}><div className="flex justify-between gap-3 text-sm"><span className="break-words">{row.name}</span><strong>{num(row.activeUsers)}</strong></div><div className="mt-2 h-1.5 rounded-full bg-dash-bg"><div className="h-full rounded-full bg-dash-accent" style={{width: `${row.activeUsers == null ? 0 : row.activeUsers / Math.max(1,...data.countries!.map(r => r.activeUsers ?? 0)) * 100}%`}} /></div></li>)}</ol> : <p className="mt-4 text-sm text-dash-ink-secondary">{data.countries ? "No country rows reported for these dates." : "Refresh GA4 to load countries for this saved report."}</p>}
-                </section>
-                <section aria-label="Top page titles" className="min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5">
-                  <h2 className="text-lg font-semibold">Most viewed pages</h2><p className="mt-1 text-xs text-dash-ink-secondary">Top 10 page titles by views · includes repeat views · {timeframeLabel}</p>
-                  {data.pageTitles?.length ? <ol className="mt-4 divide-y divide-dash-border">{data.pageTitles.map(row => <li key={row.name} className="flex items-start justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.name || "(not set)"}</span><strong className="shrink-0">{num(row.screenPageViews)}</strong></li>)}</ol> : <p className="mt-4 text-sm text-dash-ink-secondary">{data.pageTitles ? "No page views reported for these dates." : "Refresh GA4 to load page titles for this saved report."}</p>}
-                </section>
+                <section
+                      aria-label="Top countries"
+                      className="min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5"
+                    >
+                      <h2 className="text-lg font-semibold">
+                        Where your visitors are
+                      </h2>
+                      <p className="mt-1 text-xs text-dash-ink-secondary">
+                        Top 10 countries by active users · {timeframeLabel}
+                      </p>
+                      {data.countries?.length ? (
+                        <>
+                          <BreakdownTotals
+                            items={[
+                              <>
+                                <strong>{data.countries.length}</strong>{" "}
+                                countries shown
+                              </>,
+                              <>
+                                <strong>{num(data.current.activeUsers)}</strong>{" "}
+                                active users across site
+                              </>,
+                            ]}
+                          />
+                          <ol className="mt-4 space-y-3">
+                            {data.countries.map((row) => (
+                              <li key={row.name}>
+                                <div className="flex justify-between gap-3 text-sm">
+                                  <span className="break-words">
+                                    <CountryLabel country={row.name} />
+                                  </span>
+                                  <strong>{num(row.activeUsers)}</strong>
+                                </div>
+                                <div className="mt-2 h-1.5 rounded-full bg-dash-bg">
+                                  <div
+                                    className="h-full rounded-full bg-dash-accent"
+                                    style={{
+                                      width: `${row.activeUsers == null ? 0 : (row.activeUsers / Math.max(1, ...data.countries!.map((r) => r.activeUsers ?? 0))) * 100}%`,
+                                    }}
+                                  />
+                                </div>
+                              </li>
+                            ))}
+                          </ol>
+                        </>
+                      ) : (
+                        <p className="mt-4 text-sm text-dash-ink-secondary">
+                          {data.countries
+                            ? "No country rows reported for these dates."
+                            : "Refresh GA4 to load countries for this saved report."}
+                        </p>
+                      )}
+                    </section>
+                <section
+                      aria-label="Top page titles"
+                      className="min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5"
+                    >
+                      <h2 className="text-lg font-semibold">
+                        Most viewed pages
+                      </h2>
+                      <p className="mt-1 text-xs text-dash-ink-secondary">
+                        Top 10 page titles by views · includes repeat views ·{" "}
+                        {timeframeLabel}
+                      </p>
+                      {data.pageTitles?.length ? (
+                        <>
+                          <BreakdownTotals
+                            items={[
+                              <>
+                                <strong>{data.pageTitles.length}</strong> pages
+                                shown
+                              </>,
+                              <>
+                                <strong>
+                                  {num(
+                                    sumReported(
+                                      data.pageTitles.map(
+                                        (row) => row.screenPageViews,
+                                      ),
+                                    ),
+                                  )}
+                                </strong>{" "}
+                                views in listed pages
+                              </>,
+                            ]}
+                          />
+                          <ol className="mt-4 divide-y divide-dash-border">
+                            {data.pageTitles.map((row) => (
+                              <li
+                                key={row.name}
+                                className="flex items-start justify-between gap-3 py-3 text-sm"
+                              >
+                                <span className="min-w-0 break-words">
+                                  {row.name || "(not set)"}
+                                </span>
+                                <strong className="shrink-0">
+                                  {num(row.screenPageViews)}
+                                </strong>
+                              </li>
+                            ))}
+                          </ol>
+                        </>
+                      ) : (
+                        <p className="mt-4 text-sm text-dash-ink-secondary">
+                          {data.pageTitles
+                            ? "No page views reported for these dates."
+                            : "Refresh GA4 to load page titles for this saved report."}
+                        </p>
+                      )}
+                    </section>
               </div>
+
+<section
+                    aria-label="Devices"
+                    className="mt-5 min-w-0 rounded-2xl border border-dash-border bg-dash-card p-5"
+                  >
+                    <h2 className="text-lg font-semibold">Devices</h2>
+                    <p className="mt-1 text-xs text-dash-ink-secondary">
+                      Website activity by device · {timeframeLabel}
+                    </p>
+                    {data.devices?.length ? (
+                      <>
+                        <BreakdownTotals
+                          items={[
+                            <>
+                              <strong>{data.devices.length}</strong> device
+                              types shown
+                            </>,
+                            <>
+                              <strong>
+                                {num(
+                                  sumReported(
+                                    data.devices.map((row) => row.sessions),
+                                  ),
+                                )}
+                              </strong>{" "}
+                              sessions in listed devices
+                            </>,
+                          ]}
+                        />
+                        <div className="mt-4 max-w-full overflow-x-auto">
+                          <table
+                            className="w-full text-left text-sm"
+                            style={{ minWidth: 480 }}
+                          >
+                            <thead>
+                              <tr>
+                                {[
+                                  "Device",
+                                  "Sessions",
+                                  "Engaged sessions",
+                                  "Key events",
+                                ].map((label) => (
+                                  <th
+                                    key={label}
+                                    className="whitespace-nowrap pb-3 pr-4 text-xs text-dash-ink-secondary"
+                                  >
+                                    {label}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {data.devices.map((row) => (
+                                <tr
+                                  key={row.name}
+                                  className="border-t border-dash-border"
+                                >
+                                  <th className="py-3 pr-4 font-normal">
+                                    <DeviceLabel device={row.name} />
+                                  </th>
+                                  <td className="py-3 pr-4">
+                                    {num(row.sessions)}
+                                  </td>
+                                  <td className="py-3 pr-4">
+                                    {num(row.engagedSessions)}
+                                  </td>
+                                  <td className="py-3 pr-4">
+                                    {num(row.keyEvents)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="mt-4 text-sm text-dash-ink-secondary">
+                        {data.devices
+                          ? "No device rows reported for these dates."
+                          : "Refresh GA4 to load devices for this saved report."}
+                      </p>
+                    )}
+                  </section>
 
               <section className="mt-5 min-w-0 rounded-xl border border-dash-border bg-dash-card p-4">
                 <h2 className="font-semibold">
@@ -387,7 +577,34 @@ export function WebsiteDashboard({
                   Daily users are unique per day; adding them does not give unique period users.
                 </p>
                 {data.trend.some(row => row.bounceRate === undefined) && <p className="mt-2 text-xs text-dash-ink-secondary">Refresh GA4 to load the additional daily metrics.</p>}
-                <WebsiteDetailTable rows={data.trend} kind="date" />
+                <BreakdownTotals
+                      items={[
+                        <>
+                          <strong>{data.trend.length}</strong> daily rows shown
+                        </>,
+                        <>
+                          <strong>
+                            {num(
+                              sumReported(
+                                data.trend.map((row) => row.sessions),
+                              ),
+                            )}
+                          </strong>{" "}
+                          sessions in listed days
+                        </>,
+                        <>
+                          <strong>
+                            {num(
+                              sumReported(
+                                data.trend.map((row) => row.keyEvents),
+                              ),
+                            )}
+                          </strong>{" "}
+                          key events in listed days
+                        </>,
+                      ]}
+                    />
+                    <WebsiteDetailTable rows={data.trend} kind="date" />
               </section>
               </>}
             </>

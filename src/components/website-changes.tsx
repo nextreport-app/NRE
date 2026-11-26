@@ -1,4 +1,5 @@
 "use client";
+import { BreakdownTotals, sumReported } from "./performance-presentation";
 import { WebsitePaidTraffic } from "./website-paid-traffic";
 import { WebsiteMetricChange } from "./website-metric-change";
 import type { WebsiteMetric, WebsiteSnapshot } from "@/lib/website-dashboard/model";
@@ -12,6 +13,31 @@ export function WebsiteChannelComparison({ data, fresh }: { data: WebsiteSnapsho
     <p className="mt-1 text-xs text-dash-ink-secondary">Where visitors came from, how engaged they were and which channels drove key events. Change compares sessions with the previous period.</p>
     {!data.previousChannels && <p className="mt-3 text-sm text-amber-400">Refresh GA4 to add previous-period channel data to this saved report.</p>}
     {(!fresh || !!data.warnings.length) && <p className="mt-2 text-xs text-dash-ink-secondary">{!fresh ? "Saved comparison only; refresh before acting." : "GA4 data-quality notices apply to these comparisons."}</p>}
+      <BreakdownTotals
+        items={[
+          <>
+            <strong>{data.channels.length}</strong> current-period channels
+          </>,
+          <>
+            <strong>
+              {formatWebsiteMetric(
+                "sessions",
+                sumReported(data.channels.map((row) => row.sessions)),
+              )}
+            </strong>{" "}
+            sessions in listed channels
+          </>,
+          <>
+            <strong>
+              {formatWebsiteMetric(
+                "keyEvents",
+                sumReported(data.channels.map((row) => row.keyEvents)),
+              )}
+            </strong>{" "}
+            key events in listed channels
+          </>,
+        ]}
+      />
     <WebsitePaidTraffic data={data}/>
     <p className="mt-3 text-xs text-dash-ink-secondary">Scroll horizontally to see all channel metrics →</p>
     <div className="mt-3 max-w-full overflow-x-auto"><table className="w-full text-left text-sm" style={{minWidth: 1050}}><thead><tr>{["Channel", "Sessions", "Previous", "Change", ...columns.map(([,name]) => name)].map(name => <th key={name} className="whitespace-nowrap pb-3 pr-4 text-xs font-medium text-dash-ink-secondary">{name}</th>)}</tr></thead><tbody>

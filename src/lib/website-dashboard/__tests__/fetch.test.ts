@@ -55,6 +55,7 @@ beforeEach(() => {
           String(current[name as keyof typeof current]),
         );
       }
+      if (dimensionNames[0] === "deviceCategory") dimensions = ["mobile"];
       if (dimensionNames[0] === "country") dimensions = ["India"];
       if (dimensionNames[0] === "pageTitle") dimensions = ["Pricing"];
       if (dimensionNames[0] === "date") {
@@ -81,6 +82,7 @@ describe("GA4 data contracts", () => {
   it("reads period metrics from rows, not absent totals, in property timezone", async () => {
     const s = await fetchWebsiteSnapshot("token", "552954256", 7, now);
     expect(s.current).toEqual(current);
+    expect(s.devices).toEqual([{name: "mobile", sessions: 100, engagedSessions: 70, keyEvents: 25}]);
     expect(s.countries).toEqual([{name: "India", activeUsers: 75}]);
     expect(s.pageTitles).toEqual([{name: "Pricing", screenPageViews: 150}]);
     expect(s.property.timezone).toBe("Asia/Kolkata");
@@ -130,7 +132,7 @@ describe("GA4 data contracts", () => {
     const legacy = JSON.parse(JSON.stringify(snapshot));
     delete legacy.current.activeUsers; delete legacy.current.eventCount;
     delete legacy.previous.activeUsers; delete legacy.previous.eventCount;
-    delete legacy.countries; delete legacy.pageTitles;
+    delete legacy.countries; delete legacy.pageTitles; delete legacy.devices;
     const parsed = parseWebsiteSnapshot(JSON.stringify(legacy), "552954256", 30);
     expect(parsed).not.toBeNull();
     expect(parsed!.current.activeUsers).toBeUndefined();
