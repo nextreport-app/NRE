@@ -1212,12 +1212,17 @@ html[data-site-theme="light"] .nre-performance-card-ready { border-color: #c99c5
 html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { color: #915407; }
 
 /* Reference-style dashboard buttons: 52px high, 28px apart, white outline icons. */
+/* Consistent dashboard hierarchy: page, client account, then navigation. */
+.nre-performance-page-title { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -.025em; }
+.nre-performance-account-name { font-size: 20px; line-height: 1.4; font-weight: 600; color: #60a5fa; overflow-wrap: anywhere; }
+html[data-site-theme="light"] .nre-performance-account-name { color: #2563eb; }
+
 .nre-platform-navigation {
   display: flex;
   flex-wrap: wrap;
   width: fit-content;
   max-width: 100%;
-  gap: 28px;
+  gap: 16px;
   margin-top: 24px;
 }
 .nre-dashboard-entry {
@@ -1225,8 +1230,8 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: 52px;
-  padding: 10px 20px;
+  min-height: 44px;
+  padding: 10px 16px;
   border: 1px solid #343640;
   border-radius: 11px;
   background: #0b0c0f;
@@ -1240,10 +1245,10 @@ html[data-site-theme="light"] :is(.nre-ga4-trend-chart, .nre-ga4-eyebrow) { colo
   box-shadow: 0 0 0 1px #b77cff26, 0 0 8px #b77cff24;
 }
 .nre-dashboard-entry:focus-visible { outline: 2px solid #c99cff; outline-offset: 3px; }
-.nre-dashboard-entry-top { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.nre-platform-icon { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; color: #ffffff; }
+.nre-dashboard-entry-top { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.nre-platform-icon { display: inline-flex; width: 18px; height: 18px; flex-shrink: 0; color: #ffffff; }
 .nre-platform-icon > svg { width: 100%; height: 100%; }
-.nre-dashboard-entry-title { font-size: 18px; font-weight: 500; line-height: 1.4; }
+.nre-dashboard-entry-title { font-size: 16px; font-weight: 500; line-height: 1.4; }
 @media (max-width: 639px) {
   .nre-platform-navigation, .nre-dashboard-entry { width: 100%; }
 }
