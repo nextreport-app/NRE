@@ -1185,24 +1185,20 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
   border-color: #35765e;
   box-shadow: inset 3px 0 0 #67c69c;
 }
-.nre-ga4-property-linked__badge,
-.nre-ga4-property-linked__action {
+.nre-ga4-property-linked__badge {
   color: #a3e6c5;
   border-color: #35765e;
   background: #17372c;
 }
-.nre-ga4-property-linked__action:hover { background: #214a3b; }
 html[data-site-theme="light"] .nre-ga4-property-linked {
   border-color: #8cc7ad;
   box-shadow: inset 3px 0 0 #168052;
 }
-html[data-site-theme="light"] .nre-ga4-property-linked__badge,
-html[data-site-theme="light"] .nre-ga4-property-linked__action {
+html[data-site-theme="light"] .nre-ga4-property-linked__badge {
   color: #14633f;
   border-color: #8cc7ad;
   background: #e7f5ed;
 }
-html[data-site-theme="light"] .nre-ga4-property-linked__action:hover { background: #d4ecdf; }
 
 /* GA4 overview: a clear metric grid with subtle category accents. */
 .nre-ga4-metric-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: #69b7d5; }
