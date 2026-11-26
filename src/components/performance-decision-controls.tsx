@@ -70,11 +70,7 @@ export function DecisionSettingsPanel({
       aria-label="Comparison controls"
       className="rounded-xl border border-dash-border bg-dash-bg p-4"
     >
-      {refreshControl && (
-        <div className="flex justify-end">{refreshControl}</div>
-      )}
       <form
-        className="mt-3"
         onSubmit={async (e) => {
           e.preventDefault();
           const saved = await save({
@@ -93,22 +89,25 @@ export function DecisionSettingsPanel({
           );
         }}
       >
-        <div className="flex flex-wrap gap-2">
-          {["7", "30", "custom"].map((v) => (
-            <button
-              key={v}
-              type="button"
-              disabled={busy}
-              aria-pressed={mode === v}
-              className={`${button} ${mode === v ? "border-dash-ink-secondary bg-dash-card text-dash-ink ring-1 ring-inset ring-dash-ink-secondary" : ""}`}
-              onClick={() => {
-                setMode(v);
-                setNotice("");
-              }}
-            >
-              {v === "custom" ? "Custom dates" : `Last ${v} days`}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {["7", "30", "custom"].map((v) => (
+              <button
+                key={v}
+                type="button"
+                disabled={busy}
+                aria-pressed={mode === v}
+                className={`${button} ${mode === v ? "border-dash-ink-secondary bg-dash-card text-dash-ink ring-1 ring-inset ring-dash-ink-secondary" : ""}`}
+                onClick={() => {
+                  setMode(v);
+                  setNotice("");
+                }}
+              >
+                {v === "custom" ? "Custom dates" : `Last ${v} days`}
+              </button>
+            ))}
+          </div>
+          {refreshControl}
         </div>
         {mode === "custom" && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -176,7 +175,6 @@ export function CampaignTargetForm({
         Campaign targets (optional){current ? " · Saved" : ""}
       </summary>
       <form
-        className="mt-3"
         onSubmit={async (e) => {
           e.preventDefault();
           const rules = { ...c.targets };

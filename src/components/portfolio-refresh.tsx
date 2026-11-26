@@ -122,6 +122,7 @@ export function PortfolioRefresh({
     <div className={compact ? "text-sm" : "mt-4 text-sm"}>
       <div className="flex flex-wrap items-center gap-3">
         <button
+          type="button"
           className="rounded-xl bg-dash-accent px-5 py-3 font-semibold text-[#102033] shadow-sm disabled:opacity-50"
           title="Fetch updated Meta data. Checks are limited to once every five minutes."
           disabled={disabled || running}
@@ -131,6 +132,7 @@ export function PortfolioRefresh({
         </button>
         {running && (
           <button
+            type="button"
             className="underline"
             onClick={() => {
               cancelled.current = true;
