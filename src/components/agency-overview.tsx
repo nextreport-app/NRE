@@ -18,8 +18,6 @@ import {
 } from "./portfolio-board";
 import { PortfolioRefresh } from "./portfolio-refresh";
 import { portfolioRank } from "@/lib/performance-monitor/portfolio";
-const button =
-  "rounded-lg border border-dash-border px-3 py-2 text-sm disabled:opacity-50";
 export function AgencyOverview({
   initialClientId = "",
 }: {
@@ -293,9 +291,6 @@ export function AgencyOverview({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">{c.name}</h2>
-                <p className="mt-1 text-xs text-dash-ink-secondary">
-                  {c.currency} · {c.timezone}
-                </p>
               </div>
               <PortfolioBadge state={c.portfolio.state} />
             </div>
@@ -309,31 +304,6 @@ export function AgencyOverview({
                 onActivity={(value) => setActivationBusy(value ? c.id : null)}
               />
             )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <details className="relative">
-                <summary className={`${button} cursor-pointer`}>
-                  More options
-                </summary>
-                <div className="absolute left-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-dash-border bg-dash-card p-2 shadow-xl">
-                  <a
-                    className="rounded-lg p-2 text-sm hover:bg-dash-bg"
-                    href={`#meta-budget-${c.id}`}
-                  >
-                    Budget &amp; alerts
-                  </a>
-                  {c.adsManagerUrl && (
-                    <a
-                      className="rounded-lg p-2 text-sm hover:bg-dash-bg"
-                      href={c.adsManagerUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open Ads Manager ↗
-                    </a>
-                  )}
-                </div>
-              </details>
-            </div>
             {c.performance?.checkedAt && (
               <p className="mt-3 text-xs text-dash-ink-secondary">
                 {c.performanceFresh ? "Last refreshed" : "Saved snapshot"}:{" "}
