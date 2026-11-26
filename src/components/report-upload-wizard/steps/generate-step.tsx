@@ -403,17 +403,6 @@ export function WizardGenerateStep() {
 
             <div className="space-y-4">
               {csvVerification?.qualityIncidentId && (generateStatus === "idle" || generateStatus === "error") && <ReportRecoveryPanel key={csvVerification.qualityIncidentId} clientId={clientId} incidentId={csvVerification.qualityIncidentId} hasMismatch={csvVerification.status === "mismatch"} onRecheck={w.recheckRecovery} />}
-              {(previewKind === "normal" ||
-                previewKind === "comparison" ||
-                previewKind === "historical" ||
-                previewKind === "dayBreakdown") &&
-              generateStepPreviewReady &&
-              generateStatus === "idle" ? (
-                <>
-                <CsvVerificationPanel currency={w.clientCurrency} verification={csvVerification} refreshing={previewRefreshing} />
-                </>
-              ) : null}
-
               {(generateStatus === "idle" || generateStatus === "error") && (
                 <WizardFinalSettings
                   hasComparisons={!sectionsOnly && reportType === "WEEKLY"}
@@ -495,6 +484,17 @@ export function WizardGenerateStep() {
 
           {!generateStepPreviewReady && previewStatus === "loading" && generateStatus === "idle" ? (
             <p className="text-[14px] text-dash-ink-secondary">Loading report preview…</p>
+          ) : null}
+
+          {(previewKind === "normal" ||
+            previewKind === "comparison" ||
+            previewKind === "historical" ||
+            previewKind === "dayBreakdown") &&
+          generateStepPreviewReady &&
+          generateStatus === "idle" ? (
+            <>
+            <CsvVerificationPanel currency={w.clientCurrency} verification={csvVerification} refreshing={previewRefreshing} />
+            </>
           ) : null}
 
           {showGenerateFooter && (
