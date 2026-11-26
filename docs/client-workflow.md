@@ -34,3 +34,5 @@ Focused tests cover signed-out redirects, local callback validation, preserved c
 This is a source/route and mocked-data audit. It does not claim a live production signup, payment, Meta consent, GA4 consent or actual email delivery test. No production client assignments, schedules, provider data or emails are changed during verification.
 
 Legacy `/overview` and `/websites` permanently redirect to the corresponding `/performance/` routes, preserving query parameters. All dashboard routes remain private and excluded from search indexing.
+
+Meta Ads, GA4 and Search Console share the same navigation structure: choose a client on the platform's portfolio, then view only that client's dashboard. A dedicated return row above the heading leads back to that platform's portfolio; it stays separate from the platform tabs. Switching platforms preserves the selected client. Meta portfolio selections also use a client-specific URL, so reload and browser history retain the correct scope. Selected-client dashboards do not include an all-client switcher.

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { PerformanceBackLink } from "./performance-back-link";
 import { MetaBudgetPanel } from "./meta-budget-panel";
 import { MetaPerformanceDashboard } from "./meta-performance-dashboard";
 import { MetaMonitoringSetup } from "./meta-monitoring-setup";
@@ -29,8 +31,9 @@ export function AgencyOverview({
     [activationBusy, setActivationBusy] = useState<string | null>(null),
     [bulkRunning, setBulkRunning] = useState(false),
     [search, setSearch] = useState(""),
-    [filter, setFilter] = useState("all"),
-    [expanded, setExpanded] = useState(initialClientId);
+    [filter, setFilter] = useState("all");
+  const expanded = initialClientId;
+  const router = useRouter();
   const [budgetBusy, setBudgetBusy] = useState(false);
   const busy =
     activationBusy ??
@@ -42,12 +45,12 @@ export function AgencyOverview({
       expanded && loaded
         ? document.getElementById(`account-${expanded}`)
         : null;
-    if (panel) {
+    if (
+      panel &&
+      window.location.hash === `#${encodeURIComponent(`meta-budget-${expanded}`)}`
+    ) {
       const budgetId = `meta-budget-${expanded}`;
-      const target =
-        window.location.hash === `#${encodeURIComponent(budgetId)}`
-          ? (document.getElementById(budgetId) ?? panel)
-          : panel;
+      const target = document.getElementById(budgetId) ?? panel;
       target.scrollIntoView({
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
           ? "instant"
@@ -58,12 +61,7 @@ export function AgencyOverview({
     }
   }, [expanded, loaded]);
   function selectAccount(id: string) {
-    const closing = expanded === id;
-    setExpanded(closing ? "" : id);
-    if (closing)
-      requestAnimationFrame(() =>
-        document.getElementById(`open-account-${id}`)?.focus(),
-      );
+    router.push(`/performance/meta-ads?client=${encodeURIComponent(id)}`);
   }
   const load = useCallback(async () => {
     const r = await fetch("/api/agency-overview", { cache: "no-store" });
@@ -156,6 +154,7 @@ export function AgencyOverview({
 
   return (
     <div className="nre-meta-performance mx-auto w-full min-w-0 max-w-5xl text-dash-ink">
+      {expanded && <PerformanceBackLink view="meta" />}
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
         Meta Ads Performance Comparisons
       </h1>
@@ -173,8 +172,8 @@ export function AgencyOverview({
           </h2>
           <p className="mt-2 text-sm text-dash-ink-secondary">
             {clients.filter((c) => c.linked).length} of {clients.length} clients
-            have an ad account selected. Choose a client below, select its
-            ad account if needed, then load performance.
+            have an ad account selected. Choose a client below, select its ad
+            account if needed, then load performance.
           </p>
           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
             {[
@@ -220,7 +219,6 @@ export function AgencyOverview({
                   aria-pressed={filter === f.key}
                   onClick={() => {
                     setFilter(f.key);
-                    setExpanded("");
                   }}
                   className={`rounded-full border px-3 py-2 text-sm ${filter === f.key ? "border-dash-accent bg-dash-accent text-[#102033]" : "border-dash-border text-dash-ink-secondary"}`}
                 >
@@ -236,44 +234,22 @@ export function AgencyOverview({
             </nav>
           </section>
         )}
-      {!expanded ? (
+      {!expanded && (
         <div className="mt-5 flex flex-wrap gap-3">
           <input
             aria-label="Search clients"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setExpanded("");
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Find a client"
             className="w-full min-w-0 rounded-lg border border-dash-border bg-dash-bg px-3 py-2 sm:w-auto sm:flex-1"
           />
         </div>
-      ) : (
-        <div className="mt-5">
-          <label
-            className="text-xs font-medium text-dash-ink-secondary"
-            htmlFor="meta-client-switch"
-          >
-            Client account
-          </label>
-          <select
-            id="meta-client-switch"
-            value={expanded}
-            className="mt-2 block w-full rounded-xl border border-dash-border bg-dash-card px-4 py-3 text-sm sm:max-w-md"
-            onChange={(e) => {
-              setFilter("all");
-              setSearch("");
-              setExpanded(e.target.value);
-            }}
-          >
-            {clients?.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      )}
+      {expanded && clients && !clients.some((c) => c.id === expanded) && (
+        <p className="mt-5 text-sm text-dash-ink-secondary">
+          This client is unavailable. Return to all Meta ad accounts to choose
+          another.
+        </p>
       )}
       {clients?.some((c) => c.performanceEnabled || c.budgetEnabled) && (
         <PortfolioRefresh
@@ -334,13 +310,6 @@ export function AgencyOverview({
               />
             )}
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                className={button}
-                aria-expanded={expanded === c.id}
-                onClick={() => selectAccount(c.id)}
-              >
-                {expanded === c.id ? "← All accounts" : "View performance"}
-              </button>
               <details className="relative">
                 <summary className={`${button} cursor-pointer`}>
                   More options
@@ -451,7 +420,7 @@ export function AgencyOverview({
             )}
           </section>
         ))}
-      {visible && !visible.some((c) => c.id === expanded) && (
+      {visible && !expanded && (
         <PortfolioBoard
           rows={visible}
           selected={expanded}
