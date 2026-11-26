@@ -6,7 +6,7 @@ export function OverviewNavigation({ current, clientId }: { current: "meta" | "w
       {([
         ["meta", "/performance/meta-ads", "Meta Ads"],
         ["website", "/performance/google-analytics", "Website traffic (GA4)"],
-        ["seo", "/performance/search-console", "SEO (Search Console)"],
+        ["seo", "/performance/search-console", "Google Search Console"],
       ] as const).map(([key, href, label]) => (
         <Link key={key} href={clientId ? `${href}?client=${encodeURIComponent(clientId)}` : href} aria-current={current === key ? "page" : undefined}
           className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent sm:px-5 sm:text-sm ${current === key ? "bg-dash-accent text-[#102033] shadow-sm" : "text-dash-ink-secondary hover:bg-dash-bg hover:text-dash-ink"}`}>
