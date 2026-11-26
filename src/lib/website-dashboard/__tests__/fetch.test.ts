@@ -82,7 +82,7 @@ describe("GA4 data contracts", () => {
   it("reads period metrics from rows, not absent totals, in property timezone", async () => {
     const s = await fetchWebsiteSnapshot("token", "552954256", 7, now);
     expect(s.current).toEqual(current);
-    expect(s.devices).toEqual([{name: "mobile", sessions: 100, engagedSessions: 70, keyEvents: 25}]);
+    expect(s.devices).toMatchObject([{name: "mobile", sessions: 100, engagedSessions: 70, keyEvents: 25, activeUsers: 75, eventCount: 430, engagementRate: 0.7, bounceRate: 0.3, sessionKeyEventRate: 0.1, averageSessionDuration: 90}]);
     expect(s.countries).toEqual([{name: "India", activeUsers: 75}]);
     expect(s.pageTitles).toEqual([{name: "Pricing", screenPageViews: 150}]);
     expect(s.property.timezone).toBe("Asia/Kolkata");
@@ -368,4 +368,35 @@ it("fetches custom periods and daily metrics without the removed landing-page re
   expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",{...selection,startIso:"2026-11-11"})).toBeNull();
   expect(parseWebsiteSnapshot(JSON.stringify(s),"552954256",7)).toBeNull();
   for (const call of vi.mocked(runGa4Report).mock.calls) expect(call[2].metrics.length).toBeLessThanOrEqual(10);
+});
+
+it("joins device event metrics by category rather than response order and preserves zero", async () => {
+  const base = vi.mocked(runGa4Report).getMockImplementation()!;
+  vi.mocked(runGa4Report).mockImplementation(async (...args) => {
+    const response = await base(...args);
+    if (args[2].dimensions?.[0]?.name !== "deviceCategory") return response;
+    const extra = args[2].metrics[0].name === "activeUsers";
+    return {
+      ...response,
+      rowCount: 2,
+      rows: extra
+        ? [
+            { dimensionValues: [{value: "desktop"}], metricValues: [{value: "40"}, {value: "400"}] },
+            { dimensionValues: [{value: "mobile"}], metricValues: [{value: "10"}, {value: "0"}] },
+          ]
+        : [response.rows![0], {...response.rows![0], dimensionValues: [{value: "desktop"}]}],
+    };
+  });
+  const snapshot = await fetchWebsiteSnapshot("token", "552954256", 7, now);
+  expect(snapshot.devices?.find(row=>row.name === "mobile")).toMatchObject({eventCount: 0, activeUsers: 10, engagementRate: .7});
+  expect(snapshot.devices?.find(row=>row.name === "desktop")).toMatchObject({eventCount: 400, activeUsers: 40});
+});
+it("keeps missing supplementary device metrics unavailable rather than inventing zero", async () => {
+  const base = vi.mocked(runGa4Report).getMockImplementation()!;
+  vi.mocked(runGa4Report).mockImplementation(async (...args) =>
+    args[2].dimensions?.[0]?.name === "deviceCategory" && args[2].metrics[0].name === "activeUsers"
+      ? {rowCount: 0} : base(...args),
+  );
+  const snapshot = await fetchWebsiteSnapshot("token", "552954256", 7, now);
+  expect(snapshot.devices?.[0]).toMatchObject({eventCount: null, activeUsers: null, sessions: 100, keyEvents: 25});
 });

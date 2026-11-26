@@ -2,7 +2,7 @@
 
 import { isWebsiteRangeFailure } from "@/lib/website-dashboard/refresh-messages";
 import { performancePortfolioCard, performancePortfolioAction } from "./performance-portfolio-styles";
-import { ComparisonPeriod, BreakdownTotals, CountryLabel, DeviceLabel, sumReported } from "./performance-presentation";
+import { ComparisonPeriod, BreakdownTotals, CountryLabel, DeviceLabel, ExternalDashboardLink, sumReported } from "./performance-presentation";
 import { PerformanceBackLink } from "./performance-back-link";
 import { OverviewNavigation } from "./overview-navigation";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
@@ -18,6 +18,12 @@ import {
   type WebsiteSnapshot,
   type WebsiteMetric,
 } from "@/lib/website-dashboard/model";
+const deviceColumns: Array<[WebsiteMetric, string]> = [
+  ["sessions", "Sessions"], ["activeUsers", "Active users"], ["totalUsers", "Users"], ["newUsers", "New users"],
+  ["screenPageViews", "Page views"], ["engagedSessions", "Engaged sessions"], ["engagementRate", "Engagement rate"],
+  ["bounceRate", "Bounce rate"], ["eventCount", "Event count"], ["keyEvents", "Key events"],
+  ["sessionKeyEventRate", "Key event rate"], ["averageSessionDuration", "Avg. session"],
+];
 interface Client {
   connected?: boolean;
   id: string;
@@ -494,6 +500,7 @@ export function WebsiteDashboard({
                     <p className="mt-1 text-xs text-dash-ink-secondary">
                       Website activity by device · {timeframeLabel}
                     </p>
+                    {data.devices?.some(row=>row.eventCount === undefined) && <p className="mt-3 text-xs text-dash-ink-secondary">Refresh GA4 to load the additional device metrics. Missing values appear as —.</p>}
                     {data.devices?.length ? (
                       <>
                         <BreakdownTotals
@@ -517,23 +524,11 @@ export function WebsiteDashboard({
                         <div className="mt-4 max-w-full overflow-x-auto">
                           <table
                             className="w-full text-left text-sm"
-                            style={{ minWidth: 480 }}
+                            style={{ minWidth: 1400 }}
                           >
                             <thead>
                               <tr>
-                                {[
-                                  "Device",
-                                  "Sessions",
-                                  "Engaged sessions",
-                                  "Key events",
-                                ].map((label) => (
-                                  <th
-                                    key={label}
-                                    className="whitespace-nowrap pb-3 pr-4 text-xs text-dash-ink-secondary"
-                                  >
-                                    {label}
-                                  </th>
-                                ))}
+                                {["Device", ...deviceColumns.map(([,label])=>label)].map(label => <th key={label} className="whitespace-nowrap pb-3 pr-4 text-xs text-dash-ink-secondary">{label}</th>)}
                               </tr>
                             </thead>
                             <tbody>
@@ -545,15 +540,7 @@ export function WebsiteDashboard({
                                   <th className="py-3 pr-4 font-normal">
                                     <DeviceLabel device={row.name} />
                                   </th>
-                                  <td className="py-3 pr-4">
-                                    {num(row.sessions)}
-                                  </td>
-                                  <td className="py-3 pr-4">
-                                    {num(row.engagedSessions)}
-                                  </td>
-                                  <td className="py-3 pr-4">
-                                    {num(row.keyEvents)}
-                                  </td>
+                                  {deviceColumns.map(([key])=><td key={key} className="whitespace-nowrap py-3 pr-4">{formatWebsiteMetric(key, row[key])}</td>)}
                                 </tr>
                               ))}
                             </tbody>
@@ -607,6 +594,7 @@ export function WebsiteDashboard({
                     <WebsiteDetailTable rows={data.trend} kind="date" />
               </section>
               </>}
+              <ExternalDashboardLink href={`https://analytics.google.com/analytics/web/#/p${data.property.propertyId}/reports/intelligenthome`}>Open this property in Google Analytics</ExternalDashboardLink>
             </>
           )}
         </>

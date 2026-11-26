@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExternalDashboardLink } from "./performance-presentation";
 import { MonitoringStatusGuide } from "./monitoring-status-guide";
 import {
   loadMetaOverview,
@@ -424,6 +425,7 @@ export function AgencyOverview({
                 )}
               </div>
             )}
+            {c.adsManagerUrl && <ExternalDashboardLink href={c.adsManagerUrl}>Open this account in Ads Manager</ExternalDashboardLink>}
           </section>
         ))}
       {visible && !expanded && (

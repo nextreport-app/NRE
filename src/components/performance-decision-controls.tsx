@@ -70,10 +70,9 @@ export function DecisionSettingsPanel({
       aria-label="Comparison controls"
       className="rounded-xl border border-dash-border bg-dash-bg p-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">Compare periods</h3>
-        {refreshControl}
-      </div>
+      {refreshControl && (
+        <div className="flex justify-end">{refreshControl}</div>
+      )}
       <form
         className="mt-3"
         onSubmit={async (e) => {
