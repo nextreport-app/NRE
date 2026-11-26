@@ -1,5 +1,4 @@
 "use client";
-import {ApiSourceDownload} from "./api-source-download";
 import {ReportDownloadLink} from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
@@ -56,7 +55,6 @@ function formatGeneratedAt(iso: string): string {
 type WizardGenerateSuccessPanelProps = {
   clientCurrency?: string;
   clientTimezone?: string;
-  apiSourceSessionId?: string | null;
   clientName: string;
   clientId: string;
   reportId: string | null;
@@ -92,7 +90,7 @@ type WizardGenerateSuccessPanelProps = {
 };
 
 export function WizardGenerateSuccessPanel({
-  clientCurrency, clientTimezone, apiSourceSessionId,
+  clientCurrency, clientTimezone,
   clientName,
   clientId,
   reportId,
@@ -155,14 +153,6 @@ export function WizardGenerateSuccessPanel({
     if (reportId && shareToken) {
       persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
     }
-  }
-
-  /** Open in a new tab only — never navigate this tab (see noopener note below). */
-  function openExitLink(href: string) {
-    persistSnapshotIfReady();
-    // With noopener/noreferrer, window.open often returns null even when the tab opened successfully.
-    // A null check must not trigger same-tab navigation — that caused duplicate navigation (new tab + current tab).
-    window.open(href, "_blank", "noopener,noreferrer");
   }
 
   const shareViewCopySplitClass =
@@ -257,7 +247,6 @@ export function WizardGenerateSuccessPanel({
             ) : <Link href={`/clients/${clientId}#provider-connections`} target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}
           </div>
           <p className="mt-3 text-xs leading-relaxed text-dash-ink-secondary">Edit your downloaded PPTX in PowerPoint or your saved Google Slides copy in Slides.</p>
-          {apiSourceSessionId && <ApiSourceDownload clientId={clientId} uploadSessionId={apiSourceSessionId} />}
         </section>
 
         {publishedAt && <p className="text-sm text-dash-ink-secondary">Published edits are live.</p>}
@@ -439,14 +428,16 @@ export function WizardGenerateSuccessPanel({
             Generate another report for <span className="font-semibold">{clientName}</span>
           </button>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
-            <Link href="/reports?tab=scheduled" className="font-medium text-dash-accent hover:underline">Review scheduled drafts</Link>
-            <button
-              type="button"
-              onClick={() => openExitLink(allReportsHref)}
+            <Link href="/reports?tab=scheduled" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className="font-medium text-dash-accent hover:underline">Review scheduled drafts</Link>
+            <Link
+              href={allReportsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={persistSnapshotIfReady}
               className="font-medium text-dash-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
             >
               View all reports
-            </button>
+            </Link>
           </div>
         </section>
       </div>
