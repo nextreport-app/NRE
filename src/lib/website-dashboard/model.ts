@@ -68,6 +68,7 @@ export const websiteSnapshotSchema = z.object({
   trend: z.array(
     metrics.partial().extend({ date: z.string(), sessions: number, keyEvents: number }),
   ),
+  devices: z.array(z.object({ name: z.string(), sessions: number, engagedSessions: number, keyEvents: number })).optional(),
   countries: z.array(z.object({ name: z.string(), activeUsers: number })).optional(),
   pageTitles: z.array(z.object({ name: z.string(), screenPageViews: number })).optional(),
   warnings: z.array(z.string()),

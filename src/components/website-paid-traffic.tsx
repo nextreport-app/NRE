@@ -22,7 +22,7 @@ export function WebsitePaidTraffic({ data }: { data: WebsiteSnapshot }) {
           {paid.map((row) => (
             <div
               key={row.name}
-              className="rounded-lg border border-dash-border px-3 py-2"
+              className="nre-ga4-metric-card relative overflow-hidden rounded-lg border border-dash-border px-3 py-2"
             >
               <p className="text-xs text-dash-ink-secondary">{row.name}</p>
               <p className="mt-1 text-lg font-semibold">

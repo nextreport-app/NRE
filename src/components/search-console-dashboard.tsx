@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { SearchConsoleTrend } from "./search-console-trend";
 import {
-  searchCountry,
-  searchDateRange,
-  searchClickShare,
-} from "@/lib/search-console/presentation";
+  CountryLabel,
+  DeviceLabel,
+  ComparisonPeriod,
+} from "./performance-presentation";
+import { SearchConsoleTrend } from "./search-console-trend";
+import { searchClickShare } from "@/lib/search-console/presentation";
 import { searchConsoleSiteLabel } from "@/lib/search-console/site-label";
 import {
   performancePortfolioCard,
@@ -77,60 +78,6 @@ export function GscMetricChange({
     >
       {text}
     </span>
-  );
-}
-function CountryFlag({ code }: { code: string }) {
-  const { region } = searchCountry(code);
-  return region ? (
-    <svg
-      aria-hidden="true"
-      width="24"
-      height="16"
-      viewBox="0 0 513 342"
-      className="shrink-0 rounded-sm"
-    >
-      <use href={`/country-flags.svg#${region}`} />
-    </svg>
-  ) : null;
-}
-function DeviceIcon({ device }: { device: string }) {
-  const type = device.toLowerCase();
-  return (
-    <svg
-      aria-hidden="true"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-    >
-      {type === "desktop" ? (
-        <>
-          <rect x="3" y="3" width="18" height="13" rx="2" />
-          <path d="M8 21h8M12 16v5" />
-        </>
-      ) : type === "mobile" || type === "tablet" ? (
-        <>
-          <rect
-            x={type === "mobile" ? "6" : "3"}
-            y="2"
-            width={type === "mobile" ? "12" : "18"}
-            height="20"
-            rx="2"
-          />
-          <path d="M11 18h2" />
-        </>
-      ) : (
-        <>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M9 9h6v6H9z" />
-        </>
-      )}
-    </svg>
   );
 }
 export function SearchConsoleTable({
@@ -223,16 +170,9 @@ export function SearchConsoleTable({
                 <tr key={row.name} className="border-t border-dash-border">
                   <th className="max-w-md break-all py-3 pr-4 font-normal">
                     {kind === "country" ? (
-                      <span className="inline-flex items-center gap-2">
-                        <CountryFlag code={row.name} />
-                        {searchCountry(row.name).name}
-                      </span>
+                      <CountryLabel country={row.name} />
                     ) : kind === "device" ? (
-                      <span className="inline-flex items-center gap-2">
-                        <DeviceIcon device={row.name} />
-                        {row.name.charAt(0).toUpperCase() +
-                          row.name.slice(1).toLowerCase()}
-                      </span>
+                      <DeviceLabel device={row.name} />
                     ) : (
                       row.name
                     )}
@@ -610,35 +550,11 @@ export function SearchConsoleDashboard({
         )}
       {selected && data && (
         <>
-          <section
-            aria-label="Comparison dates"
-            className="mt-5 rounded-xl border border-dash-border bg-dash-card p-4"
-          >
-            <h2 className="text-sm font-semibold">
-              {data.rangeKey.includes(":")
-                ? `${data.days} days`
-                : `Last ${data.days} days`}{" "}
-              vs previous {data.days} days
-            </h2>
-            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              <p>
-                <span className="block text-xs text-dash-ink-secondary">
-                  Selected period
-                </span>
-                <span className="mt-1 block">
-                  {searchDateRange(data.currentPeriod)}
-                </span>
-              </p>
-              <p>
-                <span className="block text-xs text-dash-ink-secondary">
-                  Previous period
-                </span>
-                <span className="mt-1 block">
-                  {searchDateRange(data.previousPeriod)}
-                </span>
-              </p>
-            </div>
-          </section>
+          <ComparisonPeriod
+            current={data.currentPeriod}
+            previous={data.previousPeriod}
+            custom={data.rangeKey.includes(":")}
+          />
           {!entry?.fresh && (
             <p className="mt-2 text-sm text-amber-400">
               Saved data is older or the last refresh failed. Refresh before
