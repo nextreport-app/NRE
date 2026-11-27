@@ -234,32 +234,38 @@ export function ScheduledReportsCard({
             </button>
           )}
         </div>
-        <ol
-          aria-label="How scheduled reports work"
-          className="mt-5 grid gap-3 sm:grid-cols-3"
-        >
-          {[
-            ["1", "We prepare", "Fresh Meta Ads data becomes a private draft."],
-            ["2", "You review", "Check the report and approve it."],
-            ["3", "You send", "Email the approved report when you’re ready."],
-          ].map(([n, title, body]) => (
-            <li
-              key={n}
-              className="rounded-xl border border-dash-border bg-dash-bg p-3"
-            >
-              <span
-                className="mb-2 flex h-6 w-6 items-center justify-center rounded-full bg-dash-accent/15 text-xs font-semibold text-dash-accent"
-                aria-hidden="true"
+        {!editing && (
+          <ol
+            aria-label="How scheduled reports work"
+            className="mt-5 grid gap-3 sm:grid-cols-3"
+          >
+            {[
+              [
+                "1",
+                "We prepare",
+                "Fresh Meta Ads data becomes a private draft.",
+              ],
+              ["2", "You review", "Check the report and approve it."],
+              ["3", "You send", "Email the approved report when you’re ready."],
+            ].map(([n, title, body]) => (
+              <li
+                key={n}
+                className="rounded-xl border border-dash-border bg-dash-bg p-3"
               >
-                {n}
-              </span>
-              <p className="text-sm font-semibold">{title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-dash-ink-secondary">
-                {body}
-              </p>
-            </li>
-          ))}
-        </ol>
+                <span
+                  className="mb-2 flex h-6 w-6 items-center justify-center rounded-full bg-dash-accent/15 text-xs font-semibold text-dash-accent"
+                  aria-hidden="true"
+                >
+                  {n}
+                </span>
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-dash-ink-secondary">
+                  {body}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
       {!view && !error && (
         <p role="status" className="text-sm">
