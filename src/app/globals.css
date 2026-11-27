@@ -1180,16 +1180,16 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
 [data-site-theme="light"] .nre-meta-performance .text-blue-400 { color: #1d4ed8; }
 [data-site-theme="light"] .nre-meta-performance .text-violet-400 { color: #6d28d9; }
 
-/* Ready accounts share the report-type selector's warm amber/brown treatment. */
+/* Green actions/badges indicate a usable connection; cards keep their brand accent. */
 .nre-performance-action-ready,
 .nre-performance-linked-badge {
-  color: var(--nre-dash-ink);
-  border-color: color-mix(in srgb, var(--nre-dash-accent) 55%, var(--nre-dash-border));
-  background: color-mix(in srgb, var(--nre-dash-accent) 10%, var(--nre-dash-card));
+  color: #6ee7b7;
+  border-color: #2f8565;
+  background: #12392d;
 }
 .nre-performance-action-ready:hover {
-  border-color: var(--nre-dash-accent);
-  background: color-mix(in srgb, var(--nre-dash-accent) 18%, var(--nre-dash-card));
+  border-color: #6ee7b7;
+  background: #194c3b;
 }
 .nre-performance-card-ready {
   border-color: color-mix(in srgb, var(--nre-dash-accent) 55%, var(--nre-dash-border));
@@ -1197,11 +1197,11 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
 }
 html[data-site-theme="light"] .nre-performance-action-ready,
 html[data-site-theme="light"] .nre-performance-linked-badge {
-  color: #805017;
-  border-color: #c99c5d;
-  background: #fff4e2;
+  color: #116341;
+  border-color: #68a887;
+  background: #e8f7ef;
 }
-html[data-site-theme="light"] .nre-performance-action-ready:hover { background: #ffe9c4; border-color: #a87836; }
+html[data-site-theme="light"] .nre-performance-action-ready:hover { background: #d5efdf; border-color: #287a52; }
 html[data-site-theme="light"] .nre-performance-card-ready { border-color: #c99c5d; box-shadow: inset 3px 0 0 #b78033; }
 
 /* GA4 overview: a clear metric grid with subtle category accents. */
