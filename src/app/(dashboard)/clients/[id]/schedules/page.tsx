@@ -27,17 +27,16 @@ export default async function ClientSchedulesPage({
         ← Back to My Clients
       </Link>
       <h1 className="mt-3 break-words text-2xl font-bold">
-        Report scheduling · {client.accountName}
+        Automate reporting · {client.accountName}
       </h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        Prepare recurring Meta Ads reports. Review each draft, then send it when
-        you’re ready.
+        Save your reporting workflow once. Review each scheduled report before sending.
       </p>
       <Link
         href="/reports?tab=scheduled"
         className="my-5 inline-flex min-h-11 items-center rounded-xl border border-dash-border bg-dash-card px-4 py-2 text-sm font-medium hover:border-dash-accent"
       >
-        Review scheduled drafts →
+        Review reports →
       </Link>
       <ScheduledReportsCard
         key={client.id}

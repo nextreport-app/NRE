@@ -1,5 +1,12 @@
+import {
+  applyScheduledWizardOptions,
+  hasCompleteAutomationConfiguration,
+} from "./wizard-options";
 import { recordReportSent } from "../report-reminders/completion";
-import { resolveClientUser, updateResolvedProviderUser } from "@/lib/client-provider-connections";
+import {
+  resolveClientUser,
+  updateResolvedProviderUser,
+} from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { scheduledReportType, cadenceLabel } from "./cadence";
 import { buildScheduledTableDraft } from "./table-draft";
@@ -63,7 +70,7 @@ export async function saveReportSchedule(
     throw new ServiceError("An active trial or subscription is required.", 403);
   if (enabled && !(await schedulerHealth()).healthy)
     throw new ServiceError(
-      "The recurring scheduler is not connected or its check is overdue. Save a paused schedule or contact support.",
+      "Scheduled reporting is temporarily unavailable. Your automation has not been activated. Please try again later or contact support.",
       503,
     );
   const nextRunAt = nextScheduledAt(settings);
@@ -91,6 +98,41 @@ export async function saveReportSchedule(
       },
     });
   });
+}
+/** Activation requires a completed, owned sample and explicit wizard configuration. */
+export async function saveAutomationSchedule(
+  clientId: string,
+  userId: string,
+  input: unknown,
+  sampleReportId: string,
+) {
+  const settings = scheduleSettingsSchema.parse(input);
+  if (
+    !["WEEKLY", "MONTHLY"].includes(settings.cadence) ||
+    !hasCompleteAutomationConfiguration(settings)
+  )
+    throw new ServiceError(
+      "Complete the campaigns, objectives and metrics steps before saving automation.",
+    );
+  const sample = await prisma.report.findFirst({
+    where: {
+      id: sampleReportId,
+      clientId,
+      client: { userId },
+      status: "COMPLETE",
+      platform: "META",
+      filePath: { not: null },
+      requiresApproval: true,
+      reportType: settings.cadence as "WEEKLY" | "MONTHLY",
+    },
+    select: { id: true },
+  });
+  if (!sample)
+    throw new ServiceError(
+      "Generate and review a sample report for this automation first.",
+      400,
+    );
+  return saveReportSchedule(clientId, userId, settings, true);
 }
 export async function createManualDraft(scheduleId: string, userId: string) {
   const schedule = await prisma.reportSchedule.findUnique({
@@ -170,7 +212,7 @@ async function notifyOwner(runId: string) {
   });
   if (!run || !["READY", "FAILED"].includes(run.status)) return;
   const client = run.schedule.client;
-  const text = `${client.accountName}: ${run.status === "READY" ? "your scheduled report draft is ready for review" : "your scheduled report draft needs attention"}.\n${run.error ?? "Nothing has been sent to the client. Review and approve the report before delivery."}\nhttps://nextreport.in/clients/${client.id}/schedules`;
+  const text = `${client.accountName}: ${run.status === "READY" ? "your scheduled report draft is ready for review" : "your scheduled report draft needs attention"}.\n${run.error ?? "Nothing has been sent to the client. Review the report and recipients, then click Send."}\nhttps://nextreport.in/clients/${client.id}/schedules#report-run-${run.id}`;
   const key = `schedule-notice:${run.id}:${run.status}`;
   await queueEmail({
     key,
@@ -295,13 +337,16 @@ export async function processScheduledRun(runId: string) {
       tokenExpiresAt: user.metaTokenExpiresAt,
     });
     if (fresh.refreshed)
-      await updateResolvedProviderUser({
-        where: { id: user.id },
-        data: {
-          metaAccessToken: encryptMetaToken(fresh.accessToken),
-          metaTokenExpiresAt: fresh.tokenExpiresAt,
+      await updateResolvedProviderUser(
+        {
+          where: { id: user.id },
+          data: {
+            metaAccessToken: encryptMetaToken(fresh.accessToken),
+            metaTokenExpiresAt: fresh.tokenExpiresAt,
+          },
         },
-      }, user);
+        user,
+      );
     const account = await fetchMetaAdAccountMetadata(
       fresh.accessToken,
       config.accountId,
@@ -374,7 +419,7 @@ export async function processScheduledRun(runId: string) {
     form.set("dateSelection", JSON.stringify(dateSelection));
     form.set("includePreviousMonthComparison", "false");
     form.set("showBudgetPacingOnCover", String(settings.showBudget));
-    form.set("selectedAdSets", "[]");
+    applyScheduledWizardOptions(form, settings.wizardOptions);
     if (settings.campaignNames.length)
       form.set("selectedCampaigns", JSON.stringify(settings.campaignNames));
     let standardData: import("../nre/report-data").ReportData | undefined;
@@ -685,10 +730,20 @@ export async function retryScheduledDelivery(runId: string) {
     select: { status: true, acceptedAt: true },
   });
   if (result.accepted) {
-    await prisma.$transaction(tx=>recordReportSent(tx,run.schedule.client.id,delivery?.acceptedAt ?? new Date()));
+    await prisma.$transaction((tx) =>
+      recordReportSent(
+        tx,
+        run.schedule.client.id,
+        delivery?.acceptedAt ?? new Date(),
+      ),
+    );
     await prisma.scheduledReportRun.update({
       where: { id: runId },
-      data: { status: "SENT", deliveredAt: delivery?.acceptedAt ?? new Date(), error: null },
+      data: {
+        status: "SENT",
+        deliveredAt: delivery?.acceptedAt ?? new Date(),
+        error: null,
+      },
     });
   } else if (result.cancelled || delivery?.status === "REVIEW")
     await prisma.scheduledReportRun.update({

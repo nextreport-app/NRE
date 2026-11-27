@@ -13,8 +13,8 @@ export function clientCardActions(clientId: string, scheduling = false) {
     },
     {
       href: `/clients/${clientId}/${scheduling ? "reports/new" : "schedules"}`,
-      label: scheduling ? "Generate report" : "Report scheduling",
-      description: scheduling ? "Create a one-off client report" : "Prepare recurring report drafts",
+      label: scheduling ? "Generate report" : "Automate reporting",
+      description: scheduling ? "Create a one-off client report" : "Set up recurring reports with your saved choices",
       icon: (scheduling ? "report" : "schedule") as ActionIcon,
     },
     {

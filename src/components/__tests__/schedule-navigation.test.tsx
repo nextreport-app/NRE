@@ -25,7 +25,7 @@ describe("Scheduling navigation and ownership", () => {
     expect(html).toContain('data-client="client-1"');
     expect(html).toContain('href="/clients"');
     expect(html).toContain("← Back to My Clients");
-    expect(html).toContain("Report scheduling");
+    expect(html).toContain("Automate reporting");
     expect(html).toContain('href="/reports?tab=scheduled"');
     expect(html).not.toContain('aria-label="Client workspace"');
     expect(html).not.toContain('/clients/client-1/reports/new');

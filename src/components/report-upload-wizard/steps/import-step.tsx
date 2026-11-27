@@ -1,4 +1,5 @@
 "use client";
+import { WizardAutomationImport } from "../ui/wizard-automation-import";
 import {ContentReportPeriodControls} from "../ui/content-report-period-controls";
 import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
 import { metaApiImportRange, type MetaApiReportSelection } from "@/lib/nre/meta-api-import-range";
@@ -27,6 +28,7 @@ import { CsvDateGuidanceBanner } from "../ui/csv-date-guidance-banner";
 export function WizardImportStep() {
   const w = useWizardContext();
   if (w.step !== 1) return null;
+  if (w.automationCadence) return <WizardAutomationImport />;
   const {
     analyzeErrors,
     analyzeMessage,

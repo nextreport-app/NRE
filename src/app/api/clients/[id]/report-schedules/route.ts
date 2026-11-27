@@ -10,6 +10,7 @@ import { scheduleSettingsSchema } from "@/lib/report-schedules/calendar";
 import { reportApprovalDigest } from "@/lib/report-schedules/approval";
 import {
   saveReportSchedule,
+  saveAutomationSchedule,
   createManualDraft,
   processScheduledRun,
   approveScheduledDraft,
@@ -18,6 +19,18 @@ import {
 } from "@/lib/report-schedules/service";
 export const maxDuration = 300;
 const schema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("saveAutomation"),
+    settings: scheduleSettingsSchema,
+    sampleReportId: z.string().min(1),
+    reviewed: z.literal(true),
+  }),
+  z.object({
+    action: z.literal("sendReviewed"),
+    runId: z.string().min(1),
+    digest: z.string().regex(/^[a-f0-9]{64}$/),
+    reviewed: z.literal(true),
+  }),
   z.object({
     action: z.literal("save"),
     settings: scheduleSettingsSchema,
@@ -146,6 +159,15 @@ export async function POST(
         "Check the schedule, recipient addresses and requested action.",
       );
     const input = parsed.data;
+    if (input.action === "saveAutomation") {
+      await saveAutomationSchedule(
+        id,
+        session.user.id,
+        input.settings,
+        input.sampleReportId,
+      );
+      return NextResponse.json({ ok: true });
+    }
     if (input.action === "save") {
       await saveReportSchedule(
         id,
@@ -184,6 +206,20 @@ export async function POST(
       where: { id: input.runId, schedule: { clientId: id } },
     });
     if (!run) throw new ServiceError("Not found", 404);
+    if (input.action === "sendReviewed") {
+      if (["SENDING", "SENT"].includes(run.status)) {
+        if (run.approvalDigest !== input.digest)
+          throw new ServiceError(
+            "The report changed. Reload and review it again.",
+            409,
+          );
+      } else await approveScheduledDraft(run.id, session.user.id, input.digest);
+      const delivery = await sendApprovedDraft(run.id, session.user.id);
+      return NextResponse.json({
+        ok: delivery.accepted,
+        pending: !delivery.accepted,
+      });
+    }
     if (input.action === "approve")
       await approveScheduledDraft(run.id, session.user.id, input.digest);
     else if (input.action === "skip")

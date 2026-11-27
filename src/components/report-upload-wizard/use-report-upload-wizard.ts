@@ -1,4 +1,6 @@
 "use client";
+import { automationSampleDateSelection } from "@/lib/report-schedules/wizard-options";
+import type { AutomationReportConfiguration } from "@/lib/report-schedules/wizard-options";
 import { campaignSpendRequestKey } from "@/lib/nre/campaign-selection-spend";
 import {metaReportSelectionSchema,metaReportTitle,type MetaReportSelection} from "@/lib/nre/meta-report-content/selection";
 import { formatClientCalendarDate, formatClientCalendarRange } from "@/lib/client-date-format";
@@ -141,7 +143,12 @@ export function useReportUploadWizard({
   initialShowAgencyNameOnCover = false,
   accountDisplayName = null,
   userId,
+  automationCadence,
+  automationSettings,
 }: ReportUploadWizardProps) {
+  // Restore a saved setup once; later objective/metric edits remain user-controlled.
+  const automationMetricsRestored = useRef(false);
+  const [automationReportConfiguration, setAutomationReportConfiguration] = useState<AutomationReportConfiguration | null>(null);
   const [providerStatus,setProviderStatus]=useState({metaConnected,metaConnectedName,googleAdsConnected,tiktokConnected,ga4Connected});
   const [hasGoogleDriveConnected, setHasGoogleDriveConnected] = useState(initialHasGoogleDriveConnected);
   const [linkedMetaAdAccountId, setLinkedMetaAdAccountId] = useState(initialLinkedMetaAdAccountId);
@@ -223,13 +230,14 @@ export function useReportUploadWizard({
   const [selectedPlatformCard, setSelectedPlatformCard] = useState<"META" | "GOOGLE" | "TIKTOK" | null>("META");
 
   useLayoutEffect(() => {
+    if (automationCadence) return;
     const initial = readInitialPlatformPickerState(showTikTokOption);
     if (!initial.hasSavedPlatformPreference) return;
     setWizardKind(initial.wizardKind);
     setSelectedPlatformCard(initial.selectedPlatformCard);
     setPlatformPickerExpanded(false);
     setHasSavedPlatformPreference(true);
-  }, [showTikTokOption]);
+  }, [showTikTokOption, automationCadence]);
 
   function rememberPlatformChoice(choice: WizardPlatformChoice) {
     saveWizardPlatformChoice(choice);
@@ -268,7 +276,7 @@ export function useReportUploadWizard({
   // ultimately sent to the server). A mismatch between the two pauses on
   // step 1 with an inline warning instead of dispatching forward — see
   // handleAnalyze/handleMismatchContinueAnyway/handleMismatchGoBack.
-  const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>("csv");
+  const [dataSourceMode, setDataSourceMode] = useState<WizardDataSource>(automationCadence ? "api" : "csv");
   const [hasSavedImportSource, setHasSavedImportSource] = useState(false);
   const [mtdFile, setMtdFile] = useState<File | null>(null);
   /** Parsed CSV cache from /analyze — metrics, preview, and generate reuse this instead of re-uploading. */
@@ -417,9 +425,9 @@ export function useReportUploadWizard({
     last14: DateRangeIso;
   } | null>(null);
   const [mtdRange, setMtdRange] = useState<DateRangeIso | null>(null);
-  const [dateMode, setDateMode] = useState<DateMode>("last7");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
+  const [dateMode, setDateMode] = useState<DateMode>(automationCadence === "MONTHLY" ? "custom" : "last7");
+  const [customStart, setCustomStart] = useState(automationCadence === "MONTHLY" ? previousCompleteMonth(new Date(),clientTimezone).startIso : "");
+  const [customEnd, setCustomEnd] = useState(automationCadence === "MONTHLY" ? previousCompleteMonth(new Date(),clientTimezone).endIso : "");
   const [customRangeError, setCustomRangeError] = useState<string | null>(null);
   const [longRangeConfirmed, setLongRangeConfirmed] = useState(false);
   // Fix 8 — Report Type selector, top of the Dates step. Monthly hides the
@@ -427,7 +435,7 @@ export function useReportUploadWizard({
   // only. Comparison (A1) hides both the weekly picker AND the MTD Period
   // card, showing its own Period A/B preset picker instead — see
   // fetchPreview/handleGenerate, which branch on this value.
-  const [reportType, setReportType] = useState<ReportTypeValue>("WEEKLY");
+  const [reportType, setReportType] = useState<ReportTypeValue>(automationCadence ?? "WEEKLY");
   const [reportSelection,setReportSelection]=useState<MetaReportSelection|null>(null);
   const [reportContentPrepared,setReportContentPrepared]=useState(false);
   function buildUploadFormData(file:File|null,extra:Record<string,unknown>={},id?:string|null){return baseBuildUploadFormData(file,{...extra,reportSelection:reportSelection??undefined},id);}
@@ -469,7 +477,7 @@ export function useReportUploadWizard({
   const [comparisonData, setComparisonData] = useState<ComparisonReportData | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalReportData | null>(null);
   const [dayBreakdownData, setDayBreakdownData] = useState<DayBreakdownReportData | null>(null);
-  const [showBudgetOnCover, setShowBudgetOnCover] = useState(false);
+  const [showBudgetOnCover, setShowBudgetOnCover] = useState(automationSettings?.showBudget ?? false);
   const [budgetToggleSaving, setBudgetToggleSaving] = useState(false);
 
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
@@ -504,7 +512,7 @@ export function useReportUploadWizard({
   const shareCopyInFlightRef = useRef(false);
   const clientMessageCopyInFlightRef = useRef(false);
 
-  const resumeReportId = searchParams.get("resumeReport");
+  const resumeReportId = automationCadence ? null : searchParams.get("resumeReport");
   const [resumeBootstrapping, setResumeBootstrapping] = useState(() => !!resumeReportId);
   const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
 
@@ -542,6 +550,7 @@ export function useReportUploadWizard({
 
   useEffect(() => {
     clientPrefsHydratedRef.current = false;
+    if (automationCadence) return;
     const prefs = readClientWizardPreferences(clientId);
     setReportSelection(metaReportSelectionSchema.safeParse(prefs?.reportSelection).data??null);
     if (prefs) {
@@ -573,7 +582,7 @@ export function useReportUploadWizard({
     let cancelled = false;
     queueMicrotask(() => { if (!cancelled) clientPrefsHydratedRef.current = true; });
     return () => { cancelled = true; clientPrefsHydratedRef.current = false; };
-  }, [clientId, userId, apiSyncEnabled]);
+  }, [clientId, userId, apiSyncEnabled, automationCadence]);
 
   useEffect(() => {
     if (!clientPrefsHydratedRef.current) return;
@@ -631,6 +640,7 @@ export function useReportUploadWizard({
   }
 
   function currentDateSelection(): DateSelection {
+    if (automationCadence) return automationSampleDateSelection(automationCadence,new Date(),clientTimezone);
     if (dateMode === "custom") return { mode: "custom", customStart, customEnd };
     return { mode: dateMode };
   }
@@ -1003,7 +1013,7 @@ export function useReportUploadWizard({
     const validAdSets = new Set(allAdSetKeys(groups));
     setNewAdSetKeys(new Set((json.newAdSetKeys ?? []).filter((key: string) => validAdSets.has(key))));
     setSelectedAdSets(prev => new Set(
-      (preserve ? [...prev] : (json.selectedAdSets ?? [])).filter((key: string) => validAdSets.has(key)),
+      (preserve ? [...prev] : (automationSettings?.wizardOptions?.selectedAdSets ?? json.selectedAdSets ?? [])).filter((key: string) => validAdSets.has(key)),
     ));
     setExpandedCampaigns(new Set());
     setDateBounds(json.dateBounds || null);
@@ -1358,6 +1368,12 @@ export function useReportUploadWizard({
 
     setPlatform(selectedPlatformCard);
     applyAnalyzeResult(json);
+    if (automationSettings?.campaignNames.length && Array.isArray(json.campaigns)) {
+      const names = json.campaigns as string[];
+      const saved = new Set(automationSettings.campaignNames);
+      campaignChoiceOverrides.current = new Map(names.map(name=>[name,saved.has(name)]));
+      setSelectedCampaigns(new Set(names.filter(name=>saved.has(name))));
+    }
     setAnalyzeStatus("idle");
     rememberPlatformChoice(selectedPlatformCard);
     saveClientWizardPreferences(clientId, { importDownloadInstructionsCollapsed: true });
@@ -1572,6 +1588,23 @@ export function useReportUploadWizard({
     setPerCampaignMetrics(new Map(Object.entries(json.perCampaignSelection || {})));
     setPerCampaignAvailablePool(new Map(Object.entries(json.perCampaignAvailable || {})));
     const { objectives, confidence, requiresConfirmation } = campaignObjectivesFromJson(json.campaignObjectives);
+    if (automationSettings?.wizardOptions && !automationMetricsRestored.current) {
+      const saved = automationSettings.wizardOptions;
+      for (const [name,value] of Object.entries(saved.campaignObjectives ?? {})) {
+        const detected = objectives.get(name);
+        if (!detected) continue;
+        objectives.set(name,objectiveInfoForResultLabel(value.resultLabel,value.costLabel));
+        if (detected.resultLabel !== value.resultLabel) { requiresConfirmation.set(name,true); confidence.set(name,"verify"); }
+      }
+      const selections = new Map<string,SelectedMetric[]>(Object.entries(json.perCampaignSelection || {}));
+      for (const [name,keys] of Object.entries(saved.campaignMetricOverrides ?? {})) {
+        const pool = [...(json.perCampaignSelection?.[name] ?? []),...(json.perCampaignAvailable?.[name] ?? [])] as SelectedMetric[];
+        const restored = keys.flatMap(key=>{ const fresh=pool.find(metric=>metric.key===key); const prior=saved.selectedMetrics?.find(metric=>metric.key===key); return fresh ? [{...fresh,...prior}] : []; });
+        if (restored.length) selections.set(name,restored);
+      }
+      setPerCampaignMetrics(selections);
+      automationMetricsRestored.current = true;
+    }
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
     setCampaignRequiresConfirmation(requiresConfirmation);
@@ -2214,6 +2247,20 @@ export function useReportUploadWizard({
 
   // ── Step 6: Preview + Generate (one screen) ─────────────────────────────
   async function handleGenerate() {
+    if (automationCadence && (platform !== "META" || dataSourceMode !== "api" || reportType !== automationCadence || reportSelection)) {
+      setGenerateMessage("Automation needs a Meta Ads API report with the chosen report type.");
+      setGenerateStatus("error"); return;
+    }
+    const automationConfigAtGenerate: AutomationReportConfiguration | null = automationCadence ? {
+      campaignNames: Array.from(selectedCampaigns), showBudget: showBudgetOnCover,
+      wizardOptions: {
+        selectedAdSets: supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups,selectedAdSets,selectedCampaigns) : [],
+        selectedMetrics: currentSelectedMetricsPayload(),
+        campaignObjectives: currentCampaignObjectivesPayload(),
+        campaignMetricOverrides: currentCampaignMetricOverridesPayload(),
+        csvAlignResults,
+      },
+    } : null;
     if (!mtdFile && !uploadSessionId) return;
     if (usesFullAdWizard(platform) && (!generateStepPreviewReady || csvVerification?.status === "mismatch")) return;
     if (reportBrandingBlocksGenerate) {
@@ -2250,6 +2297,7 @@ export function useReportUploadWizard({
           // saved back to this client's objective memory cache once the
           // report actually generates. Only sent here, never on preview.
           confirmedCampaignObjectives: confirmedCampaignObjectivesPayload(),
+          automationSample: automationCadence ? true : undefined,
           dateSelection:
             ["WEEKLY", "DAY_BREAKDOWN", "MONTHLY", "DAILY", "HISTORICAL"].includes(reportType) ? currentDateSelection() : undefined,
           reportTitle: reportSelection?metaReportTitle(reportSelection):defaultReportTitleFor(reportType),
@@ -2320,6 +2368,7 @@ export function useReportUploadWizard({
     setGeneratedAt(new Date().toISOString());
     setGeneratedWithCsvMismatch(csvMismatchAtGenerate);
     setGeneratedWithCsvVerifySkipped(csvSkippedAtGenerate);
+    setAutomationReportConfiguration(automationConfigAtGenerate);
     if (platform === "META") rememberCompletedImportMethod(userId, dataSourceMode);
     setGenerateStatus("done");
     persistGenerateSnapshot(
@@ -2522,7 +2571,9 @@ export function useReportUploadWizard({
     resetMetricsState();
     resetPreviewState();
     setHistoricalMonthCount(3);
-    const initial = readInitialPlatformPickerState(showTikTokOption);
+    automationMetricsRestored.current = false;
+    setAutomationReportConfiguration(null);
+    const initial = automationCadence ? {selectedPlatformCard:"META" as const,wizardKind:"ads" as const,platformPickerExpanded:false,hasSavedPlatformPreference:true} : readInitialPlatformPickerState(showTikTokOption);
     setSelectedPlatformCard(initial.selectedPlatformCard);
     setWizardKind(initial.wizardKind);
     setPlatformPickerExpanded(initial.platformPickerExpanded);
@@ -2535,7 +2586,7 @@ export function useReportUploadWizard({
     setMismatchWarning(false);
     setDetectedPlatform(null);
     setPlatform("META");
-    setDataSourceMode(readRecentImportMethod(userId, apiSyncEnabled) ?? "csv");
+    setDataSourceMode(automationCadence ? "api" : readRecentImportMethod(userId, apiSyncEnabled) ?? "csv");
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(false);
@@ -2562,12 +2613,12 @@ export function useReportUploadWizard({
     setDateBounds(null);
     setWeeklyOptions(null);
     setMtdRange(null);
-    setDateMode("last7");
-    setCustomStart("");
-    setCustomEnd("");
+    setDateMode(automationCadence === "MONTHLY" ? "custom" : "last7");
+    setCustomStart(automationCadence === "MONTHLY" ? previousCompleteMonth(new Date(),clientTimezone).startIso : "");
+    setCustomEnd(automationCadence === "MONTHLY" ? previousCompleteMonth(new Date(),clientTimezone).endIso : "");
     setCustomRangeError(null);
     setLongRangeConfirmed(false);
-    setReportType("WEEKLY");
+    setReportType(automationCadence ?? "WEEKLY");
     setReportSelection(null);setReportContentPrepared(false);
     const prefs = readClientWizardPreferences(clientId);
     setShowBudgetOnCover(typeof prefs?.showBudgetOnCover === "boolean" ? prefs.showBudgetOnCover : false);
@@ -2875,6 +2926,7 @@ export function useReportUploadWizard({
       : null;
 
   return {
+    automationCadence, automationSettings, automationReportConfiguration,
     clientId,
     clientName,
     linkedMetaAdAccountId,

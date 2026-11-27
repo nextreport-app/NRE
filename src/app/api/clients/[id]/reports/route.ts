@@ -496,6 +496,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let report;
   try {
+    const automationSample = parseBooleanFormField(formData, "automationSample") === true;
     const metaHybridApiImport = parseBooleanFormField(formData, "metaHybridApiImport") === true;
     const jobPayload: StandardReportJobPayload = {
       version: 1,
@@ -515,13 +516,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     report = await createReportWithinCapacity(session.user.id, {
       data: {
         clientId: client.id,
+        ...(automationSample ? {requiresApproval:true} : {}),
         status: "GENERATING",
         reportType: data.metaContent?.reportKind ?? data.reportType,
         platform,
         weekStart,
         weekEnd,
         fileName,
-        displayName: data.metaContent?.title ? `${data.metaContent.title} — ${data.cover.dateRange}` : defaultReportDisplayName(data.reportType, weekStart, weekEnd),
+        displayName: automationSample ? `Automation sample · ${defaultReportDisplayName(data.reportType, weekStart, weekEnd)}` : data.metaContent?.title ? `${data.metaContent.title} — ${data.cover.dateRange}` : defaultReportDisplayName(data.reportType, weekStart, weekEnd),
         shareToken,
         summaryJson: JSON.stringify({
           isPaused: data.isPaused,

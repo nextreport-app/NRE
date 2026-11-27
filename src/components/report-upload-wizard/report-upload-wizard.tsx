@@ -1,5 +1,6 @@
 "use client";
 
+import { WizardAutomationSetup } from "./ui/wizard-automation-setup";
 import { CsvReportingDateNote } from "./ui/csv-reporting-date-note";
 import { useEffect, useRef } from "react";
 import { normalizeMetaAccountId } from "@/lib/meta-client-account";
@@ -170,7 +171,7 @@ function ReportUploadWizardBody() {
         {!generateSuccessScreen ? (
           <>
             <h1 className="mb-1 text-[20px] font-bold text-dash-ink">
-              {w.reportSelection && w.step===2 ? "Select campaigns" : w.step === 4
+              {w.automationCadence ? (w.step===1 ? "Connect Meta Ads" : w.step===2 ? "Campaigns & objectives" : w.step===3 ? "Choose metrics" : "Review & generate sample") : w.reportSelection && w.step===2 ? "Select campaigns" : w.step === 4
                 ? `${copy.generateHeadingPrefix} ${w.reportTypeLabel()}`
                 : wizardStepHeading(w.step, w.platform, locale)}
             </h1>
@@ -184,6 +185,7 @@ function ReportUploadWizardBody() {
         <StepIndicator step={w.step} visitedSteps={w.visitedSteps} onNavigate={w.setStep} flow={wizardFlow} contentReport={!!w.reportSelection} />
       ) : null}
 
+      <WizardAutomationSetup />
       {w.step === 2 && <CsvReportingDateNote automaticPreset={w.reportType === "COMPARISON" ? w.comparisonPreset !== "custom" : ["WEEKLY", "DAY_BREAKDOWN"].includes(w.reportType) && w.dateMode !== "custom"} source={w.dataSourceMode} reportType={w.reportType} dateMode={w.dateMode} currency={w.clientCurrency} bounds={w.dateBounds} timezone={w.clientTimezone} />}
       {w.uploadSessionRecovery ? (
         <UploadSessionRecoveryBanner

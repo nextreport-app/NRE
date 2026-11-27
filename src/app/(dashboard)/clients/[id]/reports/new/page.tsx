@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { scheduleSettingsSchema } from "@/lib/report-schedules/calendar";
 import { resolveClientUser } from "@/lib/client-provider-connections";
 import { isAdPlatformApiSyncEnabled } from "@/lib/ad-platform-api-sync";
 import { redirect } from "next/navigation";
@@ -10,7 +12,11 @@ import { CURRENCY_SYMBOLS } from "@/lib/nre/format";
 import { ReportUploadWizard } from "@/components/report-upload-wizard";
 import { PaywallScreen } from "@/components/paywall-screen";
 import { getSubscriptionStatus } from "@/lib/subscription";
-import { isGoogleAdsApiConfigured, isMetaApiConfigured, isTikTokApiConfigured } from "@/lib/integrations-config";
+import {
+  isGoogleAdsApiConfigured,
+  isMetaApiConfigured,
+  isTikTokApiConfigured,
+} from "@/lib/integrations-config";
 import { shouldShowTikTokForCurrentVisitor } from "@/lib/visitor-geo";
 import {
   loadPreviousMonthDataCampaigns,
@@ -19,7 +25,13 @@ import {
 } from "@/lib/nre/previous-month-data";
 import { normalizeReportBrandingMode } from "@/lib/report-branding";
 
-export default async function NewReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ resumeReport?: string }> }) {
+export default async function NewReportPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ resumeReport?: string; automate?: string }>;
+}) {
   const { id } = await params;
   const session = await auth();
   if (!session?.user) notFound();
@@ -32,7 +44,9 @@ export default async function NewReportPage({ params, searchParams }: { params: 
         name: true,
         email: true,
         planId: true,
-        trialEndsAt: true, paidThrough: true, emailVerified: true,
+        trialEndsAt: true,
+        paidThrough: true,
+        emailVerified: true,
         googleRefreshToken: true,
         metaConnectedName: true,
         metaAccessToken: true,
@@ -52,10 +66,33 @@ export default async function NewReportPage({ params, searchParams }: { params: 
   if (!user) notFound();
 
   // Existing decks keep their original type; never relabel a hidden type as Weekly.
-  const { resumeReport } = await searchParams;
+  const { resumeReport, automate } = await searchParams;
+  const automationCadence =
+    automate === "WEEKLY" || automate === "MONTHLY" ? automate : undefined;
+  const savedAutomation = automationCadence
+    ? await prisma.reportSchedule.findUnique({
+        where: {
+          clientId_cadence: { clientId: id, cadence: automationCadence },
+        },
+        select: { settingsJson: true },
+      })
+    : null;
+  let automationSettings = null;
+  try {
+    automationSettings = savedAutomation
+      ? scheduleSettingsSchema.parse(JSON.parse(savedAutomation.settingsJson))
+      : null;
+  } catch {
+    /* Review a fresh setup if an old config is invalid. */
+  }
+
   if (resumeReport) {
-    const previousReport = await prisma.report.findFirst({ where: { id: resumeReport, clientId: id }, select: { reportType: true } });
-    if (previousReport && !isLaunchReportTypeEnabled(previousReport.reportType)) redirect(`/clients/${id}/reports`);
+    const previousReport = await prisma.report.findFirst({
+      where: { id: resumeReport, clientId: id },
+      select: { reportType: true },
+    });
+    if (previousReport && !isLaunchReportTypeEnabled(previousReport.reportType))
+      redirect(`/clients/${id}/reports`);
   }
 
   const status = getSubscriptionStatus(user);
@@ -65,14 +102,22 @@ export default async function NewReportPage({ params, searchParams }: { params: 
   let previousMonthCampaignSpend: Record<string, number> = {};
   if (client.previousMonthDataUrl) {
     try {
-      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(client.previousMonthDataUrl, client.timezone);
-      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(client.previousMonthDataUrl, client.timezone);
+      previousMonthCampaigns = await loadPreviousMonthDataCampaigns(
+        client.previousMonthDataUrl,
+        client.timezone,
+      );
+      previousMonthCampaignSpend = await loadPreviousMonthDataCampaignSpend(
+        client.previousMonthDataUrl,
+        client.timezone,
+      );
     } catch {
       previousMonthCampaigns = [];
       previousMonthCampaignSpend = {};
     }
   }
-  const previousMonthSelectedCampaigns = parsePreviousMonthSelectedCampaigns(client.previousMonthSelectedCampaigns);
+  const previousMonthSelectedCampaigns = parsePreviousMonthSelectedCampaigns(
+    client.previousMonthSelectedCampaigns,
+  );
 
   if (status.isBlocked) {
     return (
@@ -86,8 +131,23 @@ export default async function NewReportPage({ params, searchParams }: { params: 
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Suspense fallback={<p className="p-6 text-[13px] text-dash-ink-secondary">Loading…</p>}>
+      {automationCadence && (
+        <Link
+          href={`/clients/${id}/schedules`}
+          className="mb-4 inline-flex min-h-11 items-center text-sm text-dash-ink-secondary hover:text-dash-ink"
+        >
+          ← Automate reporting
+        </Link>
+      )}
+      <Suspense
+        fallback={
+          <p className="p-6 text-[13px] text-dash-ink-secondary">Loading…</p>
+        }
+      >
         <ReportUploadWizard
+          key={`${client.id}:${automationCadence ?? "report"}`}
+          automationCadence={automationCadence}
+          automationSettings={automationSettings}
           userId={session.user.id}
           clientId={client.id}
           clientName={client.accountName}
@@ -100,7 +160,9 @@ export default async function NewReportPage({ params, searchParams }: { params: 
           initialLastDriveFolderId={client.lastDriveFolderId}
           initialLastDriveFolderName={client.lastDriveFolderName}
           hasPreviousMonthData={!!client.previousMonthDataUrl}
-          initialPreviousMonthDataUpdatedAt={client.previousMonthDataUpdatedAt?.toISOString() ?? null}
+          initialPreviousMonthDataUpdatedAt={
+            client.previousMonthDataUpdatedAt?.toISOString() ?? null
+          }
           initialPreviousMonthCampaigns={previousMonthCampaigns}
           initialPreviousMonthSelectedCampaigns={previousMonthSelectedCampaigns}
           initialPreviousMonthCampaignSpend={previousMonthCampaignSpend}
@@ -119,9 +181,13 @@ export default async function NewReportPage({ params, searchParams }: { params: 
           clientMonthlyBudget={client.monthlyBudget}
           clientShowBudgetPacingOnCover={client.showBudgetPacingOnCover}
           initialAgencyName={user.agencyName}
-          initialReportBrandingMode={normalizeReportBrandingMode(user.reportBrandingMode)}
+          initialReportBrandingMode={normalizeReportBrandingMode(
+            user.reportBrandingMode,
+          )}
           initialShowAgencyNameOnCover={
-            user.agencyName?.trim() ? (user.showAgencyNameOnCover ?? false) : false
+            user.agencyName?.trim()
+              ? (user.showAgencyNameOnCover ?? false)
+              : false
           }
           accountDisplayName={user.name}
         />
