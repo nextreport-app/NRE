@@ -73,7 +73,7 @@ describe("performance alert email", () => {
     expect(html).toContain("CRITICAL ALERT");
     expect(html).toContain('src="https://nextreport.in/logo.png"');
     expect(html).toContain('width="48" height="48" alt="N"');
-    expect(html).toContain('Next<span style="color:#f7b955">Report</span>');
+    expect(html).toContain('color:#ffffff">NextReport</td>');
     expect(html).toContain('role="presentation"');
     expect(html).toContain("max-width:600px");
     expect(html).toContain("Review performance &rarr;");
