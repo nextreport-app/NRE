@@ -1,3 +1,5 @@
+import { ReportReminderDashboard } from "@/components/report-reminder-dashboard";
+import { reminderView } from "@/lib/report-reminders/model";
 import { resolveClientUser } from "@/lib/client-provider-connections";
 import { clientConnectionState } from "@/lib/client-card-summary";
 import { auth } from "@/lib/auth";
@@ -17,6 +19,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
+          lastReportSentAt: true,
+          reportReminder: true,
           userId: true, hasProviderConnections: true,
           accountName: true,
           currency: true,
@@ -34,11 +38,15 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       })
     : [];
 
+  const reminderNow = new Date().toISOString();
   const clientCards = await Promise.all(clients.map(async (c) => {
     const clientOwner=await resolveClientUser(owner,c);
     return ({
     id: c.id,
     accountName: c.accountName,
+    lastReportSentAt: c.lastReportSentAt?.toISOString() ?? null,
+    reminder: c.reportReminder ? reminderView(c.reportReminder) : null,
+    reminderNow,
     currency: c.currency,
     timezone: c.timezone,
     hasPreviousMonthData: !!c.previousMonthDataUrl,
@@ -61,6 +69,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     <div className="nre-clients-page mx-auto max-w-5xl">
       <ClientsPageHeader isEmpty={isEmpty} clientCount={clientCards.length} scheduling={scheduling} />
 
+      {!isEmpty && <ReportReminderDashboard now={reminderNow} items={clientCards} />}
       {isEmpty ? <ClientsGettingStarted emailVerified={!!owner?.emailVerified} /> : <ClientList clients={clientCards} totalCount={clientCards.length} scheduling={scheduling} />}
 
       <ClientsPageSupportLine />

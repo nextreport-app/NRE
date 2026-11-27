@@ -1,3 +1,4 @@
+import { recordReportSent } from "@/lib/report-reminders/completion";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -90,7 +91,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: result.error ?? "Could not send the email. Please try again." }, { status: 502 });
     }
 
-    await prisma.report.update({ where: { id: report.id }, data: { emailsSent: { increment: 1 } } });
+    await prisma.$transaction(async tx => {
+      await tx.report.update({ where: { id: report.id }, data: { emailsSent: { increment: 1 } } });
+      await recordReportSent(tx, report.client.id, new Date());
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
