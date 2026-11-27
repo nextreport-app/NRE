@@ -512,7 +512,7 @@ export function WizardGenerateStep() {
                     {generateStatus === "loading" && <OperationProgressRing onAmber label="Generating report" />}
                     {generateCtaLabel}
                   </button>
-                  <p className="mt-2 text-center text-[14px] text-[#94a3b8]">This usually takes 20-30 seconds</p>
+                  <p className="mt-2 text-center text-[14px] text-dash-ink-secondary">This usually takes 20-30 seconds</p>
                 </div>
               )}
               {generateStatus === "error" && (

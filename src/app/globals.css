@@ -63,8 +63,8 @@ html[data-site-theme="light"] {
   --nre-dash-inset: #efeeea;
   --nre-dash-popover: #ffffff;
   --nre-dash-accent-hover: #ed8936;
-  --nre-dash-success: #68d391;
-  --nre-dash-error: #fc8181;
+  --nre-dash-success: #047857;
+  --nre-dash-error: #b91c1c;
   --nre-dash-workspace: #ffffff;
   --nre-wizard-current-bg: #f5b45a;
   --nre-wizard-current-ink: #000000;
@@ -1267,3 +1267,26 @@ html[data-site-theme="light"] .nre-operation-ring { --ring-green: #047857; --rin
 .nre-clients-page .nre-client-card { border-color: #78613d; box-shadow: 0 0 0 1px #f5b45a0d; }
 .nre-clients-page .nre-client-card:hover { border-color: #c4934c; }
 html[data-site-theme="light"] .nre-app-shell .nre-clients-page .nre-client-card { border-color: #c99c5d; box-shadow: 0 1px 3px #92734814; }
+
+/* App status copy needs darker tones on white cards, including scheduling,
+   reminders, connection forms and Search Console (not just Meta/GA4).
+   Keep semantic colors and the dark theme; never change the amber CTA fill. */
+html[data-site-theme="light"] .nre-app-shell :is(.text-emerald-400, .text-emerald-300, .text-emerald-200, .text-green-400, .text-green-300) { color: #047857; }
+html[data-site-theme="light"] .nre-app-shell :is(.text-red-400, .text-red-300, .text-red-200) { color: #b91c1c; }
+html[data-site-theme="light"] .nre-app-shell :is(.text-amber-400, .text-amber-300, .text-amber-200, .text-yellow-400) { color: #854d0e; }
+html[data-site-theme="light"] .nre-app-shell :is(.text-blue-400, .text-blue-300, .text-sky-400, .text-sky-300, .text-cyan-400) { color: #1d4ed8; }
+html[data-site-theme="light"] .nre-app-shell :is(.text-violet-400, .text-violet-300) { color: #6d28d9; }
+html[data-site-theme="light"] .nre-app-shell :is(.text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400) { color: #000000; }
+
+/* Navigation is a light surface too; keep the selected purple outline/glow. */
+html[data-site-theme="light"] .nre-dashboard-entry {
+  color: #000000;
+  background: #ffffff;
+  border-color: #a5a5a0;
+}
+html[data-site-theme="light"] .nre-dashboard-entry .nre-platform-icon { color: #000000; }
+html[data-site-theme="light"] .nre-dashboard-entry:hover { border-color: #6d28d9; }
+html[data-site-theme="light"] .nre-dashboard-entry[aria-current="page"] {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 1px #7c3aed26, 0 0 8px #7c3aed24;
+}
