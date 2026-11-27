@@ -1187,6 +1187,7 @@ html[data-site-theme="light"] .nre-website-changes .border-emerald-400 { border-
   border-color: #2f8565;
   background: #12392d;
 }
+.nre-performance-action-ready { color: #ffffff; }
 .nre-performance-action-ready:hover {
   border-color: #6ee7b7;
   background: #194c3b;
@@ -1201,7 +1202,8 @@ html[data-site-theme="light"] .nre-performance-linked-badge {
   border-color: #68a887;
   background: #e8f7ef;
 }
-html[data-site-theme="light"] .nre-performance-action-ready:hover { background: #d5efdf; border-color: #287a52; }
+html[data-site-theme="light"] .nre-performance-action-ready { color: #ffffff; border-color: #2f8565; background: #12392d; }
+html[data-site-theme="light"] .nre-performance-action-ready:hover { background: #194c3b; border-color: #2f8565; }
 html[data-site-theme="light"] .nre-performance-card-ready { border-color: #68a887; box-shadow: 0 0 0 1px #15803d14, 0 0 10px #15803d1a; }
 
 /* GA4 overview: a clear metric grid with subtle category accents. */
