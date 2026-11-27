@@ -30,8 +30,16 @@ export function ReportReminderSettings({
   const router = useRouter();
   const defaultDate = new Date(now);
   defaultDate.setUTCDate(defaultDate.getUTCDate() + 7);
-  const [cadence, setCadence] = useState(initial?.cadence ?? "WEEKLY");
-  const [intervalDays, setIntervalDays] = useState(initial?.intervalDays ?? 7);
+  const supported = ["WEEKLY", "FORTNIGHTLY", "MONTHLY_FIXED"];
+  const legacy = !!initial && !supported.includes(initial.cadence);
+  const [cadence, setCadence] = useState(
+    initial && supported.includes(initial.cadence)
+      ? initial.cadence
+      : initial?.cadence === "MONTHLY"
+        ? "MONTHLY_FIXED"
+        : "WEEKLY",
+  );
+  const intervalDays = cadence === "FORTNIGHTLY" ? 14 : 7;
   const [monthDay, setMonthDay] = useState(initial?.monthDay ?? 1);
   const [zone, setZone] = useState(initial?.timezone ?? timezone);
   const [date, setDate] = useState(
@@ -40,7 +48,7 @@ export function ReportReminderSettings({
       : localDate(defaultDate, timezone),
   );
   const [time, setTime] = useState(initial?.time ?? "09:00");
-  const [lead, setLead] = useState(initial?.leadDays ?? 0);
+  const [lead, setLead] = useState(Math.min(initial?.leadDays ?? 0, 3));
   const [email, setEmail] = useState(initial?.emailEnabled ?? false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -57,14 +65,9 @@ export function ReportReminderSettings({
           zone,
         );
   const firstDate = monthly ? monthlyDate : date;
-  const summary =
-    cadence === "ONCE"
-      ? "One reminder on the date you choose."
-      : monthly
-        ? `Remind me on day ${monthDay} of every month. Shorter months use their last day.`
-        : cadence === "MONTHLY"
-          ? "Monthly after the last report is sent. Choose a day each month above for a fixed monthly alarm."
-          : `Remind me ${cadence === "WEEKLY" ? 7 : cadence === "FORTNIGHTLY" ? 14 : intervalDays} days after I send a report. The first reminder starts on the date below.`;
+  const summary = monthly
+    ? `Remind me on day ${monthDay} of every month. Shorter months use their last day.`
+    : `Remind me ${cadence === "WEEKLY" ? 7 : 14} days after I send a report. The first reminder starts on the date below.`;
   async function action(body: unknown, message: string) {
     if (busy) return;
     setBusy(true);
@@ -131,34 +134,23 @@ export function ReportReminderSettings({
             onChange={(e) => setCadence(e.target.value)}
           >
             <option value="WEEKLY">Every 7 days</option>
-            <option value="FORTNIGHTLY">Every 14 days</option>
-            <option value="MONTHLY_FIXED">On a day each month</option>
-            <option value="CUSTOM">Every X days</option>
-            <option value="ONCE">On a specific date · once</option>
-            {cadence === "MONTHLY" && (
-              <option value="MONTHLY">
-                Monthly after sending · existing reminder
-              </option>
-            )}
+            <option value="FORTNIGHTLY">Every 2 weeks</option>
+            <option value="MONTHLY_FIXED">Once a month</option>
           </select>
         </label>
         <p className="text-sm text-dash-ink-secondary">{summary}</p>
+        {legacy && (
+          <p className="text-sm text-dash-ink-secondary">
+            Your existing reminder stays active as saved. Saving this form
+            replaces it with the frequency above.
+          </p>
+        )}
+        {initial && initial.leadDays > 3 && (
+          <p className="text-sm text-dash-ink-secondary">
+            Saving changes the advance notice to 3 days before.
+          </p>
+        )}
         <div className="grid gap-5 sm:grid-cols-2">
-          {cadence === "CUSTOM" && (
-            <label className="text-sm font-medium">
-              How many days apart?
-              <input
-                aria-label="Days between reminders"
-                className={field}
-                type="number"
-                min="1"
-                max="365"
-                required
-                value={intervalDays}
-                onChange={(e) => setIntervalDays(Number(e.target.value))}
-              />
-            </label>
-          )}
           {monthly ? (
             <label className="text-sm font-medium">
               Day of the month
@@ -177,9 +169,7 @@ export function ReportReminderSettings({
           ) : (
             <div className="min-w-0 [&_[role=dialog]]:max-w-full">
               <WizardDatePicker
-                label={
-                  cadence === "ONCE" ? "Remind me on" : "First reminder on"
-                }
+                label="First reminder on"
                 value={date}
                 onChange={setDate}
                 showYear
@@ -187,7 +177,7 @@ export function ReportReminderSettings({
             </div>
           )}
           <fieldset>
-            <legend className="text-sm font-medium">At what time?</legend>
+            <legend className="text-sm font-medium">At what time? · 24-hour</legend>
             <div className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-dash-border bg-dash-bg px-3 py-2">
               <svg
                 aria-hidden="true"
@@ -203,18 +193,14 @@ export function ReportReminderSettings({
               <select
                 aria-label="Reminder hour"
                 className="min-h-8 flex-1 bg-dash-bg text-sm text-dash-ink"
-                value={hour % 12 || 12}
+                value={hour}
                 onChange={(e) =>
-                  setTime(
-                    String(
-                      (Number(e.target.value) % 12) + (hour >= 12 ? 12 : 0),
-                    ).padStart(2, "0") + time.slice(2),
-                  )
+                  setTime(e.target.value.padStart(2, "0") + time.slice(2))
                 }
               >
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {String(i + 1).padStart(2, "0")}
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {String(i).padStart(2, "0")}
                   </option>
                 ))}
               </select>
@@ -231,21 +217,6 @@ export function ReportReminderSettings({
                   </option>
                 ))}
               </select>
-              <select
-                aria-label="AM or PM"
-                className="min-h-8 flex-1 bg-dash-bg text-sm text-dash-ink"
-                value={hour >= 12 ? "PM" : "AM"}
-                onChange={(e) =>
-                  setTime(
-                    String(
-                      (hour % 12) + (e.target.value === "PM" ? 12 : 0),
-                    ).padStart(2, "0") + time.slice(2),
-                  )
-                }
-              >
-                <option>AM</option>
-                <option>PM</option>
-              </select>
             </div>
           </fieldset>
         </div>
@@ -254,9 +225,7 @@ export function ReportReminderSettings({
           <strong>
             {clientActivityDate(firstDate + "T12:00:00Z", "UTC", false)}
           </strong>{" "}
-          · {String(hour % 12 || 12).padStart(2, "0")}:{time.slice(3)}{" "}
-          {hour >= 12 ? "PM" : "AM"}{" "}
-          <span className="text-dash-ink-secondary">({zone})</span>
+          · {time} <span className="text-dash-ink-secondary">({zone})</span>
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -297,7 +266,7 @@ export function ReportReminderSettings({
                 value={lead}
                 onChange={(e) => setLead(Number(e.target.value))}
               >
-                {[0, 1, 2, 3, 7, 14].map((n) => (
+                {[0, 1, 2, 3].map((n) => (
                   <option key={n} value={n}>
                     {n === 0
                       ? "On the reminder date"
@@ -361,7 +330,7 @@ export function ReportReminderSettings({
           </div>
           <p className="mt-2 text-xs text-dash-ink-secondary">
             Sent outside NextReport? Mark it here to clear this reminder.
-            {cadence !== "ONCE" &&
+            {initial.cadence !== "ONCE" &&
               " Day intervals restart after sending; fixed monthly alarms keep their chosen day."}
           </p>
         </section>
