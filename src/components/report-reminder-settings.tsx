@@ -14,6 +14,23 @@ const field =
   "mt-1 min-h-11 w-full rounded-lg border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-ink";
 const button =
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-dash-border px-4 py-2 text-sm font-semibold disabled:opacity-50";
+function AlarmIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 32 32"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="16" cy="17" r="10" />
+      <path d="M16 11v6l4 2M8 25l-2 3m18-3 2 3M11 4 7 2 2 7l3 3m16-6 4-2 5 5-3 3M16 4V2" />
+    </svg>
+  );
+}
 export function ReportReminderSettings({
   clientId,
   timezone,
@@ -94,7 +111,7 @@ export function ReportReminderSettings({
   return (
     <div className="mt-5 space-y-4">
       <form
-        className="space-y-5 rounded-xl border border-dash-border bg-dash-card p-5 sm:p-6"
+        className="nre-reminder-form space-y-5 rounded-2xl border border-dash-border bg-dash-card p-5 sm:p-6"
         onSubmit={(e) => {
           e.preventDefault();
           void action(
@@ -116,14 +133,22 @@ export function ReportReminderSettings({
           );
         }}
       >
-        <div>
-          <h2 className="text-lg font-semibold">
-            When would you like a reminder?
-          </h2>
-          <p className="mt-1 text-sm text-dash-ink-secondary">
-            An alarm for you to send this client a report. It won’t create or
-            send a report.
-          </p>
+        <div className="nre-reminder-heading -mx-5 -mt-5 flex items-start gap-4 rounded-t-2xl border-b border-dash-border px-5 py-6 sm:-mx-6 sm:-mt-6 sm:px-6">
+          <span className="nre-reminder-alarm flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border">
+            <AlarmIcon className="h-8 w-8" />
+          </span>
+          <div className="min-w-0">
+            <p className="nre-reminder-eyebrow mb-1 text-[10px] font-semibold uppercase tracking-[.16em]">
+              Your reporting routine
+            </p>
+            <h2 className="text-lg font-semibold">
+              When would you like a reminder?
+            </h2>
+            <p className="mt-1 text-sm text-dash-ink-secondary">
+              An alarm for you to send this client a report. It won’t create or
+              send a report.
+            </p>
+          </div>
         </div>
         <label className="block text-sm font-medium">
           Remind me
@@ -177,7 +202,9 @@ export function ReportReminderSettings({
             </div>
           )}
           <fieldset>
-            <legend className="text-sm font-medium">At what time? · 24-hour</legend>
+            <legend className="text-sm font-medium">
+              At what time? · 24-hour
+            </legend>
             <div className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-dash-border bg-dash-bg px-3 py-2">
               <svg
                 aria-hidden="true"
@@ -220,13 +247,25 @@ export function ReportReminderSettings({
             </div>
           </fieldset>
         </div>
-        <p className="rounded-lg border border-dash-border bg-dash-bg px-3 py-3 text-sm">
-          {monthly ? "Next reminder" : "Reminder starts"}:{" "}
-          <strong>
-            {clientActivityDate(firstDate + "T12:00:00Z", "UTC", false)}
-          </strong>{" "}
-          · {time} <span className="text-dash-ink-secondary">({zone})</span>
-        </p>
+        <div
+          className="nre-reminder-preview flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-4"
+          aria-live="polite"
+        >
+          <div>
+            <p className="nre-reminder-eyebrow mb-1 text-xs font-medium">
+              {monthly ? "Next reminder" : "Reminder starts"}
+            </p>
+            <strong className="text-base font-semibold text-dash-ink">
+              {clientActivityDate(firstDate + "T12:00:00Z", "UTC", false)}
+            </strong>
+            <p className="mt-1 break-all text-xs text-dash-ink-secondary">
+              {zone}
+            </p>
+          </div>
+          <span className="nre-reminder-time rounded-lg border px-3 py-2 font-mono text-xl font-semibold tabular-nums">
+            {time}
+          </span>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

@@ -1290,3 +1290,16 @@ html[data-site-theme="light"] .nre-dashboard-entry[aria-current="page"] {
   border-color: #7c3aed;
   box-shadow: 0 0 0 1px #7c3aed26, 0 0 8px #7c3aed24;
 }
+
+/* Personal reminder: a quiet amber alarm motif, with readable light surfaces. */
+.nre-reminder-form { box-shadow: 0 6px 24px #00000012; }
+.nre-reminder-heading { background: linear-gradient(115deg, #f5b45a0f, transparent 80%); }
+.nre-reminder-alarm { color: #f5c67f; border-color: #92734880; background: #372d20; box-shadow: 0 0 18px #f5b45a12; }
+.nre-reminder-eyebrow { color: #e5bd85; }
+.nre-reminder-preview { background: #f5b45a08; border-color: #92734880; }
+.nre-reminder-time { color: #f5c67f; background: #372d20; border-color: #92734866; }
+html[data-site-theme="light"] .nre-reminder-heading { background: linear-gradient(115deg, #fff2dd, #ffffff 85%); }
+html[data-site-theme="light"] .nre-reminder-alarm { color: #854d0e; background: #fff1d9; border-color: #c99c5d; box-shadow: 0 0 18px #b453090a; }
+html[data-site-theme="light"] .nre-reminder-eyebrow { color: #854d0e; }
+html[data-site-theme="light"] .nre-reminder-preview { background: #fffaf2; border-color: #c99c5d; }
+html[data-site-theme="light"] .nre-reminder-time { color: #713f12; background: #fff1d9; border-color: #c99c5d; }
