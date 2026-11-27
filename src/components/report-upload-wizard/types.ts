@@ -72,6 +72,8 @@ export type ApiSyncMeta = {
 };
 
 export interface ReportUploadWizardProps {
+  automationCadence?: "WEEKLY" | "MONTHLY";
+  automationSettings?: import("@/lib/report-schedules/calendar").ScheduleSettings | null;
   /** Scopes cross-client import preferences to the signed-in user. */
   userId?: string;
   clientId: string;

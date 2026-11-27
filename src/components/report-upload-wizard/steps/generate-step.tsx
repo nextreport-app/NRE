@@ -1,4 +1,5 @@
 "use client";
+import { ReportDownloadLink } from "@/components/report-download-link";
 import {metaReportTitle} from "@/lib/nre/meta-report-content/selection";
 import {MetaReportContentPanel} from "../ui/meta-report-content-panel";
 import { WizardFinalSettings } from "../ui/wizard-final-settings";
@@ -128,7 +129,7 @@ export function WizardGenerateStep() {
     if (weeklyPeriodNeedsAttention) setWeeklyPeriodExpanded(true);
   }, [weeklyPeriodNeedsAttention]);
 
-  const showWeeklyPeriodEditor =
+  const showWeeklyPeriodEditor = !w.automationCadence &&
     reportType === "WEEKLY" && (weeklyPeriodNeedsAttention || weeklyPeriodExpanded);
 
   if (!stepActive) return null;
@@ -166,6 +167,24 @@ export function WizardGenerateStep() {
     !sectionsOnly && reportType !== "COMPARISON" && reportType !== "HISTORICAL" && reportType !== "DAY_BREAKDOWN";
   const showGenerateSuccess = generateStatus === "done" && !!downloadUrl;
 
+  if (showGenerateSuccess && w.automationCadence) {
+    return (
+      <section className="space-y-4 rounded-xl border border-dash-border bg-dash-card p-5">
+        <h2 className="text-lg font-semibold">Sample report ready</h2>
+        <p className="text-sm text-dash-ink-secondary">
+          Review the sample using the link above, then save your automation.
+          This sample stays private and is not sent to the client.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <ReportDownloadLink href={downloadUrl!} circularProgress className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dash-border px-4 py-2 text-sm font-medium">
+            Download sample PPTX
+          </ReportDownloadLink>
+          <button type="button" className="min-h-11 rounded-xl border border-dash-border px-4 py-2 text-sm" onClick={() => setStep(2)}>Change campaigns</button>
+          <button type="button" className="min-h-11 rounded-xl border border-dash-border px-4 py-2 text-sm" onClick={() => setStep(3)}>Change metrics</button>
+        </div>
+      </section>
+    );
+  }
   if (showGenerateSuccess) {
     return (
       <div className="space-y-6">
@@ -319,7 +338,7 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-            <ReportPeriodControls stage="generate" />
+            {!w.automationCadence && <ReportPeriodControls stage="generate" />}
 
           {showWeeklyPeriodEditor ? <>
             <WeeklyPeriodControls />
@@ -398,7 +417,7 @@ export function WizardGenerateStep() {
                   { label: "Month to date", value: w.formatIsoRange(w.mtdRange) },
                   ...(previewKind === "normal" && data?.chart ? [{ label: "Trend chart", value: "Last 30 days" }] : []),
                 ]}
-                onChangeDates={!showWeeklyPeriodEditor ? () => setWeeklyPeriodExpanded(true) : undefined}
+                onChangeDates={!w.automationCadence && !showWeeklyPeriodEditor ? () => setWeeklyPeriodExpanded(true) : undefined}
               />
             )}
 
@@ -412,7 +431,7 @@ export function WizardGenerateStep() {
                   hasCoverBudget={showStandardCoverBudget}
                   error={reportBrandingError}
                 >
-                  {!sectionsOnly && <WizardOptionalComparisons embedded />}
+                  {!sectionsOnly && !w.automationCadence && <WizardOptionalComparisons embedded />}
                   {showStandardCoverBudget && generateStepPreviewReady && generateStatus === "idle" ? (
                     <WizardCoverBudgetSection
                       clientId={clientId}

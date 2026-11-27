@@ -3,7 +3,6 @@ import { cadenceLabel } from "@/lib/report-schedules/cadence";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InboxItem, InboxView } from "@/lib/report-schedules/inbox";
-import { ApiSourceDownload } from "./report-upload-wizard/ui/api-source-download";
 const button =
   "rounded-lg border border-dash-border px-3 py-2 text-sm disabled:opacity-50";
 const views: { key: InboxView; label: string }[] = [
@@ -95,7 +94,10 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
     }, 10000);
     return () => clearInterval(timer);
   }, [load, pending]);
-  async function action(item: InboxItem, kind: "approve" | "send" | "skip") {
+  async function action(
+    item: InboxItem,
+    kind: "approve" | "sendReviewed" | "send" | "skip",
+  ) {
     if (busy) return;
     setBusy(item.id);
     setError("");
@@ -109,7 +111,7 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
           body: JSON.stringify({
             action: kind,
             runId: item.id,
-            ...(kind === "approve"
+            ...(["approve", "sendReviewed"].includes(kind)
               ? { digest: item.report?.digest, reviewed: true }
               : {}),
           }),
@@ -145,14 +147,18 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
     <div className="mx-auto w-full min-w-0 max-w-5xl text-dash-ink nre-report-inbox">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          {embedded ? <h2 className="text-xl font-semibold">Scheduled drafts</h2> : <h1 className="text-2xl font-bold">Scheduled drafts</h1>}
+          {embedded ? (
+            <h2 className="text-xl font-semibold">Scheduled drafts</h2>
+          ) : (
+            <h1 className="text-2xl font-bold">Scheduled drafts</h1>
+          )}
           <p className="mt-2 text-sm text-dash-ink-secondary">
-            Review scheduled drafts across your clients. Approve first, then
-            send.
+            Review reports across your clients, confirm the recipients, then
+            click Send.
           </p>
         </div>
         <Link className={button} href="/clients?task=schedule">
-          Manage schedules
+          Manage automations
         </Link>
       </div>
       <nav
@@ -219,9 +225,8 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
       </form>
       {data && !data.health.healthy && (
         <p className="mt-3 rounded-lg border border-dash-border p-3 text-xs text-dash-ink-secondary">
-          Automatic preparation is not active or its scheduler check is overdue.
-          Paused schedules and Prepare now on the schedule page still work.
-          {data.health.lastTickAt && <span className="block mt-1">Last scheduler check: {date(data.health.lastTickAt, "UTC")} UTC.</span>}
+          Automatic reporting is temporarily unavailable. Reports already here
+          can still be reviewed and sent.
         </p>
       )}
       {error && (
@@ -331,15 +336,9 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
                 </a>
               )}
               <Link href={`/clients/${item.clientId}/schedules`}>
-                Client schedule →
+                Client automation →
               </Link>
             </div>
-            {item.sourceSessionId && (
-              <ApiSourceDownload
-                clientId={item.clientId}
-                uploadSessionId={item.sourceSessionId}
-              />
-            )}
             {item.canApprove && item.report?.digest && (
               <div className="mt-4 border-t border-dash-border pt-3">
                 <label className="flex gap-2 text-sm">
@@ -357,12 +356,27 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
                   I reviewed this report and its recipients.
                 </label>
                 <button
-                  className={`${button} mt-3`}
+                  className={`${button} mt-3 bg-dash-accent text-black`}
                   disabled={!!busy || reviewed[item.id] !== item.report.digest}
-                  onClick={() => void action(item, "approve")}
+                  onClick={() => void action(item, "sendReviewed")}
                 >
-                  Approve report
+                  Send report
                 </button>
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs text-dash-ink-secondary">
+                    Add Google Slides before sending (optional)
+                  </summary>
+                  <button
+                    type="button"
+                    className={`${button} mt-2`}
+                    disabled={
+                      !!busy || reviewed[item.id] !== item.report.digest
+                    }
+                    onClick={() => void action(item, "approve")}
+                  >
+                    Approve for Google Slides
+                  </button>
+                </details>
               </div>
             )}
             {item.canSend && (
@@ -370,7 +384,7 @@ export function ReportInbox({ embedded = false }: { embedded?: boolean } = {}) {
                 <p className="text-xs text-dash-ink-secondary">
                   Email includes browser and PPTX links
                   {item.report?.slidesUrl ? ", plus Google Slides" : ""}. Add a
-                  Slides copy from Client schedule before sending, if needed.
+                  Slides copy from Client automation before sending, if needed.
                 </p>
                 <button
                   className={`${button} mt-3 bg-dash-accent text-black`}

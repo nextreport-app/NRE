@@ -1,3 +1,4 @@
+import { scheduledWizardOptionsSchema } from "./wizard-options";
 import { SCHEDULE_CADENCES } from "./cadence";
 import { z } from "zod";
 import { getCalendarDateInTimezone } from "../nre/dates";
@@ -30,6 +31,7 @@ export const scheduleSettingsSchema = z
       .max(100)
       .default([]),
     showBudget: z.boolean().default(false),
+    wizardOptions: scheduledWizardOptionsSchema.optional(),
     recipients: z
       .array(z.string().trim().toLowerCase().email())
       .min(1)

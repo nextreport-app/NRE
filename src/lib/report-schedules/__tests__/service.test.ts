@@ -10,7 +10,12 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
       upsert: vi.fn(),
     },
-    report: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
+    report: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+      update: vi.fn(),
+    },
     reportSchedule: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -18,7 +23,10 @@ const mocks = vi.hoisted(() => ({
       upsert: vi.fn(),
     },
     client: { findUnique: vi.fn(), updateMany: vi.fn() },
-    reportReminder: {findUnique: vi.fn().mockResolvedValue(null),updateMany: vi.fn()},
+    reportReminder: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn(),
+    },
     user: { update: vi.fn() },
     emailDelivery: { findUnique: vi.fn() },
     $queryRaw: vi.fn(),
@@ -89,6 +97,7 @@ import {
   skipScheduledDraft,
   createManualDraft,
   saveReportSchedule,
+  saveAutomationSchedule,
   enqueueDueSchedules,
 } from "../service";
 import { reportApprovalDigest } from "../approval";
@@ -391,9 +400,8 @@ describe("scheduled draft lifecycle", () => {
 });
 
 it("requests unique reach for the due period rather than today's window", async () => {
-  const { fetchMetaCampaignPeriodReachMaps } = await import(
-    "../../nre/meta-api-sync/fetch-campaign-period-reach"
-  );
+  const { fetchMetaCampaignPeriodReachMaps } =
+    await import("../../nre/meta-api-sync/fetch-campaign-period-reach");
   await processScheduledRun("run");
   expect(fetchMetaCampaignPeriodReachMaps).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -476,8 +484,113 @@ it("does not reserve a credit when a daily source contains out-of-period rows", 
 });
 
 it("builds a scheduled draft when Meta returns an equivalent timezone alias", async () => {
-  vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValueOnce({ id: "act_account", currency: "USD", timezone_name: "Etc/UTC" });
+  vi.mocked(fetchMetaAdAccountMetadata).mockResolvedValueOnce({
+    id: "act_account",
+    currency: "USD",
+    timezone_name: "Etc/UTC",
+  });
   await processScheduledRun("run");
   expect(mocks.fetch).toHaveBeenCalled();
   expect(mocks.capacity).toHaveBeenCalled();
+});
+
+const wizardOptions = {
+  selectedAdSets: ["Campaign Ad set"],
+  selectedMetrics: [
+    {
+      key: "spend",
+      label: "Amount spent",
+      format: "currency" as const,
+      csvName: "Amount spent",
+    },
+  ],
+  campaignObjectives: {
+    campaign: { resultLabel: "LEADS", costLabel: "Cost per lead" },
+  },
+  campaignMetricOverrides: { campaign: ["spend"] },
+  csvAlignResults: true,
+};
+it("requires a complete owned sample and explicit configuration before automation activation", async () => {
+  const config = { ...settings, campaignNames: ["Campaign"], wizardOptions };
+  mocks.db.report.findFirst.mockResolvedValue(null);
+  await expect(
+    saveAutomationSchedule("client", "owner", config, "foreign"),
+  ).rejects.toMatchObject({ status: 400 });
+  expect(mocks.db.reportSchedule.upsert).not.toHaveBeenCalled();
+  mocks.db.report.findFirst.mockResolvedValue({ id: "sample" });
+  mocks.health.mockResolvedValue({ healthy: true });
+  await saveAutomationSchedule("client", "owner", config, "sample");
+  expect(mocks.db.report.findFirst).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      where: {
+        id: "sample",
+        clientId: "client",
+        client: { userId: "owner" },
+        status: "COMPLETE",
+        platform: "META",
+        filePath: { not: null },
+        requiresApproval: true,
+        reportType: "WEEKLY",
+      },
+    }),
+  );
+  expect(
+    JSON.parse(
+      mocks.db.reportSchedule.upsert.mock.calls[0][0].create.settingsJson,
+    ).wizardOptions,
+  ).toEqual(wizardOptions);
+  expect(mocks.deliver).not.toHaveBeenCalled();
+});
+it("keeps weekly and monthly automation independent and rejects incomplete setup", async () => {
+  mocks.db.report.findFirst.mockResolvedValue({ id: "sample" });
+  mocks.health.mockResolvedValue({ healthy: true });
+  for (const cadence of ["WEEKLY", "MONTHLY"])
+    await saveAutomationSchedule(
+      "client",
+      "owner",
+      { ...settings, cadence, campaignNames: ["Campaign"], wizardOptions },
+      "sample",
+    );
+  expect(
+    mocks.db.reportSchedule.upsert.mock.calls.map(
+      ([args]) => args.where.clientId_cadence.cadence,
+    ),
+  ).toEqual(["WEEKLY", "MONTHLY"]);
+  await expect(
+    saveAutomationSchedule(
+      "client",
+      "owner",
+      { ...settings, campaignNames: ["Campaign"] },
+      "sample",
+    ),
+  ).rejects.toThrow("Complete the campaigns");
+});
+it("passes frozen campaign objectives, metrics and ad sets to both report generation and source verification", async () => {
+  const config = { ...settings, campaignNames: ["Campaign"], wizardOptions };
+  const current = {
+    ...run,
+    settingsJson: JSON.stringify({
+      settings: config,
+      accountId: "account",
+      currency: "USD",
+      timezone: "UTC",
+    }),
+    schedule: { ...run.schedule, settingsJson: JSON.stringify(config) },
+  };
+  mocks.db.scheduledReportRun.findUnique.mockResolvedValue(current);
+  mocks.db.reportSchedule.findUnique.mockResolvedValue(current.schedule);
+  await processScheduledRun("run");
+  expect(mocks.build).toHaveBeenCalled();
+  const form = mocks.build.mock.calls[0][0].formData as FormData;
+  expect(JSON.parse(form.get("campaignObjectives") as string)).toEqual(
+    wizardOptions.campaignObjectives,
+  );
+  expect(JSON.parse(form.get("campaignMetricOverrides") as string)).toEqual(
+    wizardOptions.campaignMetricOverrides,
+  );
+  expect(JSON.parse(form.get("selectedAdSets") as string)).toEqual(
+    wizardOptions.selectedAdSets,
+  );
+  expect(mocks.verify.mock.calls[0][0].formData).toBe(form);
+  expect(mocks.deliver).not.toHaveBeenCalled();
 });

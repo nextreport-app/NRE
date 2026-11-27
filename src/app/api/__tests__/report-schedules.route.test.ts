@@ -16,6 +16,7 @@ vi.mock("next/server", async (original) => ({
 }));
 vi.mock("@/lib/report-schedules/service", () => ({
   saveReportSchedule: vi.fn(),
+  saveAutomationSchedule: vi.fn(),
   createManualDraft: vi.fn(),
   processScheduledRun: vi.fn(),
   approveScheduledDraft: vi.fn(),
@@ -235,4 +236,111 @@ it("rejects a fortnightly schedule without its anchor date before saving", async
     ).status,
   ).toBe(400);
   expect(service.saveReportSchedule).not.toHaveBeenCalled();
+});
+
+it("saves wizard automation without sending the sample report", async () => {
+  const result = await POST(
+    request({
+      action: "saveAutomation",
+      settings,
+      sampleReportId: "sample",
+      reviewed: true,
+    }),
+    params,
+  );
+  expect(result.status).toBe(200);
+  expect(service.saveAutomationSchedule).toHaveBeenCalledWith(
+    "client",
+    "owner",
+    expect.objectContaining({ cadence: "WEEKLY" }),
+    "sample",
+  );
+  expect(service.sendApprovedDraft).not.toHaveBeenCalled();
+});
+it("requires explicit review before saving automation or sending a reviewed report", async () => {
+  for (const body of [
+    {
+      action: "saveAutomation",
+      settings,
+      sampleReportId: "sample",
+      reviewed: false,
+    },
+    {
+      action: "sendReviewed",
+      runId: "run",
+      digest: "a".repeat(64),
+      reviewed: false,
+    },
+  ])
+    expect((await POST(request(body), params)).status).toBe(400);
+  expect(service.saveAutomationSchedule).not.toHaveBeenCalled();
+  expect(service.sendApprovedDraft).not.toHaveBeenCalled();
+});
+it("approves the reviewed version before the explicit Send click delivers it", async () => {
+  vi.mocked(service.sendApprovedDraft).mockResolvedValue({ accepted: true });
+  const response = await POST(
+    request({
+      action: "sendReviewed",
+      runId: "run",
+      digest: "a".repeat(64),
+      reviewed: true,
+    }),
+    params,
+  );
+  expect(response.status).toBe(200);
+  expect(service.approveScheduledDraft).toHaveBeenCalledWith(
+    "run",
+    "owner",
+    "a".repeat(64),
+  );
+  expect(
+    vi.mocked(service.approveScheduledDraft).mock.invocationCallOrder[0],
+  ).toBeLessThan(
+    vi.mocked(service.sendApprovedDraft).mock.invocationCallOrder[0],
+  );
+});
+it("never sends after a stale review is rejected", async () => {
+  vi.mocked(service.approveScheduledDraft).mockRejectedValueOnce(
+    new (await import("@/lib/service-error")).ServiceError(
+      "Report changed",
+      409,
+    ),
+  );
+  expect(
+    (
+      await POST(
+        request({
+          action: "sendReviewed",
+          runId: "run",
+          digest: "a".repeat(64),
+          reviewed: true,
+        }),
+        params,
+      )
+    ).status,
+  ).toBe(409);
+  expect(service.sendApprovedDraft).not.toHaveBeenCalled();
+});
+it("retries the same accepted or pending delivery without reapproving", async () => {
+  vi.mocked(prisma.scheduledReportRun.findFirst).mockResolvedValue({
+    id: "run",
+    status: "SENDING",
+    approvalDigest: "a".repeat(64),
+  } as never);
+  vi.mocked(service.sendApprovedDraft).mockResolvedValue({ accepted: false });
+  expect(
+    (
+      await POST(
+        request({
+          action: "sendReviewed",
+          runId: "run",
+          digest: "a".repeat(64),
+          reviewed: true,
+        }),
+        params,
+      )
+    ).status,
+  ).toBe(200);
+  expect(service.approveScheduledDraft).not.toHaveBeenCalled();
+  expect(service.sendApprovedDraft).toHaveBeenCalledWith("run", "owner");
 });
