@@ -1,5 +1,7 @@
 "use client";
 import { OperationProgressRing } from "@/components/operation-progress-ring";
+import { ClientCardActions } from "@/components/client-card-actions";
+import { useState } from "react";
 import {ReportDownloadLink} from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
@@ -150,6 +152,7 @@ export function WizardGenerateSuccessPanel({
       ? `/clients/${clientId}/reports?return=generate&resumeReport=${encodeURIComponent(reportId)}`
       : `/clients/${clientId}/reports`;
 
+  const [clientTasksOpen, setClientTasksOpen] = useState(false);
   function persistSnapshotIfReady() {
     if (reportId && shareToken) {
       persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
@@ -428,6 +431,16 @@ export function WizardGenerateSuccessPanel({
           >
             Generate another report for <span className="font-semibold">{clientName}</span>
           </button>
+          <ClientCardActions
+            clientId={clientId}
+            clientName={clientName}
+            scheduling={false}
+            open={clientTasksOpen}
+            onToggle={() => setClientTasksOpen(value => !value)}
+            onClose={() => setClientTasksOpen(false)}
+            openInNewTab
+            onNavigate={persistSnapshotIfReady}
+          />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px]">
             <Link href="/reports?tab=scheduled" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className="font-medium text-dash-accent hover:underline">Review scheduled drafts</Link>
             <Link

@@ -1,6 +1,6 @@
 # Client report reminders
 
-Each client can have one reminder, separate from report-draft scheduling. Configure it from **Client tasks → Report reminders** or **Set report reminder** on My Clients. `/dashboard` already redirects to My Clients, where the reminder panel shows approaching, due-today and overdue items.
+Each client can have one reminder, separate from report-draft scheduling. Configure it from **Set report reminder** on the client card in My Clients. `/dashboard` already redirects to My Clients, where the reminder panel shows approaching, due-today and overdue items.
 
 The setup offers Every 7 days, Every 2 weeks and Once a month. The shared calendar selects the first reminder; monthly alarms select a day of the month. Time uses 24-hour hour/minute controls. Dashboard advance notice offers the reminder date or 1–3 days before. Existing custom/one-time/legacy-monthly reminders keep running until explicitly replaced by saving the form; the form explains this. Existing 7/14-day advance notices become 3 days only on save, with a notice. Saving activates the alarm; there is one optional email checkbox. Time zone and advance dashboard notice live under More options. Existing reminders can be paused/resumed below the form. A verified active account is required for email delivery. No email/report is automatically sent to the client by this feature.
 

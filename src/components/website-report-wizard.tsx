@@ -1,5 +1,6 @@
 "use client";
 import { WizardDatePicker } from "./report-upload-wizard/ui/wizard-date-picker";
+import { ClientCardActions } from "./client-card-actions";
 import { formatClientCalendarRange, formatStoredDateText } from "@/lib/client-date-format";
 
 import Link from "next/link";
@@ -172,6 +173,7 @@ export function WebsiteReportWizard({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
+  const [clientTasksOpen, setClientTasksOpen] = useState(false);
 
   const selectedBreakdownCount = countSelectedBreakdowns(config.breakdowns);
   const tooManyBreakdowns = selectedBreakdownCount > MAX_WEBSITE_BREAKDOWN_SLIDES;
@@ -708,11 +710,20 @@ export function WebsiteReportWizard({
             </a>
             <button
               type="button"
-              onClick={() => resetGenerateState()}
+              onClick={() => { setClientTasksOpen(false); resetGenerateState(); }}
               className="w-full text-center text-[14px] font-medium text-dash-accent hover:underline"
             >
               Generate another website report
             </button>
+            <ClientCardActions
+              clientId={clientId}
+              clientName={clientName}
+              scheduling={false}
+              open={clientTasksOpen}
+              onToggle={() => setClientTasksOpen(value => !value)}
+              onClose={() => setClientTasksOpen(false)}
+              openInNewTab
+            />
           </div>
         ) : (
           <button

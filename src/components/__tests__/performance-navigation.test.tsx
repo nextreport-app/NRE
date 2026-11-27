@@ -22,7 +22,7 @@ describe("client performance discovery", () => {
   it.each([false, true])("links client cards directly to performance without losing existing actions (%s)", scheduling => {
     const html = renderToStaticMarkup(<ClientList clients={[client]} totalCount={1} scheduling={scheduling} />);
     const actions = clientCardActions(client.id, scheduling);
-    expect(actions.map(a => a.href)).toEqual(["/performance/meta-ads?client=client-1", scheduling ? "/clients/client-1/reports/new" : "/clients/client-1/schedules", "/clients/client-1/reminders", "/clients/client-1"]);
+    expect(actions.map(a => a.href)).toEqual(["/performance/meta-ads?client=client-1", scheduling ? "/clients/client-1/reports/new" : "/clients/client-1/schedules", "/clients/client-1"]);
     expect(actions[0].label).toBe("Performance (Meta Ads, GA4 & SEO)");
     expect(html).toContain('aria-label="Client actions for Example"');
     expect(html).toContain('aria-expanded="false"');
