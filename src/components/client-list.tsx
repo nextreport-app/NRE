@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ClientCardActions } from "./client-card-actions";
 import { clientActivityDate, type ClientConnectionState } from "@/lib/client-card-summary";
 import type { Currency } from "@/generated/prisma/enums";
-import { formatClientCurrency, formatClientTimezone, getClientInitial, getPreviousMonthListStatus } from "@/lib/client-display";
 
 const PAGE_SIZE = 12;
 const MAX_PAGE_BUTTONS = 5;
@@ -120,6 +119,8 @@ interface ClientListItem {
   ga4PropertyName: string | null;
   metaConnection?: ClientConnectionState;
   ga4Connection?: ClientConnectionState;
+  gscConnection?: ClientConnectionState;
+  gscSiteName?: string | null;
   metaAccountName?: string | null;
   lastReportAt?: string | null;
   nextScheduleAt?: string | null;
@@ -170,30 +171,22 @@ function StatusChip({
 }
 
 function ClientCard({ client, scheduling = false, actionsOpen, onActionsToggle, onActionsClose }: { client: ClientListItem; scheduling?: boolean; actionsOpen: boolean; onActionsToggle: () => void; onActionsClose: () => void }) {
-  const prevMonth = getPreviousMonthListStatus(
-    client.hasPreviousMonthData,
-    client.previousMonthDataUpdatedAt,
-    client.timezone,
-  );
 
   return (
-    <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-sky-500/40">
+    <article className="nre-client-card flex flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-card transition-colors hover:border-dash-accent/70">
       <div className="space-y-2.5 px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex flex-wrap items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 text-lg font-semibold text-sky-400" aria-hidden="true">{getClientInitial(client.accountName)}</span>
           <div className="min-w-0 flex-1">
-            <h3 className="break-words text-[16px] font-semibold leading-snug text-dash-ink">
+            <h3 className="break-words text-[17px] font-semibold leading-snug text-dash-ink">
               <Link href={`/clients/${client.id}`} className="hover:underline focus-visible:outline-dash-accent">{client.accountName}</Link>
             </h3>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-dash-ink-secondary"><span>{formatClientCurrency(client.currency)}</span><span aria-hidden="true">·</span><span title={client.timezone}>{formatClientTimezone(client.timezone)}</span></p>
           </div>
           <ClientCardActions clientId={client.id} clientName={client.accountName} scheduling={scheduling} open={actionsOpen} onToggle={onActionsToggle} onClose={onActionsClose} />
         </div>
         <div className="flex flex-wrap gap-1.5" aria-label="Platform connections">
-          {([ ["Meta", client.metaConnection, client.metaAccountName], ["GA4", client.ga4Connection, client.ga4PropertyName] ] as const).map(([platform, status, name]) => status ? (
+          {([ ["Meta", client.metaConnection, client.metaAccountName], ["GA4", client.ga4Connection, client.ga4PropertyName], ["Search Console", client.gscConnection ?? "not-linked", client.gscSiteName] ] as const).map(([platform, status, name]) => status ? (
             <StatusChip key={platform} tone={status === "connected" ? "good" : status === "reconnect" ? "warn" : "neutral"} label={`${platform} ${status === "connected" ? "connected" : status === "reconnect" ? "reconnect" : "not linked"}`} title={status === "connected" ? name ?? `${platform} linked` : status === "reconnect" ? `Reconnect ${platform} in Account settings` : `Link ${platform} to this client`} />
           ) : null)}
-          {prevMonth.status !== "missing" && <StatusChip tone={prevMonth.status === "current" ? "good" : "warn"} label={prevMonth.status === "current" ? "Previous-month data ready" : "Previous-month data needs refresh"} title={prevMonth.title} />}
         </div>
         <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-dash-ink-secondary">
           <div className="inline-flex flex-wrap gap-x-1"><dt>Last report:</dt><dd>{client.lastReportAt ? <time dateTime={client.lastReportAt} title={client.timezone}>{clientActivityDate(client.lastReportAt, client.timezone)}</time> : "No reports yet"}</dd></div>

@@ -1262,3 +1262,8 @@ html[data-site-theme="light"] .nre-search-trend { --nre-search-focus: #047857; }
 /* Shared operation status ring; measured progress uses the same two-color treatment. */
 .nre-operation-ring { --ring-green: #34d399; --ring-amber: #f5b45a; }
 html[data-site-theme="light"] .nre-operation-ring { --ring-green: #047857; --ring-amber: #a16207; }
+
+/* Client directory: a restrained amber border, separate from connection status colors. */
+.nre-clients-page .nre-client-card { border-color: #78613d; box-shadow: 0 0 0 1px #f5b45a0d; }
+.nre-clients-page .nre-client-card:hover { border-color: #c4934c; }
+html[data-site-theme="light"] .nre-app-shell .nre-clients-page .nre-client-card { border-color: #c99c5d; box-shadow: 0 1px 3px #92734814; }

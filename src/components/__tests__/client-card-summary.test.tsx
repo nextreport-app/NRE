@@ -12,8 +12,8 @@ const card = { id: "one", accountName: "Example", currency: "USD" as const, time
 beforeEach(() => {
   vi.clearAllMocks();
   m.auth.mockResolvedValue({ user: { id: "owner" } });
-  m.owner.mockResolvedValue({ emailVerified: new Date(), metaAdsEnabled: true, metaAccessToken: "SECRET_META", ga4Enabled: false, ga4RefreshToken: null });
-  m.clients.mockResolvedValue([{ ...card, metaAdAccountId: "123", metaAdAccountName: "Ads", ga4PropertyId: "456", previousMonthDataUrl: null, reports: [{ completedAt: new Date("2026-11-20T20:00:00Z"), createdAt: new Date("2026-11-20T19:50:00Z") }], reportSchedules: [{ nextRunAt: new Date("2026-12-01T17:00:00Z"), timezone: "America/Los_Angeles" }] }]);
+  m.owner.mockResolvedValue({ emailVerified: new Date(), metaAdsEnabled: true, metaAccessToken: "SECRET_META", ga4Enabled: false, ga4RefreshToken: null, gscEnabled: true, gscRefreshToken: "SECRET_GSC" });
+  m.clients.mockResolvedValue([{ ...card, metaAdAccountId: "123", metaAdAccountName: "Ads", gscSiteUrl: "sc-domain:example.com", ga4PropertyId: "456", previousMonthDataUrl: null, reports: [{ completedAt: new Date("2026-11-20T20:00:00Z"), createdAt: new Date("2026-11-20T19:50:00Z") }], reportSchedules: [{ nextRunAt: new Date("2026-12-01T17:00:00Z"), timezone: "America/Los_Angeles" }] }]);
 });
 describe("client card summary", () => {
   it("distinguishes linked connections, reconnect requirements and absent links", () => {
@@ -39,10 +39,26 @@ describe("client card summary", () => {
     expect(m.clients).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "owner" }, select: expect.objectContaining({ reports: expect.objectContaining({ where: { status: "COMPLETE" }, take: 1 }), reportSchedules: expect.objectContaining({ where: { enabled: true }, orderBy: { nextRunAt: "asc" }, take: 1 }) }) }));
     expect(html).toContain("Meta connected");
     expect(html).toContain("GA4 reconnect");
+    expect(html).toContain("Search Console connected");
+    expect(html).not.toContain("SECRET_GSC");
     expect(html).toContain("Nov 20, 2026");
     expect(html).toContain("Dec 1, 2026, 9:00 AM");
     expect(html).not.toContain("SECRET_META");
     expect(html).not.toContain("Previous-month totals optional");
+  });
+  it.each(["connected", "reconnect", "not-linked"] as const)("shows Search Console %s without old card metadata", (gscConnection) => {
+    const html = renderToStaticMarkup(<ClientList clients={[{ ...card, hasPreviousMonthData: true, previousMonthDataUpdatedAt: "2026-11-01T00:00:00Z", gscConnection }]} totalCount={1}/>);
+    expect(html).toContain(`Search Console ${gscConnection === "not-linked" ? "not linked" : gscConnection}`);
+    expect(html).toContain("Client tasks");
+    expect(html).not.toContain("Previous-month data");
+    expect(html).not.toContain("USD");
+    expect(html).not.toContain("Pacific Time");
+    expect(html).not.toContain("h-10 w-10");
+  });
+  it("shows reconnect when the site is saved but Search Console authorization is absent", async () => {
+    m.owner.mockResolvedValue({gscEnabled: false, gscRefreshToken: null});
+    const html = renderToStaticMarkup(await ClientsPage({searchParams: Promise.resolve({})}));
+    expect(html).toContain("Search Console reconnect");
   });
   it("does not query private clients when signed out", async () => {
     m.auth.mockResolvedValue(null);
