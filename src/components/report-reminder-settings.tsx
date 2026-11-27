@@ -175,12 +175,16 @@ export function ReportReminderSettings({
               </select>
             </label>
           ) : (
-            <WizardDatePicker
-              label={cadence === "ONCE" ? "Remind me on" : "First reminder on"}
-              value={date}
-              onChange={setDate}
-              showYear
-            />
+            <div className="min-w-0 [&_[role=dialog]]:max-w-full">
+              <WizardDatePicker
+                label={
+                  cadence === "ONCE" ? "Remind me on" : "First reminder on"
+                }
+                value={date}
+                onChange={setDate}
+                showYear
+              />
+            </div>
           )}
           <fieldset>
             <legend className="text-sm font-medium">At what time?</legend>
