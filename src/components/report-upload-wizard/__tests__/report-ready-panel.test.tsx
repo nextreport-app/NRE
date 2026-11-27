@@ -23,9 +23,9 @@ describe("concise generated-report panel",()=>{
     expect(html).toContain("Support ticket");
     expect(html).toContain("WhatsApp chat");
     expect(html).toContain("clientId=client&amp;reportId=report");
-    expect(html).toContain('Generate another report for <span class="font-semibold">Example account</span>');
+    expect(html).toContain('Continue working with Example account.');
     expect(html).not.toContain("All clients");
-    expect(html.indexOf("Report help")).toBeGreaterThan(html.indexOf("Continue working"));
+    expect(html.indexOf("Report help")).toBeGreaterThan(html.indexOf("What’s next?"));
   });
   it("retains discrepancy warnings prominently",()=>{
     const html=renderToStaticMarkup(<WizardGenerateSuccessPanel {...props} generatedWithCsvMismatch/>);
