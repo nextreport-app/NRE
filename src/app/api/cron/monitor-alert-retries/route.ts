@@ -11,6 +11,6 @@ export async function GET(req: Request) {
   if (req.headers.get("authorization") !== `Bearer ${secret}`)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json(
-    await retryPendingEmails(30, ["PERFORMANCE_ALERT", "BUDGET_ALERT"]),
+    await retryPendingEmails(30, ["PERFORMANCE_ALERT", "BUDGET_ALERT", "REPORT_REMINDER"]),
   );
 }

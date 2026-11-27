@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 
-const endpoints = ['budget-monitor', 'performance-monitor', 'monitor-alert-retries'];
+const endpoints = ['budget-monitor', 'performance-monitor', 'report-reminders', 'monitor-alert-retries'];
 /** Fixed destinations and no redirects: never disclose secrets or provider response bodies. */
 export async function runMonitoringAlerts({ secret, fetchImpl = globalThis.fetch, log = console.log }) {
   if (!secret?.trim()) throw Error('Set MONITORING_CRON_SECRET to the deployed app CRON_SECRET before enabling the monitoring runner.');

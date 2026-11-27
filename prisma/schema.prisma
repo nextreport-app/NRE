@@ -292,6 +292,8 @@ enum Platform {
 }
 
 model Client {
+  lastReportSentAt DateTime?
+  reportReminder ReportReminder?
   // Credentials live in encrypted, separately loaded rows, never in client form props.
   hasProviderConnections Boolean @default(false)
   providerConnections ClientProviderConnection[]
@@ -808,4 +810,24 @@ model SearchConsoleSnapshot {
   leaseUntil DateTime?
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   @@unique([clientId, days])
+}
+
+model ReportReminder {
+  clientId String @id
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  enabled Boolean @default(true)
+  emailEnabled Boolean @default(false)
+  cadence String
+  intervalDays Int @default(7)
+  monthDay Int @default(1)
+  time String @default("09:00")
+  timezone String
+  leadDays Int @default(2)
+  nextDueAt DateTime
+  cycleToken String
+  configuredAt DateTime @default(now())
+  lastCompletedAt DateTime?
+  lastCheckedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([enabled, emailEnabled, lastCheckedAt])
 }

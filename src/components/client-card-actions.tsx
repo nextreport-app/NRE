@@ -18,6 +18,12 @@ export function clientCardActions(clientId: string, scheduling = false) {
       icon: (scheduling ? "report" : "schedule") as ActionIcon,
     },
     {
+      href: `/clients/${clientId}/reminders`,
+      label: "Report reminders",
+      description: "Set due dates and email reminders to send reports",
+      icon: "schedule" as ActionIcon,
+    },
+    {
       href: `/clients/${clientId}`,
       label: "Client settings",
       description: "Manage connections and client details",

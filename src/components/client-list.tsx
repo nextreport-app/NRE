@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ReminderLabel } from "./report-reminder-dashboard";
+import type { ReminderView } from "@/lib/report-reminders/model";
 import { ClientCardActions } from "./client-card-actions";
 import { clientActivityDate, type ClientConnectionState } from "@/lib/client-card-summary";
 import type { Currency } from "@/generated/prisma/enums";
@@ -125,6 +127,9 @@ interface ClientListItem {
   lastReportAt?: string | null;
   nextScheduleAt?: string | null;
   nextScheduleTimezone?: string;
+  lastReportSentAt?: string | null;
+  reminder?: ReminderView | null;
+  reminderNow?: string;
 }
 
 function SearchIcon() {
@@ -189,9 +194,11 @@ function ClientCard({ client, scheduling = false, actionsOpen, onActionsToggle, 
           ) : null)}
         </div>
         <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-dash-ink-secondary">
-          <div className="inline-flex flex-wrap gap-x-1"><dt>Last report:</dt><dd>{client.lastReportAt ? <time dateTime={client.lastReportAt} title={client.timezone}>{clientActivityDate(client.lastReportAt, client.timezone)}</time> : "No reports yet"}</dd></div>
+          <div className="inline-flex flex-wrap gap-x-1"><dt>Last generated:</dt><dd>{client.lastReportAt ? <time dateTime={client.lastReportAt} title={client.timezone}>{clientActivityDate(client.lastReportAt, client.timezone)}</time> : "No reports yet"}</dd></div>
           {client.nextScheduleAt && <div className="inline-flex flex-wrap gap-x-1"><dt>Next scheduled:</dt><dd><time dateTime={client.nextScheduleAt} title={`Scheduled draft · ${client.nextScheduleTimezone ?? client.timezone}`}>{clientActivityDate(client.nextScheduleAt, client.nextScheduleTimezone ?? client.timezone, true)}</time></dd></div>}
+          {client.lastReportSentAt && <div className="inline-flex flex-wrap gap-x-1"><dt>Last sent:</dt><dd>{clientActivityDate(client.lastReportSentAt,client.timezone)}</dd></div>}
         </dl>
+        <p className="text-xs">{client.reminder ? <Link href={`/clients/${client.id}/reminders`} className="hover:underline"><ReminderLabel reminder={client.reminder} now={client.reminderNow??new Date().toISOString()}/></Link> : <Link href={`/clients/${client.id}/reminders`} className="text-dash-accent hover:underline">Set report reminder →</Link>}</p>
       </div>
       <div className="nre-client-card__divider mt-auto grid grid-cols-2 gap-2 border-t border-dash-border px-4 py-2.5 sm:px-5">
         <Link href={scheduling ? `/clients/${client.id}/schedules` : `/clients/${client.id}/reports/new`} aria-label={`${scheduling ? "Schedule reports" : "Generate report"} for ${client.accountName}`} className="col-span-2 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-dash-accent px-4 py-3 text-center text-[13px] font-semibold text-[#102033] shadow-sm transition hover:bg-dash-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent">{scheduling ? "Schedule reports" : "Generate report"} <span aria-hidden="true">→</span></Link>

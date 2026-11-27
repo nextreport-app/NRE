@@ -1,3 +1,5 @@
+import { recordReportSent } from "./report-reminders/completion";
+import { reminderEmailStage } from "./report-reminders/model";
 import { performanceAlertIntent } from "./performance-monitor/alert-intent";
 import { scheduledDeliveryIsCurrent } from "./report-schedules/delivery-guard";
 import { budgetAlertKey } from "./budget-alert-key";
@@ -69,6 +71,18 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
     const valid=client && !getSubscriptionStatus(client.user).isBlocked && !!client.user.emailVerified && client.userId===row.userId && client.performanceMonitorEnabled && isPerformanceFresh(snapshot,now) && intent && payload.to.length===1 && payload.to[0]===client.user.email && !client.performanceCustomStart && row.key===intent.key;
     if(!valid){await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}});return {accepted:false,cancelled:true};}
   }
+  if (row.kind === "REPORT_REMINDER") {
+    const [,clientId,token,stage] = row.key.split(":");
+    const reminder = clientId ? await prisma.reportReminder.findUnique({where:{clientId},include:{client:{include:{user:true}}}}) : null;
+    const payload = JSON.parse(row.payloadJson) as QueuedEmail;
+    const valid = reminder?.enabled && reminder.emailEnabled && reminder.cycleToken === token
+      && reminder.client.userId === row.userId && !!reminder.client.user.emailVerified
+      && !getSubscriptionStatus(reminder.client.user).isBlocked
+      && payload.to.length === 1 && payload.to[0] === reminder.client.user.email
+      && !(reminder.client.lastReportSentAt && (!reminder.lastCompletedAt || reminder.client.lastReportSentAt > reminder.lastCompletedAt))
+      && reminderEmailStage(reminder,now) === stage;
+    if (!valid) { await prisma.emailDelivery.update({where:{key},data:{status:"CANCELLED"}}); return {accepted:false,cancelled:true}; }
+  }
   if (!process.env.RESEND_API_KEY?.trim()) return { accepted: false, error: "Email sending is not configured." };
   // lastAttemptAt is also the claim identity; a stale sender cannot overwrite a newer claim.
   const claimTime = new Date(now.getTime());
@@ -83,8 +97,13 @@ export async function deliverQueuedEmail(key: string, now = new Date()): Promise
       return { accepted: false, error: error.message };
     }
     if (!data?.id) throw new Error("Provider did not acknowledge this email.");
+    const acceptedAt = new Date();
     await prisma.$transaction(async tx => {
-      const accepted = await tx.emailDelivery.updateMany({ where: { key, status: "SENDING", lastAttemptAt: claimTime }, data: { status: "ACCEPTED", acceptedAt: new Date(), providerId: data.id, leaseUntil: null, lastError: null } });
+      const accepted = await tx.emailDelivery.updateMany({ where: { key, status: "SENDING", lastAttemptAt: claimTime }, data: { status: "ACCEPTED", acceptedAt, providerId: data.id, leaseUntil: null, lastError: null } });
+      if (accepted.count && row.kind === "SCHEDULE_CLIENT") {
+        const run = await tx.scheduledReportRun.findUnique({where:{id:row.key.split(":")[1]},select:{schedule:{select:{clientId:true}}}});
+        if (run) await recordReportSent(tx, run.schedule.clientId, acceptedAt);
+      }
       if (accepted.count && row.userId && ["TRIAL_ENDING", "TRIAL_EXPIRED"].includes(row.kind)) await tx.user.updateMany({ where: { id: row.userId }, data: row.kind === "TRIAL_ENDING" ? { trialEndingEmailSentAt: new Date() } : { trialExpiredEmailSentAt: new Date() } });
     });
     return { accepted: true };

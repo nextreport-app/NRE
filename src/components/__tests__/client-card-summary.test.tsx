@@ -4,6 +4,7 @@ import { ClientList } from "../client-list";
 import ClientsPage from "@/app/(dashboard)/clients/page";
 import { clientActivityDate, clientConnectionState } from "@/lib/client-card-summary";
 const m = vi.hoisted(() => ({ auth: vi.fn(), owner: vi.fn(), clients: vi.fn() }));
+vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn()})}));
 vi.mock("@/lib/auth", () => ({ auth: m.auth }));
 vi.mock("@/lib/prisma", () => ({ prisma: { user: { findUnique: m.owner }, client: { findMany: m.clients } } }));
 vi.mock("../clients-page-chrome", () => ({ ClientsPageHeader: () => <header>Clients</header>, ClientsPageSupportLine: () => null }));

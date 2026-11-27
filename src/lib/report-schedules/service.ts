@@ -1,3 +1,4 @@
+import { recordReportSent } from "../report-reminders/completion";
 import { resolveClientUser, updateResolvedProviderUser } from "@/lib/client-provider-connections";
 import { timezonesEquivalent } from "@/lib/timezone-equivalence";
 import { scheduledReportType, cadenceLabel } from "./cadence";
@@ -681,14 +682,15 @@ export async function retryScheduledDelivery(runId: string) {
   const result = await deliverQueuedEmail(key);
   const delivery = await prisma.emailDelivery.findUnique({
     where: { key },
-    select: { status: true },
+    select: { status: true, acceptedAt: true },
   });
-  if (result.accepted)
+  if (result.accepted) {
+    await prisma.$transaction(tx=>recordReportSent(tx,run.schedule.client.id,delivery?.acceptedAt ?? new Date()));
     await prisma.scheduledReportRun.update({
       where: { id: runId },
-      data: { status: "SENT", deliveredAt: new Date(), error: null },
+      data: { status: "SENT", deliveredAt: delivery?.acceptedAt ?? new Date(), error: null },
     });
-  else if (result.cancelled || delivery?.status === "REVIEW")
+  } else if (result.cancelled || delivery?.status === "REVIEW")
     await prisma.scheduledReportRun.update({
       where: { id: runId },
       data: {
