@@ -78,3 +78,64 @@ it.each([false, true])(
     );
   },
 );
+
+it("finishes a one-time alarm without scheduling another reminder", async () => {
+  tx.reportReminder.findUnique.mockResolvedValue({
+    ...reminder,
+    cadence: "ONCE",
+  });
+  await recordReportSent(
+    tx as unknown as Prisma.TransactionClient,
+    "client",
+    now,
+  );
+  expect(tx.reportReminder.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        enabled: false,
+        nextDueAt: reminder.nextDueAt,
+        lastCompletedAt: now,
+      }),
+    }),
+  );
+});
+it("preserves the chosen monthly day after a confirmed send", async () => {
+  tx.reportReminder.findUnique.mockResolvedValue({
+    ...reminder,
+    cadence: "MONTHLY_FIXED",
+    monthDay: 1,
+  });
+  await recordReportSent(
+    tx as unknown as Prisma.TransactionClient,
+    "client",
+    now,
+  );
+  expect(tx.reportReminder.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        monthDay: 1,
+        nextDueAt: new Date("2026-12-01T09:00Z"),
+      }),
+    }),
+  );
+});
+
+it("allows completing a newly configured one-time alarm after an earlier send on the same day", async () => {
+  tx.reportReminder.findUnique.mockResolvedValue({
+    ...reminder,
+    cadence: "ONCE",
+    configuredAt: new Date("2026-11-27T14:30Z"),
+    lastCompletedAt: new Date("2026-11-27T14:00Z"),
+    nextDueAt: new Date("2026-12-01T09:00Z"),
+  });
+  await recordReportSent(
+    tx as unknown as Prisma.TransactionClient,
+    "client",
+    now,
+  );
+  expect(tx.reportReminder.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({ enabled: false, lastCompletedAt: now }),
+    }),
+  );
+});

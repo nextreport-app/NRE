@@ -29,8 +29,7 @@ export default async function ClientReminderPage({
         Report reminder · {client.accountName}
       </h1>
       <p className="mt-2 text-sm text-dash-ink-secondary">
-        Keep track of the next report you need to send, separately from
-        automatic draft preparation.
+        Choose when to remind yourself to send this client a report.
       </p>
       <ReportReminderSettings
         key={`${client.reportReminder?.updatedAt.toISOString()}:${client.lastReportSentAt?.toISOString()}`}

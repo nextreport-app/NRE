@@ -112,3 +112,21 @@ it("looks up clients within the authenticated owner's scope", async () => {
     expect.objectContaining({ where: { id: "c", userId: "u" } }),
   );
 });
+
+it("stores a fixed monthly day independently of a short month's first reminder date", async () => {
+  await saveReminder("c", "u", {
+    ...settings,
+    cadence: "MONTHLY_FIXED",
+    monthDay: 31,
+    firstDate: "2027-02-28",
+  });
+  expect(m.upsert).toHaveBeenCalledWith(
+    expect.objectContaining({
+      create: expect.objectContaining({
+        cadence: "MONTHLY_FIXED",
+        monthDay: 31,
+        nextDueAt: new Date("2027-02-28T09:00Z"),
+      }),
+    }),
+  );
+});

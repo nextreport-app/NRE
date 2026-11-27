@@ -2,7 +2,15 @@ import { z } from "zod";
 import { localDate, localTimeToUtc } from "../report-schedules/calendar";
 export const reminderSettingsSchema = z
   .object({
-    cadence: z.enum(["WEEKLY", "FORTNIGHTLY", "MONTHLY", "CUSTOM"]),
+    cadence: z.enum([
+      "WEEKLY",
+      "FORTNIGHTLY",
+      "MONTHLY",
+      "CUSTOM",
+      "MONTHLY_FIXED",
+      "ONCE",
+    ]),
+    monthDay: z.number().int().min(1).max(31).optional(),
     intervalDays: z.number().int().min(1).max(365).default(7),
     firstDate: z
       .string()
@@ -93,6 +101,15 @@ export function nextReminderAt(
 ) {
   const today = localDate(sentAt, r.timezone);
   const date = new Date(today + "T12:00Z");
+  if (r.cadence === "MONTHLY_FIXED") {
+    const anchor =
+      r.nextDueAt && localDate(new Date(r.nextDueAt), r.timezone) > today
+        ? localDate(new Date(r.nextDueAt), r.timezone)
+        : today;
+    const month = new Date(anchor.slice(0, 7) + "-01T12:00Z");
+    month.setUTCMonth(month.getUTCMonth() + 1);
+    return monthlyDate(month, r.monthDay, r.time, r.timezone);
+  }
   if (r.cadence === "MONTHLY") {
     const month = new Date(
       Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1, 12),
@@ -112,6 +129,25 @@ export function nextReminderAt(
           : r.intervalDays),
   );
   return localTimeToUtc(date.toISOString().slice(0, 10), r.time, r.timezone);
+}
+function monthlyDate(month: Date, day: number, time: string, timezone: string) {
+  const last = new Date(
+    Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  month.setUTCDate(Math.min(day, last));
+  return localTimeToUtc(month.toISOString().slice(0, 10), time, timezone);
+}
+export function firstMonthlyReminder(
+  now: Date,
+  day: number,
+  time: string,
+  timezone: string,
+) {
+  const month = new Date(localDate(now, timezone).slice(0, 7) + "-01T12:00Z");
+  const due = monthlyDate(new Date(month), day, time, timezone);
+  if (due >= now) return due;
+  month.setUTCMonth(month.getUTCMonth() + 1);
+  return monthlyDate(month, day, time, timezone);
 }
 export function reminderFirstDue(settings: ReminderSettings) {
   return localTimeToUtc(settings.firstDate, settings.time, settings.timezone);

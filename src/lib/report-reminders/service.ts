@@ -45,12 +45,14 @@ export async function saveReminder(
           ? 14
           : settings.intervalDays,
     monthDay:
-      settings.cadence === "MONTHLY" &&
-      client.reportReminder?.cadence === "MONTHLY" &&
-      localDate(client.reportReminder.nextDueAt, settings.timezone) ===
-        settings.firstDate
-        ? client.reportReminder.monthDay
-        : Number(settings.firstDate.slice(-2)),
+      settings.cadence === "MONTHLY_FIXED"
+        ? (settings.monthDay ?? Number(settings.firstDate.slice(-2)))
+        : settings.cadence === "MONTHLY" &&
+            client.reportReminder?.cadence === "MONTHLY" &&
+            localDate(client.reportReminder.nextDueAt, settings.timezone) ===
+              settings.firstDate
+          ? client.reportReminder.monthDay
+          : Number(settings.firstDate.slice(-2)),
     time: settings.time,
     timezone: settings.timezone,
     leadDays: settings.leadDays,
