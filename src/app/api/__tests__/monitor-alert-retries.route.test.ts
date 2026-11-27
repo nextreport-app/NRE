@@ -12,7 +12,7 @@ it("requires the cron secret before attempting delivery", async () => {
   expect((await GET(new Request("https://example.test"))).status).toBe(401);
   expect(m.retry).not.toHaveBeenCalled();
 });
-it("retries only monitoring emails with a bounded batch", async () => {
+it("retries only monitoring and reminder emails with a bounded batch", async () => {
   const r = await GET(
     new Request("https://example.test", {
       headers: { authorization: "Bearer test-secret" },
@@ -22,6 +22,7 @@ it("retries only monitoring emails with a bounded batch", async () => {
   expect(m.retry).toHaveBeenCalledWith(30, [
     "PERFORMANCE_ALERT",
     "BUDGET_ALERT",
+    "REPORT_REMINDER",
   ]);
 });
 it("fails closed if the cron secret is missing", async () => {
