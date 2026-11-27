@@ -18,12 +18,6 @@ export function clientCardActions(clientId: string, scheduling = false) {
       icon: (scheduling ? "report" : "schedule") as ActionIcon,
     },
     {
-      href: `/clients/${clientId}/reminders`,
-      label: "Report reminders",
-      description: "Set due dates and email reminders to send reports",
-      icon: "schedule" as ActionIcon,
-    },
-    {
       href: `/clients/${clientId}`,
       label: "Client settings",
       description: "Manage connections and client details",
@@ -77,6 +71,8 @@ export function ClientCardActions({
   open,
   onToggle,
   onClose,
+  openInNewTab = false,
+  onNavigate,
 }: {
   clientId: string;
   clientName: string;
@@ -84,6 +80,8 @@ export function ClientCardActions({
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
+  openInNewTab?: boolean;
+  onNavigate?: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null),
     trigger = useRef<HTMLButtonElement>(null),
@@ -192,7 +190,9 @@ export function ClientCardActions({
                 <Link
                   key={action.href}
                   href={action.href}
-                  onClick={onClose}
+                  target={openInNewTab ? "_blank" : undefined}
+                  rel={openInNewTab ? "noopener noreferrer" : undefined}
+                  onClick={() => { onNavigate?.(); onClose(); }}
                   className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-dash-ink transition hover:bg-dash-bg focus-visible:outline-2 focus-visible:outline-dash-accent"
                 >
                   <ActionIcon type={action.icon} />
