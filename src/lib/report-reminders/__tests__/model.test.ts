@@ -6,6 +6,7 @@ import {
   nextReminderAt,
   nextCycleMonthDay,
   reminderFirstDue,
+  firstMonthlyReminder,
 } from "../model";
 const base = {
   enabled: true,
@@ -120,4 +121,58 @@ describe("report reminder calendar", () => {
       reminderFirstDue(reminderSettingsSchema.parse(settings)).toISOString(),
     ).toBe("2026-03-08T07:00:00.000Z");
   });
+});
+
+it("keeps a fixed monthly day after a late send instead of moving to the sent day", () => {
+  expect(
+    nextReminderAt(
+      {
+        ...base,
+        cadence: "MONTHLY_FIXED",
+        monthDay: 1,
+        nextDueAt: "2026-11-01T14:00Z",
+      },
+      new Date("2026-11-05T16:00Z"),
+    ).toISOString(),
+  ).toBe("2026-12-01T14:00:00.000Z");
+});
+it("completes the current monthly cycle on an early send and clamps shorter months", () => {
+  expect(
+    nextReminderAt(
+      {
+        ...base,
+        cadence: "MONTHLY_FIXED",
+        monthDay: 31,
+        nextDueAt: "2027-01-31T14:00Z",
+      },
+      new Date("2027-01-25T16:00Z"),
+    ).toISOString(),
+  ).toBe("2027-02-28T14:00:00.000Z");
+});
+
+it("starts a fixed monthly alarm this month before its chosen time and next month after it", () => {
+  expect(
+    firstMonthlyReminder(
+      new Date("2026-11-01T03:00Z"),
+      1,
+      "09:00",
+      "Asia/Kolkata",
+    ).toISOString(),
+  ).toBe("2026-11-01T03:30:00.000Z");
+  expect(
+    firstMonthlyReminder(
+      new Date("2026-11-01T04:00Z"),
+      1,
+      "09:00",
+      "Asia/Kolkata",
+    ).toISOString(),
+  ).toBe("2026-12-01T03:30:00.000Z");
+  expect(
+    firstMonthlyReminder(
+      new Date("2027-02-01T04:00Z"),
+      31,
+      "09:00",
+      "UTC",
+    ).toISOString(),
+  ).toBe("2027-02-28T09:00:00.000Z");
 });

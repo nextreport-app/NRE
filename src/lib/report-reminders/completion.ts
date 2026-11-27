@@ -24,6 +24,7 @@ export async function recordReportSent(
   if (
     sentAt < reminder.configuredAt ||
     (reminder.lastCompletedAt &&
+      reminder.lastCompletedAt >= reminder.configuredAt &&
       localDate(reminder.lastCompletedAt, reminder.timezone) ===
         localDate(sentAt, reminder.timezone) &&
       reminder.nextDueAt > sentAt)
@@ -46,7 +47,11 @@ export async function recordReportSent(
       OR: [{ lastCompletedAt: null }, { lastCompletedAt: { lt: sentAt } }],
     },
     data: {
-      nextDueAt: nextReminderAt(reminder, sentAt),
+      ...(reminder.cadence === "ONCE" ? { enabled: false } : {}),
+      nextDueAt:
+        reminder.cadence === "ONCE"
+          ? reminder.nextDueAt
+          : nextReminderAt(reminder, sentAt),
       monthDay:
         reminder.cadence === "MONTHLY"
           ? nextCycleMonthDay(reminder, sentAt)
