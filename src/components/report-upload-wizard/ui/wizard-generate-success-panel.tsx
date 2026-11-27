@@ -1,7 +1,6 @@
 "use client";
 import { OperationProgressRing } from "@/components/operation-progress-ring";
-import { ClientCardActions } from "@/components/client-card-actions";
-import { useState } from "react";
+import { clientCardActions, ClientTaskIcon } from "@/components/client-card-actions";
 import {ReportDownloadLink} from "@/components/report-download-link";
 import { formatClientTimestamp } from "@/lib/client-date-format";
 
@@ -152,7 +151,6 @@ export function WizardGenerateSuccessPanel({
       ? `/clients/${clientId}/reports?return=generate&resumeReport=${encodeURIComponent(reportId)}`
       : `/clients/${clientId}/reports`;
 
-  const [clientTasksOpen, setClientTasksOpen] = useState(false);
   function persistSnapshotIfReady() {
     if (reportId && shareToken) {
       persistGenerateSnapshot({ reportId, downloadUrl, shareToken });
@@ -421,27 +419,23 @@ export function WizardGenerateSuccessPanel({
           aria-labelledby="success-continue-heading"
           className="border-t border-dash-border pt-5"
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <h3 id="success-continue-heading" className="text-sm font-semibold text-dash-ink">
-                What’s next?
-              </h3>
-              <p className="mt-1 break-words text-sm text-dash-ink-secondary">
-                Continue working with {clientName}.
-              </p>
-            </div>
+          <h3 id="success-continue-heading" className="text-sm font-semibold text-dash-ink">
+            What’s next?
+          </h3>
+          <p className="mt-1 break-words text-sm text-dash-ink-secondary">
+            Continue working with {clientName}.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <button
               type="button"
               onClick={handleGenerateAnother}
-              className="nre-wizard-success-primary inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-dash-accent px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
+              className={`${chipClass} min-h-[48px] gap-2 rounded-xl`}
             >
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+              <svg aria-hidden="true" className="shrink-0" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
               Generate another report
             </button>
-          </div>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <Link href="/reports?tab=scheduled" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={`${chipClass} min-h-[44px] gap-2 rounded-xl`}>
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4m10-4v4M3 11h18m-12 4h3" /></svg>
+            <Link href="/reports?tab=scheduled" target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={`${chipClass} min-h-[48px] gap-2 rounded-xl`}>
+              <ClientTaskIcon type="schedule" />
               Review scheduled reports
             </Link>
             <Link
@@ -449,23 +443,24 @@ export function WizardGenerateSuccessPanel({
               target="_blank"
               rel="noopener noreferrer"
               onClick={persistSnapshotIfReady}
-              className={`${chipClass} min-h-[44px] gap-2 rounded-xl`}
+              className={`${chipClass} min-h-[48px] gap-2 rounded-xl`}
             >
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8m-8 4h5" /></svg>
+              <ClientTaskIcon type="report" />
               View all reports
             </Link>
-            <div className="flex justify-end sm:ml-auto">
-              <ClientCardActions
-                clientId={clientId}
-                clientName={clientName}
-                scheduling={false}
-                open={clientTasksOpen}
-                onToggle={() => setClientTasksOpen(value => !value)}
-                onClose={() => setClientTasksOpen(false)}
-                openInNewTab
-                onNavigate={persistSnapshotIfReady}
-              />
-            </div>
+            {clientCardActions(clientId).map(action => (
+              <Link
+                key={action.href}
+                href={action.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={persistSnapshotIfReady}
+                className={`${chipClass} min-h-[48px] gap-2 rounded-xl`}
+              >
+                <ClientTaskIcon type={action.icon} />
+                {action.label}
+              </Link>
+            ))}
           </div>
         </section>
       </div>

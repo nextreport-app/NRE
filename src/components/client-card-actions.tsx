@@ -25,7 +25,7 @@ export function clientCardActions(clientId: string, scheduling = false) {
     },
   ];
 }
-function ActionIcon({ type }: { type: ActionIcon }) {
+export function ClientTaskIcon({ type }: { type: ActionIcon }) {
   return (
     <svg
       aria-hidden="true"
@@ -195,7 +195,7 @@ export function ClientCardActions({
                   onClick={() => { onNavigate?.(); onClose(); }}
                   className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-dash-ink transition hover:bg-dash-bg focus-visible:outline-2 focus-visible:outline-dash-accent"
                 >
-                  <ActionIcon type={action.icon} />
+                  <ClientTaskIcon type={action.icon} />
                   <span><span className="block font-medium">{action.label}</span><span className="mt-1 block text-xs leading-relaxed text-dash-ink-secondary">{action.description}</span></span>
                 </Link>
               ))}
