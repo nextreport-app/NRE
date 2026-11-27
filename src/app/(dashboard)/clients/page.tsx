@@ -10,7 +10,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const scheduling = (await searchParams).task === "schedule";
   const session = await auth();
   const userId = session?.user?.id;
-  const owner = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { emailVerified: true, metaAdsEnabled: true, metaAccessToken: true, ga4Enabled: true, ga4RefreshToken: true } }) : null;
+  const owner = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { emailVerified: true, metaAdsEnabled: true, metaAccessToken: true, ga4Enabled: true, ga4RefreshToken: true, gscEnabled: true, gscRefreshToken: true } }) : null;
   const clients = userId
     ? await prisma.client.findMany({
         where: { userId },
@@ -26,6 +26,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           reports: { where: { status: "COMPLETE" }, orderBy: [{ completedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }], take: 1, select: { completedAt: true, createdAt: true } },
           reportSchedules: { where: { enabled: true }, orderBy: { nextRunAt: "asc" }, take: 1, select: { nextRunAt: true, timezone: true } },
           ga4PropertyId: true,
+          gscSiteUrl: true,
           ga4PropertyName: true,
           previousMonthDataUrl: true,
           previousMonthDataUpdatedAt: true,
@@ -44,6 +45,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     previousMonthDataUpdatedAt: c.previousMonthDataUpdatedAt?.toISOString() ?? null,
     metaConnection: clientConnectionState(!!c.metaAdAccountId, !!(clientOwner?.metaAdsEnabled && clientOwner.metaAccessToken)),
     ga4Connection: clientConnectionState(!!c.ga4PropertyId, !!(clientOwner?.ga4Enabled && clientOwner.ga4RefreshToken)),
+    gscConnection: clientConnectionState(!!c.gscSiteUrl, !!(clientOwner?.gscEnabled && clientOwner.gscRefreshToken)),
+    gscSiteName: c.gscSiteUrl,
     metaAccountName: c.metaAdAccountName,
     lastReportAt: (c.reports[0]?.completedAt ?? c.reports[0]?.createdAt)?.toISOString() ?? null,
     nextScheduleAt: c.reportSchedules[0]?.nextRunAt.toISOString() ?? null,

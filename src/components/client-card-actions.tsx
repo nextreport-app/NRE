@@ -158,7 +158,7 @@ export function ClientCardActions({
         onClick={onToggle}
         className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dash-border bg-dash-bg px-3 py-2 text-xs font-semibold text-dash-ink shadow-sm transition hover:border-dash-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-accent"
       >
-        More tasks
+        Client tasks
         <svg
           aria-hidden="true"
           width="12"
