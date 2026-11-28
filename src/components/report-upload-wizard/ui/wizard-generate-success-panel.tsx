@@ -465,7 +465,7 @@ export function WizardGenerateSuccessPanel({
         </section>
       </div>
     </div>
-    <div className="pt-2">
+    <div className="pt-12">
       <WizardReportHelp clientId={clientId} reportId={reportId ?? undefined} />
     </div>
     </>

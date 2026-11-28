@@ -1048,7 +1048,6 @@ export function useReportUploadWizard({
       const periods = alignCsvComparison(comparisonPeriodA, comparisonPeriodB, json.dateBounds, new Date(), clientTimezone);
       setComparisonPeriodA(periods.periodA); setComparisonPeriodB(periods.periodB);
     }
-    setLongRangeConfirmed(false);
     // Keep the periods chosen before uploading; CSV dates must not silently replace them.
     if (!preserve) {
       resetMetricsState();

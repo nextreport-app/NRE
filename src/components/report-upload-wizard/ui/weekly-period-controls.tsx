@@ -30,7 +30,7 @@ export function WeeklyPeriodControls() {
     w.editDateMode("custom");
   }
 
-  return <details className="group space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
+  return <details open={w.needsLongRangeConfirm || !!w.customRangeError || undefined} className="group space-y-3 rounded-lg border border-dash-border bg-dash-card p-4">
     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md text-sm font-semibold text-dash-ink [&::-webkit-details-marker]:hidden">
       <span className="min-w-0">Weekly report period
       <span aria-live="polite" className="mt-1 block font-normal text-dash-ink-secondary">Report dates: {range.startIso ? w.clientCurrency ? formatClientCalendarDate(range.startIso, w.clientCurrency) : range.startIso : 'Choose start'} – {range.endIso ? w.clientCurrency ? formatClientCalendarDate(range.endIso, w.clientCurrency) : range.endIso : 'Choose end'}</span>
@@ -54,5 +54,10 @@ export function WeeklyPeriodControls() {
       maxIso={importingApi ? reportCalendarYesterday(new Date(), w.clientTimezone) : calendar.endIso}
       onStartChange={iso => { w.editDateMode("custom"); w.editCustomStart(iso); w.editCustomEnd(range.endIso); }}
       onEndChange={iso => { w.editDateMode("custom"); w.editCustomStart(range.startIso); w.editCustomEnd(iso); }} />}
+    {w.customRangeError && <p role="alert" className="text-sm text-red-400">{w.customRangeError}</p>}
+    {w.needsLongRangeConfirm && <div className="rounded-lg border border-dash-border p-3">
+      <p className="text-sm text-dash-ink-secondary">This report covers more than seven days. Use this reporting period?</p>
+      <button type="button" onClick={() => w.setLongRangeConfirmed(true)} className="mt-3 rounded-md bg-dash-accent px-3 py-2 text-sm font-semibold text-[#0b1728]">Confirm reporting period</button>
+    </div>}
   </details>;
 }

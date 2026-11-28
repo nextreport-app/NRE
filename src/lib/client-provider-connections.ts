@@ -34,6 +34,8 @@ export type ConnectionClient = {
   id: string;
   userId: string;
   hasProviderConnections?: boolean;
+  ga4PropertyId?: string | null;
+  gscSiteUrl?: string | null;
 };
 export function providerOf(data: Record<string, unknown>): ClientProvider {
   const key = Object.keys(data)[0] ?? "";
@@ -65,10 +67,10 @@ export async function resolveClientUser<T extends object | null>(
   user: T,
   client: ConnectionClient,
 ): Promise<T> {
-  if (!user || !client.hasProviderConnections) return user;
-  const rows = await prisma.clientProviderConnection.findMany({
+  if (!user) return user;
+  const rows = client.hasProviderConnections ? await prisma.clientProviderConnection.findMany({
     where: { clientId: client.id, client: { userId: client.userId } },
-  });
+  }) : [];
   const resolved = { ...user } as T & Scoped;
   const metadata: Scoped[typeof scopes] = {};
   for (const row of rows) {
@@ -82,6 +84,10 @@ export async function resolveClientUser<T extends object | null>(
     Object.assign(resolved, values);
     metadata[provider] = { id: row.id, credentials: row.credentials, values };
   }
+  // An agency grant is not a client's setup. Keep existing resource links
+  // working, but require explicit OAuth for each unconfigured client.
+  if (!metadata.ga4 && !client.ga4PropertyId) Object.assign(resolved, unavailable("ga4"));
+  if (!metadata.gsc && !client.gscSiteUrl) Object.assign(resolved, unavailable("gsc"));
   Object.defineProperty(resolved, scopes, { value: metadata });
   return resolved;
 }
@@ -187,7 +193,7 @@ export async function resolveClientUserById<T extends object | null>(
   if (!clientId) return user;
   const client = await prisma.client.findUnique({
     where: { id: clientId },
-    select: { id: true, userId: true, hasProviderConnections: true },
+    select: { id: true, userId: true, hasProviderConnections: true, ga4PropertyId: true, gscSiteUrl: true },
   });
   if (!client || client.userId !== userId)
     throw new ServiceError("Not found", 404);
