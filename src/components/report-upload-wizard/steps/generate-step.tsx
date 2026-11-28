@@ -384,15 +384,14 @@ export function WizardGenerateStep() {
                 <div className="space-y-3 rounded-lg border border-red-900 bg-red-950/40 p-4">
                   <p className="text-[14px] text-red-300">{previewMessage}</p>
                   <p className="text-[13px] text-red-200/90">
-                    Your campaigns, objectives, and metrics are still saved — use Retry preview below (no need to start
-                    over).
+                    Your campaigns, objectives, and metrics are still saved.
                   </p>
                   <button
                     type="button"
-                    onClick={handleGenerateStepPrimary}
+                    onClick={previewMessage.includes("API import does not cover") ? () => w.setStep(1) : handleGenerateStepPrimary}
                     className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-semibold text-dash-ink hover:bg-dash-accent-hover"
                   >
-                    Retry preview
+                    {previewMessage.includes("API import does not cover") ? "Return to Import" : "Retry preview"}
                   </button>
                 </div>
               )}
@@ -405,11 +404,6 @@ export function WizardGenerateStep() {
 
 
             {platform === "META" && w.uploadSessionId && w.reportSelection && generateStatus !== "done" && <MetaReportContentPanel clientId={clientId} uploadSessionId={w.uploadSessionId} source={w.dataSourceMode} selection={w.reportSelection} dateSelection={{mode:"custom",customStart:w.customStart,customEnd:w.customEnd}} selectedCampaigns={Array.from(w.selectedCampaigns)} onSessionReady={w.onReportContentReady} onWorking={w.setReportContentBusy} onBack={()=>w.setStep(1)} disabled={generateStatus === "loading"} />}
-            {generateStepPreviewReady && generateStatus === "idle" && <section aria-label="Report outline" className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <h3 className="text-sm font-semibold text-dash-ink">Your report · {slideCount} slides</h3>
-              {(data?.metaContent || historicalData?.metaContent) && <p className="mt-2 text-sm text-dash-ink-secondary">Report pages: {(data?.metaContent || historicalData?.metaContent)?.pages.length} · Cover · Metric guide</p>}
-              {(data?.metaContent || historicalData?.metaContent)?.includeStandard !== false && <p className="mt-2 text-sm leading-relaxed text-dash-ink-secondary">{previewKind === "normal" && data ? data.isPaused ? `No campaign delivery in the selected ${data.reportType === "WEEKLY" ? "week" : "period"} · activity summary${data.chart ? data.reportType === "WEEKLY" ? " · 30-day chart" : " · performance chart" : ""} · overview · metric guide` : `${data.campaignSlides.length} campaign slides · ${data.adSetSlides.length} ad-set slides${data.chart ? " · performance chart" : ""} · overview · metric guide` : previewKind === "comparison" ? "Campaign summaries and insights · comparisons for both periods · account summary · metric guide" : previewKind === "dayBreakdown" ? "Selected-period totals and insights · daily table pages · metric guide" : "Monthly campaign and ad-set sections · charts · monthly overview · metric guide"}</p>}
-            </section>}
             {!sectionsOnly && reportType === "WEEKLY" && w.weeklyRangeIso && w.mtdRange && generateStepPreviewReady && generateStatus === "idle" && (
               <WizardPeriodSummary
                 rows={[
@@ -456,7 +450,7 @@ export function WizardGenerateStep() {
                 </WizardFinalSettings>
               )}
 
-            {!sectionsOnly && previewKind === "normal" && data?.isPaused && (
+            {!sectionsOnly && generateStepPreviewReady && previewKind === "normal" && data?.isPaused && (
               <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 <p>{data.pausedMessage}</p>
                 {(data.chart || data.periodRow.hasData) ? (
@@ -467,13 +461,13 @@ export function WizardGenerateStep() {
               </div>
             )}
 
-            {!sectionsOnly && previewKind === "historical" && historicalData?.isPaused && (
+            {!sectionsOnly && generateStepPreviewReady && previewKind === "historical" && historicalData?.isPaused && (
               <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 No campaign spend found in the selected months. Check your imported date range and campaign selection.
               </div>
             )}
 
-            {previewKind === "dayBreakdown" && dayBreakdownData?.isPaused && (
+            {generateStepPreviewReady && previewKind === "dayBreakdown" && dayBreakdownData?.isPaused && (
               <div className="nre-wizard-callout-neutral rounded-lg p-4 text-[14px] text-dash-ink-secondary">
                 No campaign spend found in the selected date range. Check your imported dates and campaign selection.
               </div>
@@ -534,20 +528,20 @@ export function WizardGenerateStep() {
                   <p className="mt-2 text-center text-[14px] text-dash-ink-secondary">This usually takes 20-30 seconds</p>
                 </div>
               )}
-              {generateStatus === "error" && (
+              {generateStatus === "error" && !(previewStatus === "error" && previewMessage === generateMessage) && (
                 <div className="hidden space-y-3 md:block">
                   <div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-[14px] text-red-300">
                     {generateMessage}
                   </div>
                   <p className="text-[13px] text-dash-ink-secondary">
-                    Your setup is unchanged — retry uses the same CSV, campaigns, and metrics.
+                    Your campaigns, objectives, and metrics are still saved.
                   </p>
                   <button
                     type="button"
-                    onClick={handleGenerate}
+                    onClick={generateMessage?.includes("API import does not cover") ? () => w.setStep(1) : handleGenerate}
                     className="rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-dash-ink hover:bg-dash-accent-hover"
                   >
-                    Retry generate
+                    {generateMessage?.includes("API import does not cover") ? "Return to Import" : "Retry generate"}
                   </button>
                 </div>
               )}
