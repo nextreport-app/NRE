@@ -3,13 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { ReportType } from "@/generated/prisma/client";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 import { FullReportHistoryList } from "@/components/full-report-history-list";
-import { DEFAULT_REPORT_RETENTION_DAYS, normalizeReportRetentionDays } from "@/lib/report-retention";
-import { getSubscriptionStatus } from "@/lib/subscription";
 
 const PAGE_SIZE = 20;
-const REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "CREATIVE"] as const;
+const DAILY_TYPES: ReportType[] = ["DAILY", "DAY_BREAKDOWN"];
+const REPORT_TYPES = ["WEEKLY", "MONTHLY", "DAILY", "COMPARISON", "DAY_BREAKDOWN", "HISTORICAL", "CREATIVE", "BREAKDOWN"] as const;
 
 type SearchParams = {
   page?: string;
@@ -61,7 +61,7 @@ export default async function ClientAllReportsPage({
   const client = await prisma.client.findUnique({ where: { id } });
   if (!client || client.userId !== session.user.id) notFound();
 
-  const typeFilter = isValidReportType(sp.type) ? sp.type : undefined;
+  const typeFilter = sp.type === "DAY_BREAKDOWN" ? "DAILY" : isValidReportType(sp.type) ? sp.type : undefined;
   const fromFilter = sp.from ? new Date(`${sp.from}T00:00:00`) : undefined;
   const toFilter = sp.to ? new Date(`${sp.to}T23:59:59.999`) : undefined;
   const validFromFilter = fromFilter && !Number.isNaN(fromFilter.getTime()) ? fromFilter : undefined;
@@ -69,7 +69,7 @@ export default async function ClientAllReportsPage({
 
   const where = {
     clientId: client.id,
-    ...(typeFilter ? { reportType: typeFilter } : {}),
+    ...(typeFilter ? { reportType: typeFilter === "DAILY" ? { in: DAILY_TYPES } : typeFilter } : {}),
     ...(validFromFilter || validToFilter
       ? {
           createdAt: {
@@ -82,17 +82,7 @@ export default async function ClientAllReportsPage({
 
   const requestedPage = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
-  const [total, owner] = await Promise.all([
-    prisma.report.count({ where }),
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { reportRetentionDays: true, planId: true, trialEndsAt: true, paidThrough: true, emailVerified: true, email: true },
-    }),
-  ]);
-
-  const reportRetentionDays = owner
-    ? normalizeReportRetentionDays(owner.reportRetentionDays, getSubscriptionStatus(owner).planId)
-    : DEFAULT_REPORT_RETENTION_DAYS;
+  const total = await prisma.report.count({ where });
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
@@ -129,8 +119,7 @@ export default async function ClientAllReportsPage({
         </Link>
         <h1 className="mt-2 text-[24px] font-bold text-dash-ink">All Reports</h1>
         <p className="mt-1 text-[15px] text-dash-ink-secondary">
-          {client.accountName} · {total} report{total === 1 ? "" : "s"} · Auto-delete after {reportRetentionDays} days
-          (change in Account settings)
+          {client.accountName} · {total} report{total === 1 ? "" : "s"}
         </p>
       </div>
 
@@ -145,7 +134,11 @@ export default async function ClientAllReportsPage({
             <option value="ALL">All types</option>
             <option value="WEEKLY">Weekly</option>
             <option value="MONTHLY">Monthly</option>
+            <option value="DAILY">Daily</option>
             <option value="COMPARISON">Comparison</option>
+            <option value="HISTORICAL">Multi-month</option>
+            <option value="CREATIVE">Creative</option>
+            <option value="BREAKDOWN">Breakdown</option>
           </select>
         </div>
         <ClientDateInput key={`from-${sp.from ?? ""}`} name="from" label="From" defaultValue={sp.from ?? ""} currency={client.currency} />
@@ -170,7 +163,6 @@ export default async function ClientAllReportsPage({
           initialReports={reportItems}
           clientTimezone={client.timezone}
               clientCurrency={client.currency}
-          reportRetentionDays={reportRetentionDays}
         />
       )}
 
