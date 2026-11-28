@@ -24,3 +24,22 @@ describe("previous-month API coverage", () => {
   expect(form.get("includePreviousMonthComparison")).toBe("true");
  });
 });
+
+describe("paused campaign custom weekly coverage", () => {
+ const paused = parseCsvText("Campaign name,Day,Amount spent (USD),NRE API range start,NRE API range end\nPaused,2026-11-18,10,2026-10-01,2026-11-26").rows;
+ function weekly(start: string, end: string) {
+  const form = new FormData(); form.set("reportType", JSON.stringify("WEEKLY"));
+  form.set("dateSelection", JSON.stringify({mode:"custom",customStart:start,customEnd:end})); return form;
+ }
+ it("accepts an explicitly covered week after the reporting clock advances, without fabricating activity", () => {
+  expect(metaApiSelectionCoverageError(weekly("2026-11-20","2026-11-26"),paused,"UTC",new Date("2026-11-28T12:00:00Z"))).toBeNull();
+  expect(paused).toHaveLength(1);
+ });
+ it("still rejects explicit dates outside the actual query window", () => {
+  expect(metaApiSelectionCoverageError(weekly("2026-11-21","2026-11-27"),paused,"UTC",new Date("2026-11-28T12:00:00Z"))).toContain("sync the ad account again");
+ });
+ it("requires a fresh import for a rolling last-seven-days preset", () => {
+  const form = new FormData(); form.set("reportType",JSON.stringify("WEEKLY")); form.set("dateSelection",JSON.stringify({mode:"last7"}));
+  expect(metaApiSelectionCoverageError(form,paused,"UTC",new Date("2026-11-28T12:00:00Z"))).toContain("sync the ad account again");
+ });
+});
