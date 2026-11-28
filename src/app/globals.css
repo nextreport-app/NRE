@@ -834,9 +834,10 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-client-bar__link:hover 
 }
 
 .nre-wizard-generate-success__check {
-  background-color: rgb(16 185 129 / 0.12);
-  border: 1px solid rgb(52 211 153 / 0.28);
-  color: #6ee7b7;
+  background-color: #059669;
+  border: 1px solid #34d399;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgb(52 211 153 / 0.1), 0 0 18px rgb(16 185 129 / 0.2);
 }
 
 .nre-wizard-generate-success__title {
@@ -886,9 +887,10 @@ html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__heade
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__check {
-  background-color: #ecfdf5;
-  border-color: #b5e8cf;
-  color: #047857;
+  background-color: #047857;
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgb(5 150 105 / 0.1);
 }
 
 html[data-site-theme="light"] .nre-app-shell .nre-wizard-generate-success__title {

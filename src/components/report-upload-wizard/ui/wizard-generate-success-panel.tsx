@@ -167,7 +167,7 @@ export function WizardGenerateSuccessPanel({
       <div className="nre-wizard-generate-success__header border-b border-dash-border px-4 py-5 sm:px-6" role="status">
         <div className="flex items-start gap-3 sm:gap-4">
           <div className="nre-wizard-generate-success__check flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden="true">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg>
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg>
           </div>
           <div className="min-w-0 flex-1 text-left">
             <h2 className="nre-wizard-generate-success__title text-[19px] font-semibold leading-tight sm:text-[22px]">
