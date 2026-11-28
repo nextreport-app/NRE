@@ -1,6 +1,6 @@
 "use client";
 import { automationSampleDateSelection } from "@/lib/report-schedules/wizard-options";
-import type { AutomationReportConfiguration } from "@/lib/report-schedules/wizard-options";
+import type { AutomationReportConfiguration, ScheduledWizardOptions } from "@/lib/report-schedules/wizard-options";
 import { campaignSpendRequestKey } from "@/lib/nre/campaign-selection-spend";
 import {metaReportSelectionSchema,metaReportTitle,type MetaReportSelection} from "@/lib/nre/meta-report-content/selection";
 import { formatClientCalendarDate, formatClientCalendarRange } from "@/lib/client-date-format";
@@ -190,9 +190,8 @@ export function useReportUploadWizard({
       resetGenerateState();
       resetPreviewState();
     }
-    if (target <= 2) {
-      resetMetricsState();
-    }
+    // Going back is navigation, not a new import. Source/account changes
+    // explicitly reset metrics; recovery navigation must keep user choices.
   }
 
   /** Every step transition in the wizard goes through this — records the step as visited alongside switching to it. */
@@ -392,6 +391,7 @@ export function useReportUploadWizard({
   const [metricsFetchedForSelection, setMetricsFetchedForSelection] = useState<string | null>(null);
   const metricsFetchedKeyRef = useRef<string | null>(null);
   const metricsFetchInFlightRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
+  const resyncChoicesRef = useRef<ScheduledWizardOptions | null>(null);
   const [perCampaignMinWarning, setPerCampaignMinWarning] = useState<string | null>(null);
 
 
@@ -483,6 +483,7 @@ export function useReportUploadWizard({
   // Step 6 — Generate (same screen as Preview above, see the step === 6 JSX block)
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
+  const pendingGenerationRef = useRef<{ reportId: string; shareToken: string | null; config: AutomationReportConfiguration | null; mismatch: boolean; skipped: boolean } | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
@@ -640,8 +641,8 @@ export function useReportUploadWizard({
   }
 
   function currentDateSelection(): DateSelection {
-    if (automationCadence) return automationSampleDateSelection(automationCadence,new Date(),clientTimezone);
     if (dateMode === "custom") return { mode: "custom", customStart, customEnd };
+    if (automationCadence) return automationSampleDateSelection(automationCadence,new Date(),clientTimezone);
     return { mode: dateMode };
   }
 
@@ -741,6 +742,7 @@ export function useReportUploadWizard({
   }
 
   function resetMetricsState() {
+    resyncChoicesRef.current = null;
     setComparisonMetricKeys([]);
     setDailyMetricKeys([]);
     setDailyExcludedMetricKeys(["cpc_all", "objective_cost"]);
@@ -761,6 +763,7 @@ export function useReportUploadWizard({
 
   /** Resets everything the Preview/Generate/Download screen (step 6) owns — shared by every place a fresh preview or a full wizard reset needs to guarantee no stale generate/Drive state survives. */
   function resetGenerateState() {
+    pendingGenerationRef.current = null;
     setGenerateStatus("idle");
     setGenerateMessage(null);
     setReportId(null);
@@ -1000,8 +1003,7 @@ export function useReportUploadWizard({
     if (preserve) {
       setSelectedCampaigns((prev) => {
         const kept = [...prev].filter((name) => validCampaigns.has(name));
-        if (kept.length > 0) return new Set(kept);
-        return new Set<string>(json.selectedCampaigns || []);
+        return new Set(kept);
       });
     } else {
       setSelectedCampaigns(new Set<string>(json.selectedCampaigns || []));
@@ -1090,7 +1092,7 @@ export function useReportUploadWizard({
       setCsvAlignResults(true);
     }
     setPreviewStatus("idle");
-    if (generateStatusRef.current !== "loading" && generateStatusRef.current !== "done") {
+    if (generateStatusRef.current !== "loading" && generateStatusRef.current !== "done" && !pendingGenerationRef.current) {
       resetGenerateState();
     }
   }
@@ -1316,6 +1318,13 @@ export function useReportUploadWizard({
   }
 
   function handleApiSyncStart() {
+    // Invalidate the old source immediately; a failed refresh must not leave
+    // a previous upload/session available behind the new import screen.
+    setUploadSessionId(null);
+    setMtdFile(null);
+    setVisitedSteps(new Set([1]));
+    resetPreviewState();
+    resetGenerateState();
     setApiSyncStatus("loading");
     setApiSyncError(null);
     setAnalyzeStatus("idle");
@@ -1327,6 +1336,19 @@ export function useReportUploadWizard({
   async function handleApiSynced(file: File, meta?: ApiSyncMeta) {
     if (!selectedPlatformCard) return;
     const syncedDateSelection = currentDateSelection();
+    setUploadSessionId(null);
+    const preserveProgress = campaigns.length > 0 && platform === selectedPlatformCard && (!meta?.metaAdAccountId || meta.metaAdAccountId === metaAdAccountId);
+    resetPreviewState();
+    resetGenerateState();
+    if (preserveProgress) {
+      resyncChoicesRef.current = {
+        selectedAdSets: Array.from(selectedAdSets), selectedMetrics: currentSelectedMetricsPayload(),
+        campaignObjectives: Object.fromEntries(Array.from(campaignObjectives, ([name, info]) => [name, { resultLabel: info.resultLabel, costLabel: info.costLabel }])),
+        campaignMetricOverrides: currentCampaignMetricOverridesPayload(), csvAlignResults,
+      };
+      metricsFetchedKeyRef.current = null;
+      setMetricsFetchedForSelection(null);
+    }
     setApiSyncStatus("idle");
     setApiSyncError(null);
     setApiSyncHybridImport(!!meta?.mergedWithManualReference);
@@ -1355,7 +1377,7 @@ export function useReportUploadWizard({
 
     if (!res?.ok || !json) {
       setAnalyzeStatus("error");
-      setAnalyzeMessage("Something went wrong analyzing the synced data. Please try again.");
+      setAnalyzeMessage(uploadFailureMessage(res, json, "Something went wrong analyzing the synced data. Please try again."));
       return;
     }
 
@@ -1367,8 +1389,17 @@ export function useReportUploadWizard({
     }
 
     setPlatform(selectedPlatformCard);
-    applyAnalyzeResult(json);
-    if (automationSettings?.campaignNames.length && Array.isArray(json.campaigns)) {
+    applyAnalyzeResult(json, { preserveProgress });
+    // Freeze the week actually imported. A midnight crossing between sync,
+    // preview and generate must not silently request a different week.
+    if (reportType === "WEEKLY" && !reportSelection && (automationCadence === "WEEKLY" || syncedDateSelection?.mode !== "custom")) {
+      const range = json.weeklyOptions?.[automationCadence === "WEEKLY" ? "last7" : syncedDateSelection?.mode ?? "last7"];
+      if (range?.startIso && range?.endIso) {
+        setDateMode("custom"); setCustomStart(range.startIso); setCustomEnd(range.endIso);
+        setLongRangeConfirmed(true);
+      }
+    }
+    if (!preserveProgress && automationSettings?.campaignNames.length && Array.isArray(json.campaigns)) {
       const names = json.campaigns as string[];
       const saved = new Set(automationSettings.campaignNames);
       campaignChoiceOverrides.current = new Map(names.map(name=>[name,saved.has(name)]));
@@ -1588,8 +1619,9 @@ export function useReportUploadWizard({
     setPerCampaignMetrics(new Map(Object.entries(json.perCampaignSelection || {})));
     setPerCampaignAvailablePool(new Map(Object.entries(json.perCampaignAvailable || {})));
     const { objectives, confidence, requiresConfirmation } = campaignObjectivesFromJson(json.campaignObjectives);
-    if (automationSettings?.wizardOptions && !automationMetricsRestored.current) {
-      const saved = automationSettings.wizardOptions;
+    const restoredChoices = resyncChoicesRef.current ?? (!automationMetricsRestored.current ? automationSettings?.wizardOptions : null);
+    if (restoredChoices) {
+      const saved = restoredChoices;
       for (const [name,value] of Object.entries(saved.campaignObjectives ?? {})) {
         const detected = objectives.get(name);
         if (!detected) continue;
@@ -1603,7 +1635,8 @@ export function useReportUploadWizard({
         if (restored.length) selections.set(name,restored);
       }
       setPerCampaignMetrics(selections);
-      automationMetricsRestored.current = true;
+      if (!resyncChoicesRef.current) automationMetricsRestored.current = true;
+      resyncChoicesRef.current = null;
     }
     setCampaignObjectives(objectives);
     setCampaignObjectiveConfidence(confidence);
@@ -2251,7 +2284,8 @@ export function useReportUploadWizard({
       setGenerateMessage("Automation needs a Meta Ads API report with the chosen report type.");
       setGenerateStatus("error"); return;
     }
-    const automationConfigAtGenerate: AutomationReportConfiguration | null = automationCadence ? {
+    const pending = pendingGenerationRef.current;
+    const automationConfigAtGenerate: AutomationReportConfiguration | null = pending ? pending.config : automationCadence ? {
       campaignNames: Array.from(selectedCampaigns), showBudget: showBudgetOnCover,
       wizardOptions: {
         selectedAdSets: supportsAdSetSlides(reportType) ? activeAdSetKeys(adSetGroups,selectedAdSets,selectedCampaigns) : [],
@@ -2269,8 +2303,8 @@ export function useReportUploadWizard({
       );
       return;
     }
-    const csvMismatchAtGenerate = csvVerification?.status === "mismatch";
-    const csvSkippedAtGenerate = csvVerification?.status === "skipped";
+    const csvMismatchAtGenerate = pending?.mismatch ?? (csvVerification?.status === "mismatch");
+    const csvSkippedAtGenerate = pending?.skipped ?? (csvVerification?.status === "skipped");
     setGenerateStatus("loading");
     setGenerateMessage(null);
     setDriveView("collapsed");
@@ -2283,7 +2317,7 @@ export function useReportUploadWizard({
     setCopied(false);
     setShareToken(null);
 
-    const res = await fetchWizardUpload(`/api/clients/${clientId}/reports`, {
+    const res = pending ? null : await fetchWizardUpload(`/api/clients/${clientId}/reports`, {
       method: "POST",
       body: buildUploadFormData(
         mtdFile,
@@ -2319,12 +2353,12 @@ export function useReportUploadWizard({
         uploadSessionId,
       ),
     }).catch(() => null);
-    if (!res) {
+    if (!res && !pending) {
       setGenerateStatus("error");
       setGenerateMessage("The connection was interrupted. Check Reports before retrying — your report may still finish in the background.");
       return;
     }
-    const json = await res.json().catch(() => null);
+    const json = pending ? { ok: true, reportId: pending.reportId, shareToken: pending.shareToken, status: "GENERATING" } : await res?.json().catch(() => null);
 
     if (json?.uploadSessionExpired) {
       handleUploadSessionExpired(json.error);
@@ -2332,7 +2366,7 @@ export function useReportUploadWizard({
       return;
     }
 
-    if (!res.ok || !json?.ok || !json.reportId) {
+    if ((!pending && !res?.ok) || !json?.ok || !json.reportId) {
       setGenerateStatus("error");
       if (json?.csvVerification) {
         setCsvVerification(json.csvVerification);
@@ -2346,15 +2380,17 @@ export function useReportUploadWizard({
 
     let finalShareToken: string | null = json.shareToken ?? null;
     if (json.status === "GENERATING") {
+      pendingGenerationRef.current = { reportId: json.reportId, shareToken: finalShareToken, config: automationConfigAtGenerate, mismatch: csvMismatchAtGenerate, skipped: csvSkippedAtGenerate };
       setGenerateMessage("Building your report — this usually takes under a minute.");
       try {
         const polled = await pollReportStatus(json.reportId, { maxAttempts: 180 });
         finalShareToken = polled.shareToken ?? finalShareToken;
       } catch (err) {
+        if (err instanceof ReportGenerationPollError && err.reason === "failed") pendingGenerationRef.current = null;
         setGenerateStatus("error");
         setGenerateMessage(
           err instanceof ReportGenerationPollError
-            ? `${err.message} You can check Reports on the client page — the file may still finish in the background.`
+            ? err.reason === "failed" ? err.message : `${err.message} Your report may still finish in the background.`
             : "Report generation failed. Please try again.",
         );
         return;
@@ -2362,6 +2398,7 @@ export function useReportUploadWizard({
       setGenerateMessage(null);
     }
 
+    pendingGenerationRef.current = null;
     if (dataSourceMode !== "api") setUploadSessionId(null);
     setShareToken(finalShareToken);
     setPublishedAt(null);

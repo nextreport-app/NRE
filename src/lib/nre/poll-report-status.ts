@@ -7,7 +7,7 @@ export interface ReportStatusResponse {
 }
 
 export class ReportGenerationPollError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly reason: "failed" | "unavailable" | "timeout" = "unavailable") {
     super(message);
     this.name = "ReportGenerationPollError";
   }
@@ -37,20 +37,35 @@ export async function pollReportStatus(
   const maxAttempts = options?.maxAttempts ?? 120;
   const fetchFn = options?.fetchFn ?? fetch;
 
+  let consecutiveFailures = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const res = await fetchFn(`/api/reports/${reportId}/status`);
-    const json = (await res.json().catch(() => null)) as ReportStatusResponse | null;
-
-    if (!res.ok || !json?.status) {
-      throw new ReportGenerationPollError("Could not check report status. Please try again.");
+    let res: Response | null = null;
+    let json: ReportStatusResponse | null = null;
+    try {
+      res = await fetchFn(`/api/reports/${reportId}/status`, { cache: "no-store" });
+      json = await res.json().catch(() => null) as ReportStatusResponse | null;
+    } catch {
+      // A dropped status request does not mean the background job failed.
     }
+    const validStatus = json && ["PENDING", "GENERATING", "COMPLETE", "FAILED"].includes(json.status);
+    if (!res?.ok || !validStatus) {
+      const transient = !res || res.status === 408 || res.status === 429 || res.status >= 500 || (res.ok && !validStatus);
+      consecutiveFailures++;
+      if (!transient || consecutiveFailures >= 3 || attempt === maxAttempts - 1) {
+        throw new ReportGenerationPollError("Could not check report status. Check report history before generating again.");
+      }
+      await sleep(reportStatusPollIntervalMs(attempt, options?.intervalMs));
+      continue;
+    }
+    consecutiveFailures = 0;
+    if (!json) continue;
 
     if (json.status === "COMPLETE") {
       return { shareToken: json.shareToken ?? null };
     }
 
     if (json.status === "FAILED") {
-      throw new ReportGenerationPollError(json.errorMessage || "Report generation failed.");
+      throw new ReportGenerationPollError(json.errorMessage || "Report generation failed.", "failed");
     }
 
     if (attempt < maxAttempts - 1) {
@@ -58,5 +73,5 @@ export async function pollReportStatus(
     }
   }
 
-  throw new ReportGenerationPollError("Report generation is taking longer than expected. Check report history shortly.");
+  throw new ReportGenerationPollError("Report generation is taking longer than expected. Check report history shortly.", "timeout");
 }
