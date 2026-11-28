@@ -12,6 +12,7 @@ export function WizardStickyFooter({
   onPrimary,
   primaryDisabled,
   primaryLoading,
+  primaryProgress,
   primaryLoadingLabel = "Loading…",
   secondaryLabel,
   onSecondary,
@@ -26,6 +27,7 @@ export function WizardStickyFooter({
   onPrimary: () => void;
   primaryDisabled?: boolean;
   primaryLoading?: boolean;
+  primaryProgress?: number;
   primaryLoadingLabel?: string;
   secondaryLabel?: string;
   onSecondary?: () => void;
@@ -58,7 +60,7 @@ export function WizardStickyFooter({
             aria-busy={primaryLoading || undefined}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-dash-accent text-[15px] font-semibold text-[#102033] hover:bg-dash-accent-hover disabled:opacity-50"
           >
-            {primaryLoading && <OperationProgressRing onAmber />}
+            {primaryLoading && <OperationProgressRing progress={primaryProgress} onAmber />}
             {primaryLoading ? primaryLoadingLabel : primaryLabel}
           </button>
           {secondaryLabel && onSecondary ? (

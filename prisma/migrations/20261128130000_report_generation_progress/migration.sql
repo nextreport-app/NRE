@@ -1,0 +1,1 @@
+ALTER TABLE "Report" ADD COLUMN "generationProgress" INTEGER NOT NULL DEFAULT 0;

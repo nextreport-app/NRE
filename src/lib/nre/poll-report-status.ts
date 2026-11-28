@@ -2,6 +2,7 @@ export type ReportPollStatus = "PENDING" | "GENERATING" | "COMPLETE" | "FAILED";
 
 export interface ReportStatusResponse {
   status: ReportPollStatus;
+  progress?: number;
   shareToken?: string | null;
   errorMessage?: string | null;
 }
@@ -32,6 +33,7 @@ export async function pollReportStatus(
     intervalMs?: number;
     maxAttempts?: number;
     fetchFn?: typeof fetch;
+    onProgress?: (progress: number) => void;
   },
 ): Promise<{ shareToken: string | null }> {
   const maxAttempts = options?.maxAttempts ?? 120;
@@ -61,9 +63,11 @@ export async function pollReportStatus(
     if (!json) continue;
 
     if (json.status === "COMPLETE") {
+      options?.onProgress?.(100);
       return { shareToken: json.shareToken ?? null };
     }
 
+    if (json.status !== "FAILED" && typeof json.progress === "number" && Number.isFinite(json.progress)) options?.onProgress?.(Math.max(0, Math.min(99, json.progress)));
     if (json.status === "FAILED") {
       throw new ReportGenerationPollError(json.errorMessage || "Report generation failed.", "failed");
     }

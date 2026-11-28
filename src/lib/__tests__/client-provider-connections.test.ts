@@ -27,6 +27,7 @@ import {
   updateResolvedProviderUser,
   saveClientProvider,
   clientProviderSummaries,
+  clientProviderWriteWhere,
   providerKeys,
 } from "../client-provider-connections";
 import {
@@ -113,6 +114,21 @@ describe("isolated provider credentials", () => {
     expect(prisma.client.findUnique).toHaveBeenCalledWith({where:{id:"client-a"},select:{id:true,userId:true,hasProviderConnections:true,ga4PropertyId:true,gscSiteUrl:true}});
     vi.mocked(prisma.client.findUnique).mockResolvedValue({...client,hasProviderConnections:false,ga4PropertyId:"12345"} as never);
     expect((await resolveClientUserById(owner,"owner","client-a")).ga4RefreshToken).toBe("agency-ga4");
+  });
+  it.each([
+    ["meta", "metaAccessToken"], ["google-drive", "googleRefreshToken"],
+    ["google-ads", "googleAdsRefreshToken"], ["tiktok", "tiktokAccessToken"],
+  ] as const)("keeps two clients' %s profiles and writes separate", async (provider,key) => {
+    const shared: typeof owner & Record<string, unknown> = {...owner,[key]:"default-token"};
+    const a=row(provider,{[key]:"client-a-token"}), b={...row(provider,{[key]:"client-b-token"}),id:"other-row",clientId:"client-b"};
+    vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValueOnce([a] as never).mockResolvedValueOnce([b] as never);
+    const first=await resolveClientUser(shared,client), second=await resolveClientUser(shared,{...client,id:"client-b"});
+    expect(first[key]).toBe("client-a-token"); expect(second[key]).toBe("client-b-token"); expect(shared[key]).toBe("default-token");
+    expect(clientProviderWriteWhere(first,provider)).toEqual({providerConnections:{some:{id:a.id,credentials:a.credentials,provider}}});
+    expect(clientProviderWriteWhere(second,provider)).toEqual({providerConnections:{some:{id:b.id,credentials:b.credentials,provider}}});
+    await updateResolvedProviderUser({where:{id:"owner"},data:{[key]:"refreshed-a"}},first);
+    expect(prisma.clientProviderConnection.updateMany).toHaveBeenCalledWith(expect.objectContaining({where:{id:a.id,credentials:a.credentials,client:{userId:"owner"}}}));
+    expect(second[key]).toBe("client-b-token"); expect(prisma.user.update).not.toHaveBeenCalled();
   });
   it("overrides only this client's chosen provider and never mutates shared credentials", async () => {
     vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValue([

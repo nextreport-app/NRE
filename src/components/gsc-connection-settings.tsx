@@ -35,7 +35,7 @@ export function GscConnectionSettings({
     <div className="rounded-xl border border-dash-border bg-dash-card p-5">
       <p className="text-sm text-dash-ink-secondary">
         Read-only Google Web Search clicks, impressions, search queries and
-        rankings. This agency login is the default; clients can choose a
+        rankings. This Google profile is the default; clients can choose a
         different login in Client settings → Connections.
       </p>
       {justConnected && (
@@ -71,12 +71,12 @@ export function GscConnectionSettings({
             onClick={() => void disconnect()}
             className="min-h-11 rounded-lg border border-dash-border px-3 text-sm disabled:opacity-50"
           >
-            {busy ? "Disconnecting…" : "Disconnect agency login"}
+            {busy ? "Disconnecting…" : "Disconnect default profile"}
           </button>
         )}
       </div>
       <p className="mt-3 text-xs text-dash-ink-secondary">
-        Changing this agency login clears site assignments that use it.
+        Changing this default profile clears site assignments that use it.
         Client-specific logins keep their own assignments.
       </p>
     </div>

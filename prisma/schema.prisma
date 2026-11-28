@@ -580,6 +580,7 @@ model Report {
   errorMessage String? @db.Text
   // Serialized wizard payload for async generate worker — cleared after
   // status reaches COMPLETE or FAILED (see lib/nre/report-generation-job.ts).
+  generationProgress Int @default(0)
   jobPayload   String? @db.Text
   completedAt DateTime?
   processingStartedAt DateTime?
