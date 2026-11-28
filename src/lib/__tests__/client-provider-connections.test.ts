@@ -75,14 +75,44 @@ const row = (provider: string, values: object) => ({
   credentials: encryptMetaToken(JSON.stringify(values)),
 });
 describe("isolated provider credentials", () => {
-  it("keeps legacy clients on agency defaults without changing or querying grants", async () => {
+  it("keeps already linked clients on existing agency grants without querying overrides", async () => {
     expect(
       await resolveClientUser(owner, {
         ...client,
         hasProviderConnections: false,
+        ga4PropertyId: "12345",
       }),
-    ).toBe(owner);
+    ).toMatchObject(owner);
     expect(prisma.clientProviderConnection.findMany).not.toHaveBeenCalled();
+  });
+  it("does not inherit analytics or Search Console identity for an unconfigured client", async () => {
+    const agency = {...owner,ga4ConnectedEmail:"agency@example.test",gscEnabled:true,gscRefreshToken:"agency-gsc",gscConnectedEmail:"agency@example.test"};
+    const fresh = {...client,hasProviderConnections:false,ga4PropertyId:null,gscSiteUrl:null};
+    const effective = await resolveClientUser(agency,fresh);
+    expect(effective).toMatchObject({ga4Enabled:false,ga4RefreshToken:null,ga4ConnectedEmail:null,gscEnabled:false,gscRefreshToken:null,gscConnectedEmail:null,metaAccessToken:"agency-meta"});
+    const summaries = await clientProviderSummaries(agency,fresh);
+    expect(summaries.filter(s=>s.provider==="ga4"||s.provider==="gsc")).toEqual([
+      expect.objectContaining({provider:"ga4",connected:false,label:null}),
+      expect.objectContaining({provider:"gsc",connected:false,label:null}),
+    ]);
+    expect(agency.ga4RefreshToken).toBe("agency-ga4");
+  });
+  it("keeps an existing Search Console site working without implicitly connecting GA4", async () => {
+    const effective = await resolveClientUser({...owner,gscEnabled:true,gscRefreshToken:"agency-gsc"},{...client,hasProviderConnections:false,gscSiteUrl:"sc-domain:client.test"});
+    expect(effective.gscRefreshToken).toBe("agency-gsc");
+    expect(effective.ga4RefreshToken).toBeNull();
+  });
+  it("does not expose one client's scoped login in a different client's setup", async () => {
+    vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValueOnce([row("ga4",credentials)] as never).mockResolvedValueOnce([]);
+    expect((await resolveClientUser(owner,client)).ga4RefreshToken).toBe("private-ga4");
+    expect((await resolveClientUser(owner,{...client,id:"client-b"})).ga4RefreshToken).toBeNull();
+  });
+  it("loads the client's saved resource bindings before resolving API access by ID", async () => {
+    vi.mocked(prisma.client.findUnique).mockResolvedValue({...client,hasProviderConnections:false,ga4PropertyId:null,gscSiteUrl:null} as never);
+    expect((await resolveClientUserById(owner,"owner","client-a")).ga4RefreshToken).toBeNull();
+    expect(prisma.client.findUnique).toHaveBeenCalledWith({where:{id:"client-a"},select:{id:true,userId:true,hasProviderConnections:true,ga4PropertyId:true,gscSiteUrl:true}});
+    vi.mocked(prisma.client.findUnique).mockResolvedValue({...client,hasProviderConnections:false,ga4PropertyId:"12345"} as never);
+    expect((await resolveClientUserById(owner,"owner","client-a")).ga4RefreshToken).toBe("agency-ga4");
   });
   it("overrides only this client's chosen provider and never mutates shared credentials", async () => {
     vi.mocked(prisma.clientProviderConnection.findMany).mockResolvedValue([

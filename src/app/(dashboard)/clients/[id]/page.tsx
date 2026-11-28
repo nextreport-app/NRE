@@ -169,12 +169,12 @@ export default async function ClientDetailPage({
 
       <div className="space-y-4">
         <ClientProviderSettings clientId={client.id} connections={connectionSummaries}
-          gscSite={<div id="search-console" className="mt-4 scroll-mt-6 border-t border-dash-border pt-4"><h4 className="mb-2 text-sm font-semibold">Search Console site</h4><GscSitePicker configured={isGscConfigured()} clientId={client.id} initialSiteUrl={client.gscSiteUrl} connected={!!owner?.gscEnabled && !!owner?.gscRefreshToken}/><Link href={`/performance/search-console?client=${client.id}`} className="mt-3 inline-flex min-h-11 items-center text-xs font-semibold text-dash-accent hover:underline">View SEO performance →</Link></div>}
+          gscSite={<div id="search-console" className="mt-4 scroll-mt-6 border-t border-dash-border pt-4"><h4 className="mb-2 text-sm font-semibold">Search Console site</h4><GscSitePicker configured={isGscConfigured()} clientId={client.id} initialSiteUrl={client.gscSiteUrl} connected={!!owner?.gscEnabled && !!owner?.gscRefreshToken}/>{client.gscSiteUrl && owner?.gscEnabled && owner?.gscRefreshToken ? <Link href={`/performance/search-console?client=${client.id}`} className="mt-3 inline-flex min-h-11 items-center text-xs font-semibold text-dash-accent hover:underline">View SEO performance →</Link> : null}</div>}
           ga4Property={isClientPlatformConnectionVisible("ga4") ? (
             <div id="website-analytics" className="mt-4 scroll-mt-6 border-t border-dash-border pt-4">
               <h4 className="mb-2 text-sm font-semibold">Website property</h4>
               <Ga4PropertyPicker clientId={client.id} initialPropertyId={client.ga4PropertyId} initialPropertyName={client.ga4PropertyName} ga4Connected={ga4Connected} connectedEmail={owner?.ga4ConnectedEmail} embedded />
-              <Link href={`/performance/google-analytics?client=${client.id}`} className="mt-3 inline-block text-xs font-medium text-dash-accent hover:underline">View website performance →</Link>
+              {client.ga4PropertyId && ga4Connected ? <Link href={`/performance/google-analytics?client=${client.id}`} className="mt-3 inline-block text-xs font-medium text-dash-accent hover:underline">View website performance →</Link> : null}
             </div>
           ) : null}
           automations={

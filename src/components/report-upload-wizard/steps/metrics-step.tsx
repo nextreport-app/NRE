@@ -90,7 +90,7 @@ export function WizardMetricsStep() {
         <MetricChipPicker selected={[...included, ...extras]} groups={[{ label: daily ? "Main daily tables" : "Main comparison slide", keys: included.map(metric => metric.key) }, ...paginateComparisonMetrics(extras).map((page, index) => ({ label: `Additional metrics · ${daily ? "column group" : "page"} ${index + 1}`, keys: page.map(metric => metric.key) }))]} available={daily ? [...baseMetrics, ...optional] : optional} lockedKeys={daily ? [] : included.map(metric => metric.key)} onAdd={metric => toggleMetric(metric.key)} onRemove={toggleMetric} limit={MAX_TOTAL_METRICS + included.length} source={metricSource} />
       </div>
       <div className="hidden gap-3 md:flex"><button type="button" onClick={() => setStep(2)} className="rounded-md border border-dash-border px-4 py-2 text-sm text-dash-ink">{copy.back}</button><button type="button" onClick={handleMetricsContinue} className="rounded-md bg-dash-accent px-6 py-2 text-sm font-semibold text-[#0b1728]">{copy.continueToGenerate}</button></div>
-      <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />
+      <div className="pt-6"><WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} /></div>
       <WizardStickyFooter stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))} onBack={() => setStep(2)} backLabel={copy.back} primaryLabel={copy.continueToGenerate} onPrimary={handleMetricsContinue} />
     </div>;
   }
@@ -133,7 +133,7 @@ export function WizardMetricsStep() {
         </button>
       </div>
 
-      <WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} />
+      <div className="pt-6"><WizardStepHelp step={3} platform={w.platform} clientTimezone={w.clientTimezone} /></div>
 
       <WizardStickyFooter
         stepLabel={copy.stepOf(3, 4, wizardStepLabel(3, locale))}

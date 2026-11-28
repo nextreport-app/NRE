@@ -7,7 +7,6 @@ import { WizardOptionalComparisons } from "../ui/wizard-optional-comparisons";
 import { ReportRecoveryPanel } from "../ui/report-recovery-panel";
 import { ReportPeriodControls } from "../ui/report-period-controls";
 
-import { useEffect, useState } from "react";
 import { useWizardContext } from "../wizard-context";
 import Link from "next/link";
 import { usesFullAdWizard } from "@/lib/nre/platform-labels";
@@ -18,7 +17,6 @@ import {
   isNoDataRowsError,
   isSpecificFieldError,
 } from "../utils";
-import { WeeklyPeriodControls } from "../ui/weekly-period-controls";
 import { OperationProgressRing } from "@/components/operation-progress-ring";
 import { WizardStickyFooter } from "../ui/wizard-sticky-footer";
 import { CsvVerificationPanel } from "../ui/csv-verification-panel";
@@ -48,9 +46,7 @@ export function WizardGenerateStep() {
     handleCopyClientShareMessage,
     coverBudgetPacingWarning,
     coverBudgetPreviewLine,
-    customRangeError,
     data,
-    dateMode,
     downloadUrl,
     driveDisplayLabel,
     driveFolderLinkInput,
@@ -79,7 +75,6 @@ export function WizardGenerateStep() {
     dayBreakdownData,
     historicalData,
     includePreviousMonthComparison,
-    needsLongRangeConfirm,
     persistGenerateSnapshot,
     platform,
     pmsError,
@@ -105,7 +100,6 @@ export function WizardGenerateStep() {
     setDriveSaveError,
     setDriveSaveUrl,
     setDriveView,
-    setLongRangeConfirmed,
     setStep,
     shareToken,
     showBudgetOnCover,
@@ -115,22 +109,12 @@ export function WizardGenerateStep() {
     reportBrandingMode,
     reportBrandingError,
     reportBrandingBlocksGenerate,
+    customRangeError,
+    needsLongRangeConfirm,
   } = w;
 
   const slideCount = estimatedSlideCount();
   const sectionsOnly = !!w.reportSelection || (data?.metaContent ?? historicalData?.metaContent)?.includeStandard === false;
-
-  const weeklyPeriodNeedsAttention =
-    !w.reportSelection && reportType === "WEEKLY" &&
-    (dateMode === "custom" || Boolean(customRangeError) || needsLongRangeConfirm);
-  const [weeklyPeriodExpanded, setWeeklyPeriodExpanded] = useState(false);
-
-  useEffect(() => {
-    if (weeklyPeriodNeedsAttention) setWeeklyPeriodExpanded(true);
-  }, [weeklyPeriodNeedsAttention]);
-
-  const showWeeklyPeriodEditor = !w.automationCadence &&
-    reportType === "WEEKLY" && (weeklyPeriodNeedsAttention || weeklyPeriodExpanded);
 
   if (!stepActive) return null;
 
@@ -338,16 +322,11 @@ export function WizardGenerateStep() {
         <div className={`space-y-6 ${showGenerateFooter ? "pb-28 md:pb-6" : ""}`}>
           {usesFullAdWizard(platform) && (
             <div className="space-y-5">
-            {!w.automationCadence && <ReportPeriodControls stage="generate" />}
-
-          {showWeeklyPeriodEditor ? <>
-            <WeeklyPeriodControls />
-            {customRangeError ? <p role="alert" className="text-sm text-red-400">{customRangeError}</p> : null}
-            {needsLongRangeConfirm ? <div className="rounded-lg border border-dash-border bg-dash-card p-4">
-              <p className="text-sm text-dash-ink-secondary">This weekly report covers more than seven days. Use this reporting period?</p>
-              <button type="button" onClick={() => setLongRangeConfirmed(true)} className="mt-3 rounded-md bg-dash-accent px-3 py-2 text-sm font-semibold text-[#0b1728]">Confirm reporting period</button>
-            </div> : null}
-          </> : null}
+            {!w.automationCadence && reportType !== "WEEKLY" && <ReportPeriodControls stage="generate" />}
+            {reportType === "WEEKLY" && (customRangeError || needsLongRangeConfirm) && <div className="rounded-lg border border-dash-border bg-dash-card p-4">
+              <p className="text-sm text-dash-ink-secondary">{customRangeError || "Confirm your reporting dates on Import before continuing."}</p>
+              <button type="button" onClick={() => w.setStep(1)} className="mt-3 rounded-lg border border-dash-border px-4 py-2 text-sm font-medium text-dash-ink">Review dates on Import</button>
+            </div>}
 
               {previewStatus === "invalid" && (
                 <div className="space-y-3">
@@ -411,7 +390,6 @@ export function WizardGenerateStep() {
                   { label: "Month to date", value: w.formatIsoRange(w.mtdRange) },
                   ...(previewKind === "normal" && data?.chart ? [{ label: "Trend chart", value: "Last 30 days" }] : []),
                 ]}
-                onChangeDates={!w.automationCadence && !showWeeklyPeriodEditor ? () => setWeeklyPeriodExpanded(true) : undefined}
               />
             )}
 
@@ -570,7 +548,7 @@ export function WizardGenerateStep() {
             />
           ) : null}
 
-          {generateStatus !== "done" ? <WizardReportHelp clientId={clientId} /> : null}
+          {generateStatus !== "done" ? <div className="pt-6"><WizardReportHelp clientId={clientId} /></div> : null}
         </div>
 
   );

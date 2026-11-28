@@ -440,7 +440,7 @@ export function WizardCampaignsStep() {
         </button>
       </div>
 
-      {!w.reportSelection&&<WizardStepHelp step={2} platform={w.platform} clientTimezone={w.clientTimezone} />}
+      {!w.reportSelection&&<div className="pt-6"><WizardStepHelp step={2} platform={w.platform} clientTimezone={w.clientTimezone} /></div>}
 
       <WizardStickyFooter
         stepLabel={copy.stepOf(2, w.reportSelection?3:4, wizardStepLabel(2, locale))}

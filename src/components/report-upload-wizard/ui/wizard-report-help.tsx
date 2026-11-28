@@ -3,7 +3,7 @@ import { WhatsAppChatLink } from "@/components/whatsapp-chat-link";
 import { WizardFeedbackLink } from "./wizard-feedback-link";
 
 export function WizardReportHelp({ clientId, reportId }: { clientId: string; reportId?: string }) {
-  return <aside aria-label="Report help" className="mt-8 rounded-lg border border-dash-border bg-dash-bg/30 p-4">
+  return <aside aria-label="Report help" className="rounded-lg border border-dash-border bg-dash-bg/30 p-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h3 className="text-sm font-semibold text-dash-ink">Need help with this report?</h3>
       <div className="flex flex-wrap gap-2">

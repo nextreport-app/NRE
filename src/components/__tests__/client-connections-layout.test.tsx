@@ -22,8 +22,20 @@ describe("Client connection workspace", () => {
     expect(html).toContain('href="/api/meta/connect?clientId=client-a"');
     expect(html).not.toContain("/api/tiktok/connect");
     expect(html).toContain("Choose different login");
+    expect(ga4Card).toContain("Google login");
+    expect(ga4Card).toContain("Disconnect login");
+    expect(ga4Card).not.toContain("Use agency login");
     expect(html).toContain("Agency-wide");
     expect(html).not.toContain("Other clients keep their connections");
     expect(html).not.toContain("After changing a Meta");
   });
+});
+
+it("starts an unconfigured analytics client without a shared email or property loader", () => {
+  const html=renderToStaticMarkup(<ClientProviderSettings clientId="fresh" connections={[{provider:"ga4",scoped:false,connected:false,label:null,configured:true},{provider:"gsc",scoped:false,connected:false,label:null,configured:true}]} />);
+  expect(html).toContain("Not connected");
+  expect(html).toContain("Connect for this client");
+  expect(html).not.toContain("Agency login");
+  expect(html).not.toContain("Choose different login");
+  expect(html).not.toContain("Use agency login");
 });
