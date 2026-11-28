@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReportInbox } from "@/components/report-inbox";
 import { ReportAreaNavigation } from "@/components/report-area-navigation";
-import { clientActivityDate } from "@/lib/client-card-summary";
+import { formatReportGeneratedAt } from "@/lib/report-list-shared";
 import { defaultReportDisplayName } from "@/lib/nre/report-display-name";
 const PAGE_SIZE = 20;
 export default async function ReportsPage({
@@ -68,9 +68,9 @@ export default async function ReportsPage({
     <div className="mx-auto max-w-5xl text-dash-ink">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Reports</h1>
+          <h1 className="text-2xl font-bold">Reports across all clients</h1>
           <p className="mt-2 text-sm text-dash-ink-secondary">
-            Find generated reports or review scheduled drafts before sending.
+            {scheduled ? "Review scheduled drafts from all your clients before sending." : "Your latest reports from every client, newest first. Use Client history to see reports for one client."}
           </p>
         </div>
         <Link href="/clients" className={button}>
@@ -103,8 +103,7 @@ export default async function ReportsPage({
             )}
           </form>
           <p className="mb-3 text-xs text-dash-ink-secondary">
-            {total} report{total === 1 ? "" : "s"} · includes one-off and
-            scheduled reports
+            {total} report{total === 1 ? "" : "s"} across all clients · newest first · includes one-off and scheduled reports
           </p>
           {reports.length ? (
             <div className="space-y-3">
@@ -121,7 +120,7 @@ export default async function ReportsPage({
                   >
                     <div className="min-w-0">
                       <p className="text-xs text-dash-ink-secondary">
-                        {report.client.accountName}
+                        Client: {report.client.accountName}
                       </p>
                       <h2 className="mt-1 break-words text-sm font-semibold">
                         {report.displayName ??
@@ -136,7 +135,7 @@ export default async function ReportsPage({
                           dateTime={report.createdAt.toISOString()}
                           title={report.client.timezone}
                         >
-                          {clientActivityDate(
+                          Generated {formatReportGeneratedAt(
                             report.createdAt.toISOString(),
                             report.client.timezone,
                           )}

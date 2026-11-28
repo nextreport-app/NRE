@@ -45,7 +45,7 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                title={link.href === "/performance/meta-ads" ? "Monitor Meta Ads, GA4 and SEO across clients" : link.href === "/reports" ? "Generated reports and scheduled drafts" : link.href === "/clients" ? "Choose a client and start a task" : undefined}
+                title={link.href === "/performance/meta-ads" ? "Monitor Meta Ads, GA4 and SEO across clients" : link.href === "/reports" ? "Reports and scheduled drafts across all clients" : link.href === "/clients" ? "Choose a client and start a task" : undefined}
                 aria-current={active ? "page" : undefined}
                 className={
                   "shrink-0 " +

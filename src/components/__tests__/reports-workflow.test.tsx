@@ -87,11 +87,21 @@ describe("Reports workflow and client navigation", () => {
       }),
     );
     expect(html).toContain("includes one-off and scheduled reports");
+    expect(html).toContain("Reports across all clients");
+    expect(html).toContain("Your latest reports from every client, newest first.");
+    expect(html).toContain("Generated");
     expect(html).toContain(
       'href="/clients/client/reports/report/copy?from=reports"',
     );
     expect(html).toContain('href="/reports?tab=scheduled"');
     expect(html).not.toContain("PRIVATE_STORAGE_PATH");
+  });
+  it("opens the main Reports view across clients without inheriting a previous client", async () => {
+    m.reports.mockResolvedValue([record,{...record,id:"report-other",client:{...record.client,id:"other-client",accountName:"Other client"}}]);
+    const html=await renderPage();
+    expect(m.reports).toHaveBeenCalledWith(expect.objectContaining({where:{client:{userId:"owner"}},orderBy:[{createdAt:"desc"},{id:"desc"}]}));
+    expect(html).toContain("Other client");
+    expect(html).toContain('href="/clients/other-client/reports"');
   });
   it("keeps private scheduled drafts on the review/approval path", async () => {
     m.reports.mockResolvedValue([{ ...record, requiresApproval: true }]);
@@ -133,7 +143,8 @@ describe("Reports workflow and client navigation", () => {
     });
     const html = renderToStaticMarkup(await ReportCopyPage(props));
     expect(html).toContain('href="/reports?tab=scheduled"');
-    expect(html).toContain("private until approval");
+    expect(html).toContain("This report is private.");
+    expect(html).toContain("to confirm recipients and click Send.");
     m.client.mockResolvedValue({
       ...record,
       client: { ...record.client, userId: "someone-else" },
