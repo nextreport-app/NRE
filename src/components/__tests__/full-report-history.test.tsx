@@ -1,0 +1,13 @@
+import {beforeEach,expect,it,vi} from "vitest";
+import {renderToStaticMarkup} from "react-dom/server";
+const m=vi.hoisted(()=>({client:vi.fn(),count:vi.fn(),reports:vi.fn()}));
+vi.mock("@/lib/auth",()=>({auth:async()=>({user:{id:"owner"}})}));
+vi.mock("@/lib/prisma",()=>({prisma:{client:{findUnique:m.client},report:{count:m.count,findMany:m.reports}}}));
+vi.mock("@/components/toast",()=>({useToast:()=>({showToast:vi.fn()})}));
+import {FullReportHistoryList} from "../full-report-history-list";
+import Page from "@/app/(dashboard)/clients/[id]/reports/page";
+const row={id:"report",fileName:null,weekStart:"11/21/2026",weekEnd:"11/27/2026",status:"COMPLETE",reportType:"WEEKLY",createdAt:"2026-11-28T10:00:00Z",shareToken:"token",displayName:"Weekly — November 21 - November 27",monthLabel:"November 2026"};
+beforeEach(()=>{vi.clearAllMocks();m.client.mockResolvedValue({id:"client",userId:"owner",accountName:"Example",currency:"USD",timezone:"UTC"});m.count.mockResolvedValue(0);m.reports.mockResolvedValue([]);});
+it("shows the period once for named reports and keeps generated timestamps",()=>{const html=renderToStaticMarkup(<FullReportHistoryList clientId="client" initialReports={[row]} clientTimezone="UTC" clientCurrency="USD"/>);expect(html).toContain(row.displayName);expect(html).toContain("Generated");expect(html).not.toContain("Report period:");expect(html).not.toContain("Auto-removes");});
+it("keeps the period visible for custom names without dates",()=>{const html=renderToStaticMarkup(<FullReportHistoryList clientId="client" initialReports={[{...row,displayName:"Client review"}]} clientTimezone="UTC" clientCurrency="USD"/>);expect(html).toContain("Client review");expect(html).toContain("Report period:");expect(html).not.toContain("Auto-removes");});
+it("offers Daily and filters its database query without retention labels",async()=>{const html=renderToStaticMarkup(await Page({params:Promise.resolve({id:"client"}),searchParams:Promise.resolve({type:"DAILY"})}));expect(html).toContain('<option value="DAILY" selected="">Daily</option>');expect(m.reports).toHaveBeenCalledWith(expect.objectContaining({where:{clientId:"client",reportType:{in:["DAILY","DAY_BREAKDOWN"]}}}));expect(html).not.toContain("Auto-delete");});

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { buildShareReportAbsoluteUrl } from "@/lib/report-share-url";
 import { useToast } from "@/components/toast";
-import { reportHistoryMetaSubtitle } from "@/lib/report-list-shared";
+import { formatReportGeneratedAt, reportHistoryPeriodLabel } from "@/lib/report-list-shared";
+import { formatReportWeekRange } from "@/lib/nre/report-display-name";
 
 export interface FullReportHistoryItem {
   id: string;
@@ -26,6 +27,9 @@ const REPORT_TYPE_LABELS: Record<string, string> = {
   CREATIVE:"Creative",
   WEEKLY: "Weekly",
   MONTHLY: "Monthly",
+  DAILY: "Daily",
+  DAY_BREAKDOWN: "Daily",
+  HISTORICAL: "Multi-month",
   COMPARISON: "Comparison",
 };
 
@@ -53,13 +57,11 @@ export function FullReportHistoryList({
   initialReports,
   clientTimezone,
   clientCurrency,
-  reportRetentionDays,
 }: {
   clientId: string;
   initialReports: FullReportHistoryItem[];
   clientTimezone: string;
   clientCurrency?: string;
-  reportRetentionDays: number;
 }) {
   const { showToast } = useToast();
   const [reports, setReports] = useState(initialReports);
@@ -254,15 +256,12 @@ export function FullReportHistoryList({
                       <ReportTypeBadge reportType={r.reportType} />
                     </div>
                     {(() => {
-                      const meta = reportHistoryMetaSubtitle(r, {
-                        timeZone: clientTimezone,
-                    currency: clientCurrency,
-                        retentionDays: reportRetentionDays,
-                      });
+                      const periodInTitle = !!r.weekStart && !!r.weekEnd && r.displayName.includes(formatReportWeekRange(r.weekStart, r.weekEnd));
+                      const period = r.weekStart && r.weekEnd ? reportHistoryPeriodLabel(r.reportType, r.weekStart, r.weekEnd, clientCurrency) : null;
                       return (
                         <>
-                          <p className="mt-1 text-[14px] font-medium tabular-nums text-dash-ink">{meta.generatedLine}</p>
-                          <p className="mt-0.5 text-[13px] text-dash-ink-secondary">{meta.detailLine}</p>
+                          <p className="mt-1 text-[14px] font-medium tabular-nums text-dash-ink">Generated {formatReportGeneratedAt(r.createdAt, clientTimezone, clientCurrency)}</p>
+                          {!periodInTitle && period ? <p className="mt-0.5 text-[13px] text-dash-ink-secondary">Report period: {period}</p> : null}
                         </>
                       );
                     })()}
