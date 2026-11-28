@@ -35,6 +35,7 @@ it.each(cases)("keeps the existing agency %s callback working when started witho
  const response=await callback(await request(provider,cookie,""));
  expect(new URL(response.headers.get("location")!).pathname).toBe("/account");
  expect(m.user).toHaveBeenCalledOnce();expect(m.upsert).not.toHaveBeenCalled();
+ if(provider==="google-drive")expect(m.owned).toHaveBeenCalledWith({where:{userId:"owner",providerConnections:{none:{provider:"google-drive"}}},data:{lastDriveFolderId:null,lastDriveFolderName:null}});
 });
 it.each(cases)("rejects a %s callback after the signed-in owner changes before exchanging a code",async(provider,callback,cookie)=>{
  const req=await request(provider,cookie);m.auth.mockResolvedValue({user:{id:"other"}});

@@ -64,7 +64,7 @@ export function ClientProviderSettings({
         {connections.map((c) => {
           const Icon = c.provider === "google-drive" ? null : icons[c.provider];
           const clientGoogleProvider = c.provider === "ga4" || c.provider === "gsc";
-          const identityLabel = clientGoogleProvider ? "Google login" : c.scoped ? "Client login" : "Agency login";
+          const identityLabel = clientGoogleProvider ? "Google login" : c.scoped ? "Client profile" : "Profile";
           return <article key={c.provider} className={`min-w-0 rounded-xl border border-dash-border bg-dash-bg p-4 ${c.provider === "ga4" || c.provider === "gsc" ? "sm:col-span-2" : ""}`}>
             <div className="flex items-start gap-3">
               <span className="shrink-0" aria-hidden="true">{Icon ? <Icon /> : <svg width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="11" fill="white"/><path d="M17 8h7l10 18h-8z" fill="#FFC107"/><path d="M17 8 6 27l4 6 11-19z" fill="#34A853"/><path d="M10 33h20l4-7H14z" fill="#4285F4"/></svg>}</span>
@@ -76,9 +76,8 @@ export function ClientProviderSettings({
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {c.configured && <a href={`/api/${c.provider}/connect?clientId=${encodeURIComponent(clientId)}`} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-dash-border px-3 py-2 text-xs font-semibold hover:border-dash-accent focus-visible:outline-2 focus-visible:outline-dash-accent">{c.connected ? "Choose different login" : "Connect for this client"}</a>}
-              {c.scoped && <button type="button" disabled={!!busy} onClick={() => void handleResetConnection(c.provider)} className="min-h-11 rounded-lg border border-dash-border px-3 text-xs hover:border-dash-accent disabled:opacity-50">{busy === c.provider ? "Updating…" : clientGoogleProvider ? "Disconnect login" : "Use agency login"}</button>}
+              {c.scoped && <button type="button" disabled={!!busy} onClick={() => void handleResetConnection(c.provider)} className="min-h-11 rounded-lg border border-dash-border px-3 text-xs hover:border-dash-accent disabled:opacity-50">{busy === c.provider ? "Updating…" : clientGoogleProvider ? "Disconnect login" : "Use default profile"}</button>}
             </div>
-            {c.provider === "meta" && <details className="mt-3 text-xs text-dash-ink-secondary"><summary className="cursor-pointer">Need another Meta profile?</summary><p className="mt-2">Switch accounts on Meta before authorizing. Stay signed in to NextReport.</p></details>}
             {c.provider === "ga4" && ga4Property}
             {c.provider === "gsc" && gscSite}
           </article>;

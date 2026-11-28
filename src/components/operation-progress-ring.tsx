@@ -1,4 +1,4 @@
-/** A measured ring when progress is known; a rotating status ring otherwise. */
+/** Static amber remainder replaced by green as completed work is reported. */
 export function OperationProgressRing({
   progress,
   onAmber = false,
@@ -16,7 +16,7 @@ export function OperationProgressRing({
       width="22"
       height="22"
       fill="none"
-      className={`nre-operation-ring shrink-0 ${measured ? "" : "motion-safe:animate-spin"}`}
+      className="nre-operation-ring shrink-0"
       data-on-amber={onAmber || undefined}
       style={
         onAmber
@@ -40,8 +40,7 @@ export function OperationProgressRing({
         pathLength="100"
         stroke="var(--ring-amber)"
         strokeWidth="3"
-        opacity={measured ? 0.35 : 1}
-        strokeDasharray={measured ? undefined : "22 78"}
+        opacity={1}
         transform="rotate(180 12 12)"
       />
       <circle
@@ -51,8 +50,8 @@ export function OperationProgressRing({
         pathLength="100"
         stroke="var(--ring-green)"
         strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray={`${value ?? 70} 100`}
+        strokeLinecap="butt"
+        strokeDasharray={`${value ?? 0} 100`}
         transform="rotate(-90 12 12)"
       />
     </svg>

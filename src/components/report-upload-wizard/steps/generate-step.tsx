@@ -196,7 +196,7 @@ export function WizardGenerateStep() {
           persistGenerateSnapshot={persistGenerateSnapshot}
           hasGoogleDriveConnected={hasGoogleDriveConnected}
           driveView={driveView}
-          driveSaving={driveSaving}
+          driveSaving={driveSaving} driveProgress={w.driveProgress}
           handleSaveButtonClick={handleSaveButtonClick}
           rememberedFolder={rememberedFolder}
           setDriveView={setDriveView}
@@ -252,7 +252,7 @@ export function WizardGenerateStep() {
                   aria-busy={driveSaving || undefined}
                   className="inline-flex items-center justify-center gap-2 rounded-md bg-dash-accent px-4 py-2 text-[14px] font-medium text-[#102033] hover:bg-dash-accent-hover disabled:opacity-50"
                 >
-                  {driveSaving && <OperationProgressRing label="Saving report to Drive" onAmber />} {driveSaving ? "Saving…" : "Save to this folder"}
+                  {driveSaving && <OperationProgressRing progress={w.driveProgress} label="Saving report to Drive" onAmber />} {driveSaving ? "Saving…" : "Save to this folder"}
                 </button>
                 <button
                   type="button"
@@ -500,7 +500,7 @@ export function WizardGenerateStep() {
                     aria-busy={generateStatus === "loading" || undefined}
                     className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-dash-accent text-[16px] font-semibold text-[#102033] hover:bg-dash-accent-hover disabled:cursor-not-allowed disabled:opacity-80"
                   >
-                    {generateStatus === "loading" && <OperationProgressRing onAmber label="Generating report" />}
+                    {generateStatus === "loading" && <OperationProgressRing progress={w.generationProgress} onAmber label="Generating report" />}
                     {generateCtaLabel}
                   </button>
                   <p className="mt-2 text-center text-[14px] text-dash-ink-secondary">This usually takes 20-30 seconds</p>
@@ -539,6 +539,7 @@ export function WizardGenerateStep() {
               backLabel={w.reportSelection?"Back to campaigns":"Back to metrics"}
               primaryLabel={generateCtaLabel}
               primaryLoadingLabel={generateCtaLabel}
+              primaryProgress={generateStatus === "loading" ? w.generationProgress : undefined}
               onPrimary={handleGenerateStepPrimary}
               primaryDisabled={generateStatus !== "loading" && generateCtaDisabled}
               primaryLoading={

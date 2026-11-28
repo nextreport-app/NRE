@@ -67,3 +67,9 @@ describe("status polling recovery", () => {
   await expect(pollReportStatus("existing",{fetchFn:pending,intervalMs:1,maxAttempts:1})).rejects.toMatchObject({reason:"timeout"});
  });
 });
+
+it("reports backend stages and only marks complete when the job is complete",async()=>{
+ const update=vi.fn();const fetchFn=vi.fn().mockResolvedValueOnce({ok:true,status:200,json:async()=>({status:"GENERATING",progress:40})}).mockResolvedValueOnce({ok:true,status:200,json:async()=>({status:"GENERATING",progress:80})}).mockResolvedValueOnce({ok:true,status:200,json:async()=>({status:"COMPLETE",progress:80})});
+ await pollReportStatus("existing",{fetchFn,intervalMs:1,maxAttempts:3,onProgress:update});
+ expect(update.mock.calls.map(c=>c[0])).toEqual([40,80,100]);
+});

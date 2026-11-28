@@ -115,6 +115,10 @@ export async function persistOAuthProvider(
   const context = providerOAuthContext(req, provider, userId);
   if (context.clientId)
     return saveClientProvider(userId, context.clientId, provider, data);
+  if (provider === "google-drive") return prisma.$transaction(async tx => {
+    await tx.client.updateMany({where: {userId, providerConnections: {none: {provider: "google-drive"}}}, data: {lastDriveFolderId: null, lastDriveFolderName: null}});
+    return tx.user.update({where: {id: userId}, data});
+  });
   if (provider === "gsc") return prisma.$transaction(async tx => {
     const inherited = {userId, providerConnections: {none: {provider: "gsc"}}};
     await tx.client.updateMany({where: inherited, data: {gscSiteUrl: null}});

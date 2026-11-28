@@ -14,6 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { id },
       select: {
         status: true,
+        generationProgress: true,
         shareToken: true,
         errorMessage: true,
         client: { select: { userId: true } },
@@ -25,9 +26,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({
       status: report.status,
+      progress: report.status === "COMPLETE" ? 100 : Math.max(0, Math.min(80, report.generationProgress ?? 0)),
       shareToken: report.status === "COMPLETE" ? report.shareToken : null,
       errorMessage: report.status === "FAILED" ? report.errorMessage : null,
-    });
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return apiErrorResponse(err, "reports:status");
   }

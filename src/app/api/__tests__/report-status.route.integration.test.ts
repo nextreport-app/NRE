@@ -31,6 +31,7 @@ describe("GET /api/reports/[id]/status", () => {
     mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.report.findUnique).mockResolvedValue({
       status: "GENERATING",
+      generationProgress: 40,
       shareToken: "tok",
       errorMessage: null,
       client: { userId: "other_user" },
@@ -44,6 +45,7 @@ describe("GET /api/reports/[id]/status", () => {
     mockRouteAuth(auth).mockResolvedValue(mockSession("user_1"));
     vi.mocked(prisma.report.findUnique).mockResolvedValue({
       status: "GENERATING",
+      generationProgress: 40,
       shareToken: "tok",
       errorMessage: null,
       client: { userId: "user_1" },
@@ -51,8 +53,9 @@ describe("GET /api/reports/[id]/status", () => {
 
     const res = await GET(new Request("http://localhost/api/reports/r1/status"), routeParams({ id: "r1" }));
     expect(res.status).toBe(200);
-    const body = await jsonBody<{ status: string; shareToken: string | null; errorMessage: string | null }>(res);
+    const body = await jsonBody<{ status: string; progress: number; shareToken: string | null; errorMessage: string | null }>(res);
     expect(body.status).toBe("GENERATING");
+    expect(body.progress).toBe(40);
     expect(body.shareToken).toBeNull();
     expect(body.errorMessage).toBeNull();
   });
@@ -67,8 +70,9 @@ describe("GET /api/reports/[id]/status", () => {
     } as never);
 
     const res = await GET(new Request("http://localhost/api/reports/r1/status"), routeParams({ id: "r1" }));
-    const body = await jsonBody<{ status: string; shareToken: string | null }>(res);
+    const body = await jsonBody<{ status: string; progress: number; shareToken: string | null }>(res);
     expect(body.status).toBe("COMPLETE");
+    expect(body.progress).toBe(100);
     expect(body.shareToken).toBe("abc123");
   });
 

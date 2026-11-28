@@ -1,0 +1,18 @@
+import {beforeEach,expect,it,vi} from "vitest";
+const m=vi.hoisted(()=>({find:vi.fn(),update:vi.fn(),render:vi.fn(),save:vi.fn(),complete:vi.fn(),fail:vi.fn(),claim:vi.fn(),template:vi.fn()}));
+vi.mock("@/lib/prisma",()=>({prisma:{report:{findUnique:m.find,updateMany:m.update},user:{findUnique:vi.fn().mockResolvedValue({})}}}));
+vi.mock("@/lib/report-capacity",()=>({claimReportGeneration:m.claim,failReportGeneration:m.fail}));
+vi.mock("@/lib/report-generation-events",()=>({completeReportGeneration:m.complete}));
+vi.mock("@/lib/agency-templates/load",()=>({loadReportTemplate:m.template}));
+vi.mock("@/lib/quality-agents/incidents",()=>({recordQualityIncident:vi.fn()}));
+vi.mock("@/lib/nre/wizard-upload-session",()=>({releaseWizardUploadSession:vi.fn()}));
+vi.mock("@/lib/nre/share-report",()=>({buildShareReportData:()=>({version:1}),buildDayBreakdownShareReportData:vi.fn(),buildHistoricalShareReportData:vi.fn()}));
+vi.mock("@/lib/ai/generate-insights",()=>({generateInsights:vi.fn().mockResolvedValue(new Map()),revalidateCachedInsights:vi.fn()}));
+vi.mock("@/lib/pptx/render",()=>({renderPptx:m.render,renderComparisonPptx:vi.fn(),renderHistoricalPptx:vi.fn(),renderDayBreakdownPptx:vi.fn()}));
+vi.mock("@/lib/storage",()=>({saveReportFile:m.save,readLogoFile:vi.fn()}));
+vi.mock("@/lib/report-notifications",()=>({notifyReportGeneratedForUser:vi.fn().mockResolvedValue(undefined)}));
+import {processReportGeneration} from "../report-generation-job";
+beforeEach(()=>{vi.clearAllMocks();m.claim.mockResolvedValue(true);m.update.mockResolvedValue({count:1});m.template.mockResolvedValue(Buffer.from("template"));m.render.mockResolvedValue(Buffer.from("pptx"));m.save.mockResolvedValue("stored");m.find.mockResolvedValue({id:"report",clientId:"client",status:"GENERATING",requiresApproval:true,client:{id:"client",userId:"owner",currency:"USD",timezone:"UTC",template:"DARK"},jobPayload:JSON.stringify({version:1,kind:"STANDARD",userId:"owner",clientId:"client",platform:"META",reportData:{reportType:"WEEKLY",campaignSlides:[],adSetSlides:[],cover:{},currencySymbol:"$"}})});});
+it("records milestones only after each real backend stage",async()=>{m.render.mockImplementation(async()=>{expect(m.update.mock.calls.map(c=>c[0].data.generationProgress)).toEqual([20,40]);return Buffer.from("pptx");});m.save.mockImplementation(async()=>{expect(m.update.mock.calls.map(c=>c[0].data.generationProgress)).toEqual([20,40,60]);return "stored";});await processReportGeneration("report");expect(m.update.mock.calls.map(c=>c[0].data.generationProgress)).toEqual([20,40,60,80]);expect(m.complete).toHaveBeenCalledOnce();expect(m.fail).not.toHaveBeenCalled();});
+it("does not advance past a failed render or mark a failed job complete",async()=>{m.render.mockRejectedValue(new Error("renderer failed"));await processReportGeneration("report");expect(m.update.mock.calls.map(c=>c[0].data.generationProgress)).toEqual([20,40]);expect(m.save).not.toHaveBeenCalled();expect(m.complete).not.toHaveBeenCalled();expect(m.fail).toHaveBeenCalledWith("report","renderer failed");});
+it("does not publish progress when another worker owns the job",async()=>{m.claim.mockResolvedValue(false);await processReportGeneration("report");expect(m.update).not.toHaveBeenCalled();expect(m.render).not.toHaveBeenCalled();});

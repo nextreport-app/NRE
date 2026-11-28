@@ -228,3 +228,13 @@ export async function clientProviderSummaries(
     };
   });
 }
+
+/** Guard asset writes against an OAuth profile replacement while a provider request runs. */
+export function clientProviderWriteWhere(user: object, provider: ClientProvider): Prisma.ClientWhereInput {
+  const scoped = clientProviderGuard(user, provider);
+  if (scoped) return { providerConnections: { some: { ...scoped, provider } } };
+  const values = user as Record<string, unknown>;
+  const prefix = prefixes[provider];
+  const key = values[`${prefix}RefreshToken`] ? `${prefix}RefreshToken` : `${prefix}AccessToken`;
+  return { providerConnections: { none: { provider } }, user: { [key]: values[key] ?? null } };
+}

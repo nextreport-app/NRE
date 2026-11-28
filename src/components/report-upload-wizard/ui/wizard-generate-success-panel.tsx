@@ -78,6 +78,7 @@ type WizardGenerateSuccessPanelProps = {
   hasGoogleDriveConnected: boolean;
   driveView: DriveView;
   driveSaving: boolean;
+  driveProgress?: number;
   handleSaveButtonClick: () => void;
   rememberedFolder: { name: string } | null;
   setDriveView: (v: DriveView) => void;
@@ -114,6 +115,7 @@ export function WizardGenerateSuccessPanel({
   hasGoogleDriveConnected,
   driveView,
   driveSaving,
+  driveProgress,
   handleSaveButtonClick,
   rememberedFolder,
   setDriveView,
@@ -241,9 +243,13 @@ export function WizardGenerateSuccessPanel({
               <PptxDownloadIcon />
               Download PPTX
             </ReportDownloadLink>
-            {hasGoogleDriveConnected ? (
-              <button type="button" onClick={handleSaveButtonClick} disabled={driveSaving} aria-busy={driveSaving || undefined} className={secondaryExportClass}>
-                {driveSaving ? <OperationProgressRing label="Saving report to Drive" /> : <GoogleDriveIcon />}
+            {hasGoogleDriveConnected ? (driveSaveUrl && !driveSaving ? (
+              <a href={driveSaveUrl} target="_blank" rel="noopener noreferrer" className={secondaryExportClass}>
+                <OperationProgressRing progress={100} label="Saved to Drive" />
+                Open in Drive
+              </a>
+            ) : <button type="button" onClick={handleSaveButtonClick} disabled={driveSaving} aria-busy={driveSaving || undefined} className={secondaryExportClass}>
+                {driveSaving ? <OperationProgressRing progress={driveProgress} label="Saving report to Drive" /> : <GoogleDriveIcon />}
                 {driveSaving ? "Saving…" : "Save to Drive"}
               </button>
             ) : <Link href={`/clients/${clientId}#provider-connections`} target="_blank" rel="noopener noreferrer" onClick={persistSnapshotIfReady} className={secondaryExportClass}>Connect Google Drive</Link>}

@@ -196,9 +196,12 @@ async function uploadAndShareInFolder(
   pptxBuffer: Buffer,
   fileName: string,
   folderId: string,
+  onProgress?: (progress: number) => void,
 ): Promise<{ webViewLink: string }> {
   const { id: fileId, webViewLink } = await uploadPptxAsGoogleSlides(accessToken, pptxBuffer, fileName, folderId);
+  onProgress?.(60);
   await shareFilePublicly(accessToken, fileId);
+  onProgress?.(80);
   return { webViewLink: webViewLink || `https://docs.google.com/presentation/d/${fileId}/edit` };
 }
 
@@ -215,7 +218,9 @@ export async function saveReportToDriveFolder(params: {
   folderId: string;
   fileName: string;
   pptxBuffer: Buffer;
+  onProgress?: (progress: number) => void;
 }): Promise<{ webViewLink: string }> {
   const accessToken = await getFreshGoogleAccessToken(params.refreshToken);
-  return uploadAndShareInFolder(accessToken, params.pptxBuffer, params.fileName, params.folderId);
+  params.onProgress?.(40);
+  return uploadAndShareInFolder(accessToken, params.pptxBuffer, params.fileName, params.folderId, params.onProgress);
 }

@@ -15,7 +15,7 @@ export async function completeReportGeneration(args: { where: { id: string }; da
     const previous = await tx.report.findUniqueOrThrow({ where: args.where });
     if (previous.status === "COMPLETE") return previous;
     const now = new Date();
-    const report = await tx.report.update({ where: args.where, data: { ...args.data, status: "COMPLETE", completedAt: now } });
+    const report = await tx.report.update({ where: args.where, data: { ...args.data, status: "COMPLETE", generationProgress: 100, completedAt: now } });
     await recordGenerationOutcome(tx, report.id, "COMPLETE", now);
     return report;
   });

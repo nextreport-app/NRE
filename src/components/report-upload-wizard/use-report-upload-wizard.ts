@@ -1,4 +1,5 @@
 "use client";
+import { readOperationResponse } from "@/lib/read-operation-response";
 import { automationSampleDateSelection } from "@/lib/report-schedules/wizard-options";
 import type { AutomationReportConfiguration, ScheduledWizardOptions } from "@/lib/report-schedules/wizard-options";
 import { campaignSpendRequestKey } from "@/lib/nre/campaign-selection-spend";
@@ -497,6 +498,8 @@ export function useReportUploadWizard({
   const [rememberedFolder, setRememberedFolder] = useState<RememberedDriveFolder | null>(initialRememberedFolder);
   const [driveView, setDriveView] = useState<DriveView>("collapsed");
   const [driveSaving, setDriveSaving] = useState(false);
+  const [driveProgress, setDriveProgress] = useState(0);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [driveFolderLinkInput, setDriveFolderLinkInput] = useState("");
   // Free-typed, optional — there's no Drive API call to resolve the
   // folder's real name (see lib/google-drive.ts's file header for why),
@@ -2305,6 +2308,7 @@ export function useReportUploadWizard({
     const csvMismatchAtGenerate = pending?.mismatch ?? (csvVerification?.status === "mismatch");
     const csvSkippedAtGenerate = pending?.skipped ?? (csvVerification?.status === "skipped");
     setGenerateStatus("loading");
+    if (!pending) setGenerationProgress(0);
     setGenerateMessage(null);
     setDriveView("collapsed");
     setDriveSaving(false);
@@ -2382,7 +2386,7 @@ export function useReportUploadWizard({
       pendingGenerationRef.current = { reportId: json.reportId, shareToken: finalShareToken, config: automationConfigAtGenerate, mismatch: csvMismatchAtGenerate, skipped: csvSkippedAtGenerate };
       setGenerateMessage("Building your report — this usually takes under a minute.");
       try {
-        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180 });
+        const polled = await pollReportStatus(json.reportId, { maxAttempts: 180, onProgress: setGenerationProgress });
         finalShareToken = polled.shareToken ?? finalShareToken;
       } catch (err) {
         if (err instanceof ReportGenerationPollError && err.reason === "failed") pendingGenerationRef.current = null;
@@ -2519,11 +2523,12 @@ export function useReportUploadWizard({
   async function handleSaveToDrive(folderId: string, folderName?: string) {
     if (!reportId) return;
     setDriveSaving(true);
+    setDriveProgress(0);
     setDriveSaveError(null);
 
     const res = await fetch(`/api/reports/${reportId}/save-to-drive`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
       body: JSON.stringify({ folderId, folderName }),
     }).catch(() => null);
     if (!res) {
@@ -2531,19 +2536,20 @@ export function useReportUploadWizard({
       setDriveSaveError("Could not reach Google Drive. Check your connection and try Save to Drive again; your report is still available here.");
       return;
     }
-    const json = await res.json().catch(() => null);
+    const json = await readOperationResponse(res, setDriveProgress).catch(() => null);
 
-    if (!res.ok || !json?.url) {
+    if (!res.ok || typeof json?.url !== "string") {
       setDriveSaving(false);
-      setDriveSaveError(json?.message || json?.error || `Request failed with status ${res.status}.`);
+      setDriveSaveError(typeof json?.message === "string" ? json.message : typeof json?.error === "string" ? json.error : `Drive save could not be completed. Check the saved report before retrying.`);
       return;
     }
 
+    setDriveProgress(100);
     setDriveSaveUrl(json.url);
     // json.folderName is whatever the user typed, or the server's
     // DEFAULT_DRIVE_FOLDER_NAME fallback if they left it blank — never a
     // raw folder id (see the "Folder name" field below).
-    const nextFolder = { id: folderId, name: json.folderName };
+    const nextFolder = { id: folderId, name: typeof json.folderName === "string" ? json.folderName : folderName ?? "Drive Folder" };
     setRememberedFolder(nextFolder);
     setDriveFolderLinkInput("");
     setDriveFolderNameInput("");
@@ -3182,7 +3188,7 @@ export function useReportUploadWizard({
     rememberedFolder,
     driveView,
     setDriveView,
-    driveSaving,
+    driveSaving, driveProgress, generationProgress,
     driveFolderLinkInput,
     setDriveFolderLinkInput,
     driveFolderNameInput,

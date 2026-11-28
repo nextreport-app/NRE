@@ -2,12 +2,12 @@ import { expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { OperationProgressRing } from "../operation-progress-ring";
 import { WizardStickyFooter } from "../report-upload-wizard/ui/wizard-sticky-footer";
-it("shows unknown work as an indeterminate ring without claiming a percentage", () => {
+it("keeps unknown work amber and stationary without claiming a percentage", () => {
   const html = renderToStaticMarkup(
     <OperationProgressRing label="Generating report" />,
   );
   expect(html).toContain('role="progressbar"');
-  expect(html).toContain("motion-safe:animate-spin");
+  expect(html).not.toContain("animate-spin");
   expect(html).not.toContain("aria-valuenow");
 });
 it("keeps zero determinate and clamps measured progress", () => {
@@ -25,7 +25,7 @@ it("keeps zero determinate and clamps measured progress", () => {
   }
   expect(
     renderToStaticMarkup(<OperationProgressRing progress={NaN} />),
-  ).toContain("motion-safe:animate-spin");
+  ).not.toContain("animate-spin");
 });
 it("disables the mobile Generate action while showing its busy ring", () => {
   const html = renderToStaticMarkup(

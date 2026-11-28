@@ -34,3 +34,18 @@ Provider logins and GA4 property selection live together in Connections for this
 ## Weekly review screen and help spacing
 
 Weekly dates are chosen and any long-range confirmation completed on Import. Review & generate keeps the read-only Report includes summary; it has no duplicate weekly date editor or Change dates button. An exceptional invalid/unconfirmed selection points back to Import. Campaign, metrics and final report help sit apart from the primary actions with explicit spacing.
+
+
+## Multiple profiles across clients
+
+Each client has one active login per provider. Five clients may use five separate Google Drive emails, and different clients may use different Meta, Google Ads or TikTok identities. Each client card shows its own resolved profile; it does not list every profile in the workspace. Google login, client profile and Profile are neutral labels; the default account profile remains available for providers which support that fallback. Choosing a different login replaces only that client/provider, and clears that provider’s asset/folder assignment so the user chooses an asset available to the new identity. This is not a multi-profile picker within one client/provider.
+
+The active import journey passes clientId to Meta/Google Ads/TikTok account-list APIs. Scoped OAuth saves an encrypted grant to that client/provider row; refreshes update that exact row and reject concurrent replacement. Drive export resolves the report owner’s client connection. Final folder/report persistence now checks that exact scoped grant (or unchanged default grant with no scoped override) inside a transaction. A login switch during export returns a recovery error, never an old folder or success URL in the new profile’s settings. Replacing the default Drive profile also clears remembered folders only for clients inheriting that default; clients with their own scoped Drive profiles keep their folders. An upload already accepted by the old Drive identity may still exist there; no automatic destructive cleanup is attempted.
+
+Provider browser sessions and permissions still apply: Meta/TikTok can require switching the signed-in provider account before consent. Real provider consent, revoked grants, folder access and deployed streaming behavior require authorized live checks; the regression suite uses mocked providers and does not log into real accounts.
+
+## Completed-stage operation rings
+
+Report generation stores generationProgress after job validation, assets/insights preparation, PPTX rendering and file storage. The completion transaction sets 100 only after the report is saved. The status API and desktop/mobile Generate actions consume those completed stages. This is stage completion, not an elapsed-time animation or a measurement of CPU work.
+
+Drive export streams actual read-file, token-refresh, upload/conversion, sharing-permission and final-persistence stages as NDJSON when requested; ordinary JSON callers remain supported. An interrupted/error response never emits 100. The ring stays amber where progress is unknown, replaces amber with green as stages finish, and does not rotate. The additive 20261128130000_report_generation_progress migration must deploy with the application; it was not applied to production during implementation.

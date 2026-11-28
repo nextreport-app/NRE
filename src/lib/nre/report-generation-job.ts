@@ -118,6 +118,9 @@ export async function processReportGeneration(reportId: string): Promise<void> {
   }
 
   if (job.userId !== report.client.userId || job.clientId !== report.clientId) { await markReportFailed(reportId, "Report ownership could not be verified."); return; }
+  const progress = async (value: number) => {
+    await prisma.report.updateMany({ where: { id: reportId, status: "GENERATING", generationProgress: { lt: value } }, data: { generationProgress: value } });
+  };
   const client = report.client;
   const renderVariant=report.renderTemplateVariant??client.template;
   const userIntegrations = report.requiresApproval ? null : await prisma.user.findUnique({
@@ -126,6 +129,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
   });
 
   try {
+    await progress(20); // Job and ownership validated: one of five completed stages.
     if (job.kind === "PREVIOUS_MONTH_SUMMARY") {
       const currencySymbol = job.summaryData.currencySymbol ?? CURRENCY_SYMBOLS[client.currency];
       const [user, clientLogo] = await Promise.all([
@@ -134,6 +138,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       ]);
 
       const templateBuffer = await loadReportTemplate(job.platform, renderVariant,job.userId,report.agencyTemplateId);
+      await progress(40);
       const pptxBuffer = await renderPptx({
         templateBuffer,
         data: job.summaryData,
@@ -144,7 +149,11 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         isLightTemplate: isLightReportTemplate(renderVariant),
       });
 
+      await progress(60);
+
       const filePath = await saveReportFile(reportId, pptxBuffer);
+
+      await progress(80);
       const shareData = buildShareReportData(
         job.summaryData,
         new Map(),
@@ -178,6 +187,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
     if (job.kind === "COMPARISON") {
       const [user, clientLogo] = await Promise.all([prisma.user.findUnique({ where: { id: job.userId }, select: USER_REPORT_BRANDING_SELECT }), loadLogoAsset(client.logoUrl)]);
       const templateBuffer = await loadReportTemplate(job.platform, renderVariant,job.userId,report.agencyTemplateId);
+      await progress(40);
       const pptxBuffer = await renderComparisonPptx({
         templateBuffer,
         data: job.comparisonData,
@@ -187,7 +197,11 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         isLightTemplate: isLightReportTemplate(renderVariant),
       });
 
+      await progress(60);
+
       const filePath = await saveReportFile(reportId, pptxBuffer);
+
+      await progress(80);
       const shareToken = generateShareToken();
       const brandingExtras = shareReportExtrasFromUser(user);
       const shareData = buildShareComparisonReportData(job.comparisonData, job.platform, brandingExtras);
@@ -227,6 +241,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
 
       const templateBuffer = await loadReportTemplate(job.platform === "TIKTOK" ? "TIKTOK" : "META",renderVariant,job.userId,report.agencyTemplateId);
       const aiCopyMap = buildHistoricalAiCopyMap(job.historicalData.slides, job.historicalData.adSetSlides);
+      await progress(40);
       const pptxBuffer = await renderHistoricalPptx({
         templateBuffer,
         data: job.historicalData,
@@ -237,7 +252,11 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         aiCopyBySlideKey: aiCopyMap,
       });
 
+      await progress(60);
+
       const filePath = await saveReportFile(reportId, pptxBuffer);
+
+      await progress(80);
       const shareData = buildHistoricalShareReportData(
         job.historicalData,
         aiCopyMap,
@@ -283,6 +302,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       ]);
 
       const templateBuffer = await loadReportTemplate("META", renderVariant,job.userId,report.agencyTemplateId);
+      await progress(40);
       const pptxBuffer = await renderDayBreakdownPptx({
         templateBuffer,
         data: job.dayBreakdownData,
@@ -292,7 +312,11 @@ export async function processReportGeneration(reportId: string): Promise<void> {
         isLightTemplate: isLightReportTemplate(renderVariant),
       });
 
+      await progress(60);
+
       const filePath = await saveReportFile(reportId, pptxBuffer);
+
+      await progress(80);
       const shareData = buildDayBreakdownShareReportData(
         job.dayBreakdownData,
         new Date(),
@@ -344,6 +368,7 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       loadLogoAsset(client.logoUrl),
       loadReportTemplate(platform, renderVariant,job.userId,report.agencyTemplateId),
     ]);
+    await progress(40);
     const pptxBuffer = await renderPptx({
       templateBuffer,
       data: reportData,
@@ -355,7 +380,11 @@ export async function processReportGeneration(reportId: string): Promise<void> {
       isLightTemplate: isLightReportTemplate(renderVariant),
     });
 
+    await progress(60);
+
     const filePath = await saveReportFile(reportId, pptxBuffer);
+
+    await progress(80);
     const shareData = buildShareReportData(
       reportData,
       aiCopyBySlideKey,
